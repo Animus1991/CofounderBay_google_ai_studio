@@ -340,12 +340,12 @@ class AutomationService {
   private async processScheduledJobs() {
     const now = new Date().toISOString();
     const jobsToRun = this.scheduledJobs.filter(job => 
-      job.status === 'Scheduled' && job.scheduledFor <= now
+      job.status === 'Scheduled' && job.scheduledFor !== undefined && job.scheduledFor <= now
     );
 
     for (const job of jobsToRun) {
       const rule = this.rules.find(r => r.id === job.ruleId);
-      if (rule && rule.isActive) {
+      if (rule && rule.isActive && job.targetEntityId) {
         job.status = 'Executed';
         // In a real app, we'd fetch the latest context for the entity here
         await this.executeRule(rule, job.targetEntityId, { profileCompletionScore: 25 }); // Mock context

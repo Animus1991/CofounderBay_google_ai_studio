@@ -21,7 +21,11 @@ import { auth } from '../firebase';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 
-export default function Navbar() {
+interface NavbarProps {
+ onMenuToggle?: () => void;
+}
+
+export default function Navbar({ onMenuToggle }: NavbarProps) {
  const [isMenuOpen, setIsMenuOpen] = useState(false);
  const [isProfileOpen, setIsProfileOpen] = useState(false);
  const { user, isAdmin, profile, isDemoMode, toggleDemoMode } = useAuth();
@@ -40,7 +44,7 @@ export default function Navbar() {
   }
  };
 
- const navLinks = user ? [
+ const navLinks: { name: string; href: string; icon?: React.ComponentType<{ className?: string }> }[] = user ? [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Matches', href: '/matches', icon: Search },
   { name: 'Mentors', href: '/mentors', icon: Users },
@@ -64,7 +68,7 @@ export default function Navbar() {
        <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
         <Zap className="w-6 h-6 text-white" />
        </div>
-       <span className="text-lg sm:text-xl xl:text-2xl font-medium text-stone-900 tracking-tight">CoFounderBay</span>
+       <span className="text-base sm:text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
       </NavLink>
      </div>
 
@@ -89,6 +93,17 @@ export default function Navbar() {
 
      {/* Desktop Right Actions */}
      <div className="hidden md:flex items-center gap-4">
+      {user && (
+       <button
+        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-stone-400 bg-stone-50 border border-stone-200 rounded-xl hover:border-stone-300 hover:text-stone-600 transition-all"
+        title="Search (Ctrl+K)"
+       >
+        <Search className="w-4 h-4" />
+        <span className="text-xs">Search...</span>
+        <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-white border border-stone-200 rounded-md">⌘K</kbd>
+       </button>
+      )}
       {user ? (
        <div className="flex items-center gap-4">
         {isAdmin && (
@@ -137,10 +152,14 @@ export default function Navbar() {
               <UserIcon className="w-5 h-5" />
               My Profile
              </NavLink>
-             <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all">
+             <NavLink 
+              to="/settings" 
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
+              onClick={() => setIsProfileOpen(false)}
+             >
               <Settings className="w-5 h-5" />
               Settings
-             </button>
+             </NavLink>
              <div className="h-px bg-stone-100 my-2" />
              <button 
               onClick={handleLogout}
@@ -174,10 +193,19 @@ export default function Navbar() {
      </div>
 
      {/* Mobile Menu Button */}
-     <div className="md:hidden flex items-center">
+     <div className="flex items-center gap-2">
+      {user && onMenuToggle && (
+       <button 
+        onClick={onMenuToggle}
+        className="lg:hidden p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
+        title="Toggle Sidebar"
+       >
+        <Menu className="w-6 h-6" />
+       </button>
+      )}
       <button 
        onClick={() => setIsMenuOpen(!isMenuOpen)}
-       className="p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
+       className="md:hidden p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
       >
        {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>

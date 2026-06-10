@@ -169,16 +169,18 @@ class MilestoneService {
 
   async updateMilestone(id: string, updates: Partial<Milestone>): Promise<Milestone> {
     const index = this.milestones.findIndex(m => m.id === id);
-    if (index === -1) throw new Error("Milestone not found");
+    const existing = this.milestones[index];
+    if (index === -1 || !existing) throw new Error("Milestone not found");
     
-    this.milestones[index] = {
-      ...this.milestones[index],
+    const updated: Milestone = {
+      ...existing,
       ...updates,
       updatedAt: new Date().toISOString()
     };
+    this.milestones[index] = updated;
     
     return new Promise((resolve) => {
-      setTimeout(() => resolve(this.milestones[index]), 500);
+      setTimeout(() => resolve(updated), 500);
     });
   }
 

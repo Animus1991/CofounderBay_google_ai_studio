@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { Zap, Mail, Lock, ArrowRight, Github, Chrome, User } from 'lucide-react';
+import { Zap, Mail, Lock, ArrowRight, Github, Chrome, User, FlaskConical } from 'lucide-react';
 import { auth } from '../firebase';
+import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 
 export default function SignUpPage() {
@@ -12,6 +13,26 @@ export default function SignUpPage() {
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
  const navigate = useNavigate();
+ const { toggleDemoMode } = useAuth();
+
+ const handleDemoMode = () => {
+  toggleDemoMode(true);
+  navigate('/dashboard');
+ };
+
+ const friendlyError = (code: string): string => {
+  const map: Record<string, string> = {
+   'auth/operation-not-allowed': 'Email/password sign-up is not enabled yet. Please use Demo Mode or try Google sign-in.',
+   'auth/email-already-in-use': 'An account with this email already exists. Try signing in.',
+   'auth/weak-password': 'Password must be at least 6 characters.',
+   'auth/invalid-email': 'Please enter a valid email address.',
+   'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
+   'auth/cancelled-popup-request': 'Only one sign-in popup can be open at a time.',
+   'auth/network-request-failed': 'Network error. Please check your connection and try again.',
+   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+ };
 
  const handleEmailSignUp = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -19,10 +40,9 @@ export default function SignUpPage() {
   setError('');
   try {
    await createUserWithEmailAndPassword(auth, email, password);
-   // Profile creation will happen in onboarding wizard
    navigate('/onboarding');
   } catch (err: any) {
-   setError(err.message || 'Failed to create account');
+   setError(friendlyError(err.code));
   } finally {
    setLoading(false);
   }
@@ -33,10 +53,23 @@ export default function SignUpPage() {
   setError('');
   try {
    const provider = new GoogleAuthProvider();
+   provider.addScope('profile');
+   provider.addScope('email');
    await signInWithPopup(auth, provider);
    navigate('/onboarding');
   } catch (err: any) {
-   setError(err.message || 'Failed to sign up with Google');
+   console.error('Google Auth Error:', err);
+   if (err.code === 'auth/unauthorized-domain') {
+    setError('Domain not authorized. Please add "localhost" to Firebase Console → Authentication → Settings → Authorized domains. Then restart the server.');
+   } else if (err.code === 'auth/operation-not-allowed') {
+    setError('Google Sign-Up is not enabled. Enable it in Firebase Console → Authentication → Sign-in method. Or use Demo Mode below.');
+   } else if (err.code === 'auth/popup-closed-by-user') {
+    setError('Sign-in popup was closed. Please try again.');
+   } else if (err.code === 'auth/popup-blocked') {
+    setError('Popup was blocked. Please allow popups for this site.');
+   } else {
+    setError(friendlyError(err.code));
+   }
   } finally {
    setLoading(false);
   }
@@ -49,9 +82,9 @@ export default function SignUpPage() {
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
-     <span className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900 tracking-tight">CoFounderBay</span>
+     <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-xl font-medium tracking-tight text-stone-900">
+    <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
      Create your account
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
@@ -178,7 +211,16 @@ export default function SignUpPage() {
       </div>
      </div>
 
-     <div className="mt-8 pt-6 border-t border-stone-100">
+     <div className="mt-6 pt-5 border-t border-stone-100">
+      <button
+       onClick={handleDemoMode}
+       className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-dashed border-stone-300 rounded-xl text-xs sm:text-sm font-medium text-stone-500 hover:bg-stone-50 hover:border-stone-400 transition-all"
+      >
+       <FlaskConical className="h-4 w-4 text-amber-500" />
+       Try Demo Mode — no account needed
+      </button>
+     </div>
+     <div className="mt-4">
       <p className="text-xs text-stone-400 text-center leading-relaxed">
        By creating an account, you agree to our{' '}
        <a href="#" className="underline hover:text-stone-600">Terms of Service</a> and{' '}

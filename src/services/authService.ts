@@ -45,9 +45,9 @@ export const authService = {
    * Discovers the tenant and SSO configuration based on an email address.
    */
   async discoverSSO(email: string): Promise<{ tenantId: string | null; config: TenantSSOConfig | null }> {
-    const domain = email.split('@')[1];
+    const domain = email.split('@')[1] ?? '';
     const tenantId = mockDomainMappings[domain] || null;
-    const config = tenantId ? mockSSOConfigs[tenantId] : null;
+    const config = (tenantId ? mockSSOConfigs[tenantId] : null) ?? null;
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 500));

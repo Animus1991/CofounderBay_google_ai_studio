@@ -49,7 +49,7 @@ export function useFeatureAccess(user: User | null, activeTenantId?: string) {
   };
 
   const getLimit = (limit: LimitKey): number => {
-    if (!plan) return 0;
+    if (!plan?.limits) return 0;
     return plan.limits[limit] ?? 0;
   };
 

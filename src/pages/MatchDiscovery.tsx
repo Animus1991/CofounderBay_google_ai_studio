@@ -1,331 +1,576 @@
 import React, { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+
 import { 
+
  Search, 
+
  Filter, 
+
  MapPin, 
+
  Briefcase, 
+
  Target, 
+
  Star, 
+
  UserPlus, 
+
  MessageSquare, 
+
  ChevronDown,
+
  Zap,
+
  CheckCircle2,
+
  X,
+
  SlidersHorizontal,
+
  ArrowRight
+
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'motion/react';
+
 import { collection, query, getDocs, where, limit } from 'firebase/firestore';
+
 import { db } from '../firebase';
+
 import { UserProfile } from '../types';
+
 import { cn } from '../lib/utils';
+
 import { useAuth } from '../App';
 
+import PageShell from '../components/ui/PageShell';
+
+import { useToast } from '../context/ToastContext';
+
+
+
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
+
 const ROLES = ['Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
+
 const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
+
+
 export default function MatchDiscovery() {
+
  const { user: currentUser } = useAuth();
+
  const navigate = useNavigate();
+
+ const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+
  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+
  const [loading, setLoading] = useState(true);
+
  const [connecting, setConnecting] = useState<string | null>(null);
+
  const [searchQuery, setSearchQuery] = useState('');
+
  const [showFilters, setShowFilters] = useState(false);
+
  const [filters, setFilters] = useState({
+
   stage: '',
+
   role: '',
+
   commitment: '',
+
   location: ''
+
  });
+
+
 
  const handleConnect = async (e: React.MouseEvent, targetUid: string) => {
+
   e.stopPropagation();
+
   if (!currentUser) return;
+
   setConnecting(targetUid);
+
   try {
+
    // Logic to send connection request
+
    await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
-   alert('Connection request sent!');
+
+   toastSuccess('Request sent!', 'Your connection request has been sent.');
+
   } catch (error) {
-   console.error('Error connecting:', error);
+
+   toastError('Failed to send request', 'Please try again.');
+
   } finally {
+
    setConnecting(null);
+
   }
+
  };
+
+
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
+
   e.stopPropagation();
+
   navigate(`/messages?user=${targetUid}`);
+
  };
+
+
 
  const loadMore = () => {
-  // Mock load more
-  alert('Loading more profiles...');
+
+  toastInfo('Loading more', 'Fetching additional profiles...');
+
  };
 
+
+
  useEffect(() => {
+
   const fetchProfiles = async () => {
+
    setLoading(true);
+
    try {
+
     // In a real app, we'd use more complex queries and pagination
+
     const q = query(
+
      collection(db, 'profiles'),
+
      limit(20)
+
     );
+
     const querySnapshot = await getDocs(q);
+
     const fetchedProfiles = querySnapshot.docs
+
      .map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile))
+
      .filter(p => p.uid !== currentUser?.uid); // Don't show self
+
     
+
     setProfiles(fetchedProfiles);
+
    } catch (error) {
+
     console.error('Error fetching profiles:', error);
+
    } finally {
+
     setLoading(false);
+
    }
+
   };
 
+
+
   fetchProfiles();
+
  }, [currentUser]);
 
+
+
  const filteredProfiles = profiles.filter(profile => {
+
   const matchesSearch = profile.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
+
              profile.bio.toLowerCase().includes(searchQuery.toLowerCase());
+
   const matchesStage = !filters.stage || profile.stage === filters.stage;
+
   const matchesRole = !filters.role || profile.role === filters.role;
+
   const matchesCommitment = !filters.commitment || profile.commitment === filters.commitment;
+
   
+
   return matchesSearch && matchesStage && matchesRole && matchesCommitment;
+
  });
 
+
+
  return (
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-   {/* Header & Search */}
-   <div className="space-y-8">
-    <div className="text-center max-w-3xl mx-auto space-y-4">
-     <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-medium text-stone-900 tracking-tight">
-      Find Your Perfect <span className="text-stone-400">Co-Founder</span>
-     </h1>
-     <p className="text-sm sm:text-base lg:text-lg text-stone-500 font-medium">
-      Discover entrepreneurs, builders, and visionaries who share your passion and complement your skills.
-     </p>
-    </div>
 
-    <div className="flex flex-col md:flex-row gap-4">
-     <div className="flex-1 relative group">
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
+  <PageShell
+
+   title="Discover Co-Founders"
+
+   description="Find entrepreneurs and builders who complement your skills."
+
+  >
+
+   <div className="space-y-5">
+
+    {/* Search & Filters */}
+
+    <div className="space-y-3">
+
+
+
+    <div className="flex gap-2">
+
+     <div className="flex-1 relative">
+
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+
       <input 
+
        type="text"
+
        placeholder="Search by skills, interests, or headline..."
+
        value={searchQuery}
+
        onChange={(e) => setSearchQuery(e.target.value)}
-       className="w-full pl-12 pr-4 py-4 bg-white border border-stone-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none transition-all text-stone-900 font-medium"
+
+       className="w-full pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+
       />
+
      </div>
+
      <button 
+
       onClick={() => setShowFilters(!showFilters)}
+
       className={cn(
-       "flex items-center gap-2 px-4 py-2 rounded-2xl font-medium transition-all border",
+
+       "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all border",
+
        showFilters 
-        ? "bg-stone-900 text-white border-stone-900 shadow-lg shadow-stone-900/20" 
-        : "bg-white text-stone-600 border-stone-100 hover:border-stone-300 shadow-sm"
+
+        ? "bg-stone-900 text-white border-stone-900" 
+
+        : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
+
       )}
+
      >
-      <SlidersHorizontal className="w-5 h-5" />
+
+      <SlidersHorizontal className="w-3.5 h-3.5" />
+
       Filters
+
       {Object.values(filters).filter(Boolean).length > 0 && (
-       <span className="ml-1 px-2 py-0.5 bg-stone-100 text-stone-900 rounded-full text-xs">
+
+       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-[10px] font-semibold">
+
         {Object.values(filters).filter(Boolean).length}
+
        </span>
+
       )}
+
      </button>
+
     </div>
 
-    {/* Filters Panel */}
+
+
     <AnimatePresence>
+
      {showFilters && (
+
       <motion.div 
-       initial={{ opacity: 0, y: -20 }}
+
+       initial={{ opacity: 0, y: -8 }}
+
        animate={{ opacity: 1, y: 0 }}
-       exit={{ opacity: 0, y: -20 }}
-       className="bg-white p-6 sm:p-8 rounded-3xl border border-stone-100 shadow-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+
+       exit={{ opacity: 0, y: -8 }}
+
+       className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3"
+
       >
-       <div className="space-y-2">
-        <label className="text-xs font-medium text-stone-400 uppercase tracking-widest">Startup Stage</label>
-        <select 
-         value={filters.stage}
-         onChange={(e) => setFilters({...filters, stage: e.target.value})}
-         className="w-full bg-stone-50 border-none rounded-xl px-4 py-3 text-sm font-medium text-stone-900 outline-none focus:ring-2 focus:ring-stone-900"
-        >
-         <option value="">All Stages</option>
-         {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-       </div>
-       <div className="space-y-2">
-        <label className="text-xs font-medium text-stone-400 uppercase tracking-widest">Ideal Role</label>
-        <select 
-         value={filters.role}
-         onChange={(e) => setFilters({...filters, role: e.target.value})}
-         className="w-full bg-stone-50 border-none rounded-xl px-4 py-3 text-sm font-medium text-stone-900 outline-none focus:ring-2 focus:ring-stone-900"
-        >
-         <option value="">All Roles</option>
-         {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-       </div>
-       <div className="space-y-2">
-        <label className="text-xs font-medium text-stone-400 uppercase tracking-widest">Commitment</label>
-        <select 
-         value={filters.commitment}
-         onChange={(e) => setFilters({...filters, commitment: e.target.value})}
-         className="w-full bg-stone-50 border-none rounded-xl px-4 py-3 text-sm font-medium text-stone-900 outline-none focus:ring-2 focus:ring-stone-900"
-        >
-         <option value="">All Commitments</option>
-         {COMMITMENTS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-       </div>
+
+       {[{ label: 'Stage', key: 'stage', opts: STAGES }, { label: 'Role', key: 'role', opts: ROLES }, { label: 'Commitment', key: 'commitment', opts: COMMITMENTS }].map(({ label, key, opts }) => (
+
+        <div key={key} className="space-y-1.5">
+
+         <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{label}</label>
+
+         <select 
+
+          value={(filters as any)[key]}
+
+          onChange={(e) => setFilters({...filters, [key]: e.target.value})}
+
+          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900"
+
+         >
+
+          <option value="">All</option>
+
+          {opts.map(o => <option key={o} value={o}>{o}</option>)}
+
+         </select>
+
+        </div>
+
+       ))}
+
        <div className="flex items-end">
+
         <button 
+
          onClick={() => setFilters({ stage: '', role: '', commitment: '', location: '' })}
-         className="w-full py-3 text-sm font-medium text-stone-400 hover:text-stone-900 transition-colors"
+
+         className="w-full py-2 text-xs font-medium text-stone-400 hover:text-stone-900 border border-stone-200 rounded-lg transition-colors bg-white"
+
         >
-         Reset All Filters
+
+         Reset
+
         </button>
+
        </div>
+
       </motion.div>
+
      )}
+
     </AnimatePresence>
+
    </div>
 
-   {/* Results Grid */}
-   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+
+
+   {/* Results */}
+
+   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
     {loading ? (
+
      Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="bg-white rounded-3xl border border-stone-100 p-6 sm:p-8 space-y-6 animate-pulse">
-       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 bg-stone-100 rounded-2xl" />
+
+      <div key={i} className="bg-white rounded-2xl border border-stone-100 p-5 space-y-4 animate-pulse">
+
+       <div className="flex items-center gap-3">
+
+        <div className="w-12 h-12 bg-stone-100 rounded-xl shrink-0" />
+
         <div className="space-y-2 flex-1">
-         <div className="h-4 bg-stone-100 rounded w-3/4" />
-         <div className="h-3 bg-stone-100 rounded w-1/2" />
+
+         <div className="h-3 bg-stone-100 rounded w-3/4" />
+
+         <div className="h-2.5 bg-stone-100 rounded w-1/2" />
+
         </div>
+
        </div>
+
        <div className="space-y-2">
-        <div className="h-3 bg-stone-100 rounded w-full" />
-        <div className="h-3 bg-stone-100 rounded w-full" />
+
+        <div className="h-2.5 bg-stone-100 rounded w-full" />
+
+        <div className="h-2.5 bg-stone-100 rounded w-5/6" />
+
        </div>
-       <div className="h-10 bg-stone-100 rounded-xl w-full" />
+
+       <div className="h-8 bg-stone-100 rounded-xl w-full" />
+
       </div>
+
      ))
+
     ) : filteredProfiles.length > 0 ? (
+
      filteredProfiles.map((profile, idx) => (
+
       <motion.div 
+
        key={`${profile.uid}-${idx}`}
-       initial={{ opacity: 0, y: 20 }}
+
+       initial={{ opacity: 0, y: 12 }}
+
        animate={{ opacity: 1, y: 0 }}
-       transition={{ delay: idx * 0.05 }}
+
+       transition={{ delay: idx * 0.04 }}
+
        onClick={() => navigate(`/profile/${profile.uid}`)}
-       className="bg-white rounded-3xl border border-stone-100 p-6 sm:p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer"
+
+       className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 hover:shadow-md transition-all group cursor-pointer"
+
       >
-       <div className="flex items-start justify-between mb-6">
-        <div className="relative">
+
+       <div className="flex items-start justify-between mb-4">
+
+        <div className="flex items-center gap-3">
+
          <img 
-          src={`https://picsum.photos/seed/${profile.uid}/150/150`} 
+
+          src={`https://picsum.photos/seed/${profile.uid}/100/100`} 
+
           alt="Founder" 
-          className="w-20 h-20 rounded-2xl object-cover shadow-lg"
+
+          className="w-11 h-11 rounded-xl object-cover border border-stone-100"
+
           referrerPolicy="no-referrer"
+
          />
-         <div className="absolute -bottom-2 -right-2 bg-stone-900 text-white p-1.5 rounded-lg border-2 border-white shadow-md">
-          <Zap className="w-3 h-3" />
+
+         <div>
+
+          <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
+
+           {profile.headline?.split(' at ')[0] || 'Founder'}
+
+          </p>
+
+          <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
+
          </div>
+
         </div>
-        <div className="flex flex-col items-end">
-         <div className="flex items-center gap-1 text-amber-400">
-          <Star className="w-4 h-4 fill-amber-400" />
-          <span className="text-sm font-medium text-stone-900">92%</span>
-         </div>
-         <span className="text-xs font-medium text-stone-400 uppercase tracking-widest mt-1">Match Score</span>
-        </div>
+
+        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">92%</span>
+
        </div>
 
-       <div className="space-y-4">
-        <div>
-         <h3 className="text-lg sm:text-xl md:text-2xl font-medium text-stone-900 group-hover:text-stone-700 transition-colors">
-          {profile.headline.split(' at ')[0] || 'Founder'}
-         </h3>
-         <p className="text-sm font-medium text-stone-500 mt-1 line-clamp-1">{profile.headline}</p>
-        </div>
 
-        <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed line-clamp-3">
-         {profile.bio || 'Passionate founder looking for the right partner to build something meaningful.'}
-        </p>
 
-        <div className="flex flex-wrap gap-2 pt-2">
-         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-50 text-stone-600 rounded-lg text-xs font-medium border border-stone-100">
-          <Briefcase className="w-3 h-3" />
-          {profile.stage}
-         </div>
-         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-50 text-stone-600 rounded-lg text-xs font-medium border border-stone-100">
-          <Target className="w-3 h-3" />
-          {profile.commitment}
-         </div>
-        </div>
+       <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">
 
-        <div className="pt-6 flex items-center gap-3">
-         <button 
-          onClick={(e) => handleConnect(e, profile.uid)}
-          disabled={connecting === profile.uid}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/10 disabled:opacity-50"
-         >
-          <UserPlus className="w-4 h-4" />
-          {connecting === profile.uid ? 'Connecting...' : 'Connect'}
-         </button>
-         <button 
-          onClick={(e) => handleMessage(e, profile.uid)}
-          className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
-         >
-          <MessageSquare className="w-4 h-4" />
-         </button>
-        </div>
+        {profile.bio || 'Passionate founder looking for the right partner.'}
+
+       </p>
+
+
+
+       <div className="flex flex-wrap gap-1.5 mb-4">
+
+        {profile.stage && (
+
+         <span className="px-2 py-1 bg-stone-50 text-stone-600 rounded-lg text-[10px] font-medium border border-stone-100">{profile.stage}</span>
+
+        )}
+
+        {profile.commitment && (
+
+         <span className="px-2 py-1 bg-stone-50 text-stone-600 rounded-lg text-[10px] font-medium border border-stone-100">{profile.commitment}</span>
+
+        )}
+
        </div>
+
+
+
+       <div className="flex items-center gap-2">
+
+        <button 
+
+         onClick={(e) => handleConnect(e, profile.uid)}
+
+         disabled={connecting === profile.uid}
+
+         className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all disabled:opacity-50"
+
+        >
+
+         <UserPlus className="w-3.5 h-3.5" />
+
+         {connecting === profile.uid ? 'Sending...' : 'Connect'}
+
+        </button>
+
+        <button 
+
+         onClick={(e) => handleMessage(e, profile.uid)}
+
+         className="p-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
+
+        >
+
+         <MessageSquare className="w-3.5 h-3.5" />
+
+        </button>
+
+       </div>
+
       </motion.div>
+
      ))
+
     ) : (
-     <div className="col-span-full py-20 text-center space-y-4">
-      <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center mx-auto text-stone-300">
-       <Search className="w-10 h-10" />
+
+     <div className="col-span-full py-16 text-center">
+
+      <div className="w-14 h-14 bg-stone-50 rounded-2xl flex items-center justify-center mx-auto text-stone-300 mb-4">
+
+       <Search className="w-7 h-7" />
+
       </div>
-      <h3 className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900">No matches found</h3>
-      <p className="text-stone-500 max-w-sm mx-auto">
-       Try adjusting your filters or search query to find more founders in the ecosystem.
-      </p>
+
+      <p className="text-sm font-medium text-stone-900 mb-1">No founders found</p>
+
+      <p className="text-xs text-stone-400 mb-4">Try adjusting your filters or search query.</p>
+
       <button 
-       onClick={() => {
-        setSearchQuery('');
-        setFilters({ stage: '', role: '', commitment: '', location: '' });
-       }}
-       className="text-stone-900 font-medium hover:underline"
+
+       onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); }}
+
+       className="text-xs font-medium text-stone-900 hover:underline"
+
       >
-       Clear all filters
+
+       Clear filters
+
       </button>
+
      </div>
+
     )}
+
    </div>
 
-   {/* Load More */}
+
+
    {!loading && filteredProfiles.length > 0 && (
-    <div className="flex justify-center pt-8">
+
+    <div className="flex justify-center">
+
      <button 
+
       onClick={loadMore}
-      className="px-4 py-2 bg-white border border-stone-100 rounded-2xl font-medium text-stone-600 hover:text-stone-900 hover:border-stone-300 shadow-sm transition-all flex items-center gap-2 group"
+
+      className="px-4 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-300 transition-all flex items-center gap-2"
+
      >
-      Load More Founders
-      <ChevronDown className="w-5 h-5 group-hover:translate-y-0.5 transition-transform" />
+
+      Load more founders <ChevronDown className="w-3.5 h-3.5" />
+
      </button>
+
     </div>
+
    )}
+
   </div>
+
+  </PageShell>
+
  );
+
 }
+

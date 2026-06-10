@@ -175,8 +175,9 @@ export const calculateReadinessScore = async (workspaceId: string) => {
 
     const mentorFeedbackQuery = query(collection(db, 'mentorFeedbackMetrics'), where('workspaceId', '==', workspaceId));
     const mentorSnap = await getDocs(mentorFeedbackQuery);
-    if (!mentorSnap.empty) {
-      const metric = mentorSnap.docs[0].data() as MentorFeedbackMetric;
+    const firstMentorDoc = mentorSnap.docs[0];
+    if (!mentorSnap.empty && firstMentorDoc) {
+      const metric = firstMentorDoc.data() as MentorFeedbackMetric;
       dimensions.validation = Math.round(metric.appliedFeedbackRate * 100);
     }
 

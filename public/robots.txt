@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Block authenticated app surfaces from indexing — they require login.
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /admin
+Disallow: /messages
+Disallow: /onboarding
+
+Sitemap: /sitemap.xml

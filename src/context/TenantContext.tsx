@@ -9,7 +9,15 @@ interface TenantContextType {
   updateContent: (content: Partial<TenantConfig['content']>) => Promise<void>;
 }
 
-const TenantContext = createContext<TenantContextType | undefined>(undefined);
+const defaultTenantContext: TenantContextType = {
+  tenant: null,
+  loading: false,
+  error: null,
+  updateBranding: async () => {},
+  updateContent: async () => {},
+};
+
+const TenantContext = createContext<TenantContextType>(defaultTenantContext);
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
@@ -24,6 +32,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         const searchParams = new URLSearchParams(window.location.search);
         const previewSlug = searchParams.get('tenant_preview');
 
+        // Skip tenant resolution for localhost / dev — no multi-tenancy needed
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || !previewSlug) {
+          setTenant(null);
+          setLoading(false);
+          return;
+        }
+
         let endpoint = `/api/tenants/resolve?hostname=${hostname}`;
         if (previewSlug) {
           endpoint += `&preview_slug=${previewSlug}`;
@@ -31,7 +46,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
         const res = await fetch(endpoint);
         if (!res.ok) {
-          // Fallback to global context if not found
           setTenant(null);
           return;
         }
@@ -40,9 +54,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         if (data.branding) {
           applyTheme(data.branding);
         }
-      } catch (err) {
-        console.error('Failed to resolve tenant:', err);
-        // Don't set error here, just fallback to global
+      } catch {
         setTenant(null);
       } finally {
         setLoading(false);
@@ -53,12 +65,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyTheme = (branding: TenantConfig['branding']) => {
+    if (!branding) return;
     const root = document.documentElement;
-    root.style.setProperty('--primary', branding.primaryColor);
-    root.style.setProperty('--secondary', branding.secondaryColor);
-    root.style.setProperty('--accent', branding.accentColor);
+    if (branding.primaryColor) root.style.setProperty('--primary', branding.primaryColor);
+    if (branding.secondaryColor) root.style.setProperty('--secondary', branding.secondaryColor);
+    if (branding.accentColor) root.style.setProperty('--accent', branding.accentColor);
     
     // Calculate contrast for primary color (simple YIQ)
+    if (!branding.primaryColor) return;
     const hex = branding.primaryColor.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
@@ -103,9 +117,5 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 }
 
 export function useTenant() {
-  const context = useContext(TenantContext);
-  if (context === undefined) {
-    throw new Error('useTenant must be used within a TenantProvider');
-  }
-  return context;
+  return useContext(TenantContext);
 }

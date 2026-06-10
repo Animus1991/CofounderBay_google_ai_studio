@@ -57,6 +57,7 @@ export const determineUserState = async (userId: string): Promise<UserBehavioral
     if (recentEvents.length === 0) return UserBehavioralState.STUCK_INACTIVE;
 
     const lastEvent = recentEvents[0];
+    if (!lastEvent) return UserBehavioralState.STUCK_INACTIVE;
     const lastEventDate = new Date(lastEvent.createdAt);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - lastEventDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -115,7 +116,7 @@ export const getNextBestActions = async (userId: string): Promise<NextBestAction
         description: 'Request an expert review for your pitch deck.',
         priority: 9,
         reason: 'Your artifact is nearing completion, expert feedback will elevate it.',
-        section: 'builder'
+        section: 'founder-tools'
       });
       break;
 
@@ -126,7 +127,7 @@ export const getNextBestActions = async (userId: string): Promise<NextBestAction
         description: 'Apply the feedback received from your mentor.',
         priority: 10,
         reason: 'Applying feedback is the fastest way to improve your readiness score.',
-        section: 'builder'
+        section: 'founder-tools'
       });
       break;
 
@@ -137,7 +138,7 @@ export const getNextBestActions = async (userId: string): Promise<NextBestAction
         description: 'Resume your research on the market hypothesis.',
         priority: 7,
         reason: 'Returning to research can help regain momentum.',
-        section: 'research'
+        section: 'founder-tools'
       });
       break;
 

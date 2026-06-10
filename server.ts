@@ -9,6 +9,11 @@ import { createServer } from "node:http";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Port configuration - use different ports than other projects
+const API_PORT = parseInt(process.env.API_PORT || process.env.PORT || "3010");
+const WS_PORT = parseInt(process.env.WS_PORT || "24679"); // Different from 24678
+const VITE_PORT = parseInt(process.env.VITE_PORT || "5180"); // Different from 5173/5174
+
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
@@ -17,9 +22,18 @@ async function startServer() {
       origin: "*",
     },
   });
-  const PORT = 3000;
+  const PORT = API_PORT;
 
   app.use(express.json());
+
+  // Allow cross-origin access (needed when served from same port via Vite middleware)
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") return res.sendStatus(200);
+    return next();
+  });
 
   // Mock Database (In-memory for MVP)
   const db = {
@@ -300,7 +314,7 @@ async function startServer() {
   app.get("/api/tenants/:slug", (req, res) => {
     const tenant = db.tenants.find(t => t.slug === req.params.slug);
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
-    res.json(tenant);
+    return res.json(tenant);
   });
 
   app.post("/api/tenants/:id/branding", (req, res) => {
@@ -308,7 +322,7 @@ async function startServer() {
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
     tenant.branding = { ...tenant.branding, ...req.body };
     tenant.updatedAt = new Date().toISOString();
-    res.json(tenant.branding);
+    return res.json(tenant.branding);
   });
 
   app.post("/api/tenants/:id/content", (req, res) => {
@@ -316,7 +330,7 @@ async function startServer() {
     if (!tenant) return res.status(404).json({ error: "Tenant not found" });
     tenant.content = { ...tenant.content, ...req.body };
     tenant.updatedAt = new Date().toISOString();
-    res.json(tenant.content);
+    return res.json(tenant.content);
   });
 
   app.get("/api/users", (req, res) => res.json(db.users));
@@ -328,7 +342,7 @@ async function startServer() {
       .map(us => ({ ...us, ...db.skills.find(s => s.id === us.skillId) }));
     
     if (!user) return res.status(404).json({ error: "User not found" });
-    res.json({ ...user, profile, skills });
+    return res.json({ ...user, profile, skills });
   });
 
   app.get("/api/matches/:userId", (req, res) => {
@@ -421,7 +435,7 @@ async function startServer() {
     // Sort by score descending
     enrichedMatches.sort((a, b) => b.score - a.score);
 
-    res.json(enrichedMatches.slice(0, 4));
+    return res.json(enrichedMatches.slice(0, 4));
   });
 
   app.get("/api/communities", (req, res) => res.json(db.communities));
@@ -547,6 +561,48 @@ async function startServer() {
     res.json(messages);
   });
 
+  // ── AI Proxy ─────────────────────────────────────────────────────────────
+  // Keeps the Gemini API key server-side (process.env.GEMINI_API_KEY) so it is
+  // never shipped in the client bundle. Includes a simple per-IP rate limiter.
+  const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
+  const AI_RATE_LIMIT_PER_MINUTE = parseInt(process.env.AI_RATE_LIMIT_PER_MINUTE || "30");
+
+  app.post("/api/ai/generate", async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const bucket = aiRateBuckets.get(ip);
+    if (!bucket || bucket.resetAt < now) {
+      aiRateBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
+    } else if (++bucket.count > AI_RATE_LIMIT_PER_MINUTE) {
+      return res.status(429).json({
+        error: "Rate limit exceeded",
+        retryAfterMs: bucket.resetAt - now,
+      });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({
+        error: "AI proxy not configured — set GEMINI_API_KEY on the server environment",
+      });
+    }
+
+    const { model, contents, config } = req.body ?? {};
+    if (typeof model !== "string" || !model || contents === undefined) {
+      return res.status(400).json({ error: "`model` and `contents` are required" });
+    }
+
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({ model, contents, config });
+      return res.json({ text: response.text ?? "" });
+    } catch (err) {
+      console.error("AI proxy upstream error:", err);
+      return res.status(502).json({ error: "Upstream AI provider error" });
+    }
+  });
+
   // WebSocket logic
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -616,9 +672,34 @@ async function startServer() {
     });
   }
 
-  httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Try to start server on preferred port, fallback to random available port
+  const startServerOnPort = (preferredPort: number) => {
+    return new Promise<number>((resolve, reject) => {
+      const tryPort = (port: number) => {
+        const testServer = httpServer.listen(port, "localhost", () => {
+          console.log(`✅ Server running on http://localhost:${port}`);
+          console.log(`   API: http://localhost:${port}`);
+          console.log(`   WebSocket: ws://localhost:${port}`);
+          resolve(port);
+        }).on('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(`⚠️ Port ${port} is in use, trying ${port + 1}...`);
+            tryPort(port + 1);
+          } else {
+            reject(err);
+          }
+        });
+      };
+      tryPort(preferredPort);
+    });
+  };
+
+  const actualPort = await startServerOnPort(PORT);
+  
+  // Update environment for frontend
+  console.log(`\n🚀 CoFounderBay is ready!`);
+  console.log(`   Frontend: http://localhost:${VITE_PORT} (will be available after Vite starts)`);
+  console.log(`   Backend: http://localhost:${actualPort}`);
 }
 
 startServer();

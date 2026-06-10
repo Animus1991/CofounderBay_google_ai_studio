@@ -1,0 +1,12 @@
+{
+  // MILESTONE REACHED: the base tsconfig.json is now fully strict
+  // (strict + noImplicitReturns + noUncheckedIndexedAccess + noFallthroughCasesInSwitch).
+  //
+  // This config is kept as the place to trial the NEXT level of rigor before
+  // promoting flags to the base config. Unused-symbol detection stays in
+  // ESLint (no-unused-vars) so tsc focuses on genuine type-safety errors.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false
+  }
+}

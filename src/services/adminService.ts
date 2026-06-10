@@ -93,19 +93,19 @@ export const detectAbuse = async () => {
     const flags: any[] = [];
 
     events.forEach(event => {
-      if (!userActivity[event.userId]) userActivity[event.userId] = {};
-      userActivity[event.userId][event.eventType] = (userActivity[event.userId][event.eventType] || 0) + 1;
+      const activity = userActivity[event.userId] ?? (userActivity[event.userId] = {});
+      activity[event.eventType] = (activity[event.eventType] || 0) + 1;
     });
 
     // Simple heuristic: > 50 events of the same type in the last 1000 events
-    Object.keys(userActivity).forEach(userId => {
-      Object.keys(userActivity[userId]).forEach(type => {
-        if (userActivity[userId][type] > 50) {
+    Object.entries(userActivity).forEach(([userId, activity]) => {
+      Object.entries(activity).forEach(([type, count]) => {
+        if (count > 50) {
           flags.push({
             userId,
             type: 'XP_FARMING',
             severity: 0.8,
-            metadata: { eventType: type, count: userActivity[userId][type] },
+            metadata: { eventType: type, count },
             createdAt: new Date().toISOString()
           });
         }

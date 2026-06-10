@@ -1,141 +1,421 @@
 @import "tailwindcss";
 
+
+
 @theme {
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Density-tuned type scale (rebalanced for comfortable reading at 100%
+     browser zoom). Follows the compact-professional convention used by
+     data-dense products (Linear ~13px body, GitHub 14px body): each step
+     is ~1px tighter than the Tailwind default, preserving the hierarchy
+     ratio while lowering overall visual weight. Line heights are paired
+     per-step for optimal rhythm (taller for small body text, tighter for
+     display sizes).
+     ────────────────────────────────────────────────────────────────────── */
+  --text-xs: 0.6875rem;        /* 11px — metadata, labels  (was 12px) */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.8125rem;        /* 13px — secondary body    (was 14px) */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;       /* 14px — primary body      (was 16px) */
+  --text-base--line-height: 1.55;
+  --text-lg: 1rem;             /* 16px — emphasized body   (was 18px) */
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.125rem;         /* 18px — card titles       (was 20px) */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.25rem;         /* 20px — section headings  (was 24px) */
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.5rem;          /* 24px — page headings     (was 30px) */
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 1.875rem;        /* 30px — hero headings     (was 36px) */
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 2.375rem;        /* 38px — display           (was 48px) */
+  --text-5xl--line-height: 1.1;
+  --text-6xl: 2.875rem;        /* 46px — large display     (was 60px) */
+  --text-6xl--line-height: 1.05;
+  --text-7xl: 3.5rem;          /* 56px — decorative only   (was 72px) */
+  --text-7xl--line-height: 1;
+
   
+
   --color-background: hsl(var(--background));
+
   --color-foreground: hsl(var(--foreground));
+
   --color-primary: hsl(var(--primary));
+
   --color-primary-foreground: hsl(var(--primary-foreground));
+
   --color-secondary: hsl(var(--secondary));
+
   --color-secondary-foreground: hsl(var(--secondary-foreground));
+
   --color-accent: hsl(var(--accent));
+
   --color-accent-foreground: hsl(var(--accent-foreground));
+
   --color-destructive: hsl(var(--destructive));
+
   --color-destructive-foreground: hsl(var(--destructive-foreground));
+
   --color-muted: hsl(var(--muted));
+
   --color-muted-foreground: hsl(var(--muted-foreground));
+
   --color-popover: hsl(var(--popover));
+
   --color-popover-foreground: hsl(var(--popover-foreground));
+
   --color-card: hsl(var(--card));
+
   --color-card-foreground: hsl(var(--card-foreground));
+
   --color-border: hsl(var(--border));
+
   --color-input: hsl(var(--input));
+
   --color-ring: hsl(var(--ring));
+
 }
 
+
+
 @layer base {
+
   :root {
+
     --background: 0 0% 100%;
+
     --foreground: 20 14.3% 4.1%;
+
     --card: 0 0% 100%;
+
     --card-foreground: 20 14.3% 4.1%;
+
     --popover: 0 0% 100%;
+
     --popover-foreground: 20 14.3% 4.1%;
+
     --primary: 24 9.8% 10%;
+
     --primary-foreground: 60 9.1% 97.8%;
+
     --secondary: 60 4.8% 95.9%;
+
     --secondary-foreground: 24 9.8% 10%;
+
     --muted: 60 4.8% 95.9%;
+
     --muted-foreground: 25 5.3% 44.7%;
+
     --accent: 60 4.8% 95.9%;
+
     --accent-foreground: 24 9.8% 10%;
+
     --destructive: 0 84.2% 60.2%;
+
     --destructive-foreground: 60 9.1% 97.8%;
+
     --border: 20 5.9% 90%;
+
     --input: 20 5.9% 90%;
+
     --ring: 20 14.3% 4.1%;
+
     --radius: 0.5rem;
+
   }
+
+
 
   .dark {
+
     --background: 20 14.3% 4.1%;
+
     --foreground: 60 9.1% 97.8%;
+
     --card: 20 14.3% 4.1%;
+
     --card-foreground: 60 9.1% 97.8%;
+
     --popover: 20 14.3% 4.1%;
+
     --popover-foreground: 60 9.1% 97.8%;
+
     --primary: 60 9.1% 97.8%;
+
     --primary-foreground: 24 9.8% 10%;
+
     --secondary: 12 6.5% 15.1%;
+
     --secondary-foreground: 60 9.1% 97.8%;
+
     --muted: 12 6.5% 15.1%;
+
     --muted-foreground: 24 5.4% 63.9%;
+
     --accent: 12 6.5% 15.1%;
+
     --accent-foreground: 60 9.1% 97.8%;
+
     --destructive: 0 62.8% 30.6%;
+
     --destructive-foreground: 60 9.1% 97.8%;
+
     --border: 12 6.5% 15.1%;
+
     --input: 12 6.5% 15.1%;
+
     --ring: 24 5.7% 82.9%;
+
   }
+
 }
 
+
+
 @layer base {
+
   * {
+
     @apply border-border;
+
   }
+
   body {
+
     @apply bg-background text-foreground font-sans antialiased;
+
+    /* Inter character variants used by leading design systems (open digits,
+       disambiguated glyphs) + contextual alternates for crisp UI rendering. */
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
+
+    text-rendering: optimizeLegibility;
+
   }
+
+  /* Display sizes read better with slightly tightened tracking (Inter is
+     spaced for body sizes; large headings need optical correction). */
+  h1, h2 {
+
+    letter-spacing: -0.02em;
+
+  }
+
+  h3, h4 {
+
+    letter-spacing: -0.01em;
+
+  }
+
+  /* Numbers in data contexts must not jitter while live-updating: align
+     digits in tables, timers, counters and KPIs. */
+  time, [data-numeric] {
+
+    font-variant-numeric: tabular-nums;
+
+  }
+
+  /* Native keyboard-hint styling for ⌘K / shortcut badges. */
+  kbd {
+
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-[10px] font-medium text-stone-500 shadow-[0_1px_0_rgba(0,0,0,0.04)];
+
+    font-family: inherit;
+
+  }
+
+  /* Minimal monochrome selection — matches the stone palette. */
+  ::selection {
+
+    background: rgb(28 25 23 / 0.9);
+
+    color: white;
+
+  }
+
+  /* Modern text wrapping (progressive enhancement, Chrome 117+/Safari 17.5+):
+     balance multi-line headings, avoid typographic orphans in paragraphs. */
+  h1, h2, h3 {
+
+    text-wrap: balance;
+
+  }
+
+  p {
+
+    text-wrap: pretty;
+
+  }
+
+  /* Anchor targets (e.g. /#features) must not hide beneath sticky headers. */
+  [id] {
+
+    scroll-margin-top: 5.5rem;
+
+  }
+
+  /* iOS Safari auto-zooms when a focused input is <16px. Enforce the floor
+     on small viewports only, preserving desktop density. */
+  @media (max-width: 640px) {
+
+    input, select, textarea {
+
+      font-size: max(16px, 1em);
+
+    }
+
+  }
+
 }
+
+
 
 @layer components {
+
   .card-minimal {
+
     @apply bg-white border border-stone-200/60 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden;
+
   }
+
+
 
   .dark .card-minimal {
+
     @apply bg-stone-900/50 border-white/5 shadow-none;
+
   }
+
+
 
   .text-micro {
+
     @apply text-[10px] font-bold uppercase tracking-[0.1em] text-stone-400;
+
   }
+
+
 
   .section-header {
+
     @apply text-sm font-bold text-stone-900 tracking-tight uppercase mb-4;
+
   }
+
+
 
   .dark .section-header {
+
     @apply text-stone-100;
+
   }
+
+
 
   .input-minimal {
+
     @apply w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
+
     @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5;
+
   }
+
+
 
   .dark .input-minimal {
+
     @apply bg-stone-900/50 border-white/10 focus:border-white/20 focus:ring-white/5 text-stone-100;
+
   }
+
 }
+
+
 
 @layer base {
+
   :focus-visible {
+
     @apply outline-none ring-2 ring-stone-900 ring-offset-2 ring-offset-white;
+
   }
+
+
 
   .dark :focus-visible {
+
     @apply ring-stone-100 ring-offset-stone-950;
+
   }
+
 }
+
+
 
 /* Custom Scrollbar for a cleaner look */
+
 ::-webkit-scrollbar {
+
   width: 6px;
+
   height: 6px;
+
 }
+
+
 
 ::-webkit-scrollbar-track {
+
   background: transparent;
+
 }
+
+
 
 ::-webkit-scrollbar-thumb {
+
   @apply bg-stone-200 rounded-full;
+
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-stone-800;
+::-webkit-scrollbar-thumb:hover {
+
+  @apply bg-stone-300;
+
 }
+
+
+
+.dark ::-webkit-scrollbar-thumb {
+
+  @apply bg-stone-800;
+
+}
+
+
+
+/* Motion accessibility — respect users who prefer reduced motion (WCAG 2.3.3) */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+
+    animation-duration: 0.01ms !important;
+
+    animation-iteration-count: 1 !important;
+
+    transition-duration: 0.01ms !important;
+
+    scroll-behavior: auto !important;
+
+  }
+
+}
+

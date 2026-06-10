@@ -15,6 +15,21 @@ export default function LoginPage() {
 
  const from = location.state?.from?.pathname || '/dashboard';
 
+ const friendlyError = (code: string): string => {
+  const map: Record<string, string> = {
+   'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Please use Demo Mode or Google sign-in.',
+   'auth/user-not-found': 'No account found with this email. Did you mean to sign up?',
+   'auth/wrong-password': 'Incorrect password. Please try again.',
+   'auth/invalid-credential': 'Invalid email or password.',
+   'auth/invalid-email': 'Please enter a valid email address.',
+   'auth/user-disabled': 'This account has been disabled. Contact support.',
+   'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
+   'auth/network-request-failed': 'Network error. Please check your connection.',
+   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+ };
+
  const handleEmailLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
@@ -23,7 +38,7 @@ export default function LoginPage() {
    await signInWithEmailAndPassword(auth, email, password);
    navigate(from, { replace: true });
   } catch (err: any) {
-   setError(err.message || 'Failed to log in');
+   setError(friendlyError(err.code));
   } finally {
    setLoading(false);
   }
@@ -34,10 +49,25 @@ export default function LoginPage() {
   setError('');
   try {
    const provider = new GoogleAuthProvider();
+   // Add scopes for better user info
+   provider.addScope('profile');
+   provider.addScope('email');
    await signInWithPopup(auth, provider);
    navigate(from, { replace: true });
   } catch (err: any) {
-   setError(err.message || 'Failed to log in with Google');
+   console.error('Google Auth Error:', err);
+   // Better error handling for Google Auth issues
+   if (err.code === 'auth/unauthorized-domain') {
+    setError('Domain not authorized. Please add "localhost" to Firebase Console → Authentication → Settings → Authorized domains. Then restart the server.');
+   } else if (err.code === 'auth/operation-not-allowed') {
+    setError('Google Sign-In is not enabled. Enable it in Firebase Console → Authentication → Sign-in method. Or use Demo Mode below.');
+   } else if (err.code === 'auth/popup-closed-by-user') {
+    setError('Sign-in popup was closed. Please try again.');
+   } else if (err.code === 'auth/popup-blocked') {
+    setError('Popup was blocked. Please allow popups for this site.');
+   } else {
+    setError(friendlyError(err.code));
+   }
   } finally {
    setLoading(false);
   }
@@ -50,9 +80,9 @@ export default function LoginPage() {
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
-     <span className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900 tracking-tight">CoFounderBay</span>
+     <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-xl font-medium tracking-tight text-stone-900">
+    <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
      Welcome back
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
@@ -172,6 +202,25 @@ export default function LoginPage() {
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         GitHub
        </button>
+      </div>
+
+      {/* Demo Mode */}
+      <div className="mt-6 pt-6 border-t border-stone-200">
+       <button
+        onClick={() => {
+         // Set demo mode flag
+         localStorage.setItem('demo_mode', 'true');
+         navigate('/dashboard', { replace: true });
+         window.location.reload();
+        }}
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border-2 border-dashed border-emerald-300 rounded-[2rem] bg-emerald-50/50 text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
+       >
+        <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-emerald-600" />
+        Try Demo Mode
+       </button>
+       <p className="mt-2 text-center text-xs text-stone-400">
+        Skip login and explore with sample data
+       </p>
       </div>
      </div>
     </div>

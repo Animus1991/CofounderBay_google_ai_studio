@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="CoFounderBay">
+  <rect width="100" height="100" rx="22" fill="#1c1917" />
+  <path d="M30 65 L50 25 L70 65" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <line x1="36" y1="52" x2="64" y2="52" stroke="white" stroke-width="8" stroke-linecap="round" />
+</svg>
