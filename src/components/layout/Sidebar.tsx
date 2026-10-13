@@ -204,6 +204,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     { icon: UserIcon, label: "My Profile", path: "/profile" },
 
+    { icon: Settings, label: "Settings", path: "/settings" },
+
    ]
 
   }
@@ -418,7 +420,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
 
        {section.items.map((item) => (
 
@@ -434,7 +436,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
@@ -496,7 +498,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
 
        {[
 
@@ -520,7 +522,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
@@ -616,9 +618,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       <div className="flex items-center">
 
-       <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-stone-400 hover:text-stone-900">
+       <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label="Settings" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
 
-        <Settings className="w-3.5 h-3.5" />
+        <Settings className="w-4 h-4" />
 
        </button>
 

@@ -1,3 +1,5 @@
+import { getLang } from './language';
+
 const EL: Record<string, string> = {
   Dashboard: 'Πίνακας',
   'Founder Tools': 'Εργαλεία ιδρυτή',
@@ -28,12 +30,16 @@ const EL: Record<string, string> = {
   Alerts: 'Ειδοποιήσεις',
   Logout: 'Έξοδος',
   Notifications: 'Ειδοποιήσεις',
+  Settings: 'Ρυθμίσεις',
   'Expand sidebar': 'Άνοιγμα πλευρικής στήλης',
   'Collapse sidebar': 'Κλείσιμο πλευρικής στήλης',
 };
 
 /** One string for placeholders and titles. */
 export function bothText(en: string, el: string): string {
+  const mode = getLang();
+  if (mode === 'en') return en;
+  if (mode === 'el') return el;
   return `${en} · ${el}`;
 }
 

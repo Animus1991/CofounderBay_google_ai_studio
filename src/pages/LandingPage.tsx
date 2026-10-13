@@ -31,12 +31,14 @@ import {
 import { useAuth } from "../App";
 
 import { cn } from "../lib/utils";
+import { LanguageToggle, useLanguage } from "../lib/language";
 
 
 
 export default function LandingPage() {
 
   const { user, isDemoMode, toggleDemoMode } = useAuth();
+  useLanguage();
 
   const navigate = useNavigate();
 
@@ -128,7 +130,7 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <div className="flex justify-between h-16 items-center">
+          <div className="flex items-center justify-between gap-3 min-h-16 py-3">
 
             <div className="flex items-center gap-2">
 
@@ -138,7 +140,7 @@ export default function LandingPage() {
 
               </div>
 
-              <span className="text-lg font-medium text-stone-900 tracking-tight">
+              <span className="hidden min-[420px]:inline text-base font-medium text-stone-900 tracking-tight">
 
                 CoFounderBay
 
@@ -202,27 +204,23 @@ export default function LandingPage() {
 
 
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+
+              <LanguageToggle />
 
               {isDemoMode ? (
 
                 <div className="flex items-center gap-2 sm:gap-3">
 
-                  <span className="text-[10px] sm:text-xs font-bold text-stone-500 tracking-wide hidden sm:inline-block">
-
-                    Demo View
-
-                  </span>
-
                   <button
 
                     onClick={() => toggleDemoMode(false)}
 
-                    className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors"
+                    className="min-h-11 px-3 whitespace-nowrap text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
 
                   >
 
-                    Exit Demo
+                    Exit
 
                   </button>
 
@@ -230,11 +228,13 @@ export default function LandingPage() {
 
                     to="/dashboard"
 
-                    className="bg-stone-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="inline-flex min-h-11 items-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
 
                   >
 
-                    Go to Dashboard
+                    <span className="sm:hidden">Dashboard</span>
+
+                    <span className="hidden sm:inline">Go to Dashboard</span>
 
                   </NavLink>
 

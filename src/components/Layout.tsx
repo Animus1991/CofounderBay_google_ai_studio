@@ -6,6 +6,8 @@ import { Outlet } from 'react-router-dom';
 
 import { Both } from '../lib/both';
 
+import { LanguageToggle, useLanguage } from '../lib/language';
+
 import Sidebar from './layout/Sidebar';
 
 import { useAuth } from '../App';
@@ -32,6 +34,8 @@ export default function Layout() {
  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
 
  const [showDemoHint, setShowDemoHint] = useState(false);
+
+ useLanguage();
 
 
 
@@ -65,6 +69,10 @@ export default function Layout() {
     Skip to content
    </a>
 
+   <div className="fixed top-3 right-3 z-[80] flex items-center gap-2">
+
+    <LanguageToggle />
+
    {isDemoMode && (
 
     <button
@@ -81,7 +89,7 @@ export default function Layout() {
 
      onBlur={() => setShowDemoHint(false)}
 
-     className="fixed top-3 right-3 z-[80] rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white"
+     className="relative min-h-11 rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
 
     >
 
@@ -100,6 +108,8 @@ export default function Layout() {
     </button>
 
    )}
+
+   </div>
 
    <button
 

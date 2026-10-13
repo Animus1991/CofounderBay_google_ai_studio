@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { readSaved } from "../lib/localLists";
+import { readNotificationPrefs, readSaved, writeNotificationPrefs } from "../lib/localLists";
 
 import { useAuth } from "../App";
 
@@ -168,23 +168,21 @@ export default function Settings() {
   URL.revokeObjectURL(url);
  };
 
- const [notifications, setNotifications] = useState({
-
-  matches: true,
-
-  messages: true,
-
-  community: false,
-
-  news: false
-
- });
+ const [notifications, setNotifications] = useState(readNotificationPrefs);
 
 
 
  const toggleNotification = (key: keyof typeof notifications) => {
 
-  setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+  setNotifications(prev => {
+
+   const next = { ...prev, [key]: !prev[key] };
+
+   writeNotificationPrefs(next);
+
+   return next;
+
+  });
 
  };
 
@@ -206,7 +204,7 @@ export default function Settings() {
 
  return (
 
-  <div className="max-w-5xl mx-auto space-y-6">
+  <div className="max-w-5xl mx-auto space-y-8">
 
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
 
@@ -222,13 +220,13 @@ export default function Settings() {
 
 
 
-   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
 
     {/* Sidebar Navigation */}
 
-    <div className="lg:col-span-3 space-y-1">
+    <div className="lg:col-span-3">
 
-     <div className="sticky top-24 space-y-1">
+     <div className="lg:sticky lg:top-24 flex lg:flex-col gap-2 overflow-x-auto pb-1 lg:overflow-visible">
 
       {settingsTabs.map((tab) => (
 
@@ -240,7 +238,7 @@ export default function Settings() {
 
         className={cn(
 
-         "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
+         "shrink-0 lg:w-full flex items-center gap-3 min-h-11 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200",
 
          activeTab === tab.id 
 
@@ -268,9 +266,9 @@ export default function Settings() {
 
       
 
-      <div className="pt-6 mt-6 border-t border-stone-100 space-y-1">
+      <div className="hidden lg:block pt-6 mt-4 border-t border-stone-100">
 
-       <button className="w-full group flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-stone-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200">
+       <button className="w-full group flex items-center gap-3 min-h-11 px-4 py-3 rounded-xl text-sm font-semibold text-stone-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200">
 
         <LogOut className="w-4 h-4 text-stone-400 group-hover:text-red-500 transition-colors" />
 
@@ -288,7 +286,7 @@ export default function Settings() {
 
     {/* Main Content Area */}
 
-    <div className="lg:col-span-9 space-y-6">
+    <div className="lg:col-span-9 space-y-8">
 
      {activeTab === 'account' && (
 
@@ -298,7 +296,7 @@ export default function Settings() {
 
         <div className="space-y-6">
 
-         <div className="flex items-center gap-6 pb-6 border-b border-stone-100">
+         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 pb-6 border-b border-stone-100">
 
           <div className="w-20 h-20 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200 shadow-sm relative group">
 
@@ -332,7 +330,7 @@ export default function Settings() {
 
 
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
 
           <div className="space-y-2">
 
@@ -344,7 +342,7 @@ export default function Settings() {
 
             defaultValue="Alex Rivera" 
 
-            className="w-full bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
+            className="w-full min-h-11 bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
 
            />
 
@@ -360,7 +358,7 @@ export default function Settings() {
 
             defaultValue="alex@techstars.com" 
 
-            className="w-full bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
+            className="w-full min-h-11 bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
 
            />
 
@@ -376,7 +374,7 @@ export default function Settings() {
 
             defaultValue="Senior Product Manager @ TechFlow Systems | Building Ecosystems" 
 
-            className="w-full bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
+            className="w-full min-h-11 bg-stone-50/50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200/50 focus:border-stone-300 transition-all" 
 
            />
 

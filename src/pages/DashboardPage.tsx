@@ -421,8 +421,8 @@ export default function DashboardPage() {
       title={bothText(`Good morning, ${firstName}`, `Καλημέρα, ${firstName}`)}
       description="Ready to build something great today?"
     >
-      <div className="space-y-6">
-        <div className="flex items-center gap-2">
+      <div className="space-y-8">
+        <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-stone-400" />
@@ -432,11 +432,11 @@ export default function DashboardPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) navigate(`/discovery?q=${encodeURIComponent(searchQuery.trim())}`); }}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-[12.5px] sm:text-sm placeholder:text-[12.5px] sm:placeholder:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+              className="w-full min-h-11 pl-10 pr-4 py-3 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
               placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
             />
           </div>
-          <button title={bothText('Open Discovery to narrow this search', 'Ανοίξτε την Εξερεύνηση για να στενέψετε την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-10 h-10 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
+          <button title={bothText('Open Discovery to narrow this search', 'Ανοίξτε την Εξερεύνηση για να στενέψετε την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-11 h-11 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
             <Filter className="w-4 h-4" />
           </button>
         </div>
@@ -447,7 +447,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="bg-stone-900 rounded-2xl p-4 flex items-center justify-between"
+              className="bg-stone-900 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
@@ -461,7 +461,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => handleActionClick(heroAction)}
-                className="px-4 py-2 bg-white text-stone-900 rounded-xl text-xs font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
+                className="min-h-11 self-start sm:self-center px-4 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
               >
                 Go
               </button>
@@ -472,7 +472,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-stone-400 mb-2"><Both en="Matches" el="Αντιστοιχίσεις" /></p>
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <div className="flex items-center gap-3 min-w-max">
+            <div className="flex items-center gap-4 min-w-max">
               <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => navigate('/profile')}>
                 <div className="relative">
                   <img src={user?.photoURL || `https://picsum.photos/seed/${user?.uid || 'you'}/100/100`} alt="You" className="w-12 h-12 rounded-full object-cover border-2 border-stone-200 group-hover:scale-105 transition-transform" />
@@ -495,16 +495,16 @@ export default function DashboardPage() {
           {isDemoMode && <p className="text-xs text-stone-400 mt-1">{sampleLabel}</p>}
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className={cn('text-xs font-semibold text-stone-400', !isDemoMode && 'tracking-wider')}>
               {isDemoMode ? sampleLabel : 'Activity Feed'}
             </p>
-            <div className="flex items-center gap-2">
-              <button onClick={() => navigate('/milestones')} className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium text-stone-600 hover:bg-stone-100 transition-colors">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={() => navigate('/milestones')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors">
                 <TrendingUp className="w-3 h-3" /> <Both en="Log Update" el="Καταγραφή" />
               </button>
-              <button onClick={() => navigate('/communities')} className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 rounded-xl text-xs font-medium text-white hover:bg-stone-800 transition-colors">
+              <button onClick={() => navigate('/communities')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-900 rounded-xl text-sm font-medium text-white hover:bg-stone-800 transition-colors">
                 <Plus className="w-3 h-3" /> <Both en="Post" el="Δημοσίευση" />
               </button>
             </div>
