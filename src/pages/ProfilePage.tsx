@@ -100,6 +100,7 @@ import { auth, db } from '../firebase';
 
 import { cn } from '../lib/utils';
 import { listKeys, readIds, saveRequest, toggleId } from '../lib/localLists';
+import { lookupPerson } from '../lib/people';
 
 import { useAuth } from '../App';
 
@@ -269,19 +270,12 @@ const MOCK_READINESS: ReadinessScore = {
  updatedAt: new Date().toISOString(),
 };
 
-const knownPeople: Record<string, { fullName: string; location: string; headline: string; industry: string; role: string }> = {
- u1: { fullName: 'Sarah Chen', location: 'NYC', headline: 'FinTech mentor', industry: 'FinTech', role: 'Mentor' },
- u2: { fullName: 'Alex Rivera', location: 'SF', headline: 'AI founder', industry: 'AI', role: 'Founder' },
- u3: { fullName: 'James Wilson', location: 'London', headline: 'SaaS advisor', industry: 'SaaS', role: 'Advisor' },
- u4: { fullName: 'Elena Rodriguez', location: 'Berlin', headline: 'CleanTech candidate', industry: 'CleanTech', role: 'Co-Founder Candidate' },
-};
-
-function fallbackProfile(profileId: string): UserProfile {
- const person = knownPeople[profileId] ?? { fullName: 'Founder', location: '', headline: 'Founder', industry: '', role: 'Founder' };
+function fallbackProfile(profileId: string, ownName?: string | null): UserProfile {
+ const person = lookupPerson(profileId);
  return {
   id: profileId,
   uid: profileId,
-  fullName: person.fullName,
+  fullName: person?.fullName || ownName || 'Founder',
   email: '',
   roles: [],
   profileStatus: 'Published',
@@ -291,13 +285,13 @@ function fallbackProfile(profileId: string): UserProfile {
   onboardingCompleted: true,
   createdAt: '',
   updatedAt: '',
-  headline: person.headline,
-  bio: '',
-  location: person.location,
+  headline: person?.headline || 'Founder',
+  bio: person?.bio || '',
+  location: person?.location || '',
   stage: '',
-  role: person.role,
+  role: person?.role || 'Founder',
   commitment: '',
-  industry: person.industry,
+  industry: person?.industry || '',
  } as UserProfile;
 }
 
@@ -449,6 +443,8 @@ export default function ProfilePage() {
 
    setLoading(true);
 
+   setError('');
+
    let resolved = false;
 
    try {
@@ -465,29 +461,25 @@ export default function ProfilePage() {
 
       ...data,
 
-      uid: data.userId || profileId
+      uid: data.userId || profileId,
+
+      fullName: data.fullName || data.displayName || lookupPerson(profileId)?.fullName || (isOwnProfile ? currentUser?.displayName : '') || 'Founder',
 
      } as UserProfile);
 
      resolved = true;
 
-    } else if (isOwnProfile) {
-
-     navigate('/onboarding');
-
-     resolved = true;
-
-    } else {
-
-     setProfile(fallbackProfile(profileId));
-
-     resolved = true;
-
     }
 
+   } catch (err) {
 
+    console.error('Error fetching profile:', err);
 
-    // Fetch endorsements
+   }
+
+   if (!resolved) setProfile(fallbackProfile(profileId, isOwnProfile ? currentUser?.displayName : null));
+
+   try {
 
     const endorsementsQuery = query(
 
@@ -501,29 +493,17 @@ export default function ProfilePage() {
 
     const endorsementsSnap = await getDocs(endorsementsQuery);
 
-    const fetchedEndorsements = endorsementsSnap.docs.map(doc => ({
+    setEndorsements(endorsementsSnap.docs.map(doc => ({
 
      id: doc.id,
 
      ...doc.data()
 
-    } as Endorsement));
+    } as Endorsement)));
 
-    setEndorsements(fetchedEndorsements);
+   } catch (err) {
 
-   } catch (err: any) {
-
-    console.error('Error fetching profile/endorsements:', err);
-
-    // Don't fail the whole page if endorsements fail
-
-    if (!resolved) {
-
-     if (!isOwnProfile && profileId) setProfile(fallbackProfile(profileId));
-
-     else handleFirestoreError(err, OperationType.GET, `profiles/${profileId}`);
-
-    }
+    console.error('Error fetching endorsements:', err);
 
    } finally {
 
@@ -569,7 +549,7 @@ export default function ProfilePage() {
 
   };
 
- }, [profileId, isOwnProfile, navigate]);
+ }, [profileId, isOwnProfile, currentUser?.displayName]);
 
 
 
@@ -767,7 +747,15 @@ export default function ProfilePage() {
 
  return (
 
-  <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+  <div className="w-full mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6">
+
+   <button type="button" onClick={() => navigate(-1)} className="lg:hidden inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-stone-600">
+
+    <ArrowLeft className="w-4 h-4" />
+
+    Back
+
+   </button>
 
    {/* Profile Header */}
 
@@ -831,9 +819,9 @@ export default function ProfilePage() {
 
     {/* Profile Info Card */}
 
-    <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-100 p-6 sm:p-10 -mt-20 relative z-10 mx-4 sm:mx-10">
+    <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
 
-     <div className="flex flex-col sm:flex-row gap-8 items-start sm:items-end">
+     <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start">
 
       <div className="relative">
 
@@ -843,7 +831,7 @@ export default function ProfilePage() {
 
         alt={currentUser?.displayName || 'User'} 
 
-        className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl object-cover border-4 border-white shadow-sm"
+        className="w-20 h-20 sm:w-28 lg:w-36 rounded-2xl object-cover border-4 border-white shadow-sm"
 
         referrerPolicy="no-referrer"
 
@@ -895,7 +883,7 @@ export default function ProfilePage() {
 
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
 
          {isOwnProfile ? (
 
@@ -937,7 +925,7 @@ export default function ProfilePage() {
 
           <>
 
-           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md">
+           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all">
 
             <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
 
@@ -945,13 +933,13 @@ export default function ProfilePage() {
 
            </button>
 
-           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
 
             <MessageSquare className="w-5 h-5" />
 
            </button>
 
-           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
 
             <Star className={cn('w-5 h-5', following && 'fill-current')} />
 
@@ -961,7 +949,7 @@ export default function ProfilePage() {
 
          )}
 
-         <button type="button" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+         <button type="button" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
 
           <Share2 className="w-5 h-5" />
 
@@ -1061,7 +1049,7 @@ export default function ProfilePage() {
 
 
 
-   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
 
     {/* Left Column */}
 

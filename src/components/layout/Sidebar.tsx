@@ -260,6 +260,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
 
+    onClick={(event) => { if ((event.target as HTMLElement).closest('a')) setMobileOpen?.(false); }}
+
     className={cn(
 
      "h-full bg-white border-r border-stone-200/60 flex flex-col shrink-0 overflow-hidden relative z-[70]",

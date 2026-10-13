@@ -38,7 +38,7 @@ export default function PageShell({
   )}>
    <div className={cn('mx-auto w-full', maxWidthClass[maxWidth])}>
     {(title || actions) && (
-     <div className="flex items-start justify-between gap-4 mb-6">
+     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
       <div>
        {title && (
         <h1 className="text-[14.5px] sm:text-base font-semibold text-stone-900 tracking-tight">{title}</h1>
@@ -48,7 +48,7 @@ export default function PageShell({
        )}
       </div>
       {actions && (
-       <div className="flex items-center gap-2 shrink-0">{actions}</div>
+       <div className="flex flex-wrap items-center gap-2">{actions}</div>
       )}
      </div>
     )}

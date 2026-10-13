@@ -55,6 +55,7 @@ const DEMO_MATCHES = [
 import { useAuth } from '../App';
 
 import { explainMatch } from '../lib/matchReason';
+import { rememberPerson } from '../lib/people';
 
 import PageShell from '../components/ui/PageShell';
 
@@ -463,7 +464,7 @@ export default function MatchDiscovery() {
 
        transition={{ delay: idx * 0.04 }}
 
-       onClick={() => navigate(`/profile/${profile.uid}`)}
+       onClick={() => { rememberPerson({ id: profile.uid, fullName: profile.fullName, headline: profile.headline, location: profile.location, role: profile.role, industry: profile.industry || '', bio: profile.bio }); navigate(`/profile/${profile.uid}`); }}
 
        className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 hover:shadow-md transition-all group cursor-pointer"
 

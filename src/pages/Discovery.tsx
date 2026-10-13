@@ -87,6 +87,7 @@ import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
 import { cn } from "../lib/utils";
 
 import { explainMatch } from "../lib/matchReason";
+import { rememberPerson } from "../lib/people";
 
 
 
@@ -914,7 +915,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
           >
 
-           <Link to={`/profile/${user.id}`} className="block space-y-3">
+           <Link to={`/profile/${user.id}`} onClick={() => rememberPerson({ id: user.id, fullName: user.name || 'Founder', headline: user.profile?.headline || '', role: user.role || 'Founder', industry: user.profile?.industry || '', location: user.profile?.location || '' })} className="block space-y-3">
 
             <div className="flex items-start justify-between">
 

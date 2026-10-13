@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { arrayRemove, arrayUnion, collection, doc, increment, limit, onSnapshot, query, updateDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
+import { rememberPerson } from '../lib/people';
 import { bothText } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
@@ -482,7 +483,7 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-medium text-stone-400"><Both en="You" el="Εσείς" /></span>
               </div>
               {circles.map((match) => (
-                <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => navigate(`/profile/${match.id}`)}>
+                <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
                   <div className="w-12 h-12 rounded-full p-[2px] bg-stone-100 ring-1 ring-stone-200">
                     <img src={match.avatar || `https://picsum.photos/seed/${match.id}/100/100`} alt={match.name} className="w-full h-full rounded-full object-cover border border-white group-hover:scale-95 transition-transform" />
                   </div>
@@ -517,7 +518,7 @@ export default function DashboardPage() {
             return (
               <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
                 <div className="flex items-start gap-3">
-                  <img src={item.avatar || `https://picsum.photos/seed/${item.authorId}/100/100`} alt={item.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-stone-100 cursor-pointer hover:ring-2 hover:ring-stone-300 transition-all" onClick={() => navigate(`/profile/${item.authorId}`)} />
+                  <img src={item.avatar || `https://picsum.photos/seed/${item.authorId}/100/100`} alt={item.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-stone-100 cursor-pointer hover:ring-2 hover:ring-stone-300 transition-all" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(`/profile/${item.authorId}`); }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-stone-900">
                       <span className="font-medium">{item.name.split(' ')[0]}</span>{' '}
@@ -612,7 +613,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => navigate('/messages')} className="flex-1 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors">Connect</button>
-                <button onClick={() => navigate(`/profile/${prospect.id}`)} className="flex-1 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">View Profile</button>
+                <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">View Profile</button>
               </div>
             </div>
           )}

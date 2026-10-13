@@ -73,6 +73,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 import { readRequests, readSaved, removeSaved, type ConnectionRequest, type SavedProfile } from "../lib/localLists";
+import { rememberPerson } from "../lib/people";
 
 import Card from "../components/ui/Card";
 
@@ -294,7 +295,7 @@ export default function Network({ user }: NetworkProps) {
 
            </Button>
 
-           <Button onClick={() => navigate(`/profile/${conn.id}`)} variant="outline" size="icon" className="h-8 w-8 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900">
+           <Button onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: String(conn.role), role: String(conn.role), industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} variant="outline" size="icon" className="h-11 w-11 sm:h-8 sm:w-8 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900">
 
             <ChevronRight className="w-3.5 h-3.5" />
 
@@ -360,7 +361,7 @@ export default function Network({ user }: NetworkProps) {
 
           <Button onClick={() => navigate(`/messages?user=${p.id}`)} className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white hover:bg-stone-700">Connect</Button>
 
-          <Button onClick={() => navigate(`/profile/${p.id}`)} variant="outline" className="flex-1 h-7 text-sm rounded-lg border-stone-200">View Profile</Button>
+          <Button onClick={() => { rememberPerson({ id: p.id, fullName: p.fullName, headline: p.role, role: p.role, industry: p.industry, location: p.location, bio: p.note }); navigate(`/profile/${p.id}`); }} variant="outline" className="flex-1 h-11 sm:h-7 text-sm rounded-lg border-stone-200">View Profile</Button>
 
          </div>
 

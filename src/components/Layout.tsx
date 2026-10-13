@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { Menu } from 'lucide-react';
+
 import { Outlet } from 'react-router-dom';
 
 import { Both } from '../lib/both';
@@ -99,6 +101,22 @@ export default function Layout() {
 
    )}
 
+   <button
+
+    type="button"
+
+    onClick={toggleMobileSidebar}
+
+    aria-label="Menu"
+
+    className="lg:hidden fixed top-3 left-3 z-[75] flex h-11 w-11 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
+
+   >
+
+    <Menu className="w-5 h-5" />
+
+   </button>
+
    <Sidebar 
 
     user={sidebarUser as any}
@@ -118,7 +136,7 @@ export default function Layout() {
    <main
     id="main-content"
     tabIndex={-1}
-    className="flex-1 overflow-y-auto min-h-screen outline-none"
+    className="flex-1 overflow-x-hidden overflow-y-auto min-h-screen outline-none pt-16 lg:pt-0"
    >
 
     <Outlet />
