@@ -38,13 +38,13 @@ export default function PageShell({
   )}>
    <div className={cn('mx-auto w-full', maxWidthClass[maxWidth])}>
     {(title || actions) && (
-     <div className="flex items-start justify-between gap-4 mb-6">
-      <div>
+     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-8">
+      <div className="min-w-0">
        {title && (
-        <h1 className="text-[14.5px] sm:text-base font-semibold text-stone-900 tracking-tight">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight text-balance">{title}</h1>
        )}
        {description && (
-        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">{description}</p>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 max-w-prose leading-normal">{description}</p>
        )}
       </div>
       {actions && (
@@ -62,7 +62,7 @@ export default function PageShell({
 export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
  return (
   <div className="flex items-center justify-between mb-3">
-   <h2 className="text-xs font-semibold text-stone-400 tracking-wider">{children}</h2>
+   <h2 className="text-sm font-medium text-muted-foreground">{children}</h2>
    {action && <div>{action}</div>}
   </div>
  );

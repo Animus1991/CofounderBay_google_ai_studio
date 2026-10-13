@@ -120,7 +120,7 @@ export default function LandingPage() {
 
   return (
 
-    <div className="min-h-screen bg-white selection:bg-stone-900 selection:text-white">
+    <div className="min-h-screen bg-background selection:bg-primary selection:text-primary-foreground">
 
       {/* Navigation */}
 

@@ -73,7 +73,7 @@ export default function LoginPage() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
     <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -93,7 +93,7 @@ export default function LoginPage() {
    </div>
 
    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    <div className="bg-white py-8 px-4 shadow-xl shadow-stone-200/50 sm:rounded-2xl sm:px-10 border border-stone-100">
+    <div className="bg-card py-8 px-4 shadow-none sm:rounded-2xl sm:px-10 border border-border">
      <form className="space-y-6" onSubmit={handleEmailLogin}>
       <div>
        <label htmlFor="email" className="block text-sm font-medium text-stone-700">
@@ -111,7 +111,7 @@ export default function LoginPage() {
          required
          value={email}
          onChange={(e) => setEmail(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full pl-10 px-3 py-3 border border-border rounded-xl shadow-none bg-card placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-ring sm:text-sm transition-all"
          placeholder="name@company.com"
         />
        </div>
@@ -133,27 +133,27 @@ export default function LoginPage() {
          required
          value={password}
          onChange={(e) => setPassword(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full pl-10 px-3 py-3 border border-border rounded-xl shadow-none bg-card placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-ring sm:text-sm transition-all"
          placeholder="••••••••"
         />
        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-       <div className="flex items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+       <div className="flex items-start min-w-0">
         <input
          id="remember-me"
          name="remember-me"
          type="checkbox"
-         className="h-4 w-4 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
+         className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))] border-border rounded"
         />
-        <label htmlFor="remember-me" className="ml-2 block text-sm text-stone-600">
+        <label htmlFor="remember-me" className="ml-2 block text-sm leading-snug text-muted-foreground">
          <Both en="Remember me" el="Να με θυμάται" />
         </label>
        </div>
 
-       <div className="text-sm">
-        <a href="#" className="font-medium text-stone-600 hover:text-stone-900 transition-colors">
+       <div className="text-sm min-w-0 sm:text-right">
+        <a href="#" className="font-medium leading-snug text-muted-foreground hover:text-foreground transition-colors">
          <Both en="Forgot your password?" el="Ξεχάσατε τον κωδικό;" />
         </a>
        </div>
@@ -183,7 +183,7 @@ export default function LoginPage() {
         <div className="w-full border-t border-stone-200" />
        </div>
        <div className="relative flex justify-center text-sm">
-        <span className="px-2 bg-white text-stone-500"><Both en="Or continue with" el="Ή συνεχίστε με" /></span>
+        <span className="px-2 bg-card text-muted-foreground"><Both en="Or continue with" el="Ή συνεχίστε με" /></span>
        </div>
       </div>
 

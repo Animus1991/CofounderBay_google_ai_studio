@@ -431,7 +431,7 @@ export default function DashboardPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) navigate(`/discovery?q=${encodeURIComponent(searchQuery.trim())}`); }}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-[12.5px] sm:text-sm placeholder:text-[12.5px] sm:placeholder:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-[12.5px] sm:text-sm placeholder:text-[12.5px] sm:placeholder:text-sm text-foreground placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all"
               placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
             />
           </div>
@@ -446,13 +446,13 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="bg-stone-900 rounded-2xl p-4 flex items-center justify-between"
+              className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 bg-primary/40 rounded-lg flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-primary-foreground" />
                 </div>
-                <p className="text-[12.5px] sm:text-sm font-medium text-white">
+                <p className="text-[12.5px] sm:text-sm font-medium text-foreground">
                   {ACTION_EL[heroAction.id] ? (
                     <Both en={heroAction.description} el={ACTION_EL[heroAction.id]} />
                   ) : heroAction.description}
@@ -460,7 +460,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => handleActionClick(heroAction)}
-                className="px-4 py-2 bg-white text-stone-900 rounded-xl text-xs font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-semibold hover:bg-[color-mix(in_hsl,hsl(var(--primary))_78%,hsl(var(--primary-mid)))] transition-colors whitespace-nowrap shrink-0"
               >
                 Go
               </button>
@@ -475,8 +475,8 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => navigate('/profile')}>
                 <div className="relative">
                   <img src={user?.photoURL || `https://picsum.photos/seed/${user?.uid || 'you'}/100/100`} alt="You" className="w-12 h-12 rounded-full object-cover border-2 border-stone-200 group-hover:scale-105 transition-transform" />
-                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-stone-900 border-2 border-white rounded-full flex items-center justify-center">
-                    <Plus className="w-2.5 h-2.5 text-white" />
+                  <div className="absolute bottom-0 right-0 w-4 h-4 bg-primary border-2 border-card rounded-full flex items-center justify-center">
+                    <Plus className="w-2.5 h-2.5 text-primary-foreground" />
                   </div>
                 </div>
                 <span className="text-[10px] font-medium text-stone-400"><Both en="You" el="Εσείς" /></span>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
             const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
             const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
             return (
-              <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
+              <div key={item.id} className="bg-card rounded-2xl p-4 border border-border">
                 <div className="flex items-start gap-3">
                   <img src={item.avatar || `https://picsum.photos/seed/${item.authorId}/100/100`} alt={item.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-stone-100 cursor-pointer hover:ring-2 hover:ring-stone-300 transition-all" onClick={() => navigate(`/profile/${item.authorId}`)} />
                   <div className="flex-1 min-w-0">
@@ -566,8 +566,8 @@ export default function DashboardPage() {
               href: '/messages',
             },
           ].map((stat) => (
-            <div key={stat.label} onClick={() => navigate(stat.href)} className="bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{stat.label}</p>
+            <div key={stat.label} onClick={() => navigate(stat.href)} className="bg-card rounded-2xl border border-border p-4 cursor-pointer hover:border-foreground/15 transition-all">
+              <p className="text-[10px] font-semibold text-muted-foreground">{stat.label}</p>
               <p className="text-xl font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
               {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
             </div>
@@ -580,7 +580,7 @@ export default function DashboardPage() {
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartSeries}>
-                  <Area type="monotone" dataKey="views" stroke="#1c1917" fill="#e7e5e4" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="views" stroke="hsl(250 45.9% 59%)" fill="hsl(250 74% 82.6%)" fillOpacity={0.45} strokeWidth={1.5} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

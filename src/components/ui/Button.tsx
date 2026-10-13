@@ -50,15 +50,15 @@ export default function Button({
 
  const variants = {
 
-  primary: "bg-stone-900 text-white hover:bg-stone-800 shadow-sm",
+  primary: "bg-primary text-primary-foreground hover:bg-[color-mix(in_hsl,hsl(var(--primary))_78%,hsl(var(--primary-mid)))] shadow-none",
 
-  secondary: "bg-stone-100 text-stone-900 hover:bg-stone-200/80",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-foreground/5",
 
-  outline: "bg-white border border-stone-200 text-stone-900 hover:bg-stone-50 shadow-sm",
+  outline: "bg-card border border-border text-foreground hover:bg-secondary shadow-none",
 
-  ghost: "text-stone-500 hover:bg-stone-100/50 hover:text-stone-900",
+  ghost: "text-foreground/70 hover:bg-secondary hover:text-foreground",
 
-  danger: "bg-red-50 text-red-600 hover:bg-red-100/80",
+  danger: "bg-red-50 text-red-700 hover:bg-red-100",
 
  };
 
@@ -66,11 +66,11 @@ export default function Button({
 
  const sizes = {
 
-  sm: "px-3 py-1.5 text-xs font-medium tracking-wider rounded-lg",
+  sm: "px-3 py-1.5 text-xs font-medium rounded-lg",
 
-  md: "px-4 py-2 text-xs font-medium tracking-wider rounded-lg",
+  md: "px-4 py-2 text-sm font-medium rounded-lg",
 
-  lg: "px-5 py-2.5 text-xs font-medium tracking-wider rounded-xl",
+  lg: "px-5 py-2.5 text-sm font-medium rounded-xl",
 
   icon: "p-2 rounded-lg",
 
@@ -92,7 +92,7 @@ export default function Button({
 
     "active:scale-[0.97] active:duration-75",
 
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 
     "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
 

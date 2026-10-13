@@ -246,11 +246,11 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     animate={{ 
 
-     width: collapsed ? 80 : 280,
+     width: collapsed ? 80 : 304,
 
      x: (typeof window !== 'undefined' && window.innerWidth < 1024) 
 
-      ? (mobileOpen ? 0 : -280) 
+      ? (mobileOpen ? 0 : -304) 
 
       : 0
 
@@ -260,7 +260,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     className={cn(
 
-     "h-full bg-white border-r border-stone-200/60 flex flex-col shrink-0 overflow-hidden relative z-[70]",
+     "h-full bg-card border-r border-border flex flex-col shrink-0 overflow-hidden relative z-[70]",
 
      "fixed inset-y-0 left-0 lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out",
 
@@ -368,9 +368,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
         isActive
 
-         ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"
+         ? "bg-primary/10 text-foreground font-medium before:absolute before:left-1 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
 
-         : "text-stone-500 hover:bg-stone-50 hover:text-stone-900",
+         : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
 
         collapsed && "justify-center px-0"
 
@@ -402,7 +402,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       {!collapsed ? (
 
-       <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+       <p className="px-3 text-xs font-semibold text-stone-400 tracking-normal mb-2">
 
         {withEl(section.title)}
 
@@ -430,13 +430,13 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "relative flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
-            ? "bg-stone-100 text-stone-900 shadow-sm"
+            ? "bg-primary/10 text-foreground font-medium before:absolute before:left-1 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
 
-            : "text-stone-500 hover:bg-stone-50/80 hover:text-stone-900",
+            : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
 
            collapsed && "justify-center px-0"
 
@@ -480,7 +480,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       {!collapsed ? (
 
-       <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+       <p className="px-3 text-xs font-semibold text-stone-400 tracking-normal mb-2">
 
         {withEl("Administration")}
 
@@ -516,13 +516,13 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "relative flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
-            ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"
+            ? "bg-primary/10 text-foreground font-medium before:absolute before:left-1 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
 
-            : "text-stone-500 hover:bg-stone-50 hover:text-stone-900",
+            : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
 
            collapsed && "justify-center px-0"
 
@@ -566,7 +566,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
      className={cn(
 
-     "flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200 shadow-sm group cursor-pointer hover:border-stone-400 transition-all",
+     "flex items-center gap-3 p-2.5 rounded-xl bg-card border border-border shadow-none group cursor-pointer hover:border-foreground/15 transition-all",
 
      collapsed && "justify-center p-1.5"
 
@@ -634,7 +634,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
-       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
+       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 
       >
 
@@ -648,7 +648,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        onClick={handleLogout}
 
-       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"
+       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"
 
       >
 
