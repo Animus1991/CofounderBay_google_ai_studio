@@ -1628,7 +1628,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
           <div className="flex items-center gap-2">
 
-           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Preview mode — coming soon')}><Eye className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title="Preview is not available on this page yet. The click only leaves a note. · Η προεπισκόπηση δεν είναι ακόμη διαθέσιμη. Το κλικ αφήνει μόνο σημείωση." className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Preview mode — coming soon')}><Eye className="w-4 h-4" /></Button>
 
            <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Editing slide ' + pitchSlide)}><Edit3 className="w-4 h-4" /></Button>
 

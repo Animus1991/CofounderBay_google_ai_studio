@@ -224,7 +224,7 @@ export default function MatchDiscovery() {
 
    title="Discover Co-Founders"
 
-   description="Find entrepreneurs and builders who complement your skills."
+   description="Find entrepreneurs and builders who complement your skills. The percent is shared skills and industry. · Το ποσοστό είναι κοινές δεξιότητες και κλάδος."
 
   >
 
@@ -538,9 +538,9 @@ export default function MatchDiscovery() {
 
       </div>
 
-      <p className="text-sm font-medium text-stone-900 mb-1">No founders found</p>
+      <p className="text-sm font-medium text-stone-900 mb-1">No founders found · Δεν βρέθηκαν ιδρυτές</p>
 
-      <p className="text-xs text-stone-400 mb-4">Try adjusting your filters or search query.</p>
+      <p className="text-xs text-stone-400 mb-4">Clear the search and filters to see the full list again. · Καθαρίστε την αναζήτηση και τα φίλτρα για να φανεί πάλι η πλήρης λίστα.</p>
 
       <button 
 
@@ -550,7 +550,7 @@ export default function MatchDiscovery() {
 
       >
 
-       Clear filters
+       Clear filters · Καθαρισμός φίλτρων
 
       </button>
 

@@ -8,6 +8,36 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
+import { pageHelp } from '../lib/navHelp';
+
+const COMMAND_PATH: Record<string, string> = {
+ dashboard: '/dashboard',
+ profile: '/profile',
+ discovery: '/discovery',
+ matches: '/matches',
+ mentors: '/mentors',
+ messages: '/messages',
+ milestones: '/milestones',
+ 'founder-tools': '/founder-tools',
+ fundraising: '/fundraising',
+ workspace: '/workspace',
+ calendar: '/calendar',
+ community: '/community',
+ events: '/events',
+ programs: '/programs',
+ network: '/network',
+ resources: '/resources',
+ insights: '/insights',
+ legal: '/legal',
+ perks: '/perks',
+ notifications: '/notifications',
+ settings: '/settings',
+ pricing: '/pricing',
+ admin: '/admin',
+ 'admin-users': '/admin/users',
+ 'admin-automation': '/admin/automation',
+ 'admin-branding': '/admin/branding',
+};
 
 interface CommandItem {
  id: string;
@@ -68,7 +98,7 @@ export default function CommandPalette() {
    );
   }
 
-  return items;
+  return items.map((item) => ({ ...item, description: pageHelp(COMMAND_PATH[item.id] || '') }));
  }, [go, isAdmin, isDemoMode]);
 
  const filtered = useMemo(() => {
@@ -181,6 +211,7 @@ export default function CommandPalette() {
        {filtered.length === 0 ? (
         <div className="px-5 py-8 text-center">
          <p className="text-sm text-stone-500">No results found for "{query}"</p>
+         <p className="text-xs text-stone-400 mt-1">Try a page name, such as Dashboard, Matches, or Messages. · Δοκιμάστε όνομα σελίδας, όπως Πίνακας, Αντιστοιχίσεις ή Μηνύματα.</p>
         </div>
        ) : (
         Array.from(sections.entries()).map(([section, items]) => (
@@ -201,7 +232,10 @@ export default function CommandPalette() {
              )}
             >
              <item.icon className="w-4.5 h-4.5 shrink-0" />
-             <span className="text-sm font-medium flex-1">{item.label}</span>
+             <span className="min-w-0 flex-1">
+              <span className="text-sm font-medium block truncate">{item.label}</span>
+              {item.description && <span className="text-xs text-stone-400 block truncate">{item.description}</span>}
+             </span>
              {idx === selectedIndex && <ArrowRight className="w-3.5 h-3.5 text-stone-400" />}
             </button>
            );

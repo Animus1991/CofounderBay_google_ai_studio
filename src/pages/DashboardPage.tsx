@@ -435,7 +435,7 @@ export default function DashboardPage() {
               placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
             />
           </div>
-          <button onClick={() => navigate('/discovery')} className="flex items-center justify-center w-10 h-10 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
+          <button title={bothText('Open Discovery to narrow this search', 'Ανοίξτε την Εξερεύνηση για να στενέψετε την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-10 h-10 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
             <Filter className="w-4 h-4" />
           </button>
         </div>
@@ -510,7 +510,10 @@ export default function DashboardPage() {
           </div>
 
           {!isDemoMode && feedLoaded && posts.length === 0 ? (
-            <p className="text-sm text-stone-400"><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
+            <div>
+              <p className="text-sm text-stone-400"><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
+              <p className="text-xs text-stone-400 mt-1"><Both en="Log a milestone or post in a community. The buttons above do that." el="Καταγράψτε ορόσημο ή δημοσιεύστε σε κοινότητα. Τα κουμπιά από πάνω το κάνουν." /></p>
+            </div>
           ) : posts.map((item) => {
             const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
             const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
@@ -546,27 +549,31 @@ export default function DashboardPage() {
               value: profileViews == null ? '—' : String(profileViews),
               sub: isDemoMode ? sampleLabel : profileViews == null ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
               href: '/profile',
+              hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
             },
             {
               label: 'Match Score',
               value: matchScore == null ? '—' : `${matchScore}%`,
               sub: isDemoMode ? sampleLabel : null,
               href: '/matches',
+              hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
             },
             {
               label: 'Streak',
               value: `${streakDays}d`,
               sub: isDemoMode ? sampleLabel : null,
               href: '/milestones',
+              hint: bothText('Days in a row the work kept going', 'Μέρες στη σειρά που η δουλειά συνεχίστηκε'),
             },
             {
               label: 'Messages',
               value: unread == null ? '—' : String(unread),
               sub: isDemoMode ? sampleLabel : null,
               href: '/messages',
+              hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
             },
           ].map((stat) => (
-            <div key={stat.label} onClick={() => navigate(stat.href)} className="bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
+            <div key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
               <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{stat.label}</p>
               <p className="text-xl font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
               {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
@@ -671,7 +678,7 @@ export default function DashboardPage() {
             <NavLink to="/calendar" className="text-xs text-stone-400 hover:text-stone-900 transition-colors">View all →</NavLink>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
+            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /> <Both en="Join one from Events." el="Συμμετέχετε από τις Εκδηλώσεις." /></p>
           ) : (
             <div className="space-y-4 relative">
               <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
@@ -697,7 +704,7 @@ export default function DashboardPage() {
             <button onClick={() => navigate('/events')} className="text-xs text-stone-400 hover:text-stone-900 transition-colors">See Map</button>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
+            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /> <Both en="Join one from Events." el="Συμμετέχετε από τις Εκδηλώσεις." /></p>
           ) : schedule.map((ev) => (
             <div key={ev.id} className="bg-white rounded-2xl border border-stone-100 p-4 flex items-center gap-3 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all" onClick={() => navigate('/events')}>
               <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 text-center shrink-0 min-w-[60px]">

@@ -66,6 +66,8 @@ import { cn } from "../../lib/utils";
 
 import { withEl } from "../../lib/labels";
 
+import { navTitle } from "../../lib/navHelp";
+
 import { useTenant } from "../../context/TenantContext";
 
 import { auth } from "../../firebase";
@@ -358,7 +360,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       to="/dashboard"
 
-      title={collapsed ? withEl("Dashboard") : undefined}
+      title={navTitle("Dashboard", "/dashboard")}
 
       className={({ isActive }) =>
 
@@ -424,7 +426,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? withEl(item.label) : undefined}
+         title={navTitle(item.label, item.path)}
 
          className={({ isActive }) =>
 
@@ -510,7 +512,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? withEl(item.label) : undefined}
+         title={navTitle(item.label, item.path)}
 
          className={({ isActive }) =>
 
@@ -634,6 +636,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
+       title={navTitle("Alerts", "/notifications")}
+
        className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 
       >
@@ -647,6 +651,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
       <button 
 
        onClick={handleLogout}
+
+       title={navTitle("Logout", "/logout")}
 
        className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"
 
@@ -668,7 +674,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
-       title={withEl("Notifications")}
+       title={navTitle("Alerts", "/notifications")}
 
        className="p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 

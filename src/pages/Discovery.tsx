@@ -980,7 +980,8 @@ export default function Discovery({ user }: DiscoveryProps) {
 
          <Search className="w-8 h-8 text-stone-300 mb-2" />
 
-         <p className="text-sm text-stone-400">No matches found for your criteria</p>
+         <p className="text-sm text-stone-400">No matches found for your criteria · Καμία αντιστοίχιση με αυτά τα κριτήρια</p>
+         <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="mt-2 text-xs font-medium text-stone-900 hover:underline">Clear filters · Καθαρισμός φίλτρων</button>
 
         </div>
 
