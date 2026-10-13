@@ -150,7 +150,7 @@ export default function Programs({ user }: ProgramsProps) {
 
    <div className="space-y-6">
 
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
 
      <Button variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5">
 
@@ -176,7 +176,7 @@ export default function Programs({ user }: ProgramsProps) {
 
      {/* Tab Switcher */}
 
-     <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
       {['All', 'Accelerators', 'Grants', 'Bootcamps'].map((tab) => (
 
@@ -188,7 +188,7 @@ export default function Programs({ user }: ProgramsProps) {
 
         className={cn(
 
-         "px-3 py-1.5 text-sm font-semibold tracking-widest rounded-lg transition-all",
+         "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
 
          activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -234,7 +234,7 @@ export default function Programs({ user }: ProgramsProps) {
 
             alt={program.title}
 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
             referrerPolicy="no-referrer"
 

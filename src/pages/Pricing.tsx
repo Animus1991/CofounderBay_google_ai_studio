@@ -60,7 +60,7 @@ export default function Pricing() {
 
      animate={{ opacity: 1, y: 0 }}
 
-     className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-widest"
+     className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide"
 
     >
 
@@ -142,7 +142,7 @@ export default function Pricing() {
 
        {plan.id === 'organization-standard' && (
 
-        <div className="absolute top-0 right-0 bg-stone-900 text-white px-4 py-1 text-xs font-medium tracking-widest rounded-bl-xl">
+        <div className="absolute top-0 right-0 bg-stone-900 text-white px-4 py-1 text-xs font-medium tracking-wide rounded-bl-xl">
 
          Most Popular
 
@@ -182,7 +182,7 @@ export default function Pricing() {
 
        <div className="flex-1 space-y-4 mb-8">
 
-        <p className="text-xs font-medium text-stone-400 tracking-widest">What's included</p>
+        <p className="text-xs font-medium text-stone-400 tracking-wide">What's included</p>
 
         <ul className="space-y-3">
 
@@ -272,7 +272,7 @@ export default function Pricing() {
 
       <div className="flex-1 space-y-4 mb-8">
 
-       <p className="text-xs font-medium text-stone-500 tracking-widest">Everything in Multi-Seat, plus</p>
+       <p className="text-xs font-medium text-stone-500 tracking-wide">Everything in Multi-Seat, plus</p>
 
        <ul className="space-y-3">
 
@@ -344,7 +344,7 @@ export default function Pricing() {
 
        <tr className="border-b border-stone-200">
 
-        <th className="py-6 px-4 text-sm font-medium text-stone-400 tracking-widest">Feature</th>
+        <th className="py-6 px-4 text-sm font-medium text-stone-400 tracking-wide">Feature</th>
 
         {plans.map(p => (
 

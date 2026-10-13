@@ -56,7 +56,7 @@ export default function Card({
 
     "card-minimal transition-all duration-300", 
 
-    hoverable && "hover:border-stone-400 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
+    hoverable && "hover:border-stone-300 cursor-pointer",
 
     onClick && "active:scale-[0.99] active:duration-100",
 

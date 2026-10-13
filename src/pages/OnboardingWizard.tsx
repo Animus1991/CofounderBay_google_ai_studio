@@ -972,9 +972,9 @@ export default function OnboardingWizard() {
 
      <div className="text-center space-y-8 py-8">
 
-      <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
+      <div className="w-12 h-12 bg-stone-100 text-stone-700 rounded-xl flex items-center justify-center mx-auto">
 
-       <Check className="w-12 h-12" />
+       <Check className="w-5 h-5" />
 
       </div>
 
@@ -1212,7 +1212,7 @@ export default function OnboardingWizard() {
 
        disabled={loading || (currentStep === 0 && !formData.role)}
 
-       className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 disabled:opacity-50 group"
+       className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-sm disabled:opacity-50 group"
 
       >
 

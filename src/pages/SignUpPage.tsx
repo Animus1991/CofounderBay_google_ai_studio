@@ -59,10 +59,8 @@ export default function SignUpPage() {
    navigate('/onboarding');
   } catch (err: any) {
    console.error('Google Auth Error:', err);
-   if (err.code === 'auth/unauthorized-domain') {
-    setError('Domain not authorized. Please add "localhost" to Firebase Console → Authentication → Settings → Authorized domains. Then restart the server.');
-   } else if (err.code === 'auth/operation-not-allowed') {
-    setError('Google Sign-Up is not enabled. Enable it in Firebase Console → Authentication → Sign-in method. Or use Demo Mode below.');
+   if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
+    setError('Google sign-in is not available here. Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.');
    } else if (err.code === 'auth/popup-closed-by-user') {
     setError('Sign-in popup was closed. Please try again.');
    } else if (err.code === 'auth/popup-blocked') {
@@ -79,7 +77,7 @@ export default function SignUpPage() {
   <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
     <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
-     <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+     <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
@@ -176,7 +174,7 @@ export default function SignUpPage() {
        <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 shadow-sm rounded-[2rem] text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
+        className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 shadow-sm rounded-xl text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
        >
         {loading ? 'Creating account...' : 'Create account'}
         <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
@@ -197,13 +195,13 @@ export default function SignUpPage() {
       <div className="mt-6 grid grid-cols-2 gap-3">
        <button
         onClick={handleGoogleSignUp}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-[2rem] bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
        </button>
        <button
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-[2rem] bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         GitHub

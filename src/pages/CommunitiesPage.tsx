@@ -152,7 +152,7 @@ export default function CommunitiesPage() {
 
      onClick={() => navigate('/dashboard')}
 
-     className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all"
+     className="flex items-center gap-1.5 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
 
     >
 
@@ -172,7 +172,7 @@ export default function CommunitiesPage() {
 
    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-4 border-b border-stone-100">
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {['all', 'joined', 'trending', 'new'].map((tab) => (
 
@@ -244,7 +244,7 @@ export default function CommunitiesPage() {
 
       transition={{ delay: idx * 0.1 }}
 
-      className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group flex flex-col"
+      className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm hover:shadow-md  transition-all group flex flex-col"
 
      >
 
@@ -288,7 +288,7 @@ export default function CommunitiesPage() {
 
       <div className="flex items-center gap-2 mb-3">
 
-       <span className="text-[10px] font-semibold text-stone-400 tracking-widest">
+       <span className="text-[10px] font-semibold text-stone-400 tracking-wide">
 
         {community.category}
 
@@ -296,7 +296,7 @@ export default function CommunitiesPage() {
 
        {community.posts > 100 && (
 
-        <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 tracking-widest">
+        <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 tracking-wide">
 
          <TrendingUp className="w-3 h-3" />Trending
 
@@ -424,7 +424,7 @@ export default function CommunitiesPage() {
 
        onClick={() => navigate('/dashboard')}
 
-       className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
+       className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm hover:shadow-md  transition-all cursor-pointer group"
 
       >
 

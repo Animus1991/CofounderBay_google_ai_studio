@@ -128,7 +128,7 @@ export default function Resources({ user }: ResourcesProps) {
 
    <div className="space-y-6">
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {(['learning', 'services', 'jobs', 'support'] as const).map((tab) => (
 
@@ -194,7 +194,7 @@ export default function Resources({ user }: ResourcesProps) {
 
        </div>
 
-       <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-widest">
+       <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide">
 
         <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters
 
@@ -222,9 +222,9 @@ export default function Resources({ user }: ResourcesProps) {
 
        >
 
-        <Card className="group hover:shadow-2xl transition-all duration-500 border-stone-200/60 hover:border-stone-900 flex flex-col h-full p-4 rounded-[2.5rem] bg-white overflow-hidden">
+        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 flex flex-col h-full p-4 rounded-xl bg-white overflow-hidden">
 
-         <div className="aspect-video bg-stone-100 rounded-[1.5rem] mb-6 overflow-hidden relative">
+         <div className="aspect-video bg-stone-100 rounded-xl mb-6 overflow-hidden relative">
 
           <img 
 
@@ -232,7 +232,7 @@ export default function Resources({ user }: ResourcesProps) {
 
            alt={course.title} 
 
-           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+           className="w-full h-full object-cover"
 
            referrerPolicy="no-referrer"
 
@@ -240,7 +240,7 @@ export default function Resources({ user }: ResourcesProps) {
 
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
 
-           <div className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-stone-900 shadow-xl scale-75 group-hover:scale-100 transition-transform">
+           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-stone-900 border border-stone-200">
 
             <PlayCircle className="w-6 h-6" />
 
@@ -248,7 +248,7 @@ export default function Resources({ user }: ResourcesProps) {
 
           </div>
 
-          <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-sm font-medium tracking-widest shadow-sm border border-white/20">
+          <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-sm font-medium tracking-wide shadow-sm border border-white/20">
 
            {course.level}
 
@@ -264,7 +264,7 @@ export default function Resources({ user }: ResourcesProps) {
 
            <div className="flex items-center gap-2">
 
-            <span className="text-sm font-medium text-stone-400 tracking-widest">Instructor</span>
+            <span className="text-sm font-medium text-stone-400 tracking-wide">Instructor</span>
 
             <span className="text-sm text-stone-600 font-medium">{course.instructor}</span>
 
@@ -274,13 +274,13 @@ export default function Resources({ user }: ResourcesProps) {
 
           <div className="flex items-center gap-4 pt-2 border-t border-stone-50">
 
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-stone-400 tracking-widest">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-stone-400 tracking-wide">
 
             <Clock className="w-3.5 h-3.5" /> {course.duration}
 
            </div>
 
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-widest">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-wide">
 
             <Star className="w-3.5 h-3.5 fill-amber-500" /> {course.rating}
 
@@ -324,7 +324,7 @@ export default function Resources({ user }: ResourcesProps) {
 
       </div>
 
-      <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-widest">
+      <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide">
 
        <Plus className="w-4 h-4 mr-2" /> List Your Service
 
@@ -350,7 +350,7 @@ export default function Resources({ user }: ResourcesProps) {
 
        >
 
-        <Card className="group hover:shadow-2xl transition-all duration-500 border-stone-200/60 hover:border-stone-900 p-10 rounded-[3rem] bg-white relative overflow-hidden">
+        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 p-10 rounded-xl bg-white relative overflow-hidden">
 
          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
 
@@ -360,7 +360,7 @@ export default function Resources({ user }: ResourcesProps) {
 
          <div className="flex items-start justify-between mb-8 relative z-10">
 
-          <div className="w-16 h-16 bg-stone-50 rounded-[1.5rem] flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all border border-stone-100 shadow-sm">
+          <div className="w-16 h-16 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all border border-stone-100 shadow-sm">
 
            <Wrench className="w-8 h-8" />
 
@@ -388,9 +388,9 @@ export default function Resources({ user }: ResourcesProps) {
 
           <div className="flex items-center gap-4 pt-4 border-t border-stone-50">
 
-           <span className="px-3 py-1 bg-stone-50 text-stone-500 rounded-full text-sm font-medium tracking-widest border border-stone-100">{service.type}</span>
+           <span className="px-3 py-1 bg-stone-50 text-stone-500 rounded-full text-sm font-medium tracking-wide border border-stone-100">{service.type}</span>
 
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-widest">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-wide">
 
             <Star className="w-4 h-4 fill-amber-500" /> {service.rating}
 
@@ -400,7 +400,7 @@ export default function Resources({ user }: ResourcesProps) {
 
          </div>
 
-         <Button variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium tracking-wider shadow-xl shadow-stone-900/10">
+         <Button variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium tracking-wider shadow-sm">
 
           View Details
 
@@ -434,7 +434,7 @@ export default function Resources({ user }: ResourcesProps) {
 
       </div>
 
-      <Button variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium tracking-widest shadow-lg shadow-stone-900/10">
+      <Button variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium tracking-wide shadow-lg shadow-stone-900/10">
 
        <Plus className="w-4 h-4 mr-2" /> Post a Job
 
@@ -460,13 +460,13 @@ export default function Resources({ user }: ResourcesProps) {
 
        >
 
-        <Card className="group hover:shadow-2xl transition-all duration-500 border-stone-200/60 hover:border-stone-900 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] bg-white">
+        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 p-6 sm:p-8 rounded-xl sm:rounded-xl bg-white">
 
          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
 
           <div className="flex items-center gap-8">
 
-           <div className="w-16 h-16 bg-stone-50 rounded-[1.5rem] flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all border border-stone-100 shadow-sm">
+           <div className="w-16 h-16 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all border border-stone-100 shadow-sm">
 
             <Briefcase className="w-8 h-8" />
 
@@ -558,7 +558,7 @@ export default function Resources({ user }: ResourcesProps) {
 
          whileHover={{ x: 10 }}
 
-         className="flex items-center justify-between p-6 sm:p-8 bg-white rounded-[2rem] border border-stone-200/60 hover:border-stone-900 transition-all cursor-pointer group shadow-sm hover:shadow-xl"
+         className="flex items-center justify-between p-6 sm:p-8 bg-white rounded-xl border border-stone-200/60 hover:border-stone-900 transition-all cursor-pointer group shadow-sm hover:shadow-xl"
 
         >
 
@@ -576,7 +576,7 @@ export default function Resources({ user }: ResourcesProps) {
 
       </div>
 
-      <Button variant="outline" className="w-full h-16 rounded-[2rem] text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-50">
+      <Button variant="outline" className="w-full h-16 rounded-xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-50">
 
        Visit Full Help Center
 
@@ -588,7 +588,7 @@ export default function Resources({ user }: ResourcesProps) {
 
      <div className="lg:col-span-5 space-y-10">
 
-      <Card className="p-10 rounded-[3rem] border-stone-200/60 shadow-xl bg-white relative overflow-hidden group">
+      <Card className="p-10 rounded-xl border-stone-200/60 shadow-xl bg-white relative overflow-hidden group">
 
        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
 
@@ -608,13 +608,12 @@ export default function Resources({ user }: ResourcesProps) {
 
         <div className="space-y-6">
 
-         <div className="p-6 sm:p-8 bg-stone-900 rounded-[2rem] sm:rounded-[2.5rem] text-white space-y-6 shadow-2xl relative overflow-hidden">
+         <div className="p-6 sm:p-8 bg-stone-900 rounded-xl sm:rounded-xl text-white space-y-6 shadow-sm relative overflow-hidden">
 
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 blur-2xl" />
 
           <div className="flex items-center gap-6">
 
-           <div className="w-16 h-16 rounded-[1.5rem] bg-stone-800 border border-stone-700 overflow-hidden shadow-xl">
+           <div className="w-16 h-16 rounded-xl bg-stone-800 border border-stone-700 overflow-hidden shadow-xl">
 
             <img src="https://picsum.photos/seed/coach/150/150" alt="Coach" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
 
@@ -624,7 +623,7 @@ export default function Resources({ user }: ResourcesProps) {
 
             <p className="text-base font-medium">Sarah Chen</p>
 
-            <p className="text-sm text-stone-400 font-medium tracking-widest">Fundraising Expert</p>
+            <p className="text-sm text-stone-400 font-medium tracking-wide">Fundraising Expert</p>
 
            </div>
 
@@ -642,7 +641,7 @@ export default function Resources({ user }: ResourcesProps) {
 
             <p className="text-xl font-medium text-white">$150</p>
 
-            <p className="text-sm text-stone-500 font-medium tracking-widest">per session</p>
+            <p className="text-sm text-stone-500 font-medium tracking-wide">per session</p>
 
            </div>
 
@@ -670,7 +669,7 @@ export default function Resources({ user }: ResourcesProps) {
 
 
 
-      <Card className="bg-stone-50 border-stone-200/60 p-10 rounded-[3rem] shadow-sm relative overflow-hidden group">
+      <Card className="bg-stone-50 border-stone-200/60 p-10 rounded-xl shadow-sm relative overflow-hidden group">
 
        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
 

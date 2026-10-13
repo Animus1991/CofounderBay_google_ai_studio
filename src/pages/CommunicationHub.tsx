@@ -12,11 +12,12 @@ import { cn } from "../lib/utils";
 import { useMessaging, Conversation, Message } from "../context/MessagingContext";
 import { AIService, MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
+import { useAuth } from "../App";
 
 // =============================================================================
 // TYPES
 // =============================================================================
-interface CommunicationHubProps { user: User; }
+interface CommunicationHubProps { user: User | null; }
 type MessageFilter = "all" | "unread" | "ai";
 type ViewMode = "chat" | "ai-center";
 type AIView = "chat" | "agents" | "insights" | "history";
@@ -83,7 +84,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
 }) => {
  const s: Record<string, string> = {
   xs: "w-6 h-6 rounded-lg", sm: "w-8 h-8 rounded-xl", md: "w-10 h-10 rounded-2xl",
-  lg: "w-14 h-14 rounded-[1.5rem]", xl: "w-20 h-20 rounded-[2rem]"
+  lg: "w-14 h-14 rounded-xl", xl: "w-20 h-20 rounded-xl"
  };
  return (
   <div className={cn("relative shrink-0", s[size])}>
@@ -95,7 +96,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
     )} />
    )}
    {isAI && (
-    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-violet-500 rounded-full border-2 border-white flex items-center justify-center">
+    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-stone-800 rounded-full border-2 border-white flex items-center justify-center">
      <Sparkles className="w-2 h-2 text-white" />
     </div>
    )}
@@ -103,15 +104,18 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
  );
 };
 
-const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", size = "md", badge, tooltip }: {
+const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", size = "md", badge, tooltip, disabled = false }: {
  icon: React.ElementType; onClick?: () => void; active?: boolean;
  variant?: "ghost" | "filled" | "outline"; size?: "sm" | "md" | "lg"; badge?: number | string; tooltip?: string;
+ disabled?: boolean;
 }) => {
- const sc: Record<string, string> = { sm: "w-7 h-7", md: "w-9 h-9", lg: "w-11 h-11" };
- const ic: Record<string, string> = { sm: "w-3.5 h-3.5", md: "w-4 h-4", lg: "w-5 h-5" };
+ const sc: Record<string, string> = { sm: "w-11 h-11", md: "w-11 h-11", lg: "w-11 h-11" };
+ const ic: Record<string, string> = { sm: "w-4 h-4", md: "w-4 h-4", lg: "w-5 h-5" };
  return (
-  <button onClick={onClick} title={tooltip} className={cn(
+  <span title={tooltip} className="inline-flex">
+  <button type="button" aria-label={tooltip} disabled={disabled} onClick={onClick} className={cn(
    "relative rounded-xl flex items-center justify-center transition-all", sc[size],
+   disabled && "opacity-50 cursor-not-allowed",
    variant === "ghost" && ["text-stone-500 hover:text-stone-900 hover:bg-stone-100", active && "text-stone-900 bg-stone-100"],
    variant === "filled" && ["bg-stone-900 text-white hover:bg-stone-800", active && "bg-stone-700"],
    variant === "outline" && ["border border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900", active && "border-stone-900 text-stone-900 bg-stone-50"]
@@ -121,6 +125,7 @@ const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", si
     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{badge}</span>
    )}
   </button>
+  </span>
  );
 };
 
@@ -151,7 +156,12 @@ const DateSeparator = ({ date }: { date: string }) => {
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
-export default function CommunicationHub({ user }: CommunicationHubProps) {
+export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
+ const { user: authUser, profile } = useAuth();
+ const user = {
+  ...(routeUser ?? {}),
+  id: authUser?.uid || profile?.id || 'demo-user',
+ } as User;
  // ── State ────────────────────────────────────────────────────────────────
  const { state: msgState, sendMessage, markAsRead, createConversation } = useMessaging();
  const [activeView, setActiveView] = useState<ViewMode>("chat");
@@ -165,7 +175,9 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
  const [isRecording, setIsRecording] = useState(false);
  const [recordingTime, setRecordingTime] = useState(0);
- const [showRightSidebar, setShowRightSidebar] = useState(true);
+ const [showRightSidebar, setShowRightSidebar] = useState(() =>
+  typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches
+ );
  const [showSearchPanel, setShowSearchPanel] = useState(false);
  const [chatSearchQuery, setChatSearchQuery] = useState("");
  const [attachedFiles, setAttachedFiles] = useState<{ name: string; type: string; size: number; data?: string }[]>([]);
@@ -182,6 +194,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
  });
  const [showValidationDialog, setShowValidationDialog] = useState(false);
  const [hashCopied, setHashCopied] = useState(false);
+ const [openMenu, setOpenMenu] = useState<string | null>(null);
  const fileInputRef = useRef<HTMLInputElement>(null);
  const messagesEndRef = useRef<HTMLDivElement>(null);
  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -392,7 +405,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       <h3 className={cn("text-sm font-semibold truncate", conv.unreadCount > 0 ? "text-stone-900" : "text-stone-700")}>
        {conv.otherParticipant.fullName}
       </h3>
-      {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[10px] rounded-full font-medium">AI</span>}
+      {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-700 text-[10px] rounded-full font-medium">AI</span>}
       {!conv.otherParticipant.isAI && conv.otherParticipant.roles?.[0] && (
        <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">
         {conv.otherParticipant.roles[0]}
@@ -412,8 +425,32 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
      )}
     </div>
    </div>
-   {/* Context actions on hover */}
-   <div className="absolute right-2 bottom-2 opacity-0 group-hover/conv:opacity-100 transition-opacity flex items-center gap-0.5">
+   {/* Conversation actions. One labeled menu on a phone; the same actions on hover at larger sizes. */}
+   <button
+    type="button"
+    aria-label="Conversation actions"
+    onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
+    className="sm:hidden shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:bg-stone-100 rounded-xl"
+   >
+    <MoreVertical className="w-4 h-4" />
+   </button>
+   {openMenu === conv.id && (
+    <div className="sm:hidden absolute right-2 bottom-14 z-30 w-44 bg-white border border-stone-200 rounded-xl shadow-sm py-1" onClick={(e) => e.stopPropagation()}>
+     <button type="button" onClick={() => { togglePin(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+      <Pin className="w-4 h-4" /> {isPinned ? "Unpin" : "Pin"}
+     </button>
+     <button type="button" onClick={() => { handleArchiveConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+      <Archive className="w-4 h-4" /> Archive
+     </button>
+     <button type="button" className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+      <BellOff className="w-4 h-4" /> Mute
+     </button>
+     <button type="button" onClick={() => { handleDeleteConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
+      <Trash2 className="w-4 h-4" /> Delete
+     </button>
+    </div>
+   )}
+   <div className="hidden sm:flex absolute right-2 bottom-2 opacity-0 group-hover/conv:opacity-100 transition-opacity items-center gap-0.5">
     <button onClick={(e) => { e.stopPropagation(); togglePin(conv.id); }} title={isPinned ? "Unpin" : "Pin"}
      className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
      <Pin className="w-3 h-3" />
@@ -440,6 +477,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
   </div>
  );
 
+ const composerTip = "Open a chat first. The composer is the box under that chat. · Ανοίξτε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.";
+ const focusComposer = () => {
+  if (!selectedConversation) return;
+  textareaRef.current?.focus();
+ };
+
  // =============================================================================
  // RENDER: LEFT SIDEBAR
  // =============================================================================
@@ -461,26 +504,28 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       </div>
      </div>
      <div className="flex items-center gap-1">
-      <IconButton icon={Users} size="sm" tooltip="New Group" onClick={() => {}} />
-      <IconButton icon={Plus} size="sm" variant="filled" tooltip="New Message" onClick={() => {}} />
+      <IconButton icon={Users} size="sm" disabled tooltip="This page has no group composer. Start with one person. · Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκινήστε με ένα άτομο." />
+      <IconButton icon={Plus} size="sm" variant="filled" disabled={!selectedConversation}
+       tooltip={selectedConversation ? "New message · Νέο μήνυμα" : composerTip}
+       onClick={focusComposer} />
      </div>
     </div>
 
     {/* Sidebar Tabs: Chats / Intros */}
     <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
      <button onClick={() => setSidebarTab("chats")}
-      className={cn("flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all",
+      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
        sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <MessageSquare className="w-3.5 h-3.5" />
       Chats
       {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">{totalUnread}</span>}
      </button>
      <button onClick={() => setSidebarTab("intros")}
-      className={cn("flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-all",
+      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
        sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
       Intros
-      {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-violet-500 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
+      {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
      </button>
     </div>
 
@@ -491,7 +536,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
        <input type="text" placeholder="Search messages, people..."
         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full pl-10 pr-10 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 transition-colors" />
+        className="w-full min-h-11 pl-10 pr-10 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 transition-colors" />
        <div className="absolute right-2 top-1/2 -translate-y-1/2">
         <button className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
          <Filter className="w-3.5 h-3.5" />
@@ -503,7 +548,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       <div className="flex items-center gap-1 p-0.5 bg-stone-100 rounded-lg">
        {(["all", "unread", "ai"] as MessageFilter[]).map((filter) => (
         <button key={filter} onClick={() => setMessageFilter(filter)}
-         className={cn("flex-1 px-2 py-1 text-xs font-medium rounded-md transition-all capitalize",
+         className={cn("flex-1 min-h-11 px-2 py-2 text-sm font-medium rounded-md transition-all capitalize",
           messageFilter === filter ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
          {filter === "ai" ? "AI Agents" : filter}
         </button>
@@ -524,9 +569,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        </div>
        <p className="text-sm text-stone-600 font-semibold">No conversations yet</p>
        <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">Start a new chat or connect with founders in your network</p>
-       <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15">
-        <Plus className="w-3.5 h-3.5" /> New Message
-       </button>
+       <span title={selectedConversation ? undefined : composerTip} className="mt-4 inline-flex">
+        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
+         className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+         <Plus className="w-3.5 h-3.5" /> New Message · Νέο μήνυμα
+        </button>
+       </span>
       </div>
      ) : (
       <div className="px-3 pb-4 space-y-0.5">
@@ -577,7 +625,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
            <h4 className="text-sm font-semibold text-stone-900">{req.from.fullName}</h4>
            <p className="text-xs text-stone-500 truncate">{req.from.headline}</p>
            {req.from.role && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-violet-50 text-violet-700 text-[10px] font-medium rounded-full">{req.from.role}</span>
+            <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{req.from.role}</span>
            )}
           </div>
           <span className="text-[10px] text-stone-400 shrink-0">
@@ -609,7 +657,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
     <div className="flex items-center justify-between">
      <button onClick={() => setActiveView(activeView === "ai-center" ? "chat" : "ai-center")}
       className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all",
-       activeView === "ai-center" ? "bg-violet-100 text-violet-700 shadow-sm" : "hover:bg-stone-100 text-stone-500")}>
+       activeView === "ai-center" ? "bg-stone-100 text-stone-700 shadow-sm" : "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
       <span className="text-xs font-semibold">AI Center</span>
      </button>
@@ -657,14 +705,14 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       <div className={cn(
        "relative px-4 py-2.5 rounded-2xl text-sm shadow-sm",
        isMe ? "bg-stone-900 text-white rounded-br-lg"
-        : msg.isAI ? "bg-violet-50 text-violet-900 border border-violet-100 rounded-bl-lg"
+        : msg.isAI ? "bg-stone-50 text-stone-900 border border-stone-200 rounded-bl-lg"
         : "bg-white text-stone-800 border border-stone-200 rounded-bl-lg"
       )}>
        {/* AI Badge */}
        {msg.isAI && (
-        <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-violet-200/50">
-         <Sparkles className="w-3 h-3 text-violet-500" />
-         <span className="text-[10px] font-semibold text-violet-600 tracking-wider">{activeConv?.otherParticipant.fullName}</span>
+        <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-stone-200/50">
+         <Sparkles className="w-3 h-3 text-stone-500" />
+         <span className="text-[10px] font-semibold text-stone-600 tracking-wider">{activeConv?.otherParticipant.fullName}</span>
         </div>
        )}
 
@@ -694,23 +742,23 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        )}
 
        {/* Hover Actions (expanded) */}
-       <div className={cn("absolute -top-1 opacity-0 group-hover/message:opacity-100 transition-opacity z-10",
-        isMe ? "-left-32" : "-right-32")}>
+       <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity z-10",
+        isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1")}>
         <div className="flex items-center gap-0.5 p-1 bg-white rounded-lg shadow-lg border border-stone-200">
-         <button onClick={() => setReplyingTo(msg)} className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Reply">
+         <button type="button" aria-label="Reply" onClick={() => setReplyingTo(msg)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Reply">
           <Reply className="w-3.5 h-3.5" />
          </button>
-         <button onClick={() => setShowEmojiPicker(msg.id)} className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="React">
+         <button type="button" aria-label="React" onClick={() => setShowEmojiPicker(msg.id)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="React">
           <Smile className="w-3.5 h-3.5" />
          </button>
-         <button className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Copy"
+         <button type="button" aria-label="Copy" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Copy"
           onClick={() => navigator.clipboard.writeText(msg.body)}>
           <Copy className="w-3.5 h-3.5" />
          </button>
-         <button className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Forward">
+         <button type="button" aria-label="Forward" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Forward">
           <Forward className="w-3.5 h-3.5" />
          </button>
-         <button className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Bookmark">
+         <button type="button" aria-label="Bookmark" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Bookmark">
           <Bookmark className="w-3.5 h-3.5" />
          </button>
         </div>
@@ -766,21 +814,15 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
  const renderMainChat = () => {
   if (!activeConv) {
    return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-stone-50 via-white to-stone-50 relative overflow-hidden">
-     {/* Ambient decoration */}
-     <div className="absolute top-0 right-0 w-96 h-96 bg-violet-100/30 rounded-full blur-[120px]" />
-     <div className="absolute bottom-0 left-0 w-80 h-80 bg-stone-100/50 rounded-full blur-[100px]" />
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50 relative overflow-hidden">
 
      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="relative z-10 max-w-lg w-full">
 
       {/* Logo icon */}
       <div className="relative w-20 h-20 mx-auto mb-8">
-       <div className="w-full h-full bg-stone-900 rounded-[1.5rem] flex items-center justify-center shadow-xl shadow-stone-900/20">
+       <div className="w-full h-full bg-stone-900 rounded-xl flex items-center justify-center">
         <MessageSquare className="w-9 h-9 text-white" />
-       </div>
-       <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full border-[3px] border-white flex items-center justify-center">
-        <Zap className="w-3 h-3 text-white" />
        </div>
       </div>
 
@@ -794,7 +836,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        {[
         { label: "Conversations", value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
         { label: "Unread", value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-red-500 text-white" : "bg-stone-100 text-stone-600" },
-        { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-violet-100 text-violet-600" },
+        { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
        ].map(({ label, value, icon: Icon, color }) => (
         <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
@@ -810,11 +852,14 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col items-center gap-2.5 w-full max-w-xs mx-auto">
-       <button className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 hover:shadow-xl hover:shadow-stone-900/25 hover:-translate-y-0.5">
-        <Plus className="w-4 h-4" /> New Message
-       </button>
+       <span title={selectedConversation ? undefined : composerTip} className="w-full">
+        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
+         className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+         <Plus className="w-4 h-4" /> New Message · Νέο μήνυμα
+        </button>
+       </span>
        <button onClick={() => setActiveView("ai-center")}
-        className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all hover:-translate-y-0.5">
+        className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
         <Sparkles className="w-4 h-4" /> Talk to AI Agent
        </button>
        <div className="flex items-center gap-2.5 w-full">
@@ -832,12 +877,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       {/* Recent contacts strip */}
       {msgState.conversations.length > 0 && (
        <div className="mt-8 pt-6 border-t border-stone-200/60">
-        <p className="text-[10px] font-semibold text-stone-400 tracking-widest uppercase mb-3">Recent Conversations</p>
+        <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">Recent Conversations</p>
         <div className="flex items-center justify-center gap-2">
          {msgState.conversations.slice(0, 6).map(conv => (
           <button key={conv.id} onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
            className="group relative" title={conv.otherParticipant.fullName}>
-           <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-md hover:shadow-lg hover:-translate-y-1 transition-all">
+           <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-md  transition-all">
             <img src={conv.otherParticipant.profile?.profilePhoto || `https://picsum.photos/seed/${conv.otherParticipant.id}/100/100`}
              alt={conv.otherParticipant.fullName} className="w-full h-full object-cover" />
            </div>
@@ -862,21 +907,21 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
   return (
    <div className="flex-1 flex flex-col min-w-0">
     {/* Header */}
-    <header className="h-16 flex items-center justify-between px-5 border-b border-stone-100 bg-white shrink-0">
-     <div className="flex items-center gap-3">
-      <button onClick={() => setSelectedConversation(null)} className="md:hidden p-2 text-stone-600 hover:bg-stone-100 rounded-xl">
+    <header className="border-b border-stone-100 bg-white shrink-0">
+     <div className="min-h-16 flex items-center gap-2 px-3 sm:px-5 py-2">
+      <button type="button" aria-label="Back to conversations" onClick={() => setSelectedConversation(null)} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0">
        <ChevronLeft className="w-5 h-5" />
       </button>
       <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName}
        size="md" status={activeConv.otherParticipant.isOnline ? "online" : "offline"} isAI={activeConv.otherParticipant.isAI} />
-      <div>
-       <div className="flex items-center gap-2">
-        <h2 className="font-bold text-stone-900 text-sm tracking-tight">{activeConv.otherParticipant.fullName}</h2>
+      <div className="min-w-0 flex-1">
+       <div className="flex items-center gap-2 min-w-0">
+        <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeConv.otherParticipant.fullName}</h2>
         {activeConv.otherParticipant.roles?.[0] && (
-         <span className="px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider">{activeConv.otherParticipant.roles[0]}</span>
+         <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{activeConv.otherParticipant.roles[0]}</span>
         )}
        </div>
-       <p className="text-[11px] text-stone-500">
+       <p className="text-xs text-stone-500 truncate">
         {isRecipientTyping ? (
          <span className="text-emerald-600 font-medium animate-pulse">typing...</span>
         ) : activeConv.otherParticipant.isAI ? "AI Assistant \u2022 Always online"
@@ -885,8 +930,36 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
          ) : "Last seen recently"}
        </p>
       </div>
+      <div className="relative shrink-0">
+       <IconButton icon={MoreVertical} size="sm" tooltip="More options" onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
+       <div className={cn("absolute right-0 top-full mt-1 w-48 bg-white border border-stone-200 rounded-xl shadow-sm z-30", openMenu === "chat-more" ? "opacity-100" : "opacity-0 pointer-events-none")}>
+        <button type="button" onClick={() => setOpenMenu(null)} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50 rounded-t-xl">
+         <UserIcon className="w-4 h-4" /> View Profile
+        </button>
+        <button type="button" onClick={() => { setShowValidationDialog(true); setOpenMenu(null); }}
+         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+         <Shield className="w-4 h-4" /> Conversation Mode
+        </button>
+        <div className="h-px bg-stone-100 mx-2" />
+        <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'report' }); setOpenMenu(null); }}
+         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-amber-600 hover:bg-amber-50">
+         <Flag className="w-4 h-4" /> Report
+        </button>
+        <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'block' }); setOpenMenu(null); }}
+         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl">
+         <Ban className="w-4 h-4" /> Block
+        </button>
+       </div>
+      </div>
      </div>
-     <div className="flex items-center gap-1">
+     <div className="md:hidden flex items-center gap-2 overflow-x-auto px-3 pb-3">
+      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Call</button>
+      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Video</button>
+      <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Search</button>
+      <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? "Unpin" : "Pin"}</button>
+      <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Details</button>
+     </div>
+     <div className="hidden md:flex items-center gap-1 px-5 pb-3">
       {/* Validation badge — dynamic */}
       <button onClick={() => setShowValidationDialog(true)}
        className={cn("hidden sm:flex items-center gap-1 mr-1 px-2 py-1 rounded-lg transition-colors",
@@ -903,28 +976,6 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        active={pinnedConvIds.has(activeConv.id)} onClick={() => togglePin(activeConv.id)} />
       <IconButton icon={Info} size="sm" tooltip="Details" active={showRightSidebar}
        onClick={() => setShowRightSidebar(!showRightSidebar)} />
-      {/* More menu with Report/Block */}
-      <div className="relative group/more">
-       <IconButton icon={MoreVertical} size="sm" tooltip="More options" />
-       <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-stone-200 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/more:opacity-100 group-hover/more:pointer-events-auto transition-all z-30">
-        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-t-xl">
-         <UserIcon className="w-3.5 h-3.5" /> View Profile
-        </button>
-        <button onClick={() => setShowValidationDialog(true)}
-         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50">
-         <Shield className="w-3.5 h-3.5" /> Conversation Mode
-        </button>
-        <div className="h-px bg-stone-100 mx-2" />
-        <button onClick={() => setReportBlockModal({ open: true, mode: 'report' })}
-         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-600 hover:bg-amber-50">
-         <Flag className="w-3.5 h-3.5" /> Report
-        </button>
-        <button onClick={() => setReportBlockModal({ open: true, mode: 'block' })}
-         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-b-xl">
-         <Ban className="w-3.5 h-3.5" /> Block
-        </button>
-       </div>
-      </div>
      </div>
     </header>
 
@@ -941,8 +992,8 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
         <span className="text-[10px] text-stone-400">
          {chatSearchQuery ? `${chatMessages.filter(m => m.body.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} found` : ""}
         </span>
-        <button onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }}
-         className="p-1 text-stone-400 hover:text-stone-900 rounded">
+         <button type="button" aria-label="Close search" onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }}
+         className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded">
          <X className="w-4 h-4" />
         </button>
        </div>
@@ -963,7 +1014,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
      {chatMessages.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full text-center">
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-        {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-violet-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
+        {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
        </div>
        <p className="text-sm text-stone-500 font-medium">
         {activeConv.otherParticipant.isAI ? `Start chatting with ${activeConv.otherParticipant.fullName}` : "No messages yet. Say hello!"}
@@ -972,7 +1023,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
         <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-sm">
          {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.slice(0, 3).map((prompt, i) => (
           <button key={i} onClick={() => handleSendMessage(prompt)}
-           className="px-3 py-1.5 bg-violet-50 text-violet-700 text-xs rounded-full hover:bg-violet-100 transition-colors">{prompt}</button>
+           className="px-3 py-1.5 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors">{prompt}</button>
          ))}
         </div>
        )}
@@ -1034,7 +1085,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       <div className="flex flex-wrap gap-1.5">
        {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.map((prompt, i) => (
         <button key={i} onClick={() => handleSendMessage(prompt)}
-         className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs rounded-full hover:bg-violet-100 transition-colors border border-violet-200">{prompt}</button>
+         className="px-2.5 py-1 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors border border-stone-200">{prompt}</button>
        ))}
       </div>
      )}
@@ -1072,11 +1123,11 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
          </button>
          {/* Emoji Grid Dropdown */}
          {showEmojiDropdown && (
-          <div className="absolute bottom-10 right-0 p-2 bg-white rounded-xl shadow-xl border border-stone-200 z-30">
-           <div className="grid grid-cols-7 gap-0.5">
+          <div className="absolute bottom-12 right-0 p-2 bg-white rounded-xl shadow-sm border border-stone-200 z-30 w-[min(18rem,calc(100vw-2rem))]">
+           <div className="grid grid-cols-6 gap-1">
             {EMOJI_GRID.map(e => (
              <button key={e} type="button" onClick={() => { setInputText(prev => prev + e); setShowEmojiDropdown(false); textareaRef.current?.focus(); }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-stone-100 text-base transition-colors">{e}</button>
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-stone-100 text-base transition-colors">{e}</button>
             ))}
            </div>
           </div>
@@ -1085,7 +1136,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        </div>
 
        <button onClick={() => handleSendMessage()} disabled={!inputText.trim() && attachedFiles.length === 0}
-        className="w-10 h-10 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-stone-900/20 shrink-0 self-end">
+        className="w-11 h-11 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0 self-end">
         <Send className="w-4 h-4" />
        </button>
       </div>
@@ -1104,16 +1155,16 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
 
   return (
    <motion.aside
-    initial={{ width: 0, opacity: 0 }}
-    animate={{ width: 320, opacity: 1 }}
-    exit={{ width: 0, opacity: 0 }}
-    className="hidden xl:flex flex-col border-l border-stone-200 bg-white shrink-0 overflow-hidden"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="flex flex-col bg-white overflow-hidden max-xl:fixed max-xl:inset-0 max-xl:z-[80] xl:w-80 xl:shrink-0 xl:border-l xl:border-stone-200"
    >
     {/* Close button */}
     <div className="flex items-center justify-between p-3 border-b border-stone-100">
      <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">Details</h4>
-     <button onClick={() => setShowRightSidebar(false)}
-      className="p-1 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
+     <button type="button" aria-label="Close details" onClick={() => setShowRightSidebar(false)}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
     </div>
 
     <div className="flex-1 overflow-y-auto">
@@ -1142,14 +1193,14 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
 
      {/* Quick Actions */}
      <div className="p-3 border-b border-stone-100">
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
        {[
         { icon: Phone, label: "Call" },
         { icon: Video, label: "Video" },
         { icon: Calendar, label: "Meet" },
         { icon: CheckSquare, label: "Task" },
        ].map(({ icon: Icon, label }) => (
-        <button key={label} className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-stone-50 transition-all">
+        <button key={label} className="flex flex-col items-center justify-center gap-1 min-h-16 p-2 rounded-xl hover:bg-stone-50 transition-all">
          <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center">
           <Icon className="w-3.5 h-3.5 text-stone-600" />
          </div>
@@ -1253,7 +1304,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        </button>
        <button onClick={() => togglePin(activeConv.id)}
         className={cn("w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl transition-all",
-         pinnedConvIds.has(activeConv.id) ? "text-violet-700 bg-violet-50" : "text-stone-600 hover:bg-stone-50")}>
+         pinnedConvIds.has(activeConv.id) ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
         <Pin className="w-3.5 h-3.5" /> {pinnedConvIds.has(activeConv.id) ? "Unpin Conversation" : "Pin Conversation"}
        </button>
        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
@@ -1282,11 +1333,11 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
  // =============================================================================
 
  const renderAICenter = () => (
-  <div className="flex-1 flex flex-col bg-gradient-to-br from-violet-50/30 via-white to-stone-50/30 overflow-hidden">
+  <div className="flex-1 flex flex-col bg-gradient-to-br from-stone-50 via-white to-white overflow-hidden">
    {/* AI Center Header */}
-   <header className="h-16 flex items-center justify-between px-6 border-b border-stone-100 bg-white/80 backdrop-blur-sm shrink-0">
+   <header className="flex flex-col gap-3 px-4 sm:px-6 py-3 border-b border-stone-100 bg-white/80 shrink-0 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-3">
-     <div className="w-10 h-10 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-600/20">
+     <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center ">
       <BrainCircuit className="w-5 h-5 text-white" />
      </div>
      <div>
@@ -1294,7 +1345,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       <p className="text-[10px] text-stone-400 font-medium tracking-wider">Intelligent startup assistant</p>
      </div>
     </div>
-    <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+    <div className="scroll-tabs p-1 bg-stone-100 rounded-xl">
      {([
       { id: "chat", label: "Chat", icon: MessageSquare },
       { id: "agents", label: "Agents", icon: Users },
@@ -1331,7 +1382,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
         <motion.div
          key={agent.id}
          whileHover={{ scale: 1.02 }}
-         className="p-5 bg-white border border-stone-200 rounded-2xl hover:shadow-lg transition-all cursor-pointer group"
+         className="p-5 bg-white border border-stone-200 rounded-2xl transition-all cursor-pointer group"
          onClick={async () => {
           const conv = await createConversation(['u1', agent.id]);
           if (conv) {
@@ -1341,15 +1392,15 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
          }}
         >
          <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-violet-100 overflow-hidden shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-stone-100 overflow-hidden shrink-0">
            <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
            <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-stone-900">{agent.name}</h3>
-            <Sparkles className="w-4 h-4 text-violet-500" />
+            <Sparkles className="w-4 h-4 text-stone-500" />
            </div>
-           <p className="text-xs text-violet-600 font-semibold mb-1.5">{agent.role}</p>
+           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agent.role}</p>
            <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agent.description}</p>
            <div className="mt-3 flex flex-wrap gap-1.5">
             {agent.capabilities.map((cap, i) => (
@@ -1381,7 +1432,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
           <div className={cn(
            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
            insight.type === "action" ? "bg-amber-100 text-amber-600" :
-           insight.type === "suggestion" ? "bg-violet-100 text-violet-600" :
+           insight.type === "suggestion" ? "bg-stone-100 text-stone-600" :
            "bg-emerald-100 text-emerald-600"
           )}>
            {insight.type === "action" ? <Zap className="w-4 h-4" /> :
@@ -1413,8 +1464,8 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
     {aiView === "chat" && (
      <div className="flex items-center justify-center h-full">
       <div className="text-center">
-       <div className="w-20 h-20 bg-violet-100 rounded-[2rem] flex items-center justify-center mx-auto mb-4">
-        <Sparkles className="w-10 h-10 text-violet-500" />
+       <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+        <Sparkles className="w-5 h-5 text-stone-500" />
        </div>
        <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">Select an AI Agent</h3>
        <p className="text-sm text-stone-500 max-w-xs mx-auto mb-6 leading-relaxed">
@@ -1422,7 +1473,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        </p>
        <button 
         onClick={() => setAiView("agents")}
-        className="px-6 py-3 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-all"
+        className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
        >
         Browse Agents
        </button>
@@ -1443,7 +1494,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
            setSelectedConversation(conv.id);
            setActiveView("chat");
           }}
-          className="w-full flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-violet-300 transition-all text-left"
+          className="w-full flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-all text-left"
          >
           <Avatar 
            src={conv.otherParticipant.profile?.profilePhoto}
@@ -1470,7 +1521,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
  // =============================================================================
 
  return (
-  <div className="h-[calc(100vh-56px)] flex overflow-hidden bg-white rounded-tl-2xl border-t border-l border-stone-200/50">
+  <div className="h-[calc(100dvh-4rem)] lg:h-dvh flex overflow-hidden bg-white">
    {/* Left Sidebar */}
    {renderLeftSidebar()}
 
@@ -1494,7 +1545,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setShowValidationDialog(false)}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -1565,7 +1616,7 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">

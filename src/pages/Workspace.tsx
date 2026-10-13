@@ -188,7 +188,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
    actions={
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {tabs.map((tab) => (
 
@@ -464,7 +464,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
         {taskView === "kanban" && (
 
-         <div className="grid grid-cols-4 gap-3">
+         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
           {["Todo", "In Progress", "Review", "Done"].map((status) => (
 
@@ -1154,7 +1154,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
       {/* Milestones Stats */}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
 
        {[
 
@@ -1186,7 +1186,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
       <Card className="p-5 space-y-4">
 
-       <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
         <div>
 
@@ -1218,11 +1218,11 @@ export default function Workspace({ user }: WorkspaceProps) {
 
        {/* Timeline Grid */}
 
-       <div className="space-y-3">
+       <div className="space-y-3 overflow-x-auto">
 
         {/* Weeks header */}
 
-        <div className="grid grid-cols-12 gap-1 pb-2 border-b border-stone-100">
+        <div className="grid grid-cols-12 gap-1 pb-2 border-b border-stone-100 min-w-[640px]">
 
          <div className="col-span-3 text-xs font-semibold text-stone-400">Milestone</div>
 
@@ -1252,7 +1252,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
         ].map((milestone, idx) => (
 
-         <div key={milestone.name} className="grid grid-cols-12 gap-1 items-center py-2 hover:bg-stone-50 rounded-lg transition-colors group">
+         <div key={milestone.name} className="grid grid-cols-12 gap-1 items-center py-2 hover:bg-stone-50 rounded-lg transition-colors group min-w-[640px]">
 
           <div className="col-span-3 px-2">
 
@@ -1404,13 +1404,13 @@ export default function Workspace({ user }: WorkspaceProps) {
 
          <div className="flex items-center gap-2">
 
-          <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg">
+          <Button variant="outline" size="icon" aria-label="Previous month">
 
            <ChevronRight className="w-4 h-4 rotate-180" />
 
           </Button>
 
-          <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg">
+          <Button variant="outline" size="icon" aria-label="Next month">
 
            <ChevronRight className="w-4 h-4" />
 

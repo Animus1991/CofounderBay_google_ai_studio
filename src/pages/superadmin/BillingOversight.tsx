@@ -104,7 +104,7 @@ export default function BillingOversight() {
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
 
     {[
 
@@ -200,7 +200,7 @@ export default function BillingOversight() {
 
          </div>
 
-         <p className="text-xs font-medium text-stone-400 tracking-widest mb-1">{kpi.label}</p>
+         <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{kpi.label}</p>
 
          <p className="text-lg font-semibold">{kpi.value}</p>
 
@@ -290,7 +290,7 @@ export default function BillingOversight() {
 
          <div className="space-y-2">
 
-          <p className="text-xs font-medium text-stone-400 tracking-widest">Key Limits</p>
+          <p className="text-xs font-medium text-stone-400 tracking-wide">Key Limits</p>
 
           <div className="flex flex-wrap gap-2">
 
@@ -336,7 +336,7 @@ export default function BillingOversight() {
 
        </div>
 
-       <span className="text-sm font-medium tracking-widest">Create New Plan</span>
+       <span className="text-sm font-medium tracking-wide">Create New Plan</span>
 
       </button>
 
@@ -396,13 +396,13 @@ export default function BillingOversight() {
 
          <tr className="bg-stone-50 border-b border-stone-100">
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Customer</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Customer</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Plan</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Plan</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Status</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Status</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest text-right">Action</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">Action</th>
 
          </tr>
 
@@ -436,7 +436,7 @@ export default function BillingOversight() {
 
             <p className="text-sm font-medium">Organization Standard</p>
 
-            <p className="text-xs text-stone-400 font-medium tracking-widest">Annual Billing</p>
+            <p className="text-xs text-stone-400 font-medium tracking-wide">Annual Billing</p>
 
            </td>
 
@@ -500,17 +500,17 @@ export default function BillingOversight() {
 
          <tr className="bg-stone-50 border-b border-stone-100">
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Date</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Date</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Invoice #</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Invoice #</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Customer</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Customer</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Amount</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Amount</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Status</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Status</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest text-right">Action</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">Action</th>
 
          </tr>
 

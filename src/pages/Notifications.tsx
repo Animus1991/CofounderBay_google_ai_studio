@@ -232,7 +232,7 @@ export default function Notifications() {
 
           </h4>
 
-          <span className="text-xs font-medium text-stone-400 tracking-widest">{notification.time}</span>
+          <span className="text-xs font-medium text-stone-400 tracking-wide">{notification.time}</span>
 
          </div>
 
@@ -246,7 +246,7 @@ export default function Notifications() {
 
           <div className="pt-2">
 
-           <Button variant="ghost" size="sm" className="h-auto p-0 text-stone-900 font-medium text-xs tracking-widest hover:bg-transparent">
+           <Button variant="ghost" size="sm" className="h-auto p-0 text-stone-900 font-medium text-xs tracking-wide hover:bg-transparent">
 
             Take Action <ArrowRight className="w-3 h-3 ml-1" />
 

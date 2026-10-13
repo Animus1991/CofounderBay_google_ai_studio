@@ -110,7 +110,7 @@ export default function LegalHub() {
 
    <div className="space-y-6">
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 overflow-x-auto no-scrollbar w-fit">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {categories.map((cat) => (
 
@@ -168,7 +168,7 @@ export default function LegalHub() {
 
          <span className={cn(
 
-          "text-sm font-medium tracking-widest px-2 py-0.5 rounded-full",
+          "text-sm font-medium tracking-wide px-2 py-0.5 rounded-full",
 
           template.status === 'Critical' ? "bg-red-50 text-red-600" : "bg-stone-100 text-stone-500"
 
@@ -294,7 +294,7 @@ export default function LegalHub() {
 
      <section>
 
-      <h3 className="text-base font-medium text-stone-400 tracking-widest mb-4">Partner Law Firms</h3>
+      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">Partner Law Firms</h3>
 
       <div className="space-y-4">
 

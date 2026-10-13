@@ -80,7 +80,14 @@ import PageShell from "../components/ui/PageShell";
 
 import { User } from "../types";
 
+import { useAuth } from "../App";
+
+import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
+
 import { cn } from "../lib/utils";
+
+import { explainMatch } from "../lib/matchReason";
+import { rememberPerson } from "../lib/people";
 
 
 
@@ -98,9 +105,17 @@ type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Event
 
 export default function Discovery({ user }: DiscoveryProps) {
 
+ const { profile: authProfile } = useAuth();
+
+ const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
+
+ const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
+
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
 
- const [searchQuery, setSearchQuery] = useState("");
+ const remembered = readDiscoveryFilters();
+
+ const [searchQuery, setSearchQuery] = useState(remembered.q);
 
  const navigate = useNavigate();
 
@@ -112,13 +127,17 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
- const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+ const [selectedSkills, setSelectedSkills] = useState<string[]>(remembered.skills);
 
- const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+ const [selectedIndustries, setSelectedIndustries] = useState<string[]>(remembered.industries);
 
- const [selectedStages, setSelectedStages] = useState<string[]>([]);
+ const [selectedStages, setSelectedStages] = useState<string[]>(remembered.stages);
 
- const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+ const [selectedLocations, setSelectedLocations] = useState<string[]>(remembered.locations);
+
+ useEffect(() => {
+  writeDiscoveryFilters({ q: searchQuery, skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations });
+ }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
 
  const [users, setUsers] = useState<any[]>([]);
 
@@ -416,7 +435,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  return (
 
-  <PageShell title="Discovery" description="Explore founders, communities, opportunities and events in your ecosystem." noPadding={false}>
+  <PageShell title="Discovery · Εξερεύνηση" description="Explore founders, communities, opportunities and events in your ecosystem. · Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις." noPadding={false}>
 
   <div className="space-y-8">
 
@@ -452,7 +471,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
        transition={{ type: "spring", damping: 25, stiffness: 200 }}
 
-       className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 p-12 overflow-y-auto border-l border-stone-200"
+       className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-sm z-50 p-12 overflow-y-auto border-l border-stone-200"
 
       >
 
@@ -648,13 +667,13 @@ export default function Discovery({ user }: DiscoveryProps) {
 
         <div className="pt-12 border-t border-stone-100 flex gap-4">
 
-         <Button className="flex-1 rounded-2xl h-16 bg-stone-900 text-white font-medium text-base tracking-wider">
+         <Button onClick={() => setIsFilterOpen(false)} className="flex-1 rounded-2xl h-16 bg-stone-900 text-white font-medium text-base tracking-wider">
 
           Apply Filters
 
          </Button>
 
-         <Button variant="outline" className="flex-1 rounded-2xl h-16 border-stone-200 text-stone-500 font-medium text-base tracking-wider">
+         <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="flex-1 rounded-2xl h-16 border-stone-200 text-stone-500 font-medium text-base tracking-wider">
 
           Reset
 
@@ -768,9 +787,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
    {/* Category Tabs */}
 
-   <div className="flex items-center justify-between border-b border-stone-100 pb-1">
+   <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-1 min-w-0">
 
-    <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide">
+    <div className="scroll-tabs gap-4 sm:gap-6 flex-1 w-auto">
 
      {categories.map((cat) => (
 
@@ -804,17 +823,17 @@ export default function Discovery({ user }: DiscoveryProps) {
 
     </div>
 
-    <div className="hidden md:flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
 
-     <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label="Grid view" onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
 
-      <Grid className="w-3.5 h-3.5" />
+      <Grid className="w-4 h-4" />
 
      </button>
 
-     <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label="List view" onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
 
-      <ListIcon className="w-3.5 h-3.5" />
+      <ListIcon className="w-4 h-4" />
 
      </button>
 
@@ -876,7 +895,11 @@ export default function Discovery({ user }: DiscoveryProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-         {filteredUsers.slice(0, 4).map((user, idx) => (
+         {filteredUsers.slice(0, 4).map((user, idx) => {
+
+          const matchPhrase = explainMatch(viewerSkills, viewerIndustry, user.skills, user.profile?.industry).reasonPhrase;
+
+          return (
 
           <motion.div
 
@@ -892,7 +915,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
           >
 
-           <Link to={`/profile/${user.id}`} className="block space-y-3">
+           <Link to={`/profile/${user.id}`} onClick={() => rememberPerson({ id: user.id, fullName: user.name || 'Founder', headline: user.profile?.headline || '', role: user.role || 'Founder', industry: user.profile?.industry || '', location: user.profile?.location || '' })} className="block space-y-3">
 
             <div className="flex items-start justify-between">
 
@@ -936,7 +959,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
 
-              <span className="text-xs text-stone-400">Available</span>
+              <span className="text-xs text-stone-400">Available · Διαθέσιμος{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
 
              </div>
 
@@ -954,7 +977,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
           </motion.div>
 
-         ))}
+          );
+
+         })}
 
         </div>
 
@@ -964,7 +989,8 @@ export default function Discovery({ user }: DiscoveryProps) {
 
          <Search className="w-8 h-8 text-stone-300 mb-2" />
 
-         <p className="text-sm text-stone-400">No matches found for your criteria</p>
+         <p className="text-sm text-stone-400">No matches found for your criteria · Καμία αντιστοίχιση με αυτά τα κριτήρια</p>
+         <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="mt-2 text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
 
         </div>
 
@@ -1040,7 +1066,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
          )}>
 
-          <img src={opp.photo} alt="" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" />
+          <img src={opp.photo} alt="" className="w-full h-full object-cover" />
 
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 

@@ -40,13 +40,13 @@ const UserManagementSkeleton = () => (
 
  <div className="space-y-6 max-w-7xl mx-auto animate-pulse">
 
-  <div className="h-64 w-full bg-stone-100 rounded-[2.5rem]"></div>
+  <div className="h-64 w-full bg-stone-100 rounded-xl"></div>
 
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 
    {[1, 2, 3, 4].map(i => (
 
-    <div key={i} className="h-32 bg-stone-100 rounded-[2rem]"></div>
+    <div key={i} className="h-32 bg-stone-100 rounded-xl"></div>
 
    ))}
 
@@ -54,9 +54,9 @@ const UserManagementSkeleton = () => (
 
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-   <div className="lg:col-span-2 h-[600px] bg-stone-100 rounded-[2rem]"></div>
+   <div className="lg:col-span-2 h-[600px] bg-stone-100 rounded-xl"></div>
 
-   <div className="h-[600px] bg-stone-100 rounded-[2rem]"></div>
+   <div className="h-[600px] bg-stone-100 rounded-xl"></div>
 
   </div>
 
@@ -148,11 +148,7 @@ export default function UserManagement({ user }: AdminProps) {
 
    {/* Premium Header */}
 
-   <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-12 shadow-[0_8px_40px_rgb(0,0,0,0.03)] border border-stone-100">
-
-    <div className="absolute top-0 right-0 -mt-24 -mr-24 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px]"></div>
-
-    <div className="absolute bottom-0 left-0 -mb-24 -ml-24 w-96 h-96 bg-purple-500/5 rounded-full blur-[120px]"></div>
+   <div className="relative overflow-hidden rounded-xl bg-white p-8 border border-stone-100">
 
     
 
@@ -216,13 +212,13 @@ export default function UserManagement({ user }: AdminProps) {
 
       </div>
 
-      <Button variant="outline" className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-widest transition-all shadow-sm">
+      <Button variant="outline" className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
 
        <Download className="w-3.5 h-3.5 mr-2.5" /> Export
 
       </Button>
 
-      <Button className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-widest shadow-xl shadow-stone-200 transition-all">
+      <Button className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-wide shadow-xl shadow-stone-200 transition-all">
 
        <UserPlus className="w-3.5 h-3.5 mr-2.5" /> Invite Member
 
@@ -266,7 +262,7 @@ export default function UserManagement({ user }: AdminProps) {
 
      >
 
-      <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all overflow-hidden group rounded-[2rem]">
+      <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all overflow-hidden group rounded-xl">
 
        <div className="p-8 flex items-center justify-between">
 
@@ -278,7 +274,7 @@ export default function UserManagement({ user }: AdminProps) {
 
         </div>
 
-        <div className={cn("w-14 h-11 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 shadow-inner border border-stone-100/50", stat.bg, stat.color)}>
+        <div className={cn("w-14 h-11 rounded-2xl flex items-center justify-center transition-all shadow-inner border border-stone-100/50", stat.bg, stat.color)}>
 
          <stat.icon className="w-7 h-7" />
 
@@ -318,7 +314,7 @@ export default function UserManagement({ user }: AdminProps) {
 
       noPadding 
 
-      className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] overflow-hidden rounded-[2rem]"
+      className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] overflow-hidden rounded-xl"
 
      >
 
@@ -370,7 +366,7 @@ export default function UserManagement({ user }: AdminProps) {
 
          onChange={(e) => setSearchQuery(e.target.value)}
 
-         className="input-minimal pl-12 text-xs font-medium tracking-widest"
+         className="input-minimal pl-12 text-xs font-medium tracking-wide"
 
         />
 
@@ -438,7 +434,7 @@ export default function UserManagement({ user }: AdminProps) {
 
                  alt={u.fullName}
 
-                 className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                 className="w-full h-full object-cover transition-transform"
 
                  referrerPolicy="no-referrer"
 
@@ -454,7 +450,7 @@ export default function UserManagement({ user }: AdminProps) {
 
                <p className="text-base font-medium text-stone-900 group-hover:text-stone-600 transition-colors tracking-tight">{u.fullName}</p>
 
-               <p className="text-xs text-stone-400 font-medium tracking-widest">{u.email}</p>
+               <p className="text-xs text-stone-400 font-medium tracking-wide">{u.email}</p>
 
               </div>
 
@@ -470,7 +466,7 @@ export default function UserManagement({ user }: AdminProps) {
 
                {u.roles.map((role: string) => (
 
-                <span key={role} className="text-xs font-medium px-2.5 py-1 bg-stone-50 text-stone-500 rounded-md tracking-widest border border-stone-100">
+                <span key={role} className="text-xs font-medium px-2.5 py-1 bg-stone-50 text-stone-500 rounded-md tracking-wide border border-stone-100">
 
                  {role}
 
@@ -490,7 +486,7 @@ export default function UserManagement({ user }: AdminProps) {
 
              <span className={cn(
 
-              "text-xs font-medium px-3.5 py-1.5 rounded-xl tracking-widest inline-flex items-center gap-2.5 border",
+              "text-xs font-medium px-3.5 py-1.5 rounded-xl tracking-wide inline-flex items-center gap-2.5 border",
 
               u.accountStatus === "Active" 
 
@@ -582,7 +578,7 @@ export default function UserManagement({ user }: AdminProps) {
 
             p === 1 
 
-             ? "bg-stone-900 text-white border-stone-900 shadow-lg shadow-stone-900/20" 
+             ? "bg-stone-900 text-white border-stone-900 shadow-sm" 
 
              : "text-stone-400 border-transparent hover:bg-white hover:border-stone-100 hover:shadow-sm"
 
@@ -674,7 +670,7 @@ export default function UserManagement({ user }: AdminProps) {
 
         >
 
-         <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgb(0,0,0,0.08)] transition-all group rounded-[2rem] overflow-hidden">
+         <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgb(0,0,0,0.08)] transition-all group rounded-xl overflow-hidden">
 
           <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-10">
 
@@ -682,7 +678,7 @@ export default function UserManagement({ user }: AdminProps) {
 
             <div className={cn(
 
-             "w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-inner shrink-0 border border-stone-100/50 transition-all group-hover:scale-105",
+             "w-20 h-20 rounded-xl flex items-center justify-center shadow-inner shrink-0 border border-stone-100/50 transition-all group-hover:scale-105",
 
              item.severity === 'high' ? "bg-red-50 text-red-500" :
 
@@ -730,13 +726,13 @@ export default function UserManagement({ user }: AdminProps) {
 
            <div className="flex items-center gap-4 w-full md:w-auto">
 
-            <Button variant="ghost" className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-widest text-stone-400 hover:text-stone-900 rounded-xl transition-all">
+            <Button variant="ghost" className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-wide text-stone-400 hover:text-stone-900 rounded-xl transition-all">
 
              Dismiss
 
             </Button>
 
-            <Button className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-widest bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
+            <Button className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-wide bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
 
              Review & Action
 
@@ -778,7 +774,7 @@ export default function UserManagement({ user }: AdminProps) {
 
 
 
-     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-[2rem] space-y-10">
+     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-10">
 
       <div className="space-y-8">
 
@@ -840,7 +836,7 @@ export default function UserManagement({ user }: AdminProps) {
 
          <p className="text-xs font-medium text-emerald-900 tracking-wider">All Systems Normal</p>
 
-         <p className="text-xs text-emerald-600 font-medium tracking-widest mt-0.5">Last check: 1m ago</p>
+         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">Last check: 1m ago</p>
 
         </div>
 
@@ -858,7 +854,7 @@ export default function UserManagement({ user }: AdminProps) {
 
       <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">Member Distribution</h3>
 
-      <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-[2rem] space-y-8">
+      <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-8">
 
        {[
 
@@ -884,7 +880,7 @@ export default function UserManagement({ user }: AdminProps) {
 
            </div>
 
-           <span className="text-xs font-medium text-stone-500 tracking-widest">{item.label}</span>
+           <span className="text-xs font-medium text-stone-500 tracking-wide">{item.label}</span>
 
           </div>
 

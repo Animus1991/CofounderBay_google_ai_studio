@@ -108,13 +108,7 @@ export default function TenantLanding() {
 
     {branding.backgroundStyle === 'mesh' && (
 
-     <div className="absolute inset-0 -z-10 opacity-20">
-
-      <div className="absolute top-0 left-0 w-96 h-96 bg-primary rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-
-     </div>
+     <div className="absolute inset-0 -z-10 bg-stone-50" />
 
     )}
 
@@ -170,7 +164,7 @@ export default function TenantLanding() {
 
         alt="Hero" 
 
-        className="rounded-2xl shadow-2xl border border-stone-200 w-full aspect-video object-cover"
+        className="rounded-2xl shadow-sm border border-stone-200 w-full aspect-video object-cover"
 
        />
 

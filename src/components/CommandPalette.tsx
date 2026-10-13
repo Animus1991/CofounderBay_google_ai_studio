@@ -8,6 +8,36 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
+import { pageHelp } from '../lib/navHelp';
+
+const COMMAND_PATH: Record<string, string> = {
+ dashboard: '/dashboard',
+ profile: '/profile',
+ discovery: '/discovery',
+ matches: '/matches',
+ mentors: '/mentors',
+ messages: '/messages',
+ milestones: '/milestones',
+ 'founder-tools': '/founder-tools',
+ fundraising: '/fundraising',
+ workspace: '/workspace',
+ calendar: '/calendar',
+ community: '/community',
+ events: '/events',
+ programs: '/programs',
+ network: '/network',
+ resources: '/resources',
+ insights: '/insights',
+ legal: '/legal',
+ perks: '/perks',
+ notifications: '/notifications',
+ settings: '/settings',
+ pricing: '/pricing',
+ admin: '/admin',
+ 'admin-users': '/admin/users',
+ 'admin-automation': '/admin/automation',
+ 'admin-branding': '/admin/branding',
+};
 
 interface CommandItem {
  id: string;
@@ -68,7 +98,7 @@ export default function CommandPalette() {
    );
   }
 
-  return items;
+  return items.map((item) => ({ ...item, description: pageHelp(COMMAND_PATH[item.id] || '') }));
  }, [go, isAdmin, isDemoMode]);
 
  const filtered = useMemo(() => {
@@ -157,7 +187,7 @@ export default function CommandPalette() {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: -20 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-[15%] left-1/2 -translate-x-1/2 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden z-[201]"
+      className="fixed top-[10%] sm:top-[15%] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-lg max-h-[min(80dvh,100%)] bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden z-[201] flex flex-col"
      >
       {/* Search Input */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-100">
@@ -194,9 +224,10 @@ export default function CommandPalette() {
              key={item.id}
              data-index={idx}
              onClick={item.action}
+             title={item.description}
              onMouseEnter={() => setSelectedIndex(idx)}
              className={cn(
-              "w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors",
+              "w-full flex items-center gap-3 min-h-11 px-5 py-2.5 text-left transition-colors",
               idx === selectedIndex ? "bg-stone-50 text-stone-900" : "text-stone-600 hover:bg-stone-50/50"
              )}
             >

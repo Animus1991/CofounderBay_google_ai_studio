@@ -124,7 +124,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100/80 rounded-xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-xl">
 
     {[
 
@@ -650,7 +650,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
             ))}
 
-            <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-widest">
+            <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-wide">
 
              <Plus className="w-3 h-3 mr-1" /> Add Domain
 
@@ -856,7 +856,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
                <span className="text-xs font-medium text-stone-900">{log.user}</span>
 
-               <span className="text-xs font-medium text-stone-400 tracking-widest">{log.event}</span>
+               <span className="text-xs font-medium text-stone-400 tracking-wide">{log.event}</span>
 
               </div>
 

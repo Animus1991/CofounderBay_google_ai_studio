@@ -164,7 +164,7 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
 
  return (
 
-  <div className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group p-4 space-y-3">
+  <div className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md  transition-all group p-4 space-y-3">
 
    {/* Header row */}
 
@@ -248,7 +248,7 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
 
       <div
 
-       className={cn("h-full rounded-full transition-all duration-500", tasksDone === tasksTotal ? "bg-emerald-500" : "bg-stone-900")}
+       className={cn("h-full rounded-full transition-all duration-200", tasksDone === tasksTotal ? "bg-emerald-500" : "bg-stone-900")}
 
        style={{ width: `${tasksTotal > 0 ? (tasksDone / tasksTotal) * 100 : 0}%` }}
 
@@ -348,6 +348,10 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
  const [statusFilter, setStatusFilter] = useState('All');
 
+ const [adding, setAdding] = useState(false);
+
+ const [draftTitle, setDraftTitle] = useState('');
+
 
 
  useEffect(() => { fetchMilestones(); }, []);
@@ -378,6 +382,15 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
   }
 
+ };
+
+ const saveMilestone = async () => {
+  const title = draftTitle.trim();
+  if (!title) return;
+  const created = await milestoneService.createMilestone({ title, ownerId: user?.id || '1' });
+  setMilestones((prev) => [created, ...prev]);
+  setDraftTitle('');
+  setAdding(false);
  };
 
 
@@ -448,7 +461,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
    actions={
 
-    <button className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all">
+    <button type="button" onClick={() => setAdding(true)} title="Names a goal and puts it on this board. · Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα." className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all">
 
      <Plus className="w-3.5 h-3.5" /> Add Milestone
 
@@ -530,6 +543,21 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
     </div>
 
+    {adding && (
+     <form onSubmit={(e) => { e.preventDefault(); void saveMilestone(); }} className="flex items-center gap-2 w-full sm:w-auto">
+      <input
+       type="text"
+       value={draftTitle}
+       onChange={(e) => setDraftTitle(e.target.value)}
+       placeholder="Name the milestone · Όνομα οροσήμου"
+       className="w-full sm:w-56 pl-3 pr-3 py-2 bg-white border border-stone-200 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 transition-all"
+       autoFocus
+      />
+      <button type="submit" className="px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all">Save · Αποθήκευση</button>
+      <button type="button" onClick={() => { setAdding(false); setDraftTitle(''); }} className="px-3 py-2 text-xs font-medium text-stone-500 hover:text-stone-900">Cancel · Άκυρο</button>
+     </form>
+    )}
+
     <div className="flex items-center gap-2 flex-wrap">
 
      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-xl p-0.5">
@@ -610,9 +638,9 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
      <Target className="w-10 h-10" />
 
-     <p className="font-medium text-xs tracking-wider">No milestones found</p>
+     <p className="font-medium text-xs tracking-wider">No milestones found · Δεν βρέθηκαν ορόσημα</p>
 
-     {searchQuery && <p className="text-[10px]">Try a different search term</p>}
+     {searchQuery ? <p className="text-[10px]">Try a different search term · Δοκιμάστε άλλον όρο</p> : <p className="text-[10px]">Add a milestone to put a goal on this board. · Προσθέστε ορόσημο για να μπει ένας στόχος εδώ.</p>}
 
     </div>
 
@@ -740,11 +768,11 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
      {view === 'list' && (
 
-      <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-100 overflow-x-auto">
 
        {/* Table Header */}
 
-       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold text-stone-400 tracking-wider">
+       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold text-stone-400 tracking-wider min-w-[720px]">
 
         <div className="col-span-4">Milestone</div>
 
@@ -768,7 +796,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
          <motion.div key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
 
-          className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group">
+          className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group min-w-[720px]">
 
           <div className="col-span-4 flex items-center gap-3 min-w-0">
 
@@ -862,7 +890,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
     </div>
 
-    <button className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
+    <button type="button" onClick={() => setAdding(true)} title="Names a goal and puts it on this board. · Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα." className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
 
      Add Milestone <ArrowRight className="w-3 h-3" />
 

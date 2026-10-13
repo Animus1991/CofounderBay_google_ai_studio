@@ -254,7 +254,7 @@ export default function ChatWidget() {
 
  return (
 
-  <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4">
+  <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-[9999] flex flex-col items-stretch sm:items-end gap-3">
 
    <AnimatePresence>
 
@@ -268,7 +268,7 @@ export default function ChatWidget() {
 
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
 
-      className="w-[380px] h-[550px] bg-white rounded-2xl shadow-2xl border border-stone-200 flex flex-col overflow-hidden"
+      className="w-full sm:w-[380px] h-[min(550px,70dvh)] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
 
      >
 
@@ -286,7 +286,7 @@ export default function ChatWidget() {
 
         <div>
 
-         <h3 className="text-xs font-medium tracking-widest">Cofounder Chat</h3>
+         <h3 className="text-xs font-medium tracking-wide">Cofounder Chat</h3>
 
          <p className="text-xs text-white/50 tracking-tighter">Real-time & AI Powered</p>
 
@@ -326,7 +326,7 @@ export default function ChatWidget() {
 
          className={cn(
 
-          "flex-1 py-3 text-xs font-medium tracking-widest transition-colors",
+          "flex-1 py-3 text-xs font-medium tracking-wide transition-colors",
 
           activeTab === 'messages' ? "text-stone-900 border-b-2 border-stone-900" : "text-stone-400 hover:text-stone-600"
 
@@ -344,7 +344,7 @@ export default function ChatWidget() {
 
          className={cn(
 
-          "flex-1 py-3 text-xs font-medium tracking-widest transition-colors",
+          "flex-1 py-3 text-xs font-medium tracking-wide transition-colors",
 
           activeTab === 'agents' ? "text-stone-900 border-b-2 border-stone-900" : "text-stone-400 hover:text-stone-600"
 
@@ -474,7 +474,7 @@ export default function ChatWidget() {
 
              {!isMe && agent && (
 
-              <div className="mt-1 flex items-center gap-2 text-[8px] font-medium tracking-widest text-stone-400">
+              <div className="mt-1 flex items-center gap-2 text-[8px] font-medium tracking-wide text-stone-400">
 
                <Cpu className="w-2.5 h-2.5" />
 
@@ -650,9 +650,9 @@ export default function ChatWidget() {
 
            <div className="flex items-center justify-between">
 
-            <h4 className="text-xs font-medium text-stone-400 tracking-widest">Recent Chats</h4>
+            <h4 className="text-xs font-medium text-stone-400 tracking-wide">Recent Chats</h4>
 
-            <button className="text-xs font-medium text-stone-900 tracking-widest hover:underline">New</button>
+            <button className="text-xs font-medium text-stone-900 tracking-wide hover:underline">New</button>
 
            </div>
 
@@ -746,7 +746,7 @@ export default function ChatWidget() {
 
            <div className="flex items-center justify-between">
 
-            <h4 className="text-xs font-medium text-stone-400 tracking-widest">Available Agents</h4>
+            <h4 className="text-xs font-medium text-stone-400 tracking-wide">Available Agents</h4>
 
             <div className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
 
@@ -854,7 +854,7 @@ export default function ChatWidget() {
 
       <div className="text-left">
 
-       <p className="text-xs font-medium text-stone-900 tracking-widest">Active Chat</p>
+       <p className="text-xs font-medium text-stone-900 tracking-wide">Active Chat</p>
 
        <p className="text-xs text-stone-400 tracking-tighter">Click to expand</p>
 
@@ -888,7 +888,7 @@ export default function ChatWidget() {
 
      className={cn(
 
-      "w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all relative overflow-hidden group",
+      "self-end w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center transition-all relative overflow-hidden group",
 
       isOpen && !isMinimized ? "bg-stone-100 text-stone-900" : "bg-stone-900 text-white"
 

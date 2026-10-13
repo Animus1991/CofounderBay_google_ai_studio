@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 import { useNavigate } from 'react-router-dom';
 
@@ -101,6 +101,8 @@ import PageShell from "../components/ui/PageShell";
 import { User, FundraisingTracker } from "../types";
 
 import { cn } from "../lib/utils";
+import { bothText } from "../lib/labels";
+import { addRoomFile, addSession, listKeys, readIds, readRoomFiles, toggleId, trackApplication, type RoomFile } from "../lib/localLists";
 
 
 
@@ -140,13 +142,47 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
 
- const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(new Set());
+ const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(() => new Set(readIds(listKeys.watch)));
 
  const [selectedMeetingType, setSelectedMeetingType] = useState('Video Call');
+
+ const [meetingInvestor, setMeetingInvestor] = useState('inv_1');
+
+ const [meetingWhen, setMeetingWhen] = useState('');
+
+ const [programType, setProgramType] = useState('All');
+
+ const [opportunityType, setOpportunityType] = useState('All');
+
+ const roomFileRef = useRef<HTMLInputElement>(null);
+
+ const seedRoomFiles: RoomFile[] = [
+
+  { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
+
+  { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
+
+  { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
+
+  { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
+
+ ];
+
+ const [roomFiles, setRoomFiles] = useState<RoomFile[]>(() => {
+
+  const extra = readRoomFiles();
+
+  const names = new Set(extra.map((file) => file.name));
+
+  return [...extra, ...seedRoomFiles.filter((file) => !names.has(file.name))];
+
+ });
 
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
 
  const [investorSearch, setInvestorSearch] = useState("");
+
+ const investorSearchRef = useRef<HTMLInputElement>(null);
 
  const [showMeetingScheduler, setShowMeetingScheduler] = useState(false);
 
@@ -396,7 +432,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
     {/* Tab Bar */}
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {(["tracker", "investors", "programs", "opportunities"] as const).map((tab) => (
 
@@ -408,7 +444,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        className={cn(
 
-        "px-3 py-1.5 text-sm font-semibold tracking-widest rounded-lg transition-all",
+        "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
 
         activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -444,7 +480,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="flex items-center justify-between">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Seed Round Progress</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Seed Round Progress</p>
 
          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md">
 
@@ -524,7 +560,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="space-y-3 pt-2 border-t border-stone-100">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Quick Actions</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Quick Actions</p>
 
          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9 rounded-lg" onClick={() => setShowDocumentRoom(true)}>
 
@@ -554,7 +590,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Cap Table</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Cap Table</p>
 
           <span className="text-xs text-stone-400">10M shares</span>
 
@@ -596,7 +632,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Due Diligence</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Due Diligence</p>
 
           <span className="text-xs text-emerald-600 font-semibold">
 
@@ -646,7 +682,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="pt-2 border-t border-stone-100 space-y-1.5">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Email Templates</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Email Templates</p>
 
          <div className="flex flex-wrap gap-1">
 
@@ -672,7 +708,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Upcoming Meetings</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Upcoming Meetings</p>
 
           <button 
 
@@ -744,7 +780,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <Card className="p-4 space-y-3">
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Pipeline Funnel</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Pipeline Funnel</p>
 
         <div className="space-y-1.5">
 
@@ -784,7 +820,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="flex items-center justify-between">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Data Room</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Data Room</p>
 
          <button 
 
@@ -880,13 +916,13 @@ export default function Fundraising({ user }: FundraisingProps) {
 
            <tr className="bg-stone-50 border-b border-stone-100">
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Investor</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Investor</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Stage</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Stage</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Latest Note</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Latest Note</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest"></th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide"></th>
 
            </tr>
 
@@ -960,7 +996,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="px-3 py-2.5 bg-stone-50 border-t border-stone-100 flex justify-center">
 
-         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-widest text-stone-400 hover:text-stone-900 h-7" onClick={() => setActiveTab('investors')}>
+         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-wide text-stone-400 hover:text-stone-900 h-7" onClick={() => setActiveTab('investors')}>
 
           View Full CRM <ChevronRight className="w-3 h-3 ml-1" />
 
@@ -986,7 +1022,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <div className="space-y-1.5">
 
-           <div className="flex justify-between text-xs tracking-widest">
+           <div className="flex justify-between text-xs tracking-wide">
 
             <span className="text-stone-400 font-semibold">Investor Interest</span>
 
@@ -1102,7 +1138,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
               <p className="text-sm font-semibold text-stone-900 truncate">{p.title}</p>
 
-              <p className={cn("text-xs tracking-widest mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
+              <p className={cn("text-xs tracking-wide mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
 
                Due: {p.deadline} {urgent && `· ${daysLeft}d left`}
 
@@ -1144,7 +1180,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <div>
 
-           <p className="text-xs font-semibold text-stone-400 tracking-widest">SAFE Calculator</p>
+           <p className="text-xs font-semibold text-stone-400 tracking-wide">SAFE Calculator</p>
 
            <p className="text-sm font-semibold text-stone-900">Valuation & Ownership</p>
 
@@ -1258,7 +1294,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          type="text"
 
-         placeholder="Search by name or focus..."
+         ref={investorSearchRef}
+
+         placeholder={bothText("Search by name or focus...", "Όνομα ή τομέας...")}
 
          value={investorSearch}
 
@@ -1270,7 +1308,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => showToast('Filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => investorSearchRef.current?.focus()}>
 
         <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
 
@@ -1298,7 +1336,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-start justify-between">
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
 
            <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center text-stone-500 group-hover:bg-stone-900 group-hover:text-white transition-all shrink-0">
 
@@ -1322,7 +1360,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           </div>
 
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-stone-300 hover:text-amber-500 shrink-0" onClick={() => setFavoriteInvestors(prev => { const n = new Set(prev); if (n.has(inv.id)) n.delete(inv.id); else n.add(inv.id); return n; })}>
+          <Button variant="ghost" size="icon" aria-label="Watch" title="Watch" className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => setFavoriteInvestors(new Set(toggleId(listKeys.watch, inv.id)))}>
 
            <Star className="w-3.5 h-3.5" fill={favoriteInvestors.has(inv.id) ? 'currentColor' : 'none'} />
 
@@ -1494,15 +1532,15 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <div>
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Programs</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Programs</p>
 
         <h3 className="text-base font-semibold text-stone-900">Accelerators, Grants & Studios</h3>
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('Program filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockPrograms.map((item) => item.type)))]; const index = types.indexOf(programType); setProgramType(types[(index + 1) % types.length] ?? 'All'); }}>
 
-        <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {programType === 'All' ? 'Filter' : programType}
 
        </Button>
 
@@ -1513,7 +1551,7 @@ export default function Fundraising({ user }: FundraisingProps) {
       {/* Programs List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-       {mockPrograms.map((p) => {
+       {mockPrograms.filter((p) => programType === 'All' || p.type === programType).map((p) => {
 
         const daysLeft = Math.max(0, Math.round((new Date(p.deadline).getTime() - Date.now()) / 86400000));
 
@@ -1611,7 +1649,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
             <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${p.title} details`)}>Details</Button>
 
-            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => showToast(`Applying to ${p.title}...`)}>Apply</Button>
+            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); showToast(`Applying to ${p.title}...`); }}>Apply</Button>
 
            </div>
 
@@ -1637,19 +1675,19 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      <div className="space-y-4">
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
        <div>
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Opportunities</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Opportunities</p>
 
         <h3 className="text-base font-semibold text-stone-900">Funding & Non-Dilutive Sources</h3>
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('Opportunity filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockOpportunities.map((item) => item.type)))]; const index = types.indexOf(opportunityType); setOpportunityType(types[(index + 1) % types.length] ?? 'All'); }}>
 
-        <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {opportunityType === 'All' ? 'Filter' : opportunityType}
 
        </Button>
 
@@ -1659,7 +1697,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
       {/* Summary stats */}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
        {[
 
@@ -1699,7 +1737,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
       <div className="space-y-2">
 
-       {mockOpportunities.map((opp) => (
+       {mockOpportunities.filter((opp) => opportunityType === 'All' || opp.type === opportunityType).map((opp) => (
 
         <div key={opp.id} className="group bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all">
 
@@ -1769,7 +1807,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${opp.title} details`)}>Learn More</Button>
 
-          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => showToast(`Applying to ${opp.title}...`)}>Apply Now</Button>
+          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); showToast(`Applying to ${opp.title}...`); }}>Apply Now</Button>
 
          </div>
 
@@ -1795,7 +1833,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
 
-      <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-sm">
 
        <div className="flex items-center justify-between">
 
@@ -1829,7 +1867,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <label className="text-xs font-semibold text-stone-500 tracking-wider">Investor</label>
 
-         <select className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
+         <select value={meetingInvestor} onChange={(e) => setMeetingInvestor(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
 
           {mockInvestors.map(inv => <option key={inv.id} value={inv.id}>{inv.name}</option>)}
 
@@ -1851,7 +1889,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <label className="text-xs font-semibold text-stone-500 tracking-wider">Time</label>
 
-          <input type="time" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
+          <input type="time" value={meetingWhen} onChange={(e) => setMeetingWhen(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
 
          </div>
 
@@ -1893,7 +1931,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <Button variant="outline" className="flex-1 h-8 text-sm" onClick={() => setShowMeetingScheduler(false)}>Cancel</Button>
 
-        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { setShowMeetingScheduler(false); showToast('Meeting scheduled!'); }}>Schedule Meeting</Button>
+        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = mockInvestors.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast('Meeting scheduled!'); }}>Schedule Meeting</Button>
 
        </div>
 
@@ -1909,9 +1947,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
     {showDocumentRoom && (
 
-     <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+     <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3 sm:p-4">
 
-      <div className="bg-white rounded-2xl w-full max-w-2xl p-5 space-y-4 shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[min(92dvh,100%)] overflow-y-auto p-4 sm:p-5 space-y-4 shadow-sm">
 
        <div className="flex items-center justify-between">
 
@@ -1925,9 +1963,11 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <button 
 
+         type="button"
+         aria-label="Close data room"
          onClick={() => setShowDocumentRoom(false)}
 
-         className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors"
+         className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
 
         >
 
@@ -1939,7 +1979,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        
 
-       <div className="grid grid-cols-4 gap-2 p-2 bg-stone-50 rounded-xl">
+       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-stone-50 rounded-xl">
 
         {documentFolders.map(folder => (
 
@@ -1991,27 +2031,19 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          </span>
 
-         <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => showToast('Upload — select files to upload')}>
+         <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
 
           <Plus className="w-3 h-3 mr-1" /> Upload
 
          </Button>
 
+         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10) }); const names = new Set(next.map((item) => item.name)); setRoomFiles([...next, ...seedRoomFiles.filter((item) => !names.has(item.name))]); e.target.value = ''; }} />
+
         </div>
 
         <div className="space-y-1">
 
-         {[
-
-          { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
-
-          { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
-
-          { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
-
-          { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
-
-         ].map(file => (
+         {roomFiles.map(file => (
 
           <div key={file.name} className="flex items-center justify-between p-2 hover:bg-stone-50 rounded-lg transition-colors">
 
@@ -2097,7 +2129,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      exit={{ opacity: 0, y: 20 }}
 
-     className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl"
+     className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] max-w-md px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl text-center"
 
     >
 

@@ -110,7 +110,7 @@ export default function Billing({ user }: BillingProps) {
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
 
     {[
 
@@ -176,7 +176,7 @@ export default function Billing({ user }: BillingProps) {
 
        <div className="absolute top-0 right-0 p-4">
 
-        <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-widest rounded-full">
+        <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
 
          Active Plan
 
@@ -220,7 +220,7 @@ export default function Billing({ user }: BillingProps) {
 
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
 
-           <p className="text-xs font-medium text-stone-400 tracking-widest">Next Renewal</p>
+           <p className="text-xs font-medium text-stone-400 tracking-wide">Next Renewal</p>
 
            <p className="text-sm font-medium">{new Date(subscription?.renewalDate ?? '').toLocaleDateString()}</p>
 
@@ -228,7 +228,7 @@ export default function Billing({ user }: BillingProps) {
 
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
 
-           <p className="text-xs font-medium text-stone-400 tracking-widest">Payment Status</p>
+           <p className="text-xs font-medium text-stone-400 tracking-wide">Payment Status</p>
 
            <p className="text-sm font-medium text-green-600">Healthy</p>
 
@@ -254,7 +254,7 @@ export default function Billing({ user }: BillingProps) {
 
          </Button>
 
-         <button className="w-full text-center text-xs text-stone-400 font-medium tracking-widest hover:text-red-500 transition-colors pt-2">
+         <button className="w-full text-center text-xs text-stone-400 font-medium tracking-wide hover:text-red-500 transition-colors pt-2">
 
           Cancel Subscription
 
@@ -420,7 +420,7 @@ export default function Billing({ user }: BillingProps) {
 
          <p className="font-medium text-stone-900">•••• •••• •••• 4242</p>
 
-         <p className="text-xs text-stone-500 tracking-widest font-medium">Expires 12/26</p>
+         <p className="text-xs text-stone-500 tracking-wide font-medium">Expires 12/26</p>
 
         </div>
 
@@ -452,7 +452,7 @@ export default function Billing({ user }: BillingProps) {
 
         <div className="space-y-2">
 
-         <label className="text-xs font-medium text-stone-400 tracking-widest">Legal Name</label>
+         <label className="text-xs font-medium text-stone-400 tracking-wide">Legal Name</label>
 
          <input type="text" defaultValue="Alex Stanford" className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none" />
 
@@ -460,7 +460,7 @@ export default function Billing({ user }: BillingProps) {
 
         <div className="space-y-2">
 
-         <label className="text-xs font-medium text-stone-400 tracking-widest">Country</label>
+         <label className="text-xs font-medium text-stone-400 tracking-wide">Country</label>
 
          <select className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none">
 
@@ -510,15 +510,15 @@ export default function Billing({ user }: BillingProps) {
 
          <tr className="bg-stone-50 border-b border-stone-100">
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Date</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Date</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Invoice #</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Invoice #</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Amount</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Amount</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Status</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Status</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest text-right">Action</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">Action</th>
 
          </tr>
 

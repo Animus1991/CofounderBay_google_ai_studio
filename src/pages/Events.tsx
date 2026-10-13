@@ -20,6 +20,8 @@ import PageShell from "../components/ui/PageShell";
 
 import { cn } from "../lib/utils";
 
+import { eventListKeys, readIds, toggleId } from "../lib/localLists";
+
 import { User } from "../types";
 
 
@@ -64,7 +66,9 @@ export default function Events({ user }: EventsProps) {
 
  const [activeTab, setActiveTab] = useState('Upcoming');
 
- const [registeredEvents, setRegisteredEvents] = useState<string[]>([]);
+ const [registeredEvents, setRegisteredEvents] = useState<string[]>(() => readIds(eventListKeys.registered));
+
+ const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
 
  const navigate = useNavigate();
 
@@ -72,11 +76,13 @@ export default function Events({ user }: EventsProps) {
 
  const toggleRegistration = (eventId: string) => {
 
-  setRegisteredEvents(prev => 
+  setRegisteredEvents(toggleId(eventListKeys.registered, eventId));
 
-   prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]
+ };
 
-  );
+ const toggleBookmark = (eventId: string) => {
+
+  setBookmarkedEvents(toggleId(eventListKeys.bookmarked, eventId));
 
  };
 
@@ -176,13 +182,13 @@ export default function Events({ user }: EventsProps) {
 
    actions={
 
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
 
      <button 
 
       onClick={() => navigate('/dashboard')}
 
-      className="flex items-center gap-1.5 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
+      className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
 
      >
 
@@ -194,7 +200,7 @@ export default function Events({ user }: EventsProps) {
 
       onClick={() => navigate('/dashboard')}
 
-      className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
+      className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
 
      >
 
@@ -216,7 +222,7 @@ export default function Events({ user }: EventsProps) {
 
     <div className="lg:col-span-8 space-y-4">
 
-     <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
       {['Upcoming', 'My Events', 'Past'].map((tab) => (
 
@@ -266,7 +272,7 @@ export default function Events({ user }: EventsProps) {
 
            alt={event.title} 
 
-           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
            referrerPolicy="no-referrer"
 
@@ -296,13 +302,13 @@ export default function Events({ user }: EventsProps) {
 
             <div className="flex gap-1 shrink-0">
 
-             <button className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+             <button type="button" onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
 
-              <Bookmark className="w-3.5 h-3.5" />
+              <Bookmark className={cn("w-3.5 h-3.5", bookmarkedEvents.includes(event.id) && "fill-current")} />
 
              </button>
 
-             <button className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+             <button type="button" onClick={() => { void navigator.clipboard?.writeText(event.title); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
 
               <Share2 className="w-3.5 h-3.5" />
 
@@ -434,7 +440,7 @@ export default function Events({ user }: EventsProps) {
 
         alt="Featured" 
 
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
         referrerPolicy="no-referrer"
 

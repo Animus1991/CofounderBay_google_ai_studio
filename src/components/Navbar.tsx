@@ -65,7 +65,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
      {/* Logo */}
      <div className="flex items-center">
       <NavLink to={user ? "/dashboard" : "/"} className="flex items-center gap-2 group">
-       <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+       <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
         <Zap className="w-6 h-6 text-white" />
        </div>
        <span className="text-base sm:text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
@@ -142,7 +142,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
              initial={{ opacity: 0, scale: 0.95, y: 10 }}
              animate={{ opacity: 1, scale: 1, y: 0 }}
              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-             className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-stone-100 p-2 z-20"
+             className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-sm border border-stone-100 p-2 z-20"
             >
              <NavLink 
               to="/profile" 
@@ -184,7 +184,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
         </NavLink>
         <NavLink 
          to="/signup" 
-         className="px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+         className="px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all shadow-sm"
         >
          Sign Up
         </NavLink>
@@ -251,7 +251,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
          <NavLink 
           to="/signup" 
           onClick={() => setIsMenuOpen(false)}
-          className="w-full py-3 bg-stone-900 text-white text-center font-medium rounded-xl shadow-lg shadow-stone-900/20"
+          className="w-full py-3 bg-stone-900 text-white text-center font-medium rounded-xl shadow-sm"
          >
           Sign Up
          </NavLink>

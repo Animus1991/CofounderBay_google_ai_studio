@@ -1,4 +1,12 @@
+import { useState } from 'react';
+
+import { Menu } from 'lucide-react';
+
 import { Outlet } from 'react-router-dom';
+
+import { Both } from '../lib/both';
+
+import { LanguageToggle, useLanguage } from '../lib/language';
 
 import Sidebar from './layout/Sidebar';
 
@@ -24,6 +32,10 @@ export default function Layout() {
  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
 
  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
+
+ const [showDemoHint, setShowDemoHint] = useState(false);
+
+ useLanguage();
 
 
 
@@ -57,27 +69,63 @@ export default function Layout() {
     Skip to content
    </a>
 
+   <div className="fixed top-3 right-3 z-[80] flex items-center gap-2">
+
+    <LanguageToggle />
+
    {isDemoMode && (
 
-    <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-xs font-medium tracking-wider py-1.5 px-4 flex items-center justify-center gap-4 z-[80]">
+    <button
 
-     <span>Demo Mode Active — No data will be saved</span>
+     type="button"
 
-     <button 
+     onClick={() => toggleDemoMode(false)}
 
-      onClick={() => toggleDemoMode(false)}
+     onMouseEnter={() => setShowDemoHint(true)}
 
-      className="underline hover:opacity-80 transition-opacity"
+     onMouseLeave={() => setShowDemoHint(false)}
 
-     >
+     onFocus={() => setShowDemoHint(true)}
 
-      Exit Demo
+     onBlur={() => setShowDemoHint(false)}
 
-     </button>
+     className="relative min-h-11 rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
 
-    </div>
+    >
+
+     <Both en="Exit" el="Έξοδος" />
+
+     {showDemoHint && (
+
+      <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-xs rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
+
+       <Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" />
+
+      </span>
+
+     )}
+
+    </button>
 
    )}
+
+   </div>
+
+   <button
+
+    type="button"
+
+    onClick={toggleMobileSidebar}
+
+    aria-label="Menu"
+
+    className="lg:hidden fixed top-3 left-3 z-[75] flex h-11 w-11 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
+
+   >
+
+    <Menu className="w-5 h-5" />
+
+   </button>
 
    <Sidebar 
 
@@ -98,7 +146,7 @@ export default function Layout() {
    <main
     id="main-content"
     tabIndex={-1}
-    className={`flex-1 overflow-y-auto min-h-screen outline-none${isDemoMode ? ' pt-8' : ''}`}
+    className="flex-1 overflow-x-hidden overflow-y-auto min-h-screen outline-none pt-16 lg:pt-0"
    >
 
     <Outlet />

@@ -64,6 +64,10 @@ import { User, UserRole } from "../../types";
 
 import { cn } from "../../lib/utils";
 
+import { withEl } from "../../lib/labels";
+
+import { navTitle } from "../../lib/navHelp";
+
 import { useTenant } from "../../context/TenantContext";
 
 import { auth } from "../../firebase";
@@ -200,6 +204,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     { icon: UserIcon, label: "My Profile", path: "/profile" },
 
+    { icon: Settings, label: "Settings", path: "/settings" },
+
    ]
 
   }
@@ -256,6 +262,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
 
+    onClick={(event) => { if ((event.target as HTMLElement).closest('a')) setMobileOpen?.(false); }}
+
     className={cn(
 
      "h-full bg-white border-r border-stone-200/60 flex flex-col shrink-0 overflow-hidden relative z-[70]",
@@ -304,7 +312,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
 
-       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+       title={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
 
       >
 
@@ -334,7 +342,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
         <h1 className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</h1>
 
-        <span className="text-[10px] font-medium text-stone-400 tracking-widest mt-1">Ecosystem Hub</span>
+        <span className="text-[10px] font-medium text-stone-400 tracking-wide mt-1">Ecosystem Hub</span>
 
        </motion.div>
 
@@ -355,6 +363,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
      <NavLink
 
       to="/dashboard"
+
+      title={navTitle("Dashboard", "/dashboard")}
 
       className={({ isActive }) =>
 
@@ -380,7 +390,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <LayoutDashboard className="w-5 h-5 shrink-0" />
 
-       {!collapsed && <span>Dashboard</span>}
+       {!collapsed && <span>{withEl("Dashboard")}</span>}
 
       </div>
 
@@ -400,7 +410,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
 
-        {section.title}
+        {withEl(section.title)}
 
        </p>
 
@@ -410,7 +420,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
 
        {section.items.map((item) => (
 
@@ -420,13 +430,13 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? item.label : undefined}
+         title={navTitle(item.label, item.path)}
 
          className={({ isActive }) =>
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
@@ -452,7 +462,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           )} />
 
-          {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span>{withEl(item.label)}</span>}
 
          </div>
 
@@ -478,7 +488,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
 
-        Administration
+        {withEl("Administration")}
 
        </p>
 
@@ -488,7 +498,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
 
        {[
 
@@ -506,13 +516,13 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? item.label : undefined}
+         title={navTitle(item.label, item.path)}
 
          className={({ isActive }) =>
 
           cn(
 
-           "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 group",
+           "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-all duration-200 group",
 
            isActive
 
@@ -532,7 +542,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           <item.icon className="w-5 h-5 shrink-0" />
 
-          {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span>{withEl(item.label)}</span>}
 
          </div>
 
@@ -598,7 +608,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="text-xs font-semibold text-stone-900 truncate">{user.fullName}</p>
 
-       <p className="text-xs text-stone-400 font-medium tracking-wider truncate">Founder</p>
+       <p className="text-xs text-stone-400 font-medium truncate">{withEl("Founder")}</p>
 
       </div>
 
@@ -608,9 +618,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       <div className="flex items-center">
 
-       <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-stone-400 hover:text-stone-900">
+       <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label="Settings" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
 
-        <Settings className="w-3.5 h-3.5" />
+        <Settings className="w-4 h-4" />
 
        </button>
 
@@ -630,13 +640,15 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
+       title={navTitle("Alerts", "/notifications")}
+
        className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 
       >
 
        <Bell className="w-3 h-3" />
 
-       Alerts
+       {withEl("Alerts")}
 
       </NavLink>
 
@@ -644,13 +656,15 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        onClick={handleLogout}
 
+       title={navTitle("Logout", "/logout")}
+
        className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"
 
       >
 
        <LogOut className="w-3 h-3" />
 
-       Logout
+       {withEl("Logout")}
 
       </button>
 
@@ -664,7 +678,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
-       title="Notifications"
+       title={navTitle("Alerts", "/notifications")}
 
        className="p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 

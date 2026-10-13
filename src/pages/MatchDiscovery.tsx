@@ -44,7 +44,18 @@ import { UserProfile } from '../types';
 
 import { cn } from '../lib/utils';
 
+import { readSaved, removeSaved, saveProfile } from '../lib/localLists';
+
+const DEMO_MATCHES = [
+ { uid: 'demo-sarah', fullName: 'Sarah Chen', headline: 'Product lead', bio: 'Building fintech tools.', location: 'NYC', stage: 'Pre-seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'Fintech', skills: ['React'] },
+ { uid: 'demo-alex', fullName: 'Alex Rivera', headline: 'Engineer', bio: 'Ships product with small teams.', location: 'SF', stage: 'Seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'AI', skills: ['TypeScript'] },
+ { uid: 'demo-marcus', fullName: 'Marcus Thorne', headline: 'Operator', bio: 'Looks for a technical co-founder.', location: 'London', stage: 'Idea', role: 'CO_FOUNDER_CANDIDATE', commitment: 'Part-time', industry: 'SaaS', skills: ['Sales'] },
+] as UserProfile[];
+
 import { useAuth } from '../App';
+
+import { explainMatch } from '../lib/matchReason';
+import { rememberPerson } from '../lib/people';
 
 import PageShell from '../components/ui/PageShell';
 
@@ -62,7 +73,7 @@ const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
 export default function MatchDiscovery() {
 
- const { user: currentUser } = useAuth();
+ const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
 
  const navigate = useNavigate();
 
@@ -77,6 +88,8 @@ export default function MatchDiscovery() {
  const [searchQuery, setSearchQuery] = useState('');
 
  const [showFilters, setShowFilters] = useState(false);
+
+ const [savedIds, setSavedIds] = useState<string[]>(() => readSaved().map((item) => item.id));
 
  const [filters, setFilters] = useState({
 
@@ -122,6 +135,36 @@ export default function MatchDiscovery() {
 
 
 
+ const handleSave = (e: React.MouseEvent, profile: UserProfile) => {
+
+  e.stopPropagation();
+
+  const id = profile.uid;
+
+  if (savedIds.includes(id)) removeSaved(id);
+
+  else saveProfile({
+
+   id,
+
+   fullName: profile.fullName,
+
+   role: profile.role,
+
+   industry: profile.industry || '',
+
+   location: profile.location || '',
+
+   note: profile.headline || '',
+
+  });
+
+  setSavedIds(readSaved().map((item) => item.id));
+
+ };
+
+
+
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
 
   e.stopPropagation();
@@ -144,7 +187,9 @@ export default function MatchDiscovery() {
 
   const fetchProfiles = async () => {
 
-   setLoading(true);
+   if (isDemoMode) setProfiles(DEMO_MATCHES);
+
+   setLoading(!isDemoMode);
 
    try {
 
@@ -168,7 +213,8 @@ export default function MatchDiscovery() {
 
     
 
-    setProfiles(fetchedProfiles);
+    if (fetchedProfiles.length > 0) setProfiles(fetchedProfiles);
+    else if (isDemoMode) setProfiles(DEMO_MATCHES);
 
    } catch (error) {
 
@@ -186,7 +232,7 @@ export default function MatchDiscovery() {
 
   fetchProfiles();
 
- }, [currentUser]);
+ }, [currentUser, isDemoMode]);
 
 
 
@@ -207,6 +253,12 @@ export default function MatchDiscovery() {
   return matchesSearch && matchesStage && matchesRole && matchesCommitment;
 
  });
+
+
+
+ const viewerSkills = viewerProfile?.skills;
+
+ const viewerIndustry = viewerProfile?.industry ?? (viewerProfile as { profile?: { industry?: string | string[] } } | null)?.profile?.industry;
 
 
 
@@ -396,7 +448,11 @@ export default function MatchDiscovery() {
 
     ) : filteredProfiles.length > 0 ? (
 
-     filteredProfiles.map((profile, idx) => (
+     filteredProfiles.map((profile, idx) => {
+
+      const explained = explainMatch(viewerSkills, viewerIndustry, profile.skills, profile.industry);
+
+      return (
 
       <motion.div 
 
@@ -408,7 +464,7 @@ export default function MatchDiscovery() {
 
        transition={{ delay: idx * 0.04 }}
 
-       onClick={() => navigate(`/profile/${profile.uid}`)}
+       onClick={() => { rememberPerson({ id: profile.uid, fullName: profile.fullName, headline: profile.headline, location: profile.location, role: profile.role, industry: profile.industry || '', bio: profile.bio }); navigate(`/profile/${profile.uid}`); }}
 
        className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 hover:shadow-md transition-all group cursor-pointer"
 
@@ -440,11 +496,13 @@ export default function MatchDiscovery() {
 
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
 
+          {explained.reasonPhrase && <p className="text-xs text-stone-400">{explained.reasonPhrase}</p>}
+
          </div>
 
         </div>
 
-        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">92%</span>
+        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.pct == null ? '—' : `${explained.pct}%`}</span>
 
        </div>
 
@@ -506,11 +564,27 @@ export default function MatchDiscovery() {
 
         </button>
 
+        <button
+
+         type="button"
+
+         onClick={(e) => handleSave(e, profile)}
+
+         className="p-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
+
+        >
+
+         <Star className={cn('w-3.5 h-3.5', savedIds.includes(profile.uid) && 'fill-current text-amber-500')} />
+
+        </button>
+
        </div>
 
       </motion.div>
 
-     ))
+      );
+
+     })
 
     ) : (
 

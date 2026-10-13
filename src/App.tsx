@@ -26,6 +26,8 @@ import OfflineBanner from './components/OfflineBanner';
 
 import { ToastProvider } from './context/ToastContext';
 
+import { LanguageProvider } from './lib/language';
+
 import { TenantProvider } from './context/TenantContext';
 import { MessagingProvider } from './context/MessagingContext';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -517,6 +519,8 @@ export default function App() {
 
      <ToastProvider>
 
+     <LanguageProvider>
+
       <AuthContext.Provider value={{ 
 
         user: isDemoMode ? demoUser : user, 
@@ -840,6 +844,8 @@ export default function App() {
         </Router>
 
       </AuthContext.Provider>
+
+     </LanguageProvider>
 
      </ToastProvider>
 
