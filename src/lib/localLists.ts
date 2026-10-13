@@ -12,6 +12,11 @@ export type SavedProfile = {
 const SAVED_KEY = 'cfb.savedProfiles';
 const REGISTERED_KEY = 'cfb.registeredEvents';
 const BOOKMARKED_KEY = 'cfb.bookmarkedEvents';
+const FILTER_KEY = 'cfb.discoveryFilters';
+const WATCH_KEY = 'cfb.investorWatch';
+const FOLLOW_KEY = 'cfb.follows';
+const REQUEST_KEY = 'cfb.connectionRequests';
+const TRACKED_KEY = 'cfb.trackedApplications';
 
 const SEED: SavedProfile[] = [
   { id: 's1', fullName: 'Mia Kovacs', role: 'FOUNDER', industry: 'EdTech', location: 'Vienna', note: 'Potential co-founder for B2B pivot' },
@@ -67,3 +72,71 @@ export const eventListKeys = {
   registered: REGISTERED_KEY,
   bookmarked: BOOKMARKED_KEY,
 };
+
+export const listKeys = {
+  watch: WATCH_KEY,
+  follow: FOLLOW_KEY,
+};
+
+export type DiscoveryFilters = {
+  q: string;
+  skills: string[];
+  industries: string[];
+  stages: string[];
+  locations: string[];
+};
+
+const emptyFilters = (): DiscoveryFilters => ({ q: '', skills: [], industries: [], stages: [], locations: [] });
+
+function asStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+}
+
+export function readDiscoveryFilters(): DiscoveryFilters {
+  const stored = readJson<Partial<DiscoveryFilters> | null>(FILTER_KEY, null);
+  if (!stored) return emptyFilters();
+  return {
+    q: typeof stored.q === 'string' ? stored.q : '',
+    skills: asStrings(stored.skills),
+    industries: asStrings(stored.industries),
+    stages: asStrings(stored.stages),
+    locations: asStrings(stored.locations),
+  };
+}
+
+export function writeDiscoveryFilters(filters: DiscoveryFilters) {
+  localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+}
+
+export type ConnectionRequest = SavedProfile & { status: string };
+
+export function readRequests(): ConnectionRequest[] {
+  const stored = readJson<ConnectionRequest[] | null>(REQUEST_KEY, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function saveRequest(person: ConnectionRequest): ConnectionRequest[] {
+  const next = [person, ...readRequests().filter((item) => item.id !== person.id)];
+  localStorage.setItem(REQUEST_KEY, JSON.stringify(next));
+  return next;
+}
+
+export type TrackedApplication = {
+  id: number;
+  program: string;
+  type: string;
+  status: string;
+  deadline: string;
+  decision: string;
+  match: number;
+  note: string;
+};
+
+export function readTracked(): TrackedApplication[] {
+  const stored = readJson<TrackedApplication[] | null>(TRACKED_KEY, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function writeTracked(items: TrackedApplication[]) {
+  localStorage.setItem(TRACKED_KEY, JSON.stringify(items));
+}

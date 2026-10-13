@@ -111,6 +111,7 @@ import PageShell from "../components/ui/PageShell";
 import { User, Startup, FounderStage } from "../types";
 
 import { cn } from "../lib/utils";
+import { readTracked, writeTracked, type TrackedApplication } from "../lib/localLists";
 
 
 
@@ -400,7 +401,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
 
 
- const applications = [
+ const starterApplications: TrackedApplication[] = [
 
   { id: 1, program: "Y Combinator W27", type: "Accelerator", status: "submitted", deadline: "Jan 15, 2027", decision: "Mar 2027", match: 91, note: "Strong product-market fit narrative. Weakness: team completeness." },
 
@@ -413,6 +414,10 @@ export default function FounderTools({ user }: FounderToolsProps) {
   { id: 5, program: "Sequoia Arc", type: "Program", status: "draft", deadline: "May 30, 2026", decision: "Jul 2026", match: 82, note: "Requires product demo video and 1-pager." },
 
  ];
+
+ const [applications, setApplications] = useState<TrackedApplication[]>(() => [...readTracked(), ...starterApplications]);
+
+ const [trackingName, setTrackingName] = useState<string | null>(null);
 
 
 
@@ -1800,7 +1805,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
       {[
 
-       { label: "Total Applied", value: "5", sub: "Programs", color: "text-stone-900" },
+       { label: "Total Applied", value: String(applications.length), sub: "Programs", color: "text-stone-900" },
 
        { label: "In Review", value: "1", sub: "active", color: "text-amber-600" },
 
@@ -1830,7 +1835,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
      <div className="space-y-2">
 
-      {applications.map((app) => {
+      {applications.map((app, index) => {
 
        const statusConfig = {
 
@@ -1856,7 +1861,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
          animate={{ opacity: 1, y: 0 }}
 
-         transition={{ delay: app.id * 0.04 }}
+         transition={{ delay: index * 0.04 }}
 
         >
 
@@ -1940,13 +1945,27 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
      {/* Add New CTA */}
 
-     <button onClick={() => showToast('Application tracker — add your program details')} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-600 flex items-center justify-center gap-2 text-sm font-medium group">
+     {trackingName === null ? (
 
-      <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+      <button onClick={() => setTrackingName('')} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-600 flex items-center justify-center gap-2 text-sm font-medium group">
 
-      Track New Application
+       <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
 
-     </button>
+       Track New Application
+
+      </button>
+
+     ) : (
+
+      <form onSubmit={(e) => { e.preventDefault(); const raw = new FormData(e.currentTarget).get('program'); const program = typeof raw === 'string' ? raw.trim() : ''; if (!program) return; const item: TrackedApplication = { id: Date.now(), program, type: 'Program', status: 'draft', deadline: '—', decision: '—', match: 0, note: '' }; const tracked = [item, ...readTracked()]; writeTracked(tracked); setApplications([...tracked, ...starterApplications]); setTrackingName(null); }} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 flex items-center gap-2">
+
+       <input name="program" value={trackingName} onChange={(e) => setTrackingName(e.target.value)} placeholder="Program name" className="flex-1 bg-transparent text-sm text-stone-900 outline-none" autoFocus />
+
+       <button type="submit" className="text-sm font-medium text-stone-900">Save</button>
+
+      </form>
+
+     )}
 
     </div>
 

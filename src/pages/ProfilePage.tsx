@@ -99,6 +99,7 @@ import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, whe
 import { auth, db } from '../firebase';
 
 import { cn } from '../lib/utils';
+import { listKeys, readIds, saveRequest, toggleId } from '../lib/localLists';
 
 import { useAuth } from '../App';
 
@@ -268,6 +269,38 @@ const MOCK_READINESS: ReadinessScore = {
  updatedAt: new Date().toISOString(),
 };
 
+const knownPeople: Record<string, { fullName: string; location: string; headline: string; industry: string; role: string }> = {
+ u1: { fullName: 'Sarah Chen', location: 'NYC', headline: 'FinTech mentor', industry: 'FinTech', role: 'Mentor' },
+ u2: { fullName: 'Alex Rivera', location: 'SF', headline: 'AI founder', industry: 'AI', role: 'Founder' },
+ u3: { fullName: 'James Wilson', location: 'London', headline: 'SaaS advisor', industry: 'SaaS', role: 'Advisor' },
+ u4: { fullName: 'Elena Rodriguez', location: 'Berlin', headline: 'CleanTech candidate', industry: 'CleanTech', role: 'Co-Founder Candidate' },
+};
+
+function fallbackProfile(profileId: string): UserProfile {
+ const person = knownPeople[profileId] ?? { fullName: 'Founder', location: '', headline: 'Founder', industry: '', role: 'Founder' };
+ return {
+  id: profileId,
+  uid: profileId,
+  fullName: person.fullName,
+  email: '',
+  roles: [],
+  profileStatus: 'Published',
+  verificationStatus: 'Unverified',
+  profileCompletionScore: 40,
+  accountStatus: 'Active',
+  onboardingCompleted: true,
+  createdAt: '',
+  updatedAt: '',
+  headline: person.headline,
+  bio: '',
+  location: person.location,
+  stage: '',
+  role: person.role,
+  commitment: '',
+  industry: person.industry,
+ } as UserProfile;
+}
+
 export default function ProfilePage() {
 
  const { id } = useParams();
@@ -299,6 +332,8 @@ export default function ProfilePage() {
 
 
  const isOwnProfile = !id || id === currentUser?.uid;
+
+ const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
 
  const profileId = id || currentUser?.uid;
 
@@ -414,6 +449,8 @@ export default function ProfilePage() {
 
    setLoading(true);
 
+   let resolved = false;
+
    try {
 
     const docRef = doc(db, 'profiles', profileId);
@@ -432,13 +469,19 @@ export default function ProfilePage() {
 
      } as UserProfile);
 
+     resolved = true;
+
     } else if (isOwnProfile) {
 
      navigate('/onboarding');
 
+     resolved = true;
+
     } else {
 
-     setError('Profile not found');
+     setProfile(fallbackProfile(profileId));
+
+     resolved = true;
 
     }
 
@@ -474,9 +517,11 @@ export default function ProfilePage() {
 
     // Don't fail the whole page if endorsements fail
 
-    if (!profile) {
+    if (!resolved) {
 
-     handleFirestoreError(err, OperationType.GET, `profiles/${profileId}`);
+     if (!isOwnProfile && profileId) setProfile(fallbackProfile(profileId));
+
+     else handleFirestoreError(err, OperationType.GET, `profiles/${profileId}`);
 
     }
 
@@ -830,7 +875,7 @@ export default function ProfilePage() {
 
          <h1 className="text-lg font-medium text-stone-900 tracking-tight">
 
-          {currentUser?.displayName || 'Founder'}
+          {isOwnProfile ? (currentUser?.displayName || 'Founder') : (profile.fullName || 'Founder')}
 
          </h1>
 
@@ -900,7 +945,7 @@ export default function ProfilePage() {
 
           <>
 
-           <button className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md">
+           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md">
 
             <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
 
@@ -908,9 +953,15 @@ export default function ProfilePage() {
 
            </button>
 
-           <button className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
 
             <MessageSquare className="w-5 h-5" />
+
+           </button>
+
+           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+
+            <Star className={cn('w-5 h-5', following && 'fill-current')} />
 
            </button>
 
@@ -918,7 +969,7 @@ export default function ProfilePage() {
 
          )}
 
-         <button className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+         <button type="button" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }} className="p-3 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
 
           <Share2 className="w-5 h-5" />
 

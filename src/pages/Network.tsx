@@ -72,7 +72,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { useNavigate } from "react-router-dom";
 
-import { readSaved, removeSaved, type SavedProfile } from "../lib/localLists";
+import { readRequests, readSaved, removeSaved, type ConnectionRequest, type SavedProfile } from "../lib/localLists";
 
 import Card from "../components/ui/Card";
 
@@ -102,6 +102,10 @@ export default function Network({ user }: NetworkProps) {
 
  const [saved, setSaved] = useState<SavedProfile[]>(() => readSaved());
 
+ const [requests] = useState<ConnectionRequest[]>(() => readRequests());
+
+ const [networkQuery, setNetworkQuery] = useState('');
+
  const [picked, setPicked] = useState<string[]>([]);
 
  const [compared, setCompared] = useState(false);
@@ -119,6 +123,10 @@ export default function Network({ user }: NetworkProps) {
   { id: "u4", fullName: "Elena Rodriguez", role: UserRole.CO_FOUNDER_CANDIDATE, industry: "CleanTech", status: "Connected", location: "Berlin" }
 
  ];
+
+ const visibleConnections = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))].filter((conn) =>
+  conn.fullName.toLowerCase().includes(networkQuery.trim().toLowerCase())
+ );
 
 
 
@@ -202,6 +210,10 @@ export default function Network({ user }: NetworkProps) {
 
         placeholder="Search network..."
 
+        value={networkQuery}
+
+        onChange={(e) => setNetworkQuery(e.target.value)}
+
         className="w-full bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-300 transition-all"
 
        />
@@ -214,7 +226,7 @@ export default function Network({ user }: NetworkProps) {
 
       </Button>
 
-      <span className="text-sm text-stone-400 ml-auto">{mockConnections.length} connections</span>
+      <span className="text-sm text-stone-400 ml-auto">{visibleConnections.length} connections</span>
 
      </div>
 
@@ -222,7 +234,7 @@ export default function Network({ user }: NetworkProps) {
 
      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
-      {mockConnections.map((conn, i) => (
+      {visibleConnections.map((conn, i) => (
 
        <motion.div
 

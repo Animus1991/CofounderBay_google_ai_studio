@@ -102,6 +102,7 @@ import { User, FundraisingTracker } from "../types";
 
 import { cn } from "../lib/utils";
 import { bothText } from "../lib/labels";
+import { listKeys, readIds, toggleId } from "../lib/localLists";
 
 
 
@@ -141,7 +142,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
 
- const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(new Set());
+ const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(() => new Set(readIds(listKeys.watch)));
 
  const [selectedMeetingType, setSelectedMeetingType] = useState('Video Call');
 
@@ -1303,7 +1304,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-start justify-between">
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
 
            <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center text-stone-500 group-hover:bg-stone-900 group-hover:text-white transition-all shrink-0">
 
@@ -1327,7 +1328,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           </div>
 
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-stone-300 hover:text-amber-500 shrink-0" onClick={() => setFavoriteInvestors(prev => { const n = new Set(prev); if (n.has(inv.id)) n.delete(inv.id); else n.add(inv.id); return n; })}>
+          <Button variant="ghost" size="icon" aria-label="Watch" title="Watch" className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => setFavoriteInvestors(new Set(toggleId(listKeys.watch, inv.id)))}>
 
            <Star className="w-3.5 h-3.5" fill={favoriteInvestors.has(inv.id) ? 'currentColor' : 'none'} />
 

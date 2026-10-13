@@ -82,6 +82,8 @@ import { User } from "../types";
 
 import { useAuth } from "../App";
 
+import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
+
 import { cn } from "../lib/utils";
 
 import { explainMatch } from "../lib/matchReason";
@@ -110,7 +112,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
 
- const [searchQuery, setSearchQuery] = useState("");
+ const remembered = readDiscoveryFilters();
+
+ const [searchQuery, setSearchQuery] = useState(remembered.q);
 
  const navigate = useNavigate();
 
@@ -122,13 +126,17 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
- const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+ const [selectedSkills, setSelectedSkills] = useState<string[]>(remembered.skills);
 
- const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+ const [selectedIndustries, setSelectedIndustries] = useState<string[]>(remembered.industries);
 
- const [selectedStages, setSelectedStages] = useState<string[]>([]);
+ const [selectedStages, setSelectedStages] = useState<string[]>(remembered.stages);
 
- const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+ const [selectedLocations, setSelectedLocations] = useState<string[]>(remembered.locations);
+
+ useEffect(() => {
+  writeDiscoveryFilters({ q: searchQuery, skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations });
+ }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
 
  const [users, setUsers] = useState<any[]>([]);
 
@@ -658,13 +666,13 @@ export default function Discovery({ user }: DiscoveryProps) {
 
         <div className="pt-12 border-t border-stone-100 flex gap-4">
 
-         <Button className="flex-1 rounded-2xl h-16 bg-stone-900 text-white font-medium text-base tracking-wider">
+         <Button onClick={() => setIsFilterOpen(false)} className="flex-1 rounded-2xl h-16 bg-stone-900 text-white font-medium text-base tracking-wider">
 
           Apply Filters
 
          </Button>
 
-         <Button variant="outline" className="flex-1 rounded-2xl h-16 border-stone-200 text-stone-500 font-medium text-base tracking-wider">
+         <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="flex-1 rounded-2xl h-16 border-stone-200 text-stone-500 font-medium text-base tracking-wider">
 
           Reset
 
@@ -981,7 +989,7 @@ export default function Discovery({ user }: DiscoveryProps) {
          <Search className="w-8 h-8 text-stone-300 mb-2" />
 
          <p className="text-sm text-stone-400">No matches found for your criteria · Καμία αντιστοίχιση με αυτά τα κριτήρια</p>
-         <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="mt-2 text-xs font-medium text-stone-900 hover:underline">Clear filters · Καθαρισμός φίλτρων</button>
+         <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="mt-2 text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
 
         </div>
 

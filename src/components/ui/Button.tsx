@@ -24,6 +24,8 @@ interface ButtonProps {
 
  title?: string;
 
+ "aria-label"?: string;
+
 }
 
 
