@@ -102,7 +102,7 @@ import { User, FundraisingTracker } from "../types";
 
 import { cn } from "../lib/utils";
 import { bothText } from "../lib/labels";
-import { listKeys, readIds, toggleId } from "../lib/localLists";
+import { addRoomFile, addSession, listKeys, readIds, readRoomFiles, toggleId, trackApplication, type RoomFile } from "../lib/localLists";
 
 
 
@@ -145,6 +145,38 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(() => new Set(readIds(listKeys.watch)));
 
  const [selectedMeetingType, setSelectedMeetingType] = useState('Video Call');
+
+ const [meetingInvestor, setMeetingInvestor] = useState('inv_1');
+
+ const [meetingWhen, setMeetingWhen] = useState('');
+
+ const [programType, setProgramType] = useState('All');
+
+ const [opportunityType, setOpportunityType] = useState('All');
+
+ const roomFileRef = useRef<HTMLInputElement>(null);
+
+ const seedRoomFiles: RoomFile[] = [
+
+  { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
+
+  { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
+
+  { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
+
+  { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
+
+ ];
+
+ const [roomFiles, setRoomFiles] = useState<RoomFile[]>(() => {
+
+  const extra = readRoomFiles();
+
+  const names = new Set(extra.map((file) => file.name));
+
+  return [...extra, ...seedRoomFiles.filter((file) => !names.has(file.name))];
+
+ });
 
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
 
@@ -400,7 +432,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
     {/* Tab Bar */}
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {(["tracker", "investors", "programs", "opportunities"] as const).map((tab) => (
 
@@ -1506,9 +1538,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('There is no way to narrow programs yet. Every program is shown. · Δεν υπάρχει ακόμη τρόπος να στενέψουν τα προγράμματα. Φαίνονται όλα.')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockPrograms.map((item) => item.type)))]; const index = types.indexOf(programType); setProgramType(types[(index + 1) % types.length] ?? 'All'); }}>
 
-        <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {programType === 'All' ? 'Filter' : programType}
 
        </Button>
 
@@ -1519,7 +1551,7 @@ export default function Fundraising({ user }: FundraisingProps) {
       {/* Programs List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-       {mockPrograms.map((p) => {
+       {mockPrograms.filter((p) => programType === 'All' || p.type === programType).map((p) => {
 
         const daysLeft = Math.max(0, Math.round((new Date(p.deadline).getTime() - Date.now()) / 86400000));
 
@@ -1617,7 +1649,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
             <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${p.title} details`)}>Details</Button>
 
-            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => showToast(`Applying to ${p.title}...`)}>Apply</Button>
+            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); showToast(`Applying to ${p.title}...`); }}>Apply</Button>
 
            </div>
 
@@ -1643,7 +1675,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      <div className="space-y-4">
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
        <div>
 
@@ -1653,9 +1685,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('There is no way to narrow opportunities yet. Every opportunity is shown. · Δεν υπάρχει ακόμη τρόπος να στενέψουν οι ευκαιρίες. Φαίνονται όλες.')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockOpportunities.map((item) => item.type)))]; const index = types.indexOf(opportunityType); setOpportunityType(types[(index + 1) % types.length] ?? 'All'); }}>
 
-        <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {opportunityType === 'All' ? 'Filter' : opportunityType}
 
        </Button>
 
@@ -1665,7 +1697,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
       {/* Summary stats */}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
        {[
 
@@ -1705,7 +1737,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
       <div className="space-y-2">
 
-       {mockOpportunities.map((opp) => (
+       {mockOpportunities.filter((opp) => opportunityType === 'All' || opp.type === opportunityType).map((opp) => (
 
         <div key={opp.id} className="group bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all">
 
@@ -1775,7 +1807,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${opp.title} details`)}>Learn More</Button>
 
-          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => showToast(`Applying to ${opp.title}...`)}>Apply Now</Button>
+          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); showToast(`Applying to ${opp.title}...`); }}>Apply Now</Button>
 
          </div>
 
@@ -1835,7 +1867,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <label className="text-xs font-semibold text-stone-500 tracking-wider">Investor</label>
 
-         <select className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
+         <select value={meetingInvestor} onChange={(e) => setMeetingInvestor(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
 
           {mockInvestors.map(inv => <option key={inv.id} value={inv.id}>{inv.name}</option>)}
 
@@ -1857,7 +1889,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <label className="text-xs font-semibold text-stone-500 tracking-wider">Time</label>
 
-          <input type="time" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
+          <input type="time" value={meetingWhen} onChange={(e) => setMeetingWhen(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
 
          </div>
 
@@ -1899,7 +1931,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <Button variant="outline" className="flex-1 h-8 text-sm" onClick={() => setShowMeetingScheduler(false)}>Cancel</Button>
 
-        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { setShowMeetingScheduler(false); showToast('Meeting scheduled!'); }}>Schedule Meeting</Button>
+        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = mockInvestors.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast('Meeting scheduled!'); }}>Schedule Meeting</Button>
 
        </div>
 
@@ -1915,9 +1947,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
     {showDocumentRoom && (
 
-     <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+     <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3 sm:p-4">
 
-      <div className="bg-white rounded-2xl w-full max-w-2xl p-5 space-y-4 shadow-sm">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[min(92dvh,100%)] overflow-y-auto p-4 sm:p-5 space-y-4 shadow-sm">
 
        <div className="flex items-center justify-between">
 
@@ -1931,9 +1963,11 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <button 
 
+         type="button"
+         aria-label="Close data room"
          onClick={() => setShowDocumentRoom(false)}
 
-         className="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors"
+         className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
 
         >
 
@@ -1945,7 +1979,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        
 
-       <div className="grid grid-cols-4 gap-2 p-2 bg-stone-50 rounded-xl">
+       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-stone-50 rounded-xl">
 
         {documentFolders.map(folder => (
 
@@ -1997,27 +2031,19 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          </span>
 
-         <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => showToast('Upload — select files to upload')}>
+         <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
 
           <Plus className="w-3 h-3 mr-1" /> Upload
 
          </Button>
 
+         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10) }); const names = new Set(next.map((item) => item.name)); setRoomFiles([...next, ...seedRoomFiles.filter((item) => !names.has(item.name))]); e.target.value = ''; }} />
+
         </div>
 
         <div className="space-y-1">
 
-         {[
-
-          { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
-
-          { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
-
-          { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
-
-          { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
-
-         ].map(file => (
+         {roomFiles.map(file => (
 
           <div key={file.name} className="flex items-center justify-between p-2 hover:bg-stone-50 rounded-lg transition-colors">
 

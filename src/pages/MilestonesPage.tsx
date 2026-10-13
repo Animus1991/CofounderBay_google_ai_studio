@@ -768,11 +768,11 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
      {view === 'list' && (
 
-      <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-100 overflow-x-auto">
 
        {/* Table Header */}
 
-       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold text-stone-400 tracking-wider">
+       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold text-stone-400 tracking-wider min-w-[720px]">
 
         <div className="col-span-4">Milestone</div>
 
@@ -796,7 +796,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
          <motion.div key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
 
-          className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group">
+          className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group min-w-[720px]">
 
           <div className="col-span-4 flex items-center gap-3 min-w-0">
 

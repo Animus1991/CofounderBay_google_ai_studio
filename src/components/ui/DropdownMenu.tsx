@@ -45,7 +45,7 @@ export default function DropdownMenu({ trigger, items, align = 'right', classNam
       exit={{ opacity: 0, scale: 0.95, y: 4 }}
       transition={{ duration: 0.15 }}
       className={cn(
-       "absolute top-full mt-2 min-w-[180px] bg-white rounded-xl shadow-sm border border-stone-100 py-1.5 z-50",
+       "absolute top-full mt-2 min-w-[180px] max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-sm border border-stone-100 py-1.5 z-50",
        align === 'right' ? 'right-0' : 'left-0'
       )}
      >
@@ -57,7 +57,7 @@ export default function DropdownMenu({ trigger, items, align = 'right', classNam
          key={item.id}
          onClick={() => { item.onClick(); setOpen(false); }}
          className={cn(
-          "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors",
+          "w-full flex items-center gap-3 min-h-11 px-4 py-2.5 text-sm font-medium transition-colors text-left",
           item.danger
            ? "text-red-500 hover:bg-red-50"
            : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"

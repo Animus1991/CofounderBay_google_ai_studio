@@ -98,7 +98,7 @@ export default function Perks() {
 
    <div className="space-y-6">
 
-    <div className="flex items-center gap-2 bg-stone-50 p-1 rounded-xl border border-stone-100 overflow-x-auto no-scrollbar w-fit">
+    <div className="scroll-tabs gap-2 bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {categories.map((cat) => (
 

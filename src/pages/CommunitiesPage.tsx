@@ -152,7 +152,7 @@ export default function CommunitiesPage() {
 
      onClick={() => navigate('/dashboard')}
 
-     className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all"
+     className="flex items-center gap-1.5 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
 
     >
 
@@ -172,7 +172,7 @@ export default function CommunitiesPage() {
 
    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-4 border-b border-stone-100">
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {['all', 'joined', 'trending', 'new'].map((tab) => (
 

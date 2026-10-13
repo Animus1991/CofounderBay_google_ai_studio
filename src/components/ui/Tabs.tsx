@@ -20,7 +20,7 @@ interface TabsProps {
 export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', size = 'md', className }: TabsProps) {
  if (variant === 'segment') {
   return (
-   <div className={cn("inline-flex bg-stone-100 rounded-xl p-1 gap-1", className)}>
+   <div className={cn("scroll-tabs bg-stone-100 rounded-xl p-1", className)}>
     {tabs.map(tab => (
      <button
       key={tab.id}
@@ -50,7 +50,7 @@ export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', siz
 
  if (variant === 'underline') {
   return (
-   <div className={cn("flex border-b border-stone-200 gap-1", className)}>
+   <div className={cn("scroll-tabs border-b border-stone-200", className)}>
     {tabs.map(tab => (
      <button
       key={tab.id}
@@ -86,7 +86,7 @@ export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', siz
      key={tab.id}
      onClick={() => onChange(tab.id)}
      className={cn(
-      "px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2",
+      "min-h-11 px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2",
       size === 'sm' ? 'px-3 py-1.5 text-xs' : '',
       tab.id === activeTab
        ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"

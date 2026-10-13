@@ -124,7 +124,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100/80 rounded-xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-xl">
 
     {[
 

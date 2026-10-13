@@ -182,13 +182,13 @@ export default function Events({ user }: EventsProps) {
 
    actions={
 
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
 
      <button 
 
       onClick={() => navigate('/dashboard')}
 
-      className="flex items-center gap-1.5 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
+      className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
 
      >
 
@@ -200,7 +200,7 @@ export default function Events({ user }: EventsProps) {
 
       onClick={() => navigate('/dashboard')}
 
-      className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
+      className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
 
      >
 
@@ -222,7 +222,7 @@ export default function Events({ user }: EventsProps) {
 
     <div className="lg:col-span-8 space-y-4">
 
-     <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
       {['Upcoming', 'My Events', 'Past'].map((tab) => (
 

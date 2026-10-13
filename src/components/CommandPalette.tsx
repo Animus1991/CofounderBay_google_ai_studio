@@ -187,7 +187,7 @@ export default function CommandPalette() {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: -20 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-[15%] left-1/2 -translate-x-1/2 w-full max-w-lg bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden z-[201]"
+      className="fixed top-[10%] sm:top-[15%] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-lg max-h-[min(80dvh,100%)] bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden z-[201] flex flex-col"
      >
       {/* Search Input */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-100">
@@ -227,7 +227,7 @@ export default function CommandPalette() {
              title={item.description}
              onMouseEnter={() => setSelectedIndex(idx)}
              className={cn(
-              "w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors",
+              "w-full flex items-center gap-3 min-h-11 px-5 py-2.5 text-left transition-colors",
               idx === selectedIndex ? "bg-stone-50 text-stone-900" : "text-stone-600 hover:bg-stone-50/50"
              )}
             >

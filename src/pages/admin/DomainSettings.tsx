@@ -428,7 +428,7 @@ export default function DomainSettings() {
 
           onClick={() => setDomainType('Subdomain')}
 
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${domainType === 'Subdomain' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+          className={`flex-1 min-h-11 py-2 text-sm font-medium rounded-md transition-all ${domainType === 'Subdomain' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
 
          >
 
@@ -440,7 +440,7 @@ export default function DomainSettings() {
 
           onClick={() => setDomainType('Custom')}
 
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${domainType === 'Custom' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+          className={`flex-1 min-h-11 py-2 text-sm font-medium rounded-md transition-all ${domainType === 'Custom' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
 
          >
 

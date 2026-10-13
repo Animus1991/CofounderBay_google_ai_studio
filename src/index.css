@@ -319,7 +319,7 @@
 
   .input-minimal {
 
-    @apply w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
+    @apply w-full min-h-11 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
 
     @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5;
 
@@ -331,6 +331,31 @@
 
     @apply bg-stone-900/50 border-white/10 focus:border-white/20 focus:ring-white/5 text-stone-100;
 
+  }
+
+  /* Tab strips stay one row. On a phone they scroll instead of widening the page. */
+  .scroll-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  @media (min-width: 1024px) {
+    .scroll-tabs {
+      width: fit-content;
+    }
+  }
+
+  .scroll-tabs > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 2.75rem;
   }
 
 }

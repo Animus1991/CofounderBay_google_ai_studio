@@ -161,7 +161,7 @@ export default function Network({ user }: NetworkProps) {
 
    <div className="space-y-6">
 
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
      {(['connections', 'saved', 'endorsements', 'compare'] as const).map((tab) => (
 

@@ -254,7 +254,7 @@ export default function ChatWidget() {
 
  return (
 
-  <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-4">
+  <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-[9999] flex flex-col items-stretch sm:items-end gap-3">
 
    <AnimatePresence>
 
@@ -268,7 +268,7 @@ export default function ChatWidget() {
 
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
 
-      className="w-[380px] h-[550px] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
+      className="w-full sm:w-[380px] h-[min(550px,70dvh)] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
 
      >
 
@@ -888,7 +888,7 @@ export default function ChatWidget() {
 
      className={cn(
 
-      "w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center transition-all relative overflow-hidden group",
+      "self-end w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center transition-all relative overflow-hidden group",
 
       isOpen && !isMinimized ? "bg-stone-100 text-stone-900" : "bg-stone-900 text-white"
 

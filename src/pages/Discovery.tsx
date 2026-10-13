@@ -787,9 +787,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
    {/* Category Tabs */}
 
-   <div className="flex items-center justify-between border-b border-stone-100 pb-1">
+   <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-1 min-w-0">
 
-    <div className="flex items-center gap-6 overflow-x-auto scrollbar-hide">
+    <div className="scroll-tabs gap-4 sm:gap-6 flex-1 w-auto">
 
      {categories.map((cat) => (
 
@@ -823,17 +823,17 @@ export default function Discovery({ user }: DiscoveryProps) {
 
     </div>
 
-    <div className="hidden md:flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
 
-     <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label="Grid view" onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
 
-      <Grid className="w-3.5 h-3.5" />
+      <Grid className="w-4 h-4" />
 
      </button>
 
-     <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label="List view" onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
 
-      <ListIcon className="w-3.5 h-3.5" />
+      <ListIcon className="w-4 h-4" />
 
      </button>
 

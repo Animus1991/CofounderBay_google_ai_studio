@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
+import { addSession, listKeys, readIds, toggleId } from '../lib/localLists';
+
 import { 
 
  Star, 
@@ -177,6 +179,8 @@ export default function MentorsPage() {
  const [yourAvailability, setYourAvailability] = useState('');
 
  const [requestError, setRequestError] = useState('');
+
+ const [savedMentors, setSavedMentors] = useState(() => new Set(readIds(listKeys.mentors)));
 
  const navigate = useNavigate();
 
@@ -532,7 +536,7 @@ export default function MentorsPage() {
 
           onClick={(e) => { e.stopPropagation(); navigate('/messages'); }}
 
-          className="flex-1 py-2 bg-stone-900 text-white rounded-lg text-xs font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
+          className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-lg text-sm font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
 
          >
 
@@ -542,13 +546,14 @@ export default function MentorsPage() {
 
          <button 
 
-          onClick={(e) => { e.stopPropagation(); }}
+          aria-label={savedMentors.has(mentor.id) ? "Remove saved mentor" : "Save mentor"}
+          onClick={(e) => { e.stopPropagation(); setSavedMentors(new Set(toggleId(listKeys.mentors, mentor.id))); }}
 
-          className="p-2 bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-all border border-stone-100"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-all border border-stone-100"
 
          >
 
-          <Bookmark className="w-3.5 h-3.5" />
+          <Bookmark className={savedMentors.has(mentor.id) ? 'w-3.5 h-3.5 fill-current text-stone-900' : 'w-3.5 h-3.5'} />
 
          </button>
 
@@ -994,7 +999,25 @@ export default function MentorsPage() {
 
           }
 
-          /* Add your logic to submit request here */
+          addSession({
+
+           id: String(Date.now()),
+
+           title: `Mentorship · ${selectedMentor?.name || 'Mentor'}`,
+
+           type: 'Mentorship',
+
+           time: yourAvailability.trim(),
+
+           duration: '45m',
+
+           location: 'Messages',
+
+           participants: [selectedMentor?.name || 'Mentor'],
+
+           priority: 'Medium',
+
+          });
 
           setIsMentorshipModalOpen(false);
 

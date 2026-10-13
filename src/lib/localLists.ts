@@ -17,6 +17,10 @@ const WATCH_KEY = 'cfb.investorWatch';
 const FOLLOW_KEY = 'cfb.follows';
 const REQUEST_KEY = 'cfb.connectionRequests';
 const TRACKED_KEY = 'cfb.trackedApplications';
+const SESSION_KEY = 'cfb.sessions';
+const ROOM_KEY = 'cfb.dataRoom';
+const NOTE_KEY = 'cfb.notificationPrefs';
+const MENTOR_KEY = 'cfb.savedMentors';
 
 const SEED: SavedProfile[] = [
   { id: 's1', fullName: 'Mia Kovacs', role: 'FOUNDER', industry: 'EdTech', location: 'Vienna', note: 'Potential co-founder for B2B pivot' },
@@ -76,6 +80,7 @@ export const eventListKeys = {
 export const listKeys = {
   watch: WATCH_KEY,
   follow: FOLLOW_KEY,
+  mentors: MENTOR_KEY,
 };
 
 export type DiscoveryFilters = {
@@ -139,4 +144,68 @@ export function readTracked(): TrackedApplication[] {
 
 export function writeTracked(items: TrackedApplication[]) {
   localStorage.setItem(TRACKED_KEY, JSON.stringify(items));
+}
+
+export function trackApplication(program: string, type: string): TrackedApplication[] {
+  const item: TrackedApplication = {
+    id: Date.now(),
+    program,
+    type,
+    status: 'draft',
+    deadline: '—',
+    decision: '—',
+    match: 0,
+    note: '',
+  };
+  const next = [item, ...readTracked()];
+  writeTracked(next);
+  return next;
+}
+
+export type StudioSession = {
+  id: string;
+  title: string;
+  type: 'Meeting' | 'Deadline' | 'Event' | 'Mentorship';
+  time: string;
+  duration: string;
+  location: string;
+  participants: string[];
+  priority: 'High' | 'Medium' | 'Low';
+};
+
+export function readSessions(): StudioSession[] {
+  const stored = readJson<StudioSession[] | null>(SESSION_KEY, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function addSession(item: StudioSession): StudioSession[] {
+  const next = [item, ...readSessions().filter((session) => session.id !== item.id)];
+  localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  return next;
+}
+
+export type RoomFile = { name: string; size: string; views: number; updated: string };
+
+export function readRoomFiles(): RoomFile[] {
+  const stored = readJson<RoomFile[] | null>(ROOM_KEY, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function addRoomFile(file: RoomFile): RoomFile[] {
+  const next = [file, ...readRoomFiles().filter((item) => item.name !== file.name)];
+  localStorage.setItem(ROOM_KEY, JSON.stringify(next));
+  return next;
+}
+
+export type NotificationPrefs = { matches: boolean; messages: boolean; community: boolean; news: boolean };
+
+const defaultNotes = (): NotificationPrefs => ({ matches: true, messages: true, community: false, news: false });
+
+export function readNotificationPrefs(): NotificationPrefs {
+  const stored = readJson<Partial<NotificationPrefs> | null>(NOTE_KEY, null);
+  return { ...defaultNotes(), ...(stored ?? {}) };
+}
+
+export function writeNotificationPrefs(prefs: NotificationPrefs) {
+  localStorage.setItem(NOTE_KEY, JSON.stringify(prefs));
 }

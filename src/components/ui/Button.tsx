@@ -70,13 +70,13 @@ export default function Button({
 
  const sizes = {
 
-  sm: "px-3 py-1.5 text-xs font-medium tracking-wider rounded-lg",
+  sm: "min-h-11 px-3 py-2 text-sm font-medium rounded-lg",
 
-  md: "px-4 py-2 text-xs font-medium tracking-wider rounded-lg",
+  md: "min-h-11 px-4 py-2 text-sm font-medium rounded-lg",
 
-  lg: "px-5 py-2.5 text-xs font-medium tracking-wider rounded-xl",
+  lg: "min-h-11 px-5 py-2.5 text-sm font-medium rounded-xl",
 
-  icon: "p-2 rounded-lg",
+  icon: "min-h-11 min-w-11 p-2 rounded-lg",
 
  };
 

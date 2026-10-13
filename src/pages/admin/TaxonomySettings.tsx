@@ -78,7 +78,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
 
 
 
-   <div className="flex gap-1 p-1 bg-stone-100 rounded-xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100 rounded-xl">
 
     <button
 

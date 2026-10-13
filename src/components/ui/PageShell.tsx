@@ -39,16 +39,16 @@ export default function PageShell({
    <div className={cn('mx-auto w-full', maxWidthClass[maxWidth])}>
     {(title || actions) && (
      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-      <div>
+      <div className="min-w-0">
        {title && (
-        <h1 className="text-[14.5px] sm:text-base font-semibold text-stone-900 tracking-tight">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">{title}</h1>
        )}
        {description && (
-        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">{description}</p>
+        <p className="text-sm text-stone-500 mt-1 max-w-2xl">{description}</p>
        )}
       </div>
       {actions && (
-       <div className="flex flex-wrap items-center gap-2">{actions}</div>
+       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">{actions}</div>
       )}
      </div>
     )}
@@ -61,8 +61,8 @@ export default function PageShell({
 // Section heading used within pages
 export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
  return (
-  <div className="flex items-center justify-between mb-3">
-   <h2 className="text-xs font-semibold text-stone-400 tracking-wider">{children}</h2>
+  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+   <h2 className="text-sm font-semibold text-stone-500">{children}</h2>
    {action && <div>{action}</div>}
   </div>
  );

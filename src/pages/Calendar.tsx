@@ -18,6 +18,8 @@ import PageShell from "../components/ui/PageShell";
 
 import { cn } from "../lib/utils";
 
+import { readSessions } from "../lib/localLists";
+
 import { motion } from "framer-motion";
 
 
@@ -54,7 +56,7 @@ export default function Calendar() {
 
 
 
- const events: Event[] = [
+ const starterEvents: Event[] = [
 
   {
 
@@ -134,6 +136,8 @@ export default function Calendar() {
 
  ];
 
+ const events: Event[] = [...readSessions(), ...starterEvents];
+
 
 
  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -196,15 +200,15 @@ export default function Calendar() {
 
         <div className="flex items-center gap-1">
 
-         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50">
+         <Button variant="ghost" size="icon" aria-label="Previous month" className="rounded-lg border border-stone-100 hover:bg-stone-50">
 
-          <ChevronLeft className="w-3.5 h-3.5" />
+          <ChevronLeft className="w-4 h-4" />
 
          </Button>
 
-         <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50">
+         <Button variant="ghost" size="icon" aria-label="Next month" className="rounded-lg border border-stone-100 hover:bg-stone-50">
 
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-4 h-4" />
 
          </Button>
 
@@ -212,7 +216,7 @@ export default function Calendar() {
 
        </div>
 
-       <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 w-fit">
+       <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
 
         {['Month', 'Week', 'Day'].map((v) => (
 
@@ -250,9 +254,10 @@ export default function Calendar() {
 
         {weekDays.map((day) => (
 
-         <div key={day} className="text-center text-xs font-semibold text-stone-400 tracking-wider py-2">
+         <div key={day} className="text-center text-xs font-semibold text-stone-400 py-2">
 
-          {day}
+          <span className="sm:hidden">{day.slice(0, 1)}</span>
+          <span className="hidden sm:inline">{day}</span>
 
          </div>
 
@@ -282,7 +287,7 @@ export default function Calendar() {
 
            className={cn(
 
-            "h-20 lg:h-28 bg-white p-2 transition-all hover:bg-stone-50 cursor-pointer group relative",
+            "min-h-14 h-16 sm:h-20 lg:h-28 bg-white p-1 sm:p-2 transition-all hover:bg-stone-50 cursor-pointer group relative",
 
             !isCurrentMonth && "bg-stone-50/60"
 

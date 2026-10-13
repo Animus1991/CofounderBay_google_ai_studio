@@ -354,7 +354,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100/80 rounded-lg w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-lg">
 
     {[
 

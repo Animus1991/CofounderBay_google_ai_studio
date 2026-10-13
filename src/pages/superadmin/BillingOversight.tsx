@@ -104,7 +104,7 @@ export default function BillingOversight() {
 
    {/* Tabs */}
 
-   <div className="flex gap-1 p-1 bg-stone-100 rounded-2xl w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
 
     {[
 

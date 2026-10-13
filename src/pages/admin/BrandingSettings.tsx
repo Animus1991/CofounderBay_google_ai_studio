@@ -136,7 +136,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
 
 
 
-   <div className="flex gap-1 p-1 bg-stone-100/80 rounded-lg w-fit">
+   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-lg">
 
     <button
 
