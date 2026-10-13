@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
+import { Both } from '../lib/both';
 
 export default function LoginPage() {
  const [email, setEmail] = useState('');
@@ -57,10 +58,8 @@ export default function LoginPage() {
   } catch (err: any) {
    console.error('Google Auth Error:', err);
    // Better error handling for Google Auth issues
-   if (err.code === 'auth/unauthorized-domain') {
-    setError('Domain not authorized. Please add "localhost" to Firebase Console → Authentication → Settings → Authorized domains. Then restart the server.');
-   } else if (err.code === 'auth/operation-not-allowed') {
-    setError('Google Sign-In is not enabled. Enable it in Firebase Console → Authentication → Sign-in method. Or use Demo Mode below.');
+   if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
+    setError('Google sign-in is not available here. Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.');
    } else if (err.code === 'auth/popup-closed-by-user') {
     setError('Sign-in popup was closed. Please try again.');
    } else if (err.code === 'auth/popup-blocked') {
@@ -74,7 +73,7 @@ export default function LoginPage() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
     <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -83,22 +82,22 @@ export default function LoginPage() {
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
     <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
-     Welcome back
+     <Both en="Welcome back" el="Καλώς ήρθατε ξανά" />
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
-     Don't have an account?{' '}
+     <Both en="Don't have an account?" el="Δεν έχετε λογαριασμό;" />{' '}
      <NavLink to="/signup" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
-      Sign up for free
+      <Both en="Sign up for free" el="Εγγραφή δωρεάν" />
      </NavLink>
     </p>
    </div>
 
    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    <div className="bg-white py-8 px-4 shadow-xl shadow-stone-200/50 sm:rounded-2xl sm:px-10 border border-stone-100">
+    <div className="bg-card py-8 px-4 shadow-none sm:rounded-2xl sm:px-10 border border-border">
      <form className="space-y-6" onSubmit={handleEmailLogin}>
       <div>
        <label htmlFor="email" className="block text-sm font-medium text-stone-700">
-        Email address
+        <Both en="Email address" el="Διεύθυνση email" />
        </label>
        <div className="mt-1 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -112,7 +111,7 @@ export default function LoginPage() {
          required
          value={email}
          onChange={(e) => setEmail(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full pl-10 px-3 py-3 border border-border rounded-xl shadow-none bg-card placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-ring sm:text-sm transition-all"
          placeholder="name@company.com"
         />
        </div>
@@ -120,7 +119,7 @@ export default function LoginPage() {
 
       <div>
        <label htmlFor="password" className="block text-sm font-medium text-stone-700">
-        Password
+        <Both en="Password" el="Κωδικός" />
        </label>
        <div className="mt-1 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -134,28 +133,28 @@ export default function LoginPage() {
          required
          value={password}
          onChange={(e) => setPassword(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full pl-10 px-3 py-3 border border-border rounded-xl shadow-none bg-card placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-ring/25 focus:border-ring sm:text-sm transition-all"
          placeholder="••••••••"
         />
        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-       <div className="flex items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+       <div className="flex items-start min-w-0">
         <input
          id="remember-me"
          name="remember-me"
          type="checkbox"
-         className="h-4 w-4 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
+         className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))] border-border rounded"
         />
-        <label htmlFor="remember-me" className="ml-2 block text-sm text-stone-600">
-         Remember me
+        <label htmlFor="remember-me" className="ml-2 block text-sm leading-snug text-muted-foreground">
+         <Both en="Remember me" el="Να με θυμάται" />
         </label>
        </div>
 
-       <div className="text-sm">
-        <a href="#" className="font-medium text-stone-600 hover:text-stone-900 transition-colors">
-         Forgot your password?
+       <div className="text-sm min-w-0 sm:text-right">
+        <a href="#" className="font-medium leading-snug text-muted-foreground hover:text-foreground transition-colors">
+         <Both en="Forgot your password?" el="Ξεχάσατε τον κωδικό;" />
         </a>
        </div>
       </div>
@@ -172,7 +171,7 @@ export default function LoginPage() {
         disabled={loading}
         className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 rounded-[2rem] shadow-sm text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
        >
-        {loading ? 'Logging in...' : 'Sign in'}
+        {loading ? <Both en="Logging in..." el="Σύνδεση..." /> : <Both en="Sign in" el="Είσοδος" />}
         <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
        </button>
       </div>
@@ -184,7 +183,7 @@ export default function LoginPage() {
         <div className="w-full border-t border-stone-200" />
        </div>
        <div className="relative flex justify-center text-sm">
-        <span className="px-2 bg-white text-stone-500">Or continue with</span>
+        <span className="px-2 bg-card text-muted-foreground"><Both en="Or continue with" el="Ή συνεχίστε με" /></span>
        </div>
       </div>
 
@@ -216,10 +215,10 @@ export default function LoginPage() {
         className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border-2 border-dashed border-emerald-300 rounded-[2rem] bg-emerald-50/50 text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
        >
         <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-emerald-600" />
-        Try Demo Mode
+        <Both en="Try Demo Mode" el="Δοκιμή δείγματος" />
        </button>
        <p className="mt-2 text-center text-xs text-stone-400">
-        Skip login and explore with sample data
+        <Both en="Skip login and explore with sample data" el="Χωρίς είσοδο, με δεδομένα δείγματος" />
        </p>
       </div>
      </div>

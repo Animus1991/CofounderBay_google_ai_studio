@@ -1,5 +1,7 @@
 import { Outlet } from 'react-router-dom';
 
+import { Both } from '../lib/both';
+
 import Sidebar from './layout/Sidebar';
 
 import { useAuth } from '../App';
@@ -47,7 +49,7 @@ export default function Layout() {
 
  return (
 
-  <div className="min-h-screen flex bg-stone-50 selection:bg-stone-900 selection:text-white">
+  <div className="min-h-screen flex bg-background selection:bg-primary selection:text-primary-foreground">
 
    {/* Accessibility: lets keyboard users jump straight past the sidebar */}
    <a
@@ -59,9 +61,9 @@ export default function Layout() {
 
    {isDemoMode && (
 
-    <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-xs font-medium tracking-wider py-1.5 px-4 flex items-center justify-center gap-4 z-[80]">
+    <div className="fixed top-0 left-0 right-0 bg-[hsl(33_70%_93%)] text-[hsl(31_37%_22%)] border-b border-[hsl(33_35%_82%)] text-xs font-medium py-1.5 px-4 flex flex-wrap items-center justify-center gap-4 z-[80]">
 
-     <span>Demo Mode Active — No data will be saved</span>
+     <span><Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" /></span>
 
      <button 
 
@@ -71,7 +73,7 @@ export default function Layout() {
 
      >
 
-      Exit Demo
+      <Both en="Exit Demo" el="Έξοδος" />
 
      </button>
 

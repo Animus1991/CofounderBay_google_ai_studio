@@ -80,7 +80,11 @@ import PageShell from "../components/ui/PageShell";
 
 import { User } from "../types";
 
+import { useAuth } from "../App";
+
 import { cn } from "../lib/utils";
+
+import { explainMatch } from "../lib/matchReason";
 
 
 
@@ -97,6 +101,12 @@ type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Event
 
 
 export default function Discovery({ user }: DiscoveryProps) {
+
+ const { profile: authProfile } = useAuth();
+
+ const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
+
+ const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
 
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
 
@@ -416,7 +426,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  return (
 
-  <PageShell title="Discovery" description="Explore founders, communities, opportunities and events in your ecosystem." noPadding={false}>
+  <PageShell title="Discovery · Εξερεύνηση" description="Explore founders, communities, opportunities and events in your ecosystem. · Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις." noPadding={false}>
 
   <div className="space-y-8">
 
@@ -876,7 +886,11 @@ export default function Discovery({ user }: DiscoveryProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-         {filteredUsers.slice(0, 4).map((user, idx) => (
+         {filteredUsers.slice(0, 4).map((user, idx) => {
+
+          const matchPhrase = explainMatch(viewerSkills, viewerIndustry, user.skills, user.profile?.industry).reasonPhrase;
+
+          return (
 
           <motion.div
 
@@ -936,7 +950,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
 
-              <span className="text-xs text-stone-400">Available</span>
+              <span className="text-xs text-stone-400">Available · Διαθέσιμος{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
 
              </div>
 
@@ -954,7 +968,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
           </motion.div>
 
-         ))}
+          );
+
+         })}
 
         </div>
 
