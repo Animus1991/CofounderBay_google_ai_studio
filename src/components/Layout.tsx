@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Outlet } from 'react-router-dom';
 
 import { Both } from '../lib/both';
@@ -26,6 +28,8 @@ export default function Layout() {
  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
 
  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
+
+ const [showDemoHint, setShowDemoHint] = useState(false);
 
 
 
@@ -61,23 +65,37 @@ export default function Layout() {
 
    {isDemoMode && (
 
-    <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-xs font-medium py-1.5 px-4 flex flex-wrap items-center justify-center gap-4 z-[80]">
+    <button
 
-     <span><Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" /></span>
+     type="button"
 
-     <button 
+     onClick={() => toggleDemoMode(false)}
 
-      onClick={() => toggleDemoMode(false)}
+     onMouseEnter={() => setShowDemoHint(true)}
 
-      className="underline hover:opacity-80 transition-opacity"
+     onMouseLeave={() => setShowDemoHint(false)}
 
-     >
+     onFocus={() => setShowDemoHint(true)}
 
-      <Both en="Exit Demo" el="Έξοδος" />
+     onBlur={() => setShowDemoHint(false)}
 
-     </button>
+     className="fixed top-3 right-3 z-[80] rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white"
 
-    </div>
+    >
+
+     <Both en="Exit" el="Έξοδος" />
+
+     {showDemoHint && (
+
+      <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-xs rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
+
+       <Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" />
+
+      </span>
+
+     )}
+
+    </button>
 
    )}
 
@@ -100,7 +118,7 @@ export default function Layout() {
    <main
     id="main-content"
     tabIndex={-1}
-    className={`flex-1 overflow-y-auto min-h-screen outline-none${isDemoMode ? ' pt-8' : ''}`}
+    className="flex-1 overflow-y-auto min-h-screen outline-none"
    >
 
     <Outlet />
