@@ -197,9 +197,27 @@ export function addRoomFile(file: RoomFile): RoomFile[] {
   return next;
 }
 
-export type NotificationPrefs = { matches: boolean; messages: boolean; community: boolean; news: boolean };
+export type NotificationPrefs = {
+  matches: boolean;
+  messages: boolean;
+  community: boolean;
+  news: boolean;
+  events: boolean;
+  mentors: boolean;
+  fundraising: boolean;
+  mentions: boolean;
+};
 
-const defaultNotes = (): NotificationPrefs => ({ matches: true, messages: true, community: false, news: false });
+const defaultNotes = (): NotificationPrefs => ({
+  matches: true,
+  messages: true,
+  community: false,
+  news: false,
+  events: true,
+  mentors: true,
+  fundraising: false,
+  mentions: true,
+});
 
 export function readNotificationPrefs(): NotificationPrefs {
   const stored = readJson<Partial<NotificationPrefs> | null>(NOTE_KEY, null);

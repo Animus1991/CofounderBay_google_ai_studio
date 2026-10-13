@@ -23,24 +23,29 @@ export function getLang(): LangMode {
 
 const nextMode = (mode: LangMode): LangMode => (mode === 'both' ? 'en' : mode === 'en' ? 'el' : 'both');
 
-type LanguageValue = { mode: LangMode; cycle: () => void };
+type LanguageValue = { mode: LangMode; cycle: () => void; setMode: (mode: LangMode) => void };
 
-const LanguageContext = createContext<LanguageValue>({ mode: 'both', cycle: () => {} });
+const LanguageContext = createContext<LanguageValue>({ mode: 'both', cycle: () => {}, setMode: () => {} });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<LangMode>(current);
   current = mode;
 
-  const cycle = () => {
-    setMode((prev) => {
-      const next = nextMode(prev);
-      current = next;
-      try { localStorage.setItem(KEY, next); } catch { /* the choice still applies this visit */ }
-      return next;
-    });
+  const apply = (next: LangMode) => {
+    current = next;
+    try { localStorage.setItem(KEY, next); } catch { /* the choice still applies this visit */ }
+    return next;
   };
 
-  return <LanguageContext.Provider value={{ mode, cycle }}>{children}</LanguageContext.Provider>;
+  const cycle = () => {
+    setMode((prev) => apply(nextMode(prev)));
+  };
+
+  const choose = (next: LangMode) => {
+    setMode(apply(next));
+  };
+
+  return <LanguageContext.Provider value={{ mode, cycle, setMode: choose }}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {
