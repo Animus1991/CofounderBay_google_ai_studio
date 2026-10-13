@@ -64,6 +64,8 @@ import { User, UserRole } from "../../types";
 
 import { cn } from "../../lib/utils";
 
+import { withEl } from "../../lib/labels";
+
 import { useTenant } from "../../context/TenantContext";
 
 import { auth } from "../../firebase";
@@ -304,7 +306,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
 
-       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+       title={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
 
       >
 
@@ -356,6 +358,8 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
       to="/dashboard"
 
+      title={collapsed ? withEl("Dashboard") : undefined}
+
       className={({ isActive }) =>
 
        cn(
@@ -380,7 +384,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <LayoutDashboard className="w-5 h-5 shrink-0" />
 
-       {!collapsed && <span>Dashboard</span>}
+       {!collapsed && <span>{withEl("Dashboard")}</span>}
 
       </div>
 
@@ -400,7 +404,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
 
-        {section.title}
+        {withEl(section.title)}
 
        </p>
 
@@ -420,7 +424,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? item.label : undefined}
+         title={collapsed ? withEl(item.label) : undefined}
 
          className={({ isActive }) =>
 
@@ -452,7 +456,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           )} />
 
-          {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span>{withEl(item.label)}</span>}
 
          </div>
 
@@ -478,7 +482,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
 
-        Administration
+        {withEl("Administration")}
 
        </p>
 
@@ -506,7 +510,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
          to={item.path}
 
-         title={collapsed ? item.label : undefined}
+         title={collapsed ? withEl(item.label) : undefined}
 
          className={({ isActive }) =>
 
@@ -532,7 +536,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
           <item.icon className="w-5 h-5 shrink-0" />
 
-          {!collapsed && <span>{item.label}</span>}
+          {!collapsed && <span>{withEl(item.label)}</span>}
 
          </div>
 
@@ -598,7 +602,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <p className="text-xs font-semibold text-stone-900 truncate">{user.fullName}</p>
 
-       <p className="text-xs text-stone-400 font-medium tracking-wider truncate">Founder</p>
+       <p className="text-xs text-stone-400 font-medium truncate">{withEl("Founder")}</p>
 
       </div>
 
@@ -636,7 +640,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <Bell className="w-3 h-3" />
 
-       Alerts
+       {withEl("Alerts")}
 
       </NavLink>
 
@@ -650,7 +654,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        <LogOut className="w-3 h-3" />
 
-       Logout
+       {withEl("Logout")}
 
       </button>
 
@@ -664,7 +668,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
        to="/notifications"
 
-       title="Notifications"
+       title={withEl("Notifications")}
 
        className="p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
 

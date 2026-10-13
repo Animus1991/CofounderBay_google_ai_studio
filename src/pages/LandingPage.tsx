@@ -46,11 +46,11 @@ export default function LandingPage() {
 
     {
 
-      title: "Structured Matching",
+      title: "Structured Matching · Αντιστοίχιση",
 
       description:
 
-        "Our weighted compatibility algorithm connects you with co-founders based on skills, values, and vision.",
+        "People with your skills and stage. Άνθρωποι με τις δεξιότητες και το στάδιό σας.",
 
       icon: Users,
 
@@ -1104,13 +1104,13 @@ export default function LandingPage() {
 
                   <a
 
-                    href="#"
+                    href="#how-it-works"
 
                     className="hover:text-stone-900 transition-colors"
 
                   >
 
-                    About Us
+                    About Us · Σχετικά
 
                   </a>
 
@@ -1118,17 +1118,33 @@ export default function LandingPage() {
 
                 <li>
 
-                  <a
+                  <NavLink
 
-                    href="#"
+                    to="/legal"
 
                     className="hover:text-stone-900 transition-colors"
 
                   >
 
-                    Privacy Policy
+                    Privacy Policy · Πολιτική απορρήτου
 
-                  </a>
+                  </NavLink>
+
+                </li>
+
+                <li>
+
+                  <NavLink
+
+                    to="/legal"
+
+                    className="hover:text-stone-900 transition-colors"
+
+                  >
+
+                    Terms of Service · Όροι χρήσης
+
+                  </NavLink>
 
                 </li>
 
@@ -1136,29 +1152,13 @@ export default function LandingPage() {
 
                   <a
 
-                    href="#"
+                    href="mailto:support@cofounderbay.com"
 
                     className="hover:text-stone-900 transition-colors"
 
                   >
 
-                    Terms of Service
-
-                  </a>
-
-                </li>
-
-                <li>
-
-                  <a
-
-                    href="#"
-
-                    className="hover:text-stone-900 transition-colors"
-
-                  >
-
-                    Contact
+                    Contact · Επικοινωνία
 
                   </a>
 

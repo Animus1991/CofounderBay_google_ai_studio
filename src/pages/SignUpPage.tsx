@@ -59,10 +59,8 @@ export default function SignUpPage() {
    navigate('/onboarding');
   } catch (err: any) {
    console.error('Google Auth Error:', err);
-   if (err.code === 'auth/unauthorized-domain') {
-    setError('Domain not authorized. Please add "localhost" to Firebase Console → Authentication → Settings → Authorized domains. Then restart the server.');
-   } else if (err.code === 'auth/operation-not-allowed') {
-    setError('Google Sign-Up is not enabled. Enable it in Firebase Console → Authentication → Sign-in method. Or use Demo Mode below.');
+   if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
+    setError('Google sign-in is not available here. Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.');
    } else if (err.code === 'auth/popup-closed-by-user') {
     setError('Sign-in popup was closed. Please try again.');
    } else if (err.code === 'auth/popup-blocked') {

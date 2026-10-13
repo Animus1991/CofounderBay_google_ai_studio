@@ -46,6 +46,8 @@ import { cn } from '../lib/utils';
 
 import { useAuth } from '../App';
 
+import { explainMatch } from '../lib/matchReason';
+
 import PageShell from '../components/ui/PageShell';
 
 import { useToast } from '../context/ToastContext';
@@ -62,7 +64,7 @@ const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
 export default function MatchDiscovery() {
 
- const { user: currentUser } = useAuth();
+ const { user: currentUser, profile: viewerProfile } = useAuth();
 
  const navigate = useNavigate();
 
@@ -207,6 +209,12 @@ export default function MatchDiscovery() {
   return matchesSearch && matchesStage && matchesRole && matchesCommitment;
 
  });
+
+
+
+ const viewerSkills = viewerProfile?.skills;
+
+ const viewerIndustry = viewerProfile?.industry ?? (viewerProfile as { profile?: { industry?: string | string[] } } | null)?.profile?.industry;
 
 
 
@@ -396,7 +404,11 @@ export default function MatchDiscovery() {
 
     ) : filteredProfiles.length > 0 ? (
 
-     filteredProfiles.map((profile, idx) => (
+     filteredProfiles.map((profile, idx) => {
+
+      const explained = explainMatch(viewerSkills, viewerIndustry, profile.skills, profile.industry);
+
+      return (
 
       <motion.div 
 
@@ -440,11 +452,13 @@ export default function MatchDiscovery() {
 
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
 
+          {explained.reasonPhrase && <p className="text-xs text-stone-400">{explained.reasonPhrase}</p>}
+
          </div>
 
         </div>
 
-        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">92%</span>
+        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.pct == null ? '—' : `${explained.pct}%`}</span>
 
        </div>
 
@@ -510,7 +524,9 @@ export default function MatchDiscovery() {
 
       </motion.div>
 
-     ))
+      );
+
+     })
 
     ) : (
 

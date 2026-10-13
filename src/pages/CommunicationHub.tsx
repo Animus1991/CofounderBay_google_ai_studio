@@ -12,11 +12,12 @@ import { cn } from "../lib/utils";
 import { useMessaging, Conversation, Message } from "../context/MessagingContext";
 import { AIService, MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
+import { useAuth } from "../App";
 
 // =============================================================================
 // TYPES
 // =============================================================================
-interface CommunicationHubProps { user: User; }
+interface CommunicationHubProps { user: User | null; }
 type MessageFilter = "all" | "unread" | "ai";
 type ViewMode = "chat" | "ai-center";
 type AIView = "chat" | "agents" | "insights" | "history";
@@ -103,15 +104,18 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
  );
 };
 
-const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", size = "md", badge, tooltip }: {
+const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", size = "md", badge, tooltip, disabled = false }: {
  icon: React.ElementType; onClick?: () => void; active?: boolean;
  variant?: "ghost" | "filled" | "outline"; size?: "sm" | "md" | "lg"; badge?: number | string; tooltip?: string;
+ disabled?: boolean;
 }) => {
  const sc: Record<string, string> = { sm: "w-7 h-7", md: "w-9 h-9", lg: "w-11 h-11" };
  const ic: Record<string, string> = { sm: "w-3.5 h-3.5", md: "w-4 h-4", lg: "w-5 h-5" };
  return (
-  <button onClick={onClick} title={tooltip} className={cn(
+  <span title={tooltip} className="inline-flex">
+  <button type="button" disabled={disabled} onClick={onClick} className={cn(
    "relative rounded-xl flex items-center justify-center transition-all", sc[size],
+   disabled && "opacity-50 cursor-not-allowed",
    variant === "ghost" && ["text-stone-500 hover:text-stone-900 hover:bg-stone-100", active && "text-stone-900 bg-stone-100"],
    variant === "filled" && ["bg-stone-900 text-white hover:bg-stone-800", active && "bg-stone-700"],
    variant === "outline" && ["border border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900", active && "border-stone-900 text-stone-900 bg-stone-50"]
@@ -121,6 +125,7 @@ const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", si
     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{badge}</span>
    )}
   </button>
+  </span>
  );
 };
 
@@ -151,7 +156,12 @@ const DateSeparator = ({ date }: { date: string }) => {
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
-export default function CommunicationHub({ user }: CommunicationHubProps) {
+export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
+ const { user: authUser, profile } = useAuth();
+ const user = {
+  ...(routeUser ?? {}),
+  id: authUser?.uid || profile?.id || 'demo-user',
+ } as User;
  // ── State ────────────────────────────────────────────────────────────────
  const { state: msgState, sendMessage, markAsRead, createConversation } = useMessaging();
  const [activeView, setActiveView] = useState<ViewMode>("chat");
@@ -440,6 +450,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
   </div>
  );
 
+ const composerTip = "Open a chat first. The composer is the box under that chat. · Ανοίξτε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.";
+ const focusComposer = () => {
+  if (!selectedConversation) return;
+  textareaRef.current?.focus();
+ };
+
  // =============================================================================
  // RENDER: LEFT SIDEBAR
  // =============================================================================
@@ -461,8 +477,10 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
       </div>
      </div>
      <div className="flex items-center gap-1">
-      <IconButton icon={Users} size="sm" tooltip="New Group" onClick={() => {}} />
-      <IconButton icon={Plus} size="sm" variant="filled" tooltip="New Message" onClick={() => {}} />
+      <IconButton icon={Users} size="sm" disabled tooltip="This page has no group composer. Start with one person. · Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκινήστε με ένα άτομο." />
+      <IconButton icon={Plus} size="sm" variant="filled" disabled={!selectedConversation}
+       tooltip={selectedConversation ? "New message · Νέο μήνυμα" : composerTip}
+       onClick={focusComposer} />
      </div>
     </div>
 
@@ -524,9 +542,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
        </div>
        <p className="text-sm text-stone-600 font-semibold">No conversations yet</p>
        <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">Start a new chat or connect with founders in your network</p>
-       <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15">
-        <Plus className="w-3.5 h-3.5" /> New Message
-       </button>
+       <span title={selectedConversation ? undefined : composerTip} className="mt-4 inline-flex">
+        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
+         className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+         <Plus className="w-3.5 h-3.5" /> New Message · Νέο μήνυμα
+        </button>
+       </span>
       </div>
      ) : (
       <div className="px-3 pb-4 space-y-0.5">
@@ -810,9 +831,12 @@ export default function CommunicationHub({ user }: CommunicationHubProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col items-center gap-2.5 w-full max-w-xs mx-auto">
-       <button className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 hover:shadow-xl hover:shadow-stone-900/25 hover:-translate-y-0.5">
-        <Plus className="w-4 h-4" /> New Message
-       </button>
+       <span title={selectedConversation ? undefined : composerTip} className="w-full">
+        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
+         className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 hover:shadow-xl hover:shadow-stone-900/25 hover:-translate-y-0.5", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+         <Plus className="w-4 h-4" /> New Message · Νέο μήνυμα
+        </button>
+       </span>
        <button onClick={() => setActiveView("ai-center")}
         className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all hover:-translate-y-0.5">
         <Sparkles className="w-4 h-4" /> Talk to AI Agent
