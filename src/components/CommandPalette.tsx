@@ -211,7 +211,6 @@ export default function CommandPalette() {
        {filtered.length === 0 ? (
         <div className="px-5 py-8 text-center">
          <p className="text-sm text-stone-500">No results found for "{query}"</p>
-         <p className="text-xs text-stone-400 mt-1">Try a page name, such as Dashboard, Matches, or Messages. · Δοκιμάστε όνομα σελίδας, όπως Πίνακας, Αντιστοιχίσεις ή Μηνύματα.</p>
         </div>
        ) : (
         Array.from(sections.entries()).map(([section, items]) => (
@@ -225,6 +224,7 @@ export default function CommandPalette() {
              key={item.id}
              data-index={idx}
              onClick={item.action}
+             title={item.description}
              onMouseEnter={() => setSelectedIndex(idx)}
              className={cn(
               "w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors",
@@ -232,10 +232,7 @@ export default function CommandPalette() {
              )}
             >
              <item.icon className="w-4.5 h-4.5 shrink-0" />
-             <span className="min-w-0 flex-1">
-              <span className="text-sm font-medium block truncate">{item.label}</span>
-              {item.description && <span className="text-xs text-stone-400 block truncate">{item.description}</span>}
-             </span>
+             <span className="text-sm font-medium flex-1">{item.label}</span>
              {idx === selectedIndex && <ArrowRight className="w-3.5 h-3.5 text-stone-400" />}
             </button>
            );

@@ -510,10 +510,7 @@ export default function DashboardPage() {
           </div>
 
           {!isDemoMode && feedLoaded && posts.length === 0 ? (
-            <div>
-              <p className="text-sm text-stone-400"><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
-              <p className="text-xs text-stone-400 mt-1"><Both en="Log a milestone or post in a community. The buttons above do that." el="Καταγράψτε ορόσημο ή δημοσιεύστε σε κοινότητα. Τα κουμπιά από πάνω το κάνουν." /></p>
-            </div>
+            <p className="text-sm text-stone-400"><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
           ) : posts.map((item) => {
             const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
             const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
@@ -678,7 +675,7 @@ export default function DashboardPage() {
             <NavLink to="/calendar" className="text-xs text-stone-400 hover:text-stone-900 transition-colors">View all →</NavLink>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /> <Both en="Join one from Events." el="Συμμετέχετε από τις Εκδηλώσεις." /></p>
+            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
           ) : (
             <div className="space-y-4 relative">
               <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
@@ -704,7 +701,7 @@ export default function DashboardPage() {
             <button onClick={() => navigate('/events')} className="text-xs text-stone-400 hover:text-stone-900 transition-colors">See Map</button>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /> <Both en="Join one from Events." el="Συμμετέχετε από τις Εκδηλώσεις." /></p>
+            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
           ) : schedule.map((ev) => (
             <div key={ev.id} className="bg-white rounded-2xl border border-stone-100 p-4 flex items-center gap-3 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all" onClick={() => navigate('/events')}>
               <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 text-center shrink-0 min-w-[60px]">

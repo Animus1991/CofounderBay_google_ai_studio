@@ -70,6 +70,10 @@ import {
 
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useNavigate } from "react-router-dom";
+
+import { readSaved, removeSaved, type SavedProfile } from "../lib/localLists";
+
 import Card from "../components/ui/Card";
 
 import Button from "../components/ui/Button";
@@ -92,7 +96,15 @@ interface NetworkProps {
 
 export default function Network({ user }: NetworkProps) {
 
+ const navigate = useNavigate();
+
  const [activeTab, setActiveTab] = useState<'connections' | 'saved' | 'endorsements' | 'compare'>('connections');
+
+ const [saved, setSaved] = useState<SavedProfile[]>(() => readSaved());
+
+ const [picked, setPicked] = useState<string[]>([]);
+
+ const [compared, setCompared] = useState(false);
 
 
 
@@ -264,13 +276,13 @@ export default function Network({ user }: NetworkProps) {
 
           <div className="flex items-center gap-2 w-full pt-1">
 
-           <Button className="flex-1 h-8 rounded-lg bg-stone-900 text-white hover:bg-stone-700 text-sm font-medium transition-all">
+           <Button onClick={() => navigate(`/messages?user=${conn.id}`)} className="flex-1 h-8 rounded-lg bg-stone-900 text-white hover:bg-stone-700 text-sm font-medium transition-all">
 
             Message
 
            </Button>
 
-           <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900">
+           <Button onClick={() => navigate(`/profile/${conn.id}`)} variant="outline" size="icon" className="h-8 w-8 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900">
 
             <ChevronRight className="w-3.5 h-3.5" />
 
@@ -300,15 +312,7 @@ export default function Network({ user }: NetworkProps) {
 
      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-      {[
-
-       { id: "s1", fullName: "Mia Kovacs", role: UserRole.FOUNDER, industry: "EdTech", location: "Vienna", note: "Potential co-founder for B2B pivot" },
-
-       { id: "s2", fullName: "Jordan Park", role: UserRole.MENTOR, industry: "Deep Tech", location: "Seoul", note: "Strong hardware background" },
-
-       { id: "s3", fullName: "Leila Hassan", role: UserRole.ADVISOR, industry: "HealthTech", location: "Dubai", note: "Regulatory expertise, FDA" },
-
-      ].map((p, i) => (
+      {saved.map((p, i) => (
 
        <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
 
@@ -332,7 +336,7 @@ export default function Network({ user }: NetworkProps) {
 
           </div>
 
-          <Button variant="ghost" size="icon" className="w-7 h-7 rounded-lg text-stone-300 hover:text-stone-900 shrink-0">
+          <Button variant="ghost" size="icon" title="Remove from saved" onClick={() => setSaved(removeSaved(p.id))} className="w-7 h-7 rounded-lg text-stone-300 hover:text-stone-900 shrink-0">
 
            <Star className="w-3.5 h-3.5 fill-current" />
 
@@ -342,9 +346,9 @@ export default function Network({ user }: NetworkProps) {
 
          <div className="flex gap-2 mt-4">
 
-          <Button className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white hover:bg-stone-700">Connect</Button>
+          <Button onClick={() => navigate(`/messages?user=${p.id}`)} className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white hover:bg-stone-700">Connect</Button>
 
-          <Button variant="outline" className="flex-1 h-7 text-sm rounded-lg border-stone-200">View Profile</Button>
+          <Button onClick={() => navigate(`/profile/${p.id}`)} variant="outline" className="flex-1 h-7 text-sm rounded-lg border-stone-200">View Profile</Button>
 
          </div>
 
@@ -356,7 +360,7 @@ export default function Network({ user }: NetworkProps) {
 
      </div>
 
-     <button className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-700 flex items-center justify-center gap-2 text-sm font-medium">
+     <button type="button" onClick={() => navigate('/matches')} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-700 flex items-center justify-center gap-2 text-sm font-medium">
 
       <UserPlus className="w-3.5 h-3.5" /> Browse to save more profiles
 
@@ -422,7 +426,7 @@ export default function Network({ user }: NetworkProps) {
 
       ))}
 
-      <button className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-700 flex items-center justify-center gap-2 text-sm font-medium">
+      <button type="button" onClick={() => navigate('/messages')} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all text-stone-400 hover:text-stone-700 flex items-center justify-center gap-2 text-sm font-medium">
 
        <Plus className="w-3.5 h-3.5" /> Request New Endorsement
 
@@ -504,7 +508,7 @@ export default function Network({ user }: NetworkProps) {
 
        </p>
 
-       <Button className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm hover:bg-stone-700">
+       <Button onClick={() => { void navigator.clipboard?.writeText('Endorsed for Product Strategy on CoFounderBay'); }} className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm hover:bg-stone-700">
 
         Share Achievement
 
@@ -546,23 +550,53 @@ export default function Network({ user }: NetworkProps) {
 
       <div className="flex items-center justify-center gap-4">
 
-       {[1, 2, 3].map((i) => (
-
-        <div key={i} className="w-24 h-24 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center text-stone-300 hover:border-stone-400 hover:text-stone-500 transition-all cursor-pointer group">
-
-         <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />
-
-        </div>
-
-       ))}
+       {[0, 1, 2].map((i) => {
+        const person = mockConnections.find((conn) => conn.id === picked[i]);
+        return (
+         <button
+          key={i}
+          type="button"
+          onClick={() => {
+           setCompared(false);
+           if (person) {
+            setPicked((prev) => prev.filter((id) => id !== person.id));
+            return;
+           }
+           const next = mockConnections.find((conn) => !picked.includes(conn.id));
+           if (next) setPicked((prev) => [...prev, next.id]);
+          }}
+          className="w-24 h-24 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center text-stone-300 hover:border-stone-400 hover:text-stone-500 transition-all cursor-pointer group"
+         >
+          {person ? <span className="text-xs font-medium text-stone-900 px-2">{person.fullName.split(' ')[0]}</span> : <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />}
+         </button>
+        );
+       })}
 
       </div>
 
-      <Button className="h-9 px-6 rounded-xl bg-stone-900 text-white text-sm hover:bg-stone-700">
+      <Button onClick={() => picked.length >= 2 && setCompared(true)} className="h-9 px-6 rounded-xl bg-stone-900 text-white text-sm hover:bg-stone-700">
 
        Start Comparison
 
       </Button>
+
+      {compared && picked.length >= 2 && (
+       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+        {picked.map((id) => {
+         const person = mockConnections.find((conn) => conn.id === id);
+         if (!person) return null;
+         return (
+          <div key={id} className="rounded-xl border border-stone-100 p-3 space-y-1">
+           <p className="text-sm font-semibold text-stone-900">{person.fullName}</p>
+           <p className="text-sm text-stone-400">{person.role}</p>
+           <p className="text-sm text-stone-400">{person.industry}</p>
+           <p className="text-sm text-stone-400">{person.location}</p>
+           <p className="text-xs text-stone-500">{person.status}</p>
+          </div>
+         );
+        })}
+       </div>
+      )}
 
      </Card>
 

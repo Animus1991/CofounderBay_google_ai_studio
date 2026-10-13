@@ -44,6 +44,14 @@ import { UserProfile } from '../types';
 
 import { cn } from '../lib/utils';
 
+import { readSaved, removeSaved, saveProfile } from '../lib/localLists';
+
+const DEMO_MATCHES = [
+ { uid: 'demo-sarah', fullName: 'Sarah Chen', headline: 'Product lead', bio: 'Building fintech tools.', location: 'NYC', stage: 'Pre-seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'Fintech', skills: ['React'] },
+ { uid: 'demo-alex', fullName: 'Alex Rivera', headline: 'Engineer', bio: 'Ships product with small teams.', location: 'SF', stage: 'Seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'AI', skills: ['TypeScript'] },
+ { uid: 'demo-marcus', fullName: 'Marcus Thorne', headline: 'Operator', bio: 'Looks for a technical co-founder.', location: 'London', stage: 'Idea', role: 'CO_FOUNDER_CANDIDATE', commitment: 'Part-time', industry: 'SaaS', skills: ['Sales'] },
+] as UserProfile[];
+
 import { useAuth } from '../App';
 
 import { explainMatch } from '../lib/matchReason';
@@ -64,7 +72,7 @@ const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
 export default function MatchDiscovery() {
 
- const { user: currentUser, profile: viewerProfile } = useAuth();
+ const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
 
  const navigate = useNavigate();
 
@@ -79,6 +87,8 @@ export default function MatchDiscovery() {
  const [searchQuery, setSearchQuery] = useState('');
 
  const [showFilters, setShowFilters] = useState(false);
+
+ const [savedIds, setSavedIds] = useState<string[]>(() => readSaved().map((item) => item.id));
 
  const [filters, setFilters] = useState({
 
@@ -124,6 +134,36 @@ export default function MatchDiscovery() {
 
 
 
+ const handleSave = (e: React.MouseEvent, profile: UserProfile) => {
+
+  e.stopPropagation();
+
+  const id = profile.uid;
+
+  if (savedIds.includes(id)) removeSaved(id);
+
+  else saveProfile({
+
+   id,
+
+   fullName: profile.fullName,
+
+   role: profile.role,
+
+   industry: profile.industry || '',
+
+   location: profile.location || '',
+
+   note: profile.headline || '',
+
+  });
+
+  setSavedIds(readSaved().map((item) => item.id));
+
+ };
+
+
+
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
 
   e.stopPropagation();
@@ -146,7 +186,9 @@ export default function MatchDiscovery() {
 
   const fetchProfiles = async () => {
 
-   setLoading(true);
+   if (isDemoMode) setProfiles(DEMO_MATCHES);
+
+   setLoading(!isDemoMode);
 
    try {
 
@@ -170,7 +212,8 @@ export default function MatchDiscovery() {
 
     
 
-    setProfiles(fetchedProfiles);
+    if (fetchedProfiles.length > 0) setProfiles(fetchedProfiles);
+    else if (isDemoMode) setProfiles(DEMO_MATCHES);
 
    } catch (error) {
 
@@ -188,7 +231,7 @@ export default function MatchDiscovery() {
 
   fetchProfiles();
 
- }, [currentUser]);
+ }, [currentUser, isDemoMode]);
 
 
 
@@ -224,7 +267,7 @@ export default function MatchDiscovery() {
 
    title="Discover Co-Founders"
 
-   description="Find entrepreneurs and builders who complement your skills. The percent is shared skills and industry. · Το ποσοστό είναι κοινές δεξιότητες και κλάδος."
+   description="Find entrepreneurs and builders who complement your skills."
 
   >
 
@@ -520,6 +563,20 @@ export default function MatchDiscovery() {
 
         </button>
 
+        <button
+
+         type="button"
+
+         onClick={(e) => handleSave(e, profile)}
+
+         className="p-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
+
+        >
+
+         <Star className={cn('w-3.5 h-3.5', savedIds.includes(profile.uid) && 'fill-current text-amber-500')} />
+
+        </button>
+
        </div>
 
       </motion.div>
@@ -538,9 +595,9 @@ export default function MatchDiscovery() {
 
       </div>
 
-      <p className="text-sm font-medium text-stone-900 mb-1">No founders found · Δεν βρέθηκαν ιδρυτές</p>
+      <p className="text-sm font-medium text-stone-900 mb-1">No founders found</p>
 
-      <p className="text-xs text-stone-400 mb-4">Clear the search and filters to see the full list again. · Καθαρίστε την αναζήτηση και τα φίλτρα για να φανεί πάλι η πλήρης λίστα.</p>
+      <p className="text-xs text-stone-400 mb-4">Try adjusting your filters or search query.</p>
 
       <button 
 
@@ -550,7 +607,7 @@ export default function MatchDiscovery() {
 
       >
 
-       Clear filters · Καθαρισμός φίλτρων
+       Clear filters
 
       </button>
 

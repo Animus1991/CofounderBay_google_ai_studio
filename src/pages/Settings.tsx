@@ -1,5 +1,9 @@
 import { useState } from "react";
 
+import { readSaved } from "../lib/localLists";
+
+import { useAuth } from "../App";
+
 import { 
 
  User, 
@@ -146,7 +150,25 @@ import { NavLink } from "react-router-dom";
 
 export default function Settings() {
 
+ const { user, profile } = useAuth();
+
  const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'billing'>('account');
+
+ const downloadMyData = () => {
+  const payload = {
+   exportedAt: new Date().toISOString(),
+   account: user ? { uid: user.uid, email: user.email, name: user.displayName } : null,
+   profile: profile ?? null,
+   savedProfiles: readSaved(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'cofounderbay-data.json';
+  link.click();
+  URL.revokeObjectURL(url);
+ };
 
  const [notifications, setNotifications] = useState({
 
@@ -508,7 +530,7 @@ export default function Settings() {
 
          </div>
 
-         <Button variant="secondary" size="sm" className="px-5">Enable Now</Button>
+         <Button variant="secondary" size="sm" className="px-5" onClick={() => { if ('Notification' in window) void Notification.requestPermission(); }}>Enable Now</Button>
 
         </div>
 
@@ -588,7 +610,7 @@ export default function Settings() {
 
         <div className="space-y-2">
 
-         <button className="w-full flex items-center justify-between p-4 hover:bg-stone-50 rounded-2xl transition-all group text-left">
+         <button type="button" onClick={downloadMyData} className="w-full flex items-center justify-between p-4 hover:bg-stone-50 rounded-2xl transition-all group text-left">
 
           <div className="flex items-center gap-4">
 
