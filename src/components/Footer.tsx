@@ -96,11 +96,11 @@ export default function Footer() {
 
        </div>
 
-       <span className="text-lg xl:text-xl font-medium text-stone-900 tracking-tight">CoFounderBay</span>
+       <span className="text-[13px] sm:text-[14px] font-medium text-stone-900 tracking-tight">CoFounderBay</span>
 
       </NavLink>
 
-      <p className="text-stone-500 text-lg leading-relaxed max-w-sm mb-8">
+      <p className="text-stone-500 text-[15px] sm:text-lg leading-relaxed max-w-sm mb-8">
 
        The premium ecosystem for founders to find co-founders, mentors, and build the next generation of startups.
 

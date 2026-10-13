@@ -7,13 +7,11 @@ import {
   where, 
   orderBy, 
   limit, 
-  Timestamp,
   updateDoc,
-  addDoc,
   setDoc
 } from 'firebase/firestore';
-import { db } from '../firebase';
-import { XPEvent, XPEventType, ReadinessScore, Streak, ContributionScore, TeamMomentum, MentorFeedbackMetric, Badge, UserBadge } from '../types';
+import { db, auth } from '../firebase';
+import { XPEvent, XPEventType } from '../types';
 
 export enum UserBehavioralState {
   NEWLY_ONBOARDED = 'NEWLY_ONBOARDED',
@@ -39,6 +37,10 @@ export interface NextBestAction {
 }
 
 export const determineUserState = async (userId: string): Promise<UserBehavioralState> => {
+  if (!userId || userId === 'demo-user' || !auth.currentUser || auth.currentUser.uid !== userId) {
+    return UserBehavioralState.ACTIVELY_EXPLORING;
+  }
+
   try {
     const profileRef = doc(db, 'profiles', userId);
     const profileSnap = await getDoc(profileRef);
@@ -76,12 +78,25 @@ export const determineUserState = async (userId: string): Promise<UserBehavioral
 
     return UserBehavioralState.ACTIVELY_EXPLORING;
   } catch (error) {
-    console.error('Error determining user state:', error);
-    return UserBehavioralState.STUCK_INACTIVE;
+    console.warn('Could not determine live user state from Firestore, falling back to default:', error);
+    return UserBehavioralState.ACTIVELY_EXPLORING;
   }
 };
 
 export const getNextBestActions = async (userId: string): Promise<NextBestAction[]> => {
+  if (!userId || userId === 'demo-user' || !auth.currentUser) {
+    return [
+      {
+        id: 'resume-research',
+        type: XPEventType.CREATE_BOARD,
+        description: 'Resume your research on the market hypothesis.',
+        priority: 7,
+        reason: 'Returning to research can help regain momentum.',
+        section: 'founder-tools'
+      }
+    ];
+  }
+
   const state = await determineUserState(userId);
   const actions: NextBestAction[] = [];
 
@@ -157,7 +172,7 @@ export const getNextBestActions = async (userId: string): Promise<NextBestAction
 };
 
 export const logNudgeExposure = async (userId: string, actionId: string, surface: string) => {
-  if (userId === 'demo-user') return;
+  if (!userId || userId === 'demo-user' || !auth.currentUser) return;
   try {
     const nudgeRef = doc(db, 'nudgeExposures', `${userId}_${actionId}`);
     await setDoc(nudgeRef, {
@@ -168,12 +183,12 @@ export const logNudgeExposure = async (userId: string, actionId: string, surface
       converted: false
     });
   } catch (error) {
-    console.error('Error logging nudge exposure:', error);
+    console.warn('Error logging nudge exposure:', error);
   }
 };
 
 export const logNudgeConversion = async (userId: string, actionId: string) => {
-  if (userId === 'demo-user') return;
+  if (!userId || userId === 'demo-user' || !auth.currentUser) return;
   try {
     const nudgeRef = doc(db, 'nudgeExposures', `${userId}_${actionId}`);
     await updateDoc(nudgeRef, {
@@ -181,6 +196,6 @@ export const logNudgeConversion = async (userId: string, actionId: string) => {
       convertedAt: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error logging nudge conversion:', error);
+    console.warn('Error logging nudge conversion:', error);
   }
 };

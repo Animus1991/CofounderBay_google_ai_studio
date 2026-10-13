@@ -280,7 +280,7 @@ export default function DashboardPage() {
 
     }, (error) => {
 
-     console.error('Error listening to user stats:', error);
+     console.warn('Could not listen to user stats:', error);
 
     });
 
@@ -292,7 +292,7 @@ export default function DashboardPage() {
 
     }, (error) => {
 
-     console.error('Error listening to streak:', error);
+     console.warn('Could not listen to streak:', error);
 
     });
 
@@ -304,7 +304,7 @@ export default function DashboardPage() {
 
     }, (error) => {
 
-     console.error('Error listening to readiness score:', error);
+     console.warn('Could not listen to readiness score:', error);
 
     });
 
@@ -344,7 +344,9 @@ export default function DashboardPage() {
 
  const handleActionClick = (action: NextBestAction) => {
 
-  logNudgeConversion(user!.uid, action.id);
+  if (user) {
+    logNudgeConversion(user.uid, action.id);
+  }
 
   navigate(`/${action.section}`);
 
@@ -410,7 +412,7 @@ export default function DashboardPage() {
 
        onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) navigate(`/discovery?q=${encodeURIComponent(searchQuery.trim())}`); }}
 
-       className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+       className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-[12.5px] sm:text-sm placeholder:text-[12.5px] sm:placeholder:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
 
        placeholder="Search founders, mentors, communities..."
 
@@ -456,9 +458,9 @@ export default function DashboardPage() {
 
         <div>
 
-         <p className="text-sm font-medium text-white">{heroAction.description}</p>
+         <p className="text-[12.5px] sm:text-sm font-medium text-white">{heroAction.description}</p>
 
-         <p className="text-xs text-stone-400">{heroAction.reason || 'Recommended action'}</p>
+         <p className="text-[11px] sm:text-xs text-stone-400">{heroAction.reason || 'Recommended action'}</p>
 
         </div>
 
@@ -680,7 +682,7 @@ export default function DashboardPage() {
 
       <div>
 
-       <p className="text-xl font-semibold text-stone-900 tracking-tight mt-2">{streak?.currentStreak || 12}<span className="text-sm font-medium text-stone-400">d</span></p>
+       <p className="text-[13px] sm:text-[14px] font-semibold text-stone-900 tracking-tight mt-2">{streak?.currentStreak || 12}<span className="text-[11px] font-medium text-stone-400">d</span></p>
 
        <div className="flex items-center gap-1.5 mt-2">
 

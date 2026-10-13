@@ -41,10 +41,10 @@ export default function PageShell({
      <div className="flex items-start justify-between gap-4 mb-6">
       <div>
        {title && (
-        <h1 className="text-base font-semibold text-stone-900 tracking-tight">{title}</h1>
+        <h1 className="text-[14.5px] sm:text-base font-semibold text-stone-900 tracking-tight">{title}</h1>
        )}
        {description && (
-        <p className="text-xs text-stone-500 mt-0.5">{description}</p>
+        <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">{description}</p>
        )}
       </div>
       {actions && (
