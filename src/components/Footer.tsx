@@ -8,6 +8,8 @@ import { useAuth } from '../App';
 
 import { cn } from '../lib/utils';
 
+import { Both } from '../lib/both';
+
 
 
 export default function Footer() {
@@ -24,15 +26,17 @@ export default function Footer() {
 
    title: 'Platform',
 
+   el: 'Πλατφόρμα',
+
    links: [
 
-    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Dashboard', el: 'Πίνακας', href: '/dashboard' },
 
-    { name: 'Matches', href: '/matches' },
+    { name: 'Matches', el: 'Αντιστοιχίσεις', href: '/matches' },
 
-    { name: 'Mentors', href: '/mentors' },
+    { name: 'Mentors', el: 'Μέντορες', href: '/mentors' },
 
-    { name: 'Communities', href: '/communities' },
+    { name: 'Communities', el: 'Κοινότητες', href: '/communities' },
 
    ],
 
@@ -42,15 +46,17 @@ export default function Footer() {
 
    title: 'Company',
 
+   el: 'Εταιρεία',
+
    links: [
 
-    { name: 'About Us', href: '/#about' },
+    { name: 'About Us', el: 'Σχετικά', href: '/#how-it-works' },
 
-    { name: 'Careers', href: '/#careers' },
+    { name: 'Careers', el: 'Καριέρα', href: '/#features' },
 
-    { name: 'Contact', href: '/#contact' },
+    { name: 'Contact', el: 'Επικοινωνία', href: 'mailto:support@cofounderbay.com' },
 
-    { name: 'Blog', href: '/#blog' },
+    { name: 'Blog', el: 'Ιστολόγιο', href: '/#communities' },
 
    ],
 
@@ -60,13 +66,15 @@ export default function Footer() {
 
    title: 'Legal',
 
+   el: 'Νομικά',
+
    links: [
 
-    { name: 'Privacy Policy', href: '/#privacy' },
+    { name: 'Privacy Policy', el: 'Πολιτική απορρήτου', href: '/legal' },
 
-    { name: 'Terms of Service', href: '/#terms' },
+    { name: 'Terms of Service', el: 'Όροι χρήσης', href: '/legal' },
 
-    { name: 'Cookie Policy', href: '/#cookies' },
+    { name: 'Cookie Policy', el: 'Πολιτική cookies', href: '/legal' },
 
    ],
 
@@ -108,13 +116,23 @@ export default function Footer() {
 
       <div className="flex gap-4">
 
-       {[Twitter, Linkedin, Github, Mail].map((Icon, i) => (
+       {[
+
+        { name: 'twitter', Icon: Twitter, href: '#' },
+
+        { name: 'linkedin', Icon: Linkedin, href: '#' },
+
+        { name: 'github', Icon: Github, href: '#' },
+
+        { name: 'mail', Icon: Mail, href: 'mailto:support@cofounderbay.com' },
+
+       ].map(({ name, Icon, href }) => (
 
         <a 
 
-         key={i}
+         key={name}
 
-         href="#" 
+         href={href}
 
          className="w-10 h-10 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-all"
 
@@ -146,7 +164,7 @@ export default function Footer() {
 
        )}>
 
-        {section.title}
+        <Both en={section.title} el={section.el} />
 
        </h3>
 
@@ -162,17 +180,35 @@ export default function Footer() {
 
          <li key={link.name}>
 
-          <NavLink 
+          {link.href.startsWith('mailto:') ? (
 
-           to={link.href} 
+           <a
 
-           className="text-stone-500 hover:text-stone-900 transition-colors font-medium"
+            href={link.href}
 
-          >
+            className="text-stone-500 hover:text-stone-900 transition-colors font-medium"
 
-           {link.name}
+           >
 
-          </NavLink>
+            <Both en={link.name} el={link.el} />
+
+           </a>
+
+          ) : (
+
+           <NavLink 
+
+            to={link.href} 
+
+            className="text-stone-500 hover:text-stone-900 transition-colors font-medium"
+
+           >
+
+            <Both en={link.name} el={link.el} />
+
+           </NavLink>
+
+          )}
 
          </li>
 

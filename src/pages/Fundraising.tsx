@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 import { useNavigate } from 'react-router-dom';
 
@@ -101,6 +101,7 @@ import PageShell from "../components/ui/PageShell";
 import { User, FundraisingTracker } from "../types";
 
 import { cn } from "../lib/utils";
+import { bothText } from "../lib/labels";
 
 
 
@@ -147,6 +148,8 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
 
  const [investorSearch, setInvestorSearch] = useState("");
+
+ const investorSearchRef = useRef<HTMLInputElement>(null);
 
  const [showMeetingScheduler, setShowMeetingScheduler] = useState(false);
 
@@ -1258,7 +1261,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          type="text"
 
-         placeholder="Search by name or focus..."
+         ref={investorSearchRef}
+
+         placeholder={bothText("Search by name or focus...", "Όνομα ή τομέας...")}
 
          value={investorSearch}
 
@@ -1270,7 +1275,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => showToast('Filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => investorSearchRef.current?.focus()}>
 
         <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
 
@@ -1500,7 +1505,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('Program filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('There is no way to narrow programs yet. Every program is shown. · Δεν υπάρχει ακόμη τρόπος να στενέψουν τα προγράμματα. Φαίνονται όλα.')}>
 
         <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
 
@@ -1647,7 +1652,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        </div>
 
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('Opportunity filters — coming soon')}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => showToast('There is no way to narrow opportunities yet. Every opportunity is shown. · Δεν υπάρχει ακόμη τρόπος να στενέψουν οι ευκαιρίες. Φαίνονται όλες.')}>
 
         <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
 
@@ -2097,7 +2102,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      exit={{ opacity: 0, y: 20 }}
 
-     className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl"
+     className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] max-w-md px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl text-center"
 
     >
 
