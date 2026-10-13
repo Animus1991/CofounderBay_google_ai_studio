@@ -208,7 +208,7 @@ export default function LandingPage() {
 
                 <div className="flex items-center gap-2 sm:gap-3">
 
-                  <span className="text-[10px] sm:text-xs font-bold text-stone-500 tracking-widest hidden sm:inline-block">
+                  <span className="text-[10px] sm:text-xs font-bold text-stone-500 tracking-wide hidden sm:inline-block">
 
                     Demo View
 
@@ -230,7 +230,7 @@ export default function LandingPage() {
 
                     to="/dashboard"
 
-                    className="bg-stone-900 text-white px-6 py-2.5 rounded-[2rem] text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="bg-stone-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
 
                   >
 
@@ -258,7 +258,7 @@ export default function LandingPage() {
 
                   >
 
-                    <span className="tracking-widest pl-[0.1em] sm:pl-0">
+                    <span className="tracking-wide pl-[0.1em] sm:pl-0">
 
                       Demo
 
@@ -272,7 +272,7 @@ export default function LandingPage() {
 
                     to="/dashboard"
 
-                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
 
                   >
 
@@ -300,7 +300,7 @@ export default function LandingPage() {
 
                   >
 
-                    <span className="tracking-widest pl-[0.1em] sm:pl-0">
+                    <span className="tracking-wide pl-[0.1em] sm:pl-0">
 
                       Demo
 
@@ -326,7 +326,7 @@ export default function LandingPage() {
 
                     to="/signup"
 
-                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
 
                   >
 
@@ -366,7 +366,7 @@ export default function LandingPage() {
 
             >
 
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-widest mb-6">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
 
                 <TrendingUp className="w-3 h-3" />
 
@@ -398,7 +398,7 @@ export default function LandingPage() {
 
                   to="/signup"
 
-                  className="w-[60%] sm:w-auto bg-stone-900 text-white px-5 py-3 rounded-full text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group shadow-xl shadow-stone-900/10"
+                  className="w-[60%] sm:w-auto bg-stone-900 text-white px-5 py-3 rounded-full text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group shadow-sm"
 
                 >
 
@@ -456,9 +456,6 @@ export default function LandingPage() {
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10 pointer-events-none">
 
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-stone-100 rounded-full blur-3xl opacity-50" />
-
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-stone-50 rounded-full blur-3xl opacity-50" />
 
         </div>
 
@@ -636,7 +633,7 @@ export default function LandingPage() {
 
                     key={tag}
 
-                    className="px-5 py-2.5 bg-white border-2 border-stone-100 rounded-[1.5rem] text-sm font-medium text-stone-600"
+                    className="px-5 py-2.5 bg-white border-2 border-stone-100 rounded-xl text-sm font-medium text-stone-600"
 
                   >
 
@@ -668,7 +665,7 @@ export default function LandingPage() {
 
               <div className="space-y-4">
 
-                <div className="h-48 bg-white rounded-[2rem] border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
+                <div className="h-48 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
 
                   <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
 
@@ -694,7 +691,7 @@ export default function LandingPage() {
 
                 </div>
 
-                <div className="h-64 bg-white rounded-[2rem] border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
+                <div className="h-64 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
 
                   <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4">
 
@@ -724,7 +721,7 @@ export default function LandingPage() {
 
               <div className="space-y-4 pt-12">
 
-                <div className="h-64 bg-white rounded-[2rem] border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
+                <div className="h-64 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
 
                   <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
 
@@ -750,7 +747,7 @@ export default function LandingPage() {
 
                 </div>
 
-                <div className="h-48 bg-white rounded-[2rem] border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
+                <div className="h-48 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
 
                   <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
 
@@ -852,7 +849,7 @@ export default function LandingPage() {
 
                   to="/signup"
 
-                  className="inline-flex items-center gap-2 bg-white text-stone-900 px-8 py-3.5 rounded-[2rem] text-sm sm:text-base font-semibold hover:bg-stone-50 transition-all shadow-md shrink-0"
+                  className="inline-flex items-center gap-2 bg-white text-stone-900 px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-stone-50 transition-all shadow-md shrink-0"
 
                 >
 
@@ -868,7 +865,7 @@ export default function LandingPage() {
 
             <div className="relative max-w-[300px] sm:max-w-md mx-auto lg:max-w-none w-full">
 
-              <div className="aspect-[4/3] sm:aspect-square bg-[#1c1917] rounded-[2rem] overflow-hidden border border-stone-800 p-6 sm:p-10 flex flex-col justify-between shadow-2xl relative z-10 w-full">
+              <div className="aspect-[4/3] sm:aspect-square bg-[#1c1917] rounded-xl overflow-hidden border border-stone-800 p-6 sm:p-10 flex flex-col justify-between shadow-sm relative z-10 w-full">
 
                 <div className="flex justify-between items-start">
 
@@ -886,9 +883,7 @@ export default function LandingPage() {
 
                 <div className="flex-1 flex items-center justify-center relative">
 
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-stone-500/10 rounded-full blur-2xl flex-shrink-0 animate-pulse" />
-
-                  <Globe className="w-24 h-24 sm:w-40 sm:h-40 text-stone-700 flex-shrink-0 animate-spin-slow relative z-10" />
+                  <Globe className="w-24 h-24 sm:w-40 sm:h-40 text-stone-700 flex-shrink-0" />
 
                 </div>
 
@@ -904,7 +899,6 @@ export default function LandingPage() {
 
               </div>
 
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-stone-800/20 rounded-full blur-3xl -z-10" />
 
             </div>
 
@@ -922,7 +916,7 @@ export default function LandingPage() {
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 
-          <div className="p-8 md:p-12 lg:p-20 rounded-[2rem] sm:rounded-[3rem] bg-stone-50 border border-stone-100 relative overflow-hidden">
+          <div className="p-8 md:p-12 lg:p-20 rounded-xl sm:rounded-xl bg-stone-50 border border-stone-100 relative overflow-hidden">
 
             <div className="relative z-10">
 
@@ -946,7 +940,7 @@ export default function LandingPage() {
 
                 to="/signup"
 
-                className="bg-stone-900 text-white px-8 py-3.5 rounded-[2rem] text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/10 inline-flex items-center gap-3"
+                className="bg-stone-900 text-white px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all shadow-sm inline-flex items-center gap-3"
 
               >
 
@@ -962,11 +956,6 @@ export default function LandingPage() {
 
             {/* Background pattern */}
 
-            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-
-              <Zap className="w-64 h-64 text-stone-900 rotate-12" />
-
-            </div>
 
           </div>
 
@@ -1014,7 +1003,7 @@ export default function LandingPage() {
 
             <div>
 
-              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-widest">
+              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
 
                 Platform
 
@@ -1092,7 +1081,7 @@ export default function LandingPage() {
 
             <div>
 
-              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-widest">
+              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
 
                 Company
 

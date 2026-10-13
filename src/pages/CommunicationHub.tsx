@@ -84,7 +84,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
 }) => {
  const s: Record<string, string> = {
   xs: "w-6 h-6 rounded-lg", sm: "w-8 h-8 rounded-xl", md: "w-10 h-10 rounded-2xl",
-  lg: "w-14 h-14 rounded-[1.5rem]", xl: "w-20 h-20 rounded-[2rem]"
+  lg: "w-14 h-14 rounded-xl", xl: "w-20 h-20 rounded-xl"
  };
  return (
   <div className={cn("relative shrink-0", s[size])}>
@@ -96,7 +96,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
     )} />
    )}
    {isAI && (
-    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-violet-500 rounded-full border-2 border-white flex items-center justify-center">
+    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-stone-800 rounded-full border-2 border-white flex items-center justify-center">
      <Sparkles className="w-2 h-2 text-white" />
     </div>
    )}
@@ -402,7 +402,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <h3 className={cn("text-sm font-semibold truncate", conv.unreadCount > 0 ? "text-stone-900" : "text-stone-700")}>
        {conv.otherParticipant.fullName}
       </h3>
-      {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[10px] rounded-full font-medium">AI</span>}
+      {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-700 text-[10px] rounded-full font-medium">AI</span>}
       {!conv.otherParticipant.isAI && conv.otherParticipant.roles?.[0] && (
        <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">
         {conv.otherParticipant.roles[0]}
@@ -498,7 +498,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
       Intros
-      {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-violet-500 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
+      {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
      </button>
     </div>
 
@@ -598,7 +598,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
            <h4 className="text-sm font-semibold text-stone-900">{req.from.fullName}</h4>
            <p className="text-xs text-stone-500 truncate">{req.from.headline}</p>
            {req.from.role && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-violet-50 text-violet-700 text-[10px] font-medium rounded-full">{req.from.role}</span>
+            <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{req.from.role}</span>
            )}
           </div>
           <span className="text-[10px] text-stone-400 shrink-0">
@@ -630,7 +630,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     <div className="flex items-center justify-between">
      <button onClick={() => setActiveView(activeView === "ai-center" ? "chat" : "ai-center")}
       className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all",
-       activeView === "ai-center" ? "bg-violet-100 text-violet-700 shadow-sm" : "hover:bg-stone-100 text-stone-500")}>
+       activeView === "ai-center" ? "bg-stone-100 text-stone-700 shadow-sm" : "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
       <span className="text-xs font-semibold">AI Center</span>
      </button>
@@ -678,14 +678,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className={cn(
        "relative px-4 py-2.5 rounded-2xl text-sm shadow-sm",
        isMe ? "bg-stone-900 text-white rounded-br-lg"
-        : msg.isAI ? "bg-violet-50 text-violet-900 border border-violet-100 rounded-bl-lg"
+        : msg.isAI ? "bg-stone-50 text-stone-900 border border-stone-200 rounded-bl-lg"
         : "bg-white text-stone-800 border border-stone-200 rounded-bl-lg"
       )}>
        {/* AI Badge */}
        {msg.isAI && (
-        <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-violet-200/50">
-         <Sparkles className="w-3 h-3 text-violet-500" />
-         <span className="text-[10px] font-semibold text-violet-600 tracking-wider">{activeConv?.otherParticipant.fullName}</span>
+        <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-stone-200/50">
+         <Sparkles className="w-3 h-3 text-stone-500" />
+         <span className="text-[10px] font-semibold text-stone-600 tracking-wider">{activeConv?.otherParticipant.fullName}</span>
         </div>
        )}
 
@@ -787,21 +787,15 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  const renderMainChat = () => {
   if (!activeConv) {
    return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-stone-50 via-white to-stone-50 relative overflow-hidden">
-     {/* Ambient decoration */}
-     <div className="absolute top-0 right-0 w-96 h-96 bg-violet-100/30 rounded-full blur-[120px]" />
-     <div className="absolute bottom-0 left-0 w-80 h-80 bg-stone-100/50 rounded-full blur-[100px]" />
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50 relative overflow-hidden">
 
      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="relative z-10 max-w-lg w-full">
 
       {/* Logo icon */}
       <div className="relative w-20 h-20 mx-auto mb-8">
-       <div className="w-full h-full bg-stone-900 rounded-[1.5rem] flex items-center justify-center shadow-xl shadow-stone-900/20">
+       <div className="w-full h-full bg-stone-900 rounded-xl flex items-center justify-center">
         <MessageSquare className="w-9 h-9 text-white" />
-       </div>
-       <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full border-[3px] border-white flex items-center justify-center">
-        <Zap className="w-3 h-3 text-white" />
        </div>
       </div>
 
@@ -815,7 +809,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {[
         { label: "Conversations", value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
         { label: "Unread", value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-red-500 text-white" : "bg-stone-100 text-stone-600" },
-        { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-violet-100 text-violet-600" },
+        { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
        ].map(({ label, value, icon: Icon, color }) => (
         <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
@@ -833,12 +827,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className="flex flex-col items-center gap-2.5 w-full max-w-xs mx-auto">
        <span title={selectedConversation ? undefined : composerTip} className="w-full">
         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
-         className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20 hover:shadow-xl hover:shadow-stone-900/25 hover:-translate-y-0.5", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+         className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
          <Plus className="w-4 h-4" /> New Message · Νέο μήνυμα
         </button>
        </span>
        <button onClick={() => setActiveView("ai-center")}
-        className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-all hover:-translate-y-0.5">
+        className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
         <Sparkles className="w-4 h-4" /> Talk to AI Agent
        </button>
        <div className="flex items-center gap-2.5 w-full">
@@ -856,12 +850,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {/* Recent contacts strip */}
       {msgState.conversations.length > 0 && (
        <div className="mt-8 pt-6 border-t border-stone-200/60">
-        <p className="text-[10px] font-semibold text-stone-400 tracking-widest uppercase mb-3">Recent Conversations</p>
+        <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">Recent Conversations</p>
         <div className="flex items-center justify-center gap-2">
          {msgState.conversations.slice(0, 6).map(conv => (
           <button key={conv.id} onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
            className="group relative" title={conv.otherParticipant.fullName}>
-           <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-md hover:shadow-lg hover:-translate-y-1 transition-all">
+           <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-md  transition-all">
             <img src={conv.otherParticipant.profile?.profilePhoto || `https://picsum.photos/seed/${conv.otherParticipant.id}/100/100`}
              alt={conv.otherParticipant.fullName} className="w-full h-full object-cover" />
            </div>
@@ -987,7 +981,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {chatMessages.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full text-center">
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-        {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-violet-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
+        {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
        </div>
        <p className="text-sm text-stone-500 font-medium">
         {activeConv.otherParticipant.isAI ? `Start chatting with ${activeConv.otherParticipant.fullName}` : "No messages yet. Say hello!"}
@@ -996,7 +990,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-sm">
          {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.slice(0, 3).map((prompt, i) => (
           <button key={i} onClick={() => handleSendMessage(prompt)}
-           className="px-3 py-1.5 bg-violet-50 text-violet-700 text-xs rounded-full hover:bg-violet-100 transition-colors">{prompt}</button>
+           className="px-3 py-1.5 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors">{prompt}</button>
          ))}
         </div>
        )}
@@ -1058,7 +1052,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className="flex flex-wrap gap-1.5">
        {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.map((prompt, i) => (
         <button key={i} onClick={() => handleSendMessage(prompt)}
-         className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs rounded-full hover:bg-violet-100 transition-colors border border-violet-200">{prompt}</button>
+         className="px-2.5 py-1 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors border border-stone-200">{prompt}</button>
        ))}
       </div>
      )}
@@ -1109,7 +1103,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </div>
 
        <button onClick={() => handleSendMessage()} disabled={!inputText.trim() && attachedFiles.length === 0}
-        className="w-10 h-10 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-stone-900/20 shrink-0 self-end">
+        className="w-10 h-10 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0 self-end">
         <Send className="w-4 h-4" />
        </button>
       </div>
@@ -1277,7 +1271,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </button>
        <button onClick={() => togglePin(activeConv.id)}
         className={cn("w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl transition-all",
-         pinnedConvIds.has(activeConv.id) ? "text-violet-700 bg-violet-50" : "text-stone-600 hover:bg-stone-50")}>
+         pinnedConvIds.has(activeConv.id) ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
         <Pin className="w-3.5 h-3.5" /> {pinnedConvIds.has(activeConv.id) ? "Unpin Conversation" : "Pin Conversation"}
        </button>
        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
@@ -1306,11 +1300,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // =============================================================================
 
  const renderAICenter = () => (
-  <div className="flex-1 flex flex-col bg-gradient-to-br from-violet-50/30 via-white to-stone-50/30 overflow-hidden">
+  <div className="flex-1 flex flex-col bg-gradient-to-br from-stone-50 via-white to-white overflow-hidden">
    {/* AI Center Header */}
    <header className="h-16 flex items-center justify-between px-6 border-b border-stone-100 bg-white/80 backdrop-blur-sm shrink-0">
     <div className="flex items-center gap-3">
-     <div className="w-10 h-10 bg-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-600/20">
+     <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center ">
       <BrainCircuit className="w-5 h-5 text-white" />
      </div>
      <div>
@@ -1355,7 +1349,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <motion.div
          key={agent.id}
          whileHover={{ scale: 1.02 }}
-         className="p-5 bg-white border border-stone-200 rounded-2xl hover:shadow-lg transition-all cursor-pointer group"
+         className="p-5 bg-white border border-stone-200 rounded-2xl transition-all cursor-pointer group"
          onClick={async () => {
           const conv = await createConversation(['u1', agent.id]);
           if (conv) {
@@ -1365,15 +1359,15 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          }}
         >
          <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-violet-100 overflow-hidden shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-stone-100 overflow-hidden shrink-0">
            <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
            <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-stone-900">{agent.name}</h3>
-            <Sparkles className="w-4 h-4 text-violet-500" />
+            <Sparkles className="w-4 h-4 text-stone-500" />
            </div>
-           <p className="text-xs text-violet-600 font-semibold mb-1.5">{agent.role}</p>
+           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agent.role}</p>
            <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agent.description}</p>
            <div className="mt-3 flex flex-wrap gap-1.5">
             {agent.capabilities.map((cap, i) => (
@@ -1405,7 +1399,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <div className={cn(
            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
            insight.type === "action" ? "bg-amber-100 text-amber-600" :
-           insight.type === "suggestion" ? "bg-violet-100 text-violet-600" :
+           insight.type === "suggestion" ? "bg-stone-100 text-stone-600" :
            "bg-emerald-100 text-emerald-600"
           )}>
            {insight.type === "action" ? <Zap className="w-4 h-4" /> :
@@ -1437,8 +1431,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {aiView === "chat" && (
      <div className="flex items-center justify-center h-full">
       <div className="text-center">
-       <div className="w-20 h-20 bg-violet-100 rounded-[2rem] flex items-center justify-center mx-auto mb-4">
-        <Sparkles className="w-10 h-10 text-violet-500" />
+       <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+        <Sparkles className="w-5 h-5 text-stone-500" />
        </div>
        <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">Select an AI Agent</h3>
        <p className="text-sm text-stone-500 max-w-xs mx-auto mb-6 leading-relaxed">
@@ -1446,7 +1440,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </p>
        <button 
         onClick={() => setAiView("agents")}
-        className="px-6 py-3 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-all"
+        className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
        >
         Browse Agents
        </button>
@@ -1467,7 +1461,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
            setSelectedConversation(conv.id);
            setActiveView("chat");
           }}
-          className="w-full flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-violet-300 transition-all text-left"
+          className="w-full flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-all text-left"
          >
           <Avatar 
            src={conv.otherParticipant.profile?.profilePhoto}
@@ -1518,7 +1512,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setShowValidationDialog(false)}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -1589,7 +1583,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">

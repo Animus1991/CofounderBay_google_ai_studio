@@ -864,7 +864,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
             <p className="text-sm font-medium text-stone-900">{log.message}</p>
 
-            <span className="text-xs font-medium text-stone-400 tracking-widest">
+            <span className="text-xs font-medium text-stone-400 tracking-wide">
 
              {new Date(log.createdAt ?? 0).toLocaleTimeString()}
 
@@ -872,7 +872,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
            </div>
 
-           <div className="flex items-center gap-4 text-xs font-medium text-stone-400 tracking-widest">
+           <div className="flex items-center gap-4 text-xs font-medium text-stone-400 tracking-wide">
 
             <span>Rule: {rules.find(r => r.id === log.ruleId)?.name}</span>
 
@@ -888,7 +888,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
 
-               <p className="text-xs font-medium text-stone-400 tracking-widest mb-2">Trigger Details</p>
+               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">Trigger Details</p>
 
                <div className="flex items-center gap-4 text-xs">
 
@@ -908,7 +908,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
 
-               <p className="text-xs font-medium text-stone-400 tracking-widest mb-2">Conditions Met</p>
+               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">Conditions Met</p>
 
                <div className="space-y-1">
 
@@ -938,7 +938,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
 
-               <p className="text-xs font-medium text-stone-400 tracking-widest mb-2">Actions Performed</p>
+               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">Actions Performed</p>
 
                <div className="space-y-2">
 
@@ -984,7 +984,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
               <div className="p-3 bg-red-50 rounded-lg border border-red-100">
 
-               <p className="text-xs font-medium text-red-400 tracking-widest mb-2">Error Details</p>
+               <p className="text-xs font-medium text-red-400 tracking-wide mb-2">Error Details</p>
 
                <p className="text-xs text-red-700 font-medium">{log.metadata.error}</p>
 
@@ -1006,7 +1006,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
              <details className="group">
 
-              <summary className="text-xs font-medium text-stone-400 tracking-widest cursor-pointer hover:text-stone-600 transition-colors flex items-center gap-1">
+              <summary className="text-xs font-medium text-stone-400 tracking-wide cursor-pointer hover:text-stone-600 transition-colors flex items-center gap-1">
 
                <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
 
@@ -1182,7 +1182,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
 
        exit={{ opacity: 0, scale: 0.98, y: 10 }}
 
-       className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-stone-100"
+       className="relative w-full max-w-xl bg-white rounded-2xl shadow-sm overflow-hidden border border-stone-100"
 
       >
 

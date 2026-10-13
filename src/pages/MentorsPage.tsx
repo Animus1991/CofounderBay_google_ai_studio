@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 
 import { 
 
- GraduationCap, 
-
  Star, 
 
  MessageSquare, 
@@ -222,11 +220,11 @@ export default function MentorsPage() {
 
    {/* Hero Section */}
 
-   <div className="bg-stone-900 rounded-[2rem] sm:rounded-[40px] p-6 sm:p-16 relative overflow-hidden shadow-2xl shadow-stone-900/20">
+   <div className="bg-stone-900 rounded-xl p-6 sm:p-8 relative overflow-hidden">
 
     <div className="relative z-10 max-w-2xl space-y-6">
 
-     <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-full backdrop-blur-md text-sm font-medium tracking-widest">
+     <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-full backdrop-blur-md text-sm font-medium tracking-wide">
 
       <Zap className="w-4 h-4 text-amber-400" />
 
@@ -262,7 +260,7 @@ export default function MentorsPage() {
 
         onChange={(e) => setSearchQuery(e.target.value)}
 
-        className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3.5 bg-white/10 border border-white/10 rounded-[2rem] text-xs sm:text-sm text-white placeholder-stone-400 outline-none focus:ring-2 focus:ring-white/20 transition-all font-semibold backdrop-blur-sm shadow-sm"
+        className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3.5 bg-white/10 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-stone-400 outline-none focus:ring-2 focus:ring-white/20 transition-all font-semibold backdrop-blur-sm shadow-sm"
 
        />
 
@@ -272,7 +270,7 @@ export default function MentorsPage() {
 
        onClick={() => document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' })}
 
-       className="px-4 sm:px-6 py-2 sm:py-2.5 bg-white text-stone-900 rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-50 transition-all shadow-md whitespace-nowrap hover:-translate-y-0.5"
+       className="px-4 sm:px-6 py-2 sm:py-2.5 bg-white text-stone-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-50 transition-all shadow-md whitespace-nowrap "
 
       >
 
@@ -286,7 +284,7 @@ export default function MentorsPage() {
 
       <div className="space-y-2 flex-1">
 
-       <span className="text-xs font-semibold text-stone-400 tracking-widest block">Expertise</span>
+       <span className="text-xs font-semibold text-stone-400 tracking-wide block">Expertise</span>
 
        <div className="flex flex-wrap gap-2">
 
@@ -300,7 +298,7 @@ export default function MentorsPage() {
 
           className={cn(
 
-           "px-4 py-1.5 rounded-[2rem] text-xs sm:text-sm font-semibold transition-all",
+           "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
 
            expertiseFilter === filter 
 
@@ -326,7 +324,7 @@ export default function MentorsPage() {
 
       <div className="space-y-2">
 
-       <span className="text-xs font-semibold text-stone-400 tracking-widest block">Availability</span>
+       <span className="text-xs font-semibold text-stone-400 tracking-wide block">Availability</span>
 
        <div className="flex flex-wrap gap-2">
 
@@ -340,7 +338,7 @@ export default function MentorsPage() {
 
           className={cn(
 
-           "px-4 py-1.5 rounded-[2rem] text-xs sm:text-sm font-semibold transition-all",
+           "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
 
            availabilityFilter === filter 
 
@@ -363,14 +361,6 @@ export default function MentorsPage() {
       </div>
 
      </div>
-
-    </div>
-
-    <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-stone-800 rounded-full opacity-50 blur-3xl" />
-
-    <div className="absolute top-10 right-10 opacity-10">
-
-     <GraduationCap className="w-64 h-64 text-white" />
 
     </div>
 
@@ -448,7 +438,7 @@ export default function MentorsPage() {
 
        onClick={() => setSelectedMentor(mentor)}
 
-       className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group cursor-pointer flex flex-col"
+       className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
 
       >
 
@@ -678,7 +668,7 @@ export default function MentorsPage() {
 
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
 
-      className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 overflow-y-auto"
+      className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-sm z-50 overflow-y-auto"
 
      >
 
@@ -758,7 +748,7 @@ export default function MentorsPage() {
 
        <div className="space-y-3">
 
-        <h3 className="text-sm font-semibold text-stone-400 tracking-widest">Expertise</h3>
+        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">Expertise</h3>
 
         <div className="flex flex-wrap gap-2">
 
@@ -782,7 +772,7 @@ export default function MentorsPage() {
 
        <div className="space-y-3">
 
-        <h3 className="text-sm font-semibold text-stone-400 tracking-widest">About</h3>
+        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">About</h3>
 
         <p className="text-stone-600 leading-relaxed">
 
@@ -800,7 +790,7 @@ export default function MentorsPage() {
 
         <div className="space-y-3">
 
-         <h3 className="text-sm font-semibold text-stone-400 tracking-widest">Achievements</h3>
+         <h3 className="text-sm font-semibold text-stone-400 tracking-wide">Achievements</h3>
 
          <ul className="space-y-3">
 
@@ -836,7 +826,7 @@ export default function MentorsPage() {
 
          onClick={() => setIsMentorshipModalOpen(true)}
 
-         className="w-full py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md text-center"
+         className="w-full py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md text-center"
 
         >
 
@@ -888,7 +878,7 @@ export default function MentorsPage() {
 
       exit={{ opacity: 0, scale: 0.95, y: 20 }}
 
-      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[2rem] shadow-2xl z-[70] overflow-hidden"
+      className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-xl shadow-sm z-[70] overflow-hidden"
 
      >
 
@@ -984,7 +974,7 @@ export default function MentorsPage() {
 
          onClick={() => setIsMentorshipModalOpen(false)}
 
-         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-100 text-stone-900 font-semibold rounded-[2rem] text-xs sm:text-sm hover:bg-stone-200 transition-all border border-stone-200"
+         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-100 text-stone-900 font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-200 transition-all border border-stone-200"
 
         >
 
@@ -1018,7 +1008,7 @@ export default function MentorsPage() {
 
          }}
 
-         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white font-semibold rounded-[2rem] text-xs sm:text-sm hover:bg-stone-800 transition-all shadow-md"
+         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-800 transition-all shadow-md"
 
         >
 

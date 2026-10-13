@@ -250,13 +250,13 @@ export default function DomainSettings() {
 
              {domain.isPrimary && (
 
-              <span className="px-2 py-0.5 bg-stone-900 text-white text-xs font-medium tracking-widest rounded-full">Primary</span>
+              <span className="px-2 py-0.5 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">Primary</span>
 
              )}
 
             </h3>
 
-            <p className="text-xs text-stone-400 font-medium tracking-widest">{domain.domainType} domain</p>
+            <p className="text-xs text-stone-400 font-medium tracking-wide">{domain.domainType} domain</p>
 
            </div>
 
@@ -406,7 +406,7 @@ export default function DomainSettings() {
 
        exit={{ opacity: 0, scale: 0.98 }}
 
-       className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-stone-100"
+       className="bg-white rounded-2xl shadow-sm w-full max-w-md overflow-hidden border border-stone-100"
 
       >
 

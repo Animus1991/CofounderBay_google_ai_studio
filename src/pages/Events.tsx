@@ -272,7 +272,7 @@ export default function Events({ user }: EventsProps) {
 
            alt={event.title} 
 
-           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
            referrerPolicy="no-referrer"
 
@@ -440,7 +440,7 @@ export default function Events({ user }: EventsProps) {
 
         alt="Featured" 
 
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
         referrerPolicy="no-referrer"
 

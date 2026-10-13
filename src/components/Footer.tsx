@@ -98,7 +98,7 @@ export default function Footer() {
 
       <NavLink to="/" className="flex items-center gap-2 mb-6 group">
 
-       <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+       <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
 
         <Zap className="w-6 h-6 text-white" />
 
@@ -158,7 +158,7 @@ export default function Footer() {
 
        <h3 className={cn(
 
-        "font-medium text-stone-900 tracking-widest mb-6",
+        "font-medium text-stone-900 tracking-wide mb-6",
 
         user ? "text-xs" : "text-sm"
 

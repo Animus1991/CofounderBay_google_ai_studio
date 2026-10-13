@@ -110,7 +110,7 @@ export default function Perks() {
 
        className={cn(
 
-        "px-4 py-2 text-sm font-medium tracking-widest rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
+        "px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
 
         activeCategory === cat.id 
 
@@ -168,7 +168,7 @@ export default function Perks() {
 
      <div>
 
-      <p className="text-md font-medium text-white/40 tracking-widest">Potential Savings</p>
+      <p className="text-md font-medium text-white/40 tracking-wide">Potential Savings</p>
 
       <h4 className="text-xl font-semibold">$450k+</h4>
 
@@ -212,7 +212,7 @@ export default function Perks() {
 
         <h4 className="font-medium text-base">{perk.name}</h4>
 
-        <span className="text-sm bg-stone-100 px-2 py-0.5 rounded-full text-stone-500 font-medium tracking-widest">
+        <span className="text-sm bg-stone-100 px-2 py-0.5 rounded-full text-stone-500 font-medium tracking-wide">
 
          {perk.category}
 
@@ -272,7 +272,6 @@ export default function Perks() {
 
     </div>
 
-    <div className="absolute top-0 right-0 w-64 h-64 bg-stone-200/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
 
    </Card>
 

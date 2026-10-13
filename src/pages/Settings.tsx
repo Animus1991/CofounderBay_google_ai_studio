@@ -38,8 +38,6 @@ import {
 
  EyeOff, 
 
- Zap, 
-
  HelpCircle, 
 
  FileText, 
@@ -294,7 +292,7 @@ export default function Settings() {
 
      {activeTab === 'account' && (
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
 
        <Card title="Personal Information" subtitle="Basic details for your ecosystem profile.">
 
@@ -454,7 +452,7 @@ export default function Settings() {
 
      {activeTab === 'notifications' && (
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
 
        <Card title="Email Notifications" subtitle="Choose what updates you want in your inbox.">
 
@@ -544,7 +542,7 @@ export default function Settings() {
 
      {activeTab === 'privacy' && (
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
 
        <Card title="Security Settings" subtitle="Keep your account safe and secure.">
 
@@ -650,7 +648,7 @@ export default function Settings() {
 
      {activeTab === 'billing' && (
 
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
 
        <Card title="Current Plan" subtitle="You are currently on the Pro Plan.">
 
@@ -668,7 +666,7 @@ export default function Settings() {
 
            </div>
 
-           <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs font-medium tracking-widest border border-white/10">Active</span>
+           <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs font-medium tracking-wide border border-white/10">Active</span>
 
           </div>
 
@@ -690,7 +688,7 @@ export default function Settings() {
 
             <div key={i} className="space-y-1">
 
-             <p className="text-xs text-white/40 tracking-widest font-medium">{stat.label}</p>
+             <p className="text-xs text-white/40 tracking-wide font-medium">{stat.label}</p>
 
              <p className="text-sm font-semibold">{stat.val}</p>
 
@@ -716,7 +714,6 @@ export default function Settings() {
 
          </div>
 
-         <Zap className="absolute top-1/2 right-0 -translate-y-1/2 w-48 h-48 text-white/5 fill-current rotate-12" />
 
         </div>
 

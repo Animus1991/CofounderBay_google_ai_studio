@@ -59,7 +59,7 @@ export default function Modal({ open, onClose, title, description, children, siz
       exit={{ opacity: 0, scale: 0.95, y: 10 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] bg-white rounded-2xl shadow-2xl border border-stone-100 z-[151] overflow-hidden",
+       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] bg-white rounded-2xl shadow-sm border border-stone-100 z-[151] overflow-hidden",
        sizeClasses[size]
       )}
      >

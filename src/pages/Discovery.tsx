@@ -470,7 +470,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
        transition={{ type: "spring", damping: 25, stiffness: 200 }}
 
-       className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 p-12 overflow-y-auto border-l border-stone-200"
+       className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-sm z-50 p-12 overflow-y-auto border-l border-stone-200"
 
       >
 
@@ -1065,7 +1065,7 @@ export default function Discovery({ user }: DiscoveryProps) {
 
          )}>
 
-          <img src={opp.photo} alt="" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110" />
+          <img src={opp.photo} alt="" className="w-full h-full object-cover" />
 
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 

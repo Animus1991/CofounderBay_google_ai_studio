@@ -164,7 +164,7 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
 
  return (
 
-  <div className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group p-4 space-y-3">
+  <div className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md  transition-all group p-4 space-y-3">
 
    {/* Header row */}
 
@@ -248,7 +248,7 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
 
       <div
 
-       className={cn("h-full rounded-full transition-all duration-500", tasksDone === tasksTotal ? "bg-emerald-500" : "bg-stone-900")}
+       className={cn("h-full rounded-full transition-all duration-200", tasksDone === tasksTotal ? "bg-emerald-500" : "bg-stone-900")}
 
        style={{ width: `${tasksTotal > 0 ? (tasksDone / tasksTotal) * 100 : 0}%` }}
 

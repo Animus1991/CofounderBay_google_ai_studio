@@ -655,7 +655,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
        exit={{ opacity: 0, scale: 0.9, y: 40 }}
 
-       className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-stone-200 relative"
+       className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-sm border border-stone-200 relative"
 
       >
 
@@ -725,7 +725,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
           <div className="px-2.5 py-1 bg-stone-900 rounded-lg">
 
-           <span className="text-xs font-semibold text-white tracking-widest">
+           <span className="text-xs font-semibold text-white tracking-wide">
 
             {assessmentQuestions[assessmentStep]?.category}
 
@@ -741,7 +741,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
             <div key={i} className={cn(
 
-             "h-1 rounded-full transition-all duration-500",
+             "h-1 rounded-full transition-all duration-200",
 
              i === assessmentStep ? "bg-stone-900 w-8" : i < assessmentStep ? "bg-stone-400 w-5" : "bg-stone-100 w-5"
 
@@ -875,7 +875,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
       className={cn(
 
-       "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize tracking-widest",
+       "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize tracking-wide",
 
        activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -1669,7 +1669,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
               </div>
 
-              <p className="text-stone-400 text-sm font-mono tracking-widest">Slide {pitchSlide} · {s.title}</p>
+              <p className="text-stone-400 text-sm font-mono tracking-wide">Slide {pitchSlide} · {s.title}</p>
 
               <p className="text-stone-300 text-sm">Click <span className="text-stone-500">Edit</span> to add content to this slide</p>
 

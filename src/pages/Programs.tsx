@@ -188,7 +188,7 @@ export default function Programs({ user }: ProgramsProps) {
 
         className={cn(
 
-         "px-3 py-1.5 text-sm font-semibold tracking-widest rounded-lg transition-all",
+         "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
 
          activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -234,7 +234,7 @@ export default function Programs({ user }: ProgramsProps) {
 
             alt={program.title}
 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
 
             referrerPolicy="no-referrer"
 

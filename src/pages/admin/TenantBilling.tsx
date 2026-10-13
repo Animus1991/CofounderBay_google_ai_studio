@@ -194,7 +194,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
         <div className="absolute top-0 right-0 p-4">
 
-         <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-widest rounded-full">
+         <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
 
           {currentPlan?.name}
 
@@ -220,7 +220,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
 
-           <p className="text-xs font-medium text-stone-400 tracking-widest mb-1">Monthly Cost</p>
+           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">Monthly Cost</p>
 
            <p className="text-lg font-semibold">${subscription?.billingCycle === 'Annual' ? (currentPlan?.priceAnnual ?? 0) / 12 : currentPlan?.priceMonthly}</p>
 
@@ -228,7 +228,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
 
-           <p className="text-xs font-medium text-stone-400 tracking-widest mb-1">Renewal Date</p>
+           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">Renewal Date</p>
 
            <p className="text-lg font-semibold">{new Date(subscription?.renewalDate ?? '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
 
@@ -236,7 +236,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
 
-           <p className="text-xs font-medium text-stone-400 tracking-widest mb-1">Billing Cycle</p>
+           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">Billing Cycle</p>
 
            <p className="text-lg font-semibold">{subscription?.billingCycle}</p>
 
@@ -284,7 +284,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
            <div 
 
-            className="h-full bg-stone-900 transition-all duration-500" 
+            className="h-full bg-stone-900 transition-all duration-200" 
 
             style={{ width: `${((subscription?.activeSeatCount ?? 0) / (subscription?.seatLimit ?? 1)) * 100}%` }} 
 
@@ -468,13 +468,13 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
          <tr className="bg-stone-50 border-b border-stone-100">
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">User</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">User</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Role</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Role</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Assigned At</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Assigned At</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest text-right">Action</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">Action</th>
 
          </tr>
 
@@ -518,7 +518,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
            <td className="px-4 py-2 text-right">
 
-            <button className="text-xs font-medium text-red-500 hover:text-red-600 tracking-widest">
+            <button className="text-xs font-medium text-red-500 hover:text-red-600 tracking-wide">
 
              Revoke Seat
 
@@ -576,15 +576,15 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
          <tr className="bg-stone-50 border-b border-stone-100">
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Date</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Date</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Invoice #</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Invoice #</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Amount</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Amount</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest">Status</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">Status</th>
 
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-widest text-right">Action</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">Action</th>
 
          </tr>
 

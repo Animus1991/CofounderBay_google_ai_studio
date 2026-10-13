@@ -118,7 +118,7 @@ export default function Insights({ user }: InsightsProps) {
 
        className={cn(
 
-        "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all tracking-widest",
+        "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all tracking-wide",
 
         activeRange === range ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -454,7 +454,7 @@ export default function Insights({ user }: InsightsProps) {
 
            "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
 
-           badge.unlocked ? "bg-stone-900 text-white group-hover:scale-110" : "bg-stone-200 text-stone-400"
+           badge.unlocked ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-400"
 
           )}>
 

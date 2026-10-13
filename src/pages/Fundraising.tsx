@@ -412,7 +412,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        className={cn(
 
-        "px-3 py-1.5 text-sm font-semibold tracking-widest rounded-lg transition-all",
+        "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
 
         activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
 
@@ -448,7 +448,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="flex items-center justify-between">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Seed Round Progress</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Seed Round Progress</p>
 
          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md">
 
@@ -528,7 +528,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="space-y-3 pt-2 border-t border-stone-100">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Quick Actions</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Quick Actions</p>
 
          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9 rounded-lg" onClick={() => setShowDocumentRoom(true)}>
 
@@ -558,7 +558,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Cap Table</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Cap Table</p>
 
           <span className="text-xs text-stone-400">10M shares</span>
 
@@ -600,7 +600,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Due Diligence</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Due Diligence</p>
 
           <span className="text-xs text-emerald-600 font-semibold">
 
@@ -650,7 +650,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="pt-2 border-t border-stone-100 space-y-1.5">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Email Templates</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Email Templates</p>
 
          <div className="flex flex-wrap gap-1">
 
@@ -676,7 +676,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="flex items-center justify-between">
 
-          <p className="text-xs font-semibold text-stone-400 tracking-widest">Upcoming Meetings</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">Upcoming Meetings</p>
 
           <button 
 
@@ -748,7 +748,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <Card className="p-4 space-y-3">
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Pipeline Funnel</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Pipeline Funnel</p>
 
         <div className="space-y-1.5">
 
@@ -788,7 +788,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="flex items-center justify-between">
 
-         <p className="text-xs font-semibold text-stone-400 tracking-widest">Data Room</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">Data Room</p>
 
          <button 
 
@@ -884,13 +884,13 @@ export default function Fundraising({ user }: FundraisingProps) {
 
            <tr className="bg-stone-50 border-b border-stone-100">
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Investor</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Investor</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Stage</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Stage</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest">Latest Note</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Latest Note</th>
 
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-widest"></th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide"></th>
 
            </tr>
 
@@ -964,7 +964,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         <div className="px-3 py-2.5 bg-stone-50 border-t border-stone-100 flex justify-center">
 
-         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-widest text-stone-400 hover:text-stone-900 h-7" onClick={() => setActiveTab('investors')}>
+         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-wide text-stone-400 hover:text-stone-900 h-7" onClick={() => setActiveTab('investors')}>
 
           View Full CRM <ChevronRight className="w-3 h-3 ml-1" />
 
@@ -990,7 +990,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <div className="space-y-1.5">
 
-           <div className="flex justify-between text-xs tracking-widest">
+           <div className="flex justify-between text-xs tracking-wide">
 
             <span className="text-stone-400 font-semibold">Investor Interest</span>
 
@@ -1106,7 +1106,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
               <p className="text-sm font-semibold text-stone-900 truncate">{p.title}</p>
 
-              <p className={cn("text-xs tracking-widest mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
+              <p className={cn("text-xs tracking-wide mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
 
                Due: {p.deadline} {urgent && `· ${daysLeft}d left`}
 
@@ -1148,7 +1148,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
           <div>
 
-           <p className="text-xs font-semibold text-stone-400 tracking-widest">SAFE Calculator</p>
+           <p className="text-xs font-semibold text-stone-400 tracking-wide">SAFE Calculator</p>
 
            <p className="text-sm font-semibold text-stone-900">Valuation & Ownership</p>
 
@@ -1500,7 +1500,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <div>
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Programs</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Programs</p>
 
         <h3 className="text-base font-semibold text-stone-900">Accelerators, Grants & Studios</h3>
 
@@ -1647,7 +1647,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <div>
 
-        <p className="text-xs font-semibold text-stone-400 tracking-widest">Opportunities</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">Opportunities</p>
 
         <h3 className="text-base font-semibold text-stone-900">Funding & Non-Dilutive Sources</h3>
 
@@ -1801,7 +1801,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
 
-      <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-sm">
 
        <div className="flex items-center justify-between">
 
@@ -1917,7 +1917,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
      <div className="fixed inset-0 bg-stone-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
 
-      <div className="bg-white rounded-2xl w-full max-w-2xl p-5 space-y-4 shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-2xl p-5 space-y-4 shadow-sm">
 
        <div className="flex items-center justify-between">
 

@@ -76,7 +76,7 @@ export default function LoginPage() {
   <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
     <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
-     <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+     <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
@@ -169,7 +169,7 @@ export default function LoginPage() {
        <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 rounded-[2rem] shadow-sm text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
+        className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl shadow-sm text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
        >
         {loading ? <Both en="Logging in..." el="Σύνδεση..." /> : <Both en="Sign in" el="Είσοδος" />}
         <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
@@ -190,13 +190,13 @@ export default function LoginPage() {
       <div className="mt-6 grid grid-cols-2 gap-3">
        <button
         onClick={handleGoogleLogin}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-[2rem] bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
        </button>
        <button
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-[2rem] bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         GitHub
@@ -212,7 +212,7 @@ export default function LoginPage() {
          navigate('/dashboard', { replace: true });
          window.location.reload();
         }}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border-2 border-dashed border-emerald-300 rounded-[2rem] bg-emerald-50/50 text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50 text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
        >
         <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-emerald-600" />
         <Both en="Try Demo Mode" el="Δοκιμή δείγματος" />

@@ -198,7 +198,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
 
       <thead>
 
-       <tr className="bg-stone-50/50 text-xs font-medium text-stone-400 tracking-widest border-b border-stone-100">
+       <tr className="bg-stone-50/50 text-xs font-medium text-stone-400 tracking-wide border-b border-stone-100">
 
         <th className="px-4 py-2">Name</th>
 

@@ -338,7 +338,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
         <h1 className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</h1>
 
-        <span className="text-[10px] font-medium text-stone-400 tracking-widest mt-1">Ecosystem Hub</span>
+        <span className="text-[10px] font-medium text-stone-400 tracking-wide mt-1">Ecosystem Hub</span>
 
        </motion.div>
 

@@ -142,7 +142,7 @@ export default function AdminDashboard() {
 
     <div className="space-y-2">
 
-     <div className="flex items-center gap-2 text-stone-400 font-medium tracking-widest text-xs">
+     <div className="flex items-center gap-2 text-stone-400 font-medium tracking-wide text-xs">
 
       <ShieldCheck className="w-4 h-4" />
 
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
 
          <div className={cn(
 
-          "p-4 rounded-2xl transition-all group-hover:scale-110",
+          "p-4 rounded-2xl transition-all",
 
           stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
 
@@ -262,7 +262,7 @@ export default function AdminDashboard() {
 
         <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
 
-        <div className="text-sm text-stone-400 font-medium tracking-widest mt-1">{stat.label}</div>
+        <div className="text-sm text-stone-400 font-medium tracking-wide mt-1">{stat.label}</div>
 
        </motion.div>
 
@@ -378,7 +378,7 @@ export default function AdminDashboard() {
 
 
 
-       <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-xl shadow-stone-900/20 space-y-6">
+       <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-sm space-y-6">
 
         <div className="flex items-center justify-between">
 
@@ -446,7 +446,7 @@ export default function AdminDashboard() {
 
       <div className="flex items-center gap-2">
 
-       <span className="px-4 py-1.5 bg-red-50 text-red-600 rounded-xl text-xs font-medium tracking-widest">
+       <span className="px-4 py-1.5 bg-red-50 text-red-600 rounded-xl text-xs font-medium tracking-wide">
 
         {abuseFlags.length} Active Flags
 
@@ -460,7 +460,7 @@ export default function AdminDashboard() {
 
       <table className="w-full text-left">
 
-       <thead className="bg-stone-50/50 text-stone-400 text-xs font-medium tracking-widest">
+       <thead className="bg-stone-50/50 text-stone-400 text-xs font-medium tracking-wide">
 
         <tr>
 
@@ -614,7 +614,7 @@ export default function AdminDashboard() {
 
        ))}
 
-       <button className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20">
+       <button className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm">
 
         Save Configuration
 

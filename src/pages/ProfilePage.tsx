@@ -731,7 +731,7 @@ export default function ProfilePage() {
 
    whileHover={{ scale: 1.02 }}
 
-   className="mt-4 p-5 bg-stone-900 text-white rounded-2xl flex items-center gap-4 group/prompt shadow-lg shadow-stone-900/20 cursor-pointer overflow-hidden relative"
+   className="mt-4 p-5 bg-stone-900 text-white rounded-2xl flex items-center gap-4 group/prompt shadow-sm cursor-pointer overflow-hidden relative"
 
    onClick={() => setIsEditing(true)}
 
@@ -751,7 +751,7 @@ export default function ProfilePage() {
 
    <div className="flex-1">
 
-    <p className="text-xs font-medium text-stone-400 tracking-widest mb-0.5">Next Best Action</p>
+    <p className="text-xs font-medium text-stone-400 tracking-wide mb-0.5">Next Best Action</p>
 
     <p className="text-sm font-medium text-white">{text}</p>
 
@@ -813,15 +813,7 @@ export default function ProfilePage() {
 
     {/* Banner */}
 
-    <div className="h-48 sm:h-64 bg-stone-900 rounded-3xl overflow-hidden relative shadow-xl shadow-stone-900/10">
-
-     <div className="absolute inset-0 bg-gradient-to-br from-stone-800 to-stone-950 opacity-50" />
-
-     <div className="absolute inset-0 flex items-center justify-center opacity-10">
-
-      <Zap className="w-64 h-64 text-white" />
-
-     </div>
+    <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative">
 
      {isOwnProfile && (
 
@@ -851,7 +843,7 @@ export default function ProfilePage() {
 
         alt={currentUser?.displayName || 'User'} 
 
-        className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl object-cover border-4 border-white shadow-2xl"
+        className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl object-cover border-4 border-white shadow-sm"
 
         referrerPolicy="no-referrer"
 
@@ -913,7 +905,7 @@ export default function ProfilePage() {
 
             onClick={() => handleSave(editForm)}
 
-            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
+            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
 
            >
 
@@ -929,7 +921,7 @@ export default function ProfilePage() {
 
             onClick={() => setIsEditing(true)}
 
-            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
+            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
 
            >
 
@@ -945,7 +937,7 @@ export default function ProfilePage() {
 
           <>
 
-           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-[2rem] text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md">
+           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md">
 
             <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
 
@@ -1521,7 +1513,7 @@ export default function ProfilePage() {
        <div className="pt-6 border-t border-stone-50 space-y-4">
 
         <div className="flex items-center justify-between">
-         <h4 className="text-sm font-medium text-stone-400 tracking-widest flex items-center gap-2">
+         <h4 className="text-sm font-medium text-stone-400 tracking-wide flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-400" />
           Recent Endorsements
          </h4>
@@ -1694,7 +1686,7 @@ export default function ProfilePage() {
 
          <div key={dim.label} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
 
-          <div className="text-xs font-medium text-stone-400 tracking-widest mb-1">{dim.label}</div>
+          <div className="text-xs font-medium text-stone-400 tracking-wide mb-1">{dim.label}</div>
 
           <div className="text-sm font-medium text-stone-900">{dim.value}/100</div>
 
@@ -1896,9 +1888,8 @@ export default function ProfilePage() {
 
 
      {/* AI Match Insight */}
-      <div className="bg-stone-900 p-5 rounded-2xl shadow-xl shadow-stone-300/20 space-y-4 relative overflow-hidden">
-       <div className="absolute top-0 right-0 w-32 h-32 bg-stone-700 rounded-full blur-[60px] opacity-30" />
-       <div className="relative z-10">
+      <div className="bg-stone-900 p-5 rounded-xl space-y-4">
+       <div>
         <div className="flex items-center gap-3 mb-3">
          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
           <Sparkles className="w-4 h-4 text-amber-400" />
@@ -1918,7 +1909,7 @@ export default function ProfilePage() {
            initial={{ width: 0 }}
            animate={{ width: '84%' }}
            transition={{ duration: 1.5 }}
-           className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full"
+           className="h-full bg-white rounded-full"
           />
          </div>
          <div className="grid grid-cols-3 gap-2 pt-2">
