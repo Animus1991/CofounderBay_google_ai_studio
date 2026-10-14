@@ -46,7 +46,7 @@ export default function TenantLanding() {
     </div>
     <div className="flex items-center gap-6">
      <Link to="/login" className="text-sm font-medium text-stone-500 hover:text-stone-900">Login</Link>
-     <Button size="sm">{content.ctaLabel}</Button>
+     <Link to="/signup"><Button size="sm">{content.ctaLabel}</Button></Link>
     </div>
    </nav>
 
@@ -69,11 +69,15 @@ export default function TenantLanding() {
        {content.heroSubtitle}
       </p>
       <div className="flex flex-col sm:flex-row gap-4">
-       <Button size="lg" className="px-10">
-        {content.ctaLabel}
-        <ArrowRight className="w-5 h-5" />
+       <Link to="/signup">
+        <Button size="lg" className="px-10">
+         {content.ctaLabel}
+         <ArrowRight className="w-5 h-5" />
+        </Button>
+       </Link>
+       <Button variant="outline" size="lg" onClick={() => document.getElementById('tenant-about')?.scrollIntoView({ behavior: 'smooth' })}>
+        Learn More
        </Button>
-       <Button variant="outline" size="lg">Learn More</Button>
       </div>
      </div>
      <div className="relative">
@@ -94,7 +98,7 @@ export default function TenantLanding() {
    </section>
 
    {/* Features */}
-   <section className="py-24 bg-stone-50 px-8 md:px-16">
+   <section id="tenant-about" className="py-24 bg-stone-50 px-8 md:px-16">
     <div className="max-w-7xl mx-auto">
      <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
       <h2 className="text-xl font-medium tracking-tight">Everything you need to build your team</h2>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { 
  Calendar as CalendarIcon, MapPin, Users, Video, 
  Plus, Search, Filter, ChevronRight, Star, 
@@ -32,9 +31,10 @@ interface Event {
 
 export default function Events({ user }: EventsProps) {
  const [activeTab, setActiveTab] = useState('Upcoming');
+ const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
+ const [showTypes, setShowTypes] = useState(false);
  const [registeredEvents, setRegisteredEvents] = useState<string[]>(() => readIds(eventListKeys.registered));
  const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
- const navigate = useNavigate();
 
  const toggleRegistration = (eventId: string) => {
   setRegisteredEvents(toggleId(eventListKeys.registered, eventId));
@@ -92,13 +92,15 @@ export default function Events({ user }: EventsProps) {
    actions={
     <div className="flex flex-wrap items-center gap-2">
      <button 
-      onClick={() => navigate('/dashboard')}
+      type="button"
+      onClick={() => setShowTypes((open) => !open)}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
      >
-      <Filter className="w-3.5 h-3.5" /> Filter
+      <Filter className="w-3.5 h-3.5" /> {typeFilter === 'All' ? 'Filter' : typeFilter}
      </button>
      <button 
-      onClick={() => navigate('/dashboard')}
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I host an event?' } }))}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
      >
       <Plus className="w-3.5 h-3.5" /> Host Event
@@ -127,8 +129,26 @@ export default function Events({ user }: EventsProps) {
       ))}
      </div>
 
-     <div className="space-y-4">
-      {mockEvents.map((event) => (
+     {showTypes && (
+      <div className="flex flex-wrap gap-2">
+       {(['All', 'Workshop', 'Networking', 'Pitch Night', 'Webinar'] as const).map((type) => (
+        <button
+         key={type}
+         type="button"
+         onClick={() => setTypeFilter(type)}
+         className={cn(
+          "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+          typeFilter === type ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-500 border-stone-200 hover:text-stone-900"
+         )}
+        >
+         {type}
+        </button>
+       ))}
+      </div>
+     )}
+
+     <div id="event-list" className="space-y-4">
+      {(typeFilter === 'All' ? mockEvents : mockEvents.filter((event) => event.type === typeFilter)).map((event) => (
        <div key={event.id} className="bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl">
         <div className="flex flex-col md:flex-row">
          <div className="md:w-56 h-44 md:h-auto overflow-hidden relative shrink-0">
@@ -232,7 +252,8 @@ export default function Events({ user }: EventsProps) {
        The biggest gathering of founders and investors in the ecosystem.
       </p>
       <button 
-       onClick={() => navigate('/dashboard')}
+       type="button"
+       onClick={() => document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' })}
        className="w-full py-2 rounded-lg text-sm font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all"
       >
        Learn More
@@ -275,7 +296,8 @@ export default function Events({ user }: EventsProps) {
        </p>
       </div>
       <button
-       onClick={() => navigate('/dashboard')}
+       type="button"
+       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I host an event?' } }))}
        className="w-full py-2 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-all text-sm font-semibold"
       >
        Create Event

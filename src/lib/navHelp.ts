@@ -9,6 +9,7 @@ const PAGE_HELP: Record<string, readonly [string, string]> = {
   '/milestones': ['Goals on a board, with progress and due dates', 'Στόχοι σε πίνακα, με πρόοδο και προθεσμίες'],
   '/calendar': ['Calls, sessions, and events on your days', 'Κλήσεις, συναντήσεις και εκδηλώσεις στις μέρες σας'],
   '/discovery': ['Founders, communities, opportunities, and events', 'Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις'],
+  '/explore': ['Founders, communities, opportunities, and events', 'Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις'],
   '/matches': ['People ranked by shared skills and industry', 'Άνθρωποι με σειρά από κοινές δεξιότητες και κλάδο'],
   '/mentors': ['Mentors you can read and contact', 'Μέντορες που διαβάζετε και τους στέλνετε μήνυμα'],
   '/communities': ['Groups you can read and post in', 'Ομάδες που διαβάζετε και δημοσιεύετε'],

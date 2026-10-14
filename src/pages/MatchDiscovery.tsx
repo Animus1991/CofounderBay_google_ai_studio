@@ -28,6 +28,7 @@ import { useStored } from '../lib/useStored';
 import { useAuth } from '../App';
 import { rememberPerson } from '../lib/people';
 import PageShell from '../components/ui/PageShell';
+import Avatar from '../components/ui/Avatar';
 import { useToast } from '../context/ToastContext';
 
 function directoryProfiles(): UserProfile[] {
@@ -291,11 +292,11 @@ export default function MatchDiscovery() {
       >
        <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-         <img 
-          src={avatarFor(profile.uid)} 
-          alt="Founder" 
-          className="w-11 h-11 rounded-xl object-cover border border-stone-100"
-          referrerPolicy="no-referrer"
+         <Avatar
+          src={avatarFor(profile.uid)}
+          fallback={profile.fullName || 'Founder'}
+          size="lg"
+          className="w-11 h-11"
          />
          <div>
           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
@@ -364,7 +365,7 @@ export default function MatchDiscovery() {
     )}
    </div>
 
-   {!loading && filteredProfiles.length > 0 && (
+   {!loading && !isDemoMode && filteredProfiles.length > 0 && (
     <div className="flex justify-center">
      <button 
       onClick={loadMore}

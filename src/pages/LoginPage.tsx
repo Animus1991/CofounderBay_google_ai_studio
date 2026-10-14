@@ -5,6 +5,7 @@ import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
+import { useToast } from '../context/ToastContext';
 
 export default function LoginPage() {
  const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export default function LoginPage() {
  const [loading, setLoading] = useState(false);
  const navigate = useNavigate();
  const location = useLocation();
+ const { info: toastInfo } = useToast();
 
  const from = location.state?.from?.pathname || '/dashboard';
 
@@ -196,6 +198,8 @@ export default function LoginPage() {
         Google
        </button>
        <button
+        type="button"
+        onClick={() => toastInfo('GitHub sign-in is not available here.', 'Use email, Google, or Demo Mode.')}
         className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />

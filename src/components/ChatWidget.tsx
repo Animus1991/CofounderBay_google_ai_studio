@@ -48,7 +48,9 @@ export default function ChatWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const [turns, setTurns] = useState<Bubble[]>(() => readAssistant());
   const [agentTurns, setAgentTurns] = useState<Bubble[]>([]);
+  const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const runRef = useRef<(raw: string) => Promise<void>>(async () => undefined);
 
   const visibleTurns = tab === 'studio' ? turns : agentTurns;
   const agent = MOCK_AGENTS.find((item) => item.id === agentId);
@@ -60,7 +62,7 @@ export default function ChatWidget() {
       setIsMinimized(false);
       setTab('studio');
       setAgentId(null);
-      if (detail?.prompt) setInputText(detail.prompt);
+      if (detail?.prompt?.trim()) setQueuedPrompt(detail.prompt.trim());
     };
     window.addEventListener('OPEN_AI_CHAT', open);
     window.addEventListener('OPEN_ASSISTANT', open);
@@ -135,6 +137,15 @@ export default function ChatWidget() {
       /* the deterministic answer stays */
     }
   };
+
+  runRef.current = run;
+
+  useEffect(() => {
+    if (!isOpen || isMinimized || !queuedPrompt) return;
+    const text = queuedPrompt;
+    setQueuedPrompt(null);
+    void runRef.current(text);
+  }, [isOpen, isMinimized, queuedPrompt]);
 
   const follow = (link: AssistantLink) => {
     navigate(link.href);

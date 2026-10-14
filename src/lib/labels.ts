@@ -2,6 +2,9 @@ import { getLang } from './language';
 
 const EL: Record<string, string> = {
   Dashboard: 'Πίνακας',
+  Build: 'Δουλειά',
+  Find: 'Εύρεση',
+  Explore: 'Εξερεύνηση',
   'Founder Tools': 'Εργαλεία ιδρυτή',
   Fundraising: 'Χρηματοδότηση',
   Workspace: 'Χώρος εργασίας',

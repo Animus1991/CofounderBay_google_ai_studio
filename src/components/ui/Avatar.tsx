@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { cn } from '../../lib/utils';
 
 interface AvatarProps {
  src?: string;
  alt?: string;
  fallback?: string;
+ name?: string;
  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
  status?: 'online' | 'offline' | 'away' | 'busy';
  className?: string;
@@ -32,24 +34,27 @@ const statusSize = {
  xl: 'w-3.5 h-3.5 border-2',
 };
 
-export default function Avatar({ src, alt, fallback, size = 'md', status, className }: AvatarProps) {
- const initials = fallback
-  ? fallback.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+export default function Avatar({ src, alt, fallback, name, size = 'md', status, className }: AvatarProps) {
+ const [failed, setFailed] = useState(false);
+ const label = fallback || name || alt || '';
+ const initials = label
+  ? label.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
   : '?';
+ const showImage = Boolean(src) && !failed;
 
  return (
   <div className={cn("relative inline-flex shrink-0", className)}>
-   {src ? (
+   {showImage ? (
     <img
      src={src}
-     alt={alt || 'Avatar'}
+     alt={alt || fallback || name || 'Avatar'}
      className={cn("rounded-full object-cover border border-stone-200", sizeClasses[size])}
      referrerPolicy="no-referrer"
-     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+     onError={() => setFailed(true)}
     />
    ) : (
     <div className={cn(
-     "rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center font-semibold text-stone-500",
+     "rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center font-semibold text-stone-600",
      sizeClasses[size]
     )}>
      {initials}

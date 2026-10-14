@@ -44,4 +44,16 @@ describe('runAssistant', () => {
     expect(result.tool).toBe('navigate');
     expect(result.href).toBe('/fundraising');
   });
+
+  it('explains how to become a mentor instead of listing mentors', () => {
+    const result = runAssistant('How do I become a mentor?', demo);
+    expect(result.tool).toBe('become-mentor');
+    expect(result.href).toBe('/profile');
+  });
+
+  it('lists the same events the Events page shows', () => {
+    const result = runAssistant('what events are coming', demo);
+    expect(result.tool).toBe('events');
+    expect(result.en).toMatch(/Networking Night/);
+  });
 });

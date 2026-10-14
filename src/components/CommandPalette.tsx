@@ -68,7 +68,7 @@ export default function CommandPalette() {
    { id: 'assistant', label: 'Ask the studio assistant', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Navigation', keywords: ['ai', 'chat', 'help', 'βοηθός'] },
    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => go('/dashboard'), section: 'Navigation', keywords: ['home', 'main'] },
    { id: 'profile', label: 'My Profile', icon: User, action: () => go('/profile'), section: 'Navigation', keywords: ['account', 'me'] },
-   { id: 'discovery', label: 'Discovery', icon: Compass, action: () => go('/discovery'), section: 'Navigation', keywords: ['explore', 'browse', 'find'] },
+   { id: 'discovery', label: 'Explore', icon: Compass, action: () => go('/discovery'), section: 'Navigation', keywords: ['explore', 'browse', 'find', 'discovery'] },
    { id: 'matches', label: 'Matches', icon: Users, action: () => go('/matches'), section: 'Navigation', keywords: ['cofounders', 'partners'] },
    { id: 'mentors', label: 'Mentors', icon: GraduationCap, action: () => go('/mentors'), section: 'Navigation', keywords: ['advisors', 'coaching'] },
    { id: 'messages', label: 'Messages', icon: MessageSquare, action: () => go('/messages'), section: 'Navigation', keywords: ['chat', 'conversations', 'inbox'] },

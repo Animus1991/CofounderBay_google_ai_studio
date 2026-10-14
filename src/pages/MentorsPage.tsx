@@ -109,7 +109,7 @@ export default function MentorsPage() {
           className={cn(
            "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
            expertiseFilter === filter 
-            ? "bg-amber-400 text-stone-900" 
+            ? "bg-white text-stone-900" 
             : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
           )}
          >
@@ -129,7 +129,7 @@ export default function MentorsPage() {
           className={cn(
            "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
            availabilityFilter === filter 
-            ? "bg-amber-400 text-stone-900" 
+            ? "bg-white text-stone-900" 
             : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
           )}
          >
@@ -162,8 +162,12 @@ export default function MentorsPage() {
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
      <p className="text-xs font-semibold text-stone-400 tracking-wider">Top Rated Mentors</p>
      <div className="flex items-center gap-4">
-      <button className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors group">
-       View All Mentors
+      <button
+       type="button"
+       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Find a fundraising mentor' } }))}
+       className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors group"
+      >
+       Ask the assistant
        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
       </button>
      </div>
@@ -179,7 +183,6 @@ export default function MentorsPage() {
        onClick={() => setSelectedMentor(mentor)}
        className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
       >
-       {/* Photo */}
        <div className="relative">
         <img 
          src={mentor.avatar} 
@@ -256,17 +259,21 @@ export default function MentorsPage() {
      >
       Apply to Mentor
      </button>
-     <button className="px-4 py-2 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-50 transition-all border border-stone-200">
+     <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I become a mentor?' } }))}
+      className="px-4 py-2 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-50 transition-all border border-stone-200"
+     >
       Learn More
      </button>
     </div>
    </div>
    <div className="grid grid-cols-2 gap-3">
-    {[1, 2, 3, 4].map(i => (
+    {MENTORS.slice(0, 4).map((mentor, i) => (
      <img 
-      key={i}
-      src={`https://picsum.photos/seed/mentor-cta-${i}/150/150`} 
-      alt="Mentor" 
+      key={mentor.id}
+      src={mentor.avatar} 
+      alt={mentor.name} 
       className={cn(
        "w-20 h-20 rounded-2xl object-cover shadow border-2 border-white",
        i % 2 === 0 ? "translate-y-3" : ""
@@ -310,6 +317,7 @@ export default function MentorsPage() {
          src={selectedMentor.avatar} 
          alt={selectedMentor.name}
          className="w-32 h-32 mx-auto rounded-3xl object-cover shadow-xl border-4 border-white"
+         referrerPolicy="no-referrer"
         />
         <div>
          <h2 className="text-lg font-semibold text-stone-900 tracking-tight inline-flex items-center gap-2">

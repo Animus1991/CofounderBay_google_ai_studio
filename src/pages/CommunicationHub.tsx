@@ -13,6 +13,7 @@ import { useMessaging, Conversation, Message } from "../context/MessagingContext
 import { AIService, MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
 import { useAuth } from "../App";
+import { avatarFor } from "../data/cast";
 
 // =============================================================================
 // TYPES
@@ -63,9 +64,9 @@ const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "🎉", "🔥", "👏
 const EMOJI_GRID = ['😀','😂','😍','🥰','😎','🤔','😅','🙈','👍','👎','❤️','🔥','🎉','✅','💡','🚀','💪','🙏','👏','😢','😡','🤝','💰','⭐','🌟','📈','💻','🎯'];
 
 const MOCK_CONNECTION_REQUESTS: ConnectionRequest[] = [
- { id: "cr1", from: { id: "u5", fullName: "Jordan Taylor", headline: "Growth Hacker · Ex-Stripe", avatar: "https://picsum.photos/seed/jordan/100/100", role: "Co-Founder Candidate" }, message: "Hi! I saw your pitch deck project. I'd love to discuss a potential collaboration on growth strategy.", createdAt: new Date(Date.now() - 3600000).toISOString() },
- { id: "cr2", from: { id: "u6", fullName: "Elena Vasquez", headline: "FinTech Product Lead", avatar: "https://picsum.photos/seed/elena/100/100", role: "Mentor" }, message: "I mentor startups in the FinTech space — happy to connect!", createdAt: new Date(Date.now() - 86400000).toISOString() },
- { id: "cr3", from: { id: "u7", fullName: "Marcus Lee", headline: "Angel Investor · 30+ deals", avatar: "https://picsum.photos/seed/marcus/100/100", role: "Investor" }, createdAt: new Date(Date.now() - 172800000).toISOString() },
+ { id: "cr1", from: { id: "jordan-taylor", fullName: "Jordan Taylor", headline: "Growth marketer, ex-Stripe", avatar: avatarFor("jordan-taylor"), role: "Co-Founder Candidate" }, message: "Hi! I saw your pitch deck project. I'd love to discuss a potential collaboration on growth strategy.", createdAt: new Date(Date.now() - 3600000).toISOString() },
+ { id: "cr2", from: { id: "elena-rossi", fullName: "Elena Rossi", headline: "Venture partner, FinTech and SaaS", avatar: avatarFor("elena-rossi"), role: "Mentor" }, message: "I mentor startups in the FinTech space — happy to connect!", createdAt: new Date(Date.now() - 86400000).toISOString() },
+ { id: "cr3", from: { id: "daniel-weiss", fullName: "Daniel Weiss", headline: "Angel investor, 30+ pre-seed deals", avatar: avatarFor("daniel-weiss"), role: "Investor" }, createdAt: new Date(Date.now() - 172800000).toISOString() },
 ];
 
 const SHARED_MEDIA_MOCK = [1, 2, 3, 4, 5, 6];
@@ -86,9 +87,16 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
   xs: "w-6 h-6 rounded-lg", sm: "w-8 h-8 rounded-xl", md: "w-10 h-10 rounded-2xl",
   lg: "w-14 h-14 rounded-xl", xl: "w-20 h-20 rounded-xl"
  };
+ const initials = alt.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+ const [failed, setFailed] = useState(false);
+ const showImage = Boolean(src) && !failed;
  return (
   <div className={cn("relative shrink-0", s[size])}>
-   <img src={src || `https://picsum.photos/seed/${alt}/100/100`} alt={alt} className="w-full h-full object-cover rounded-[inherit]" />
+   {showImage ? (
+    <img src={src} alt={alt} className="w-full h-full object-cover rounded-[inherit]" onError={() => setFailed(true)} />
+   ) : (
+    <div className="w-full h-full rounded-[inherit] bg-stone-100 border border-stone-200 flex items-center justify-center text-xs font-semibold text-stone-600">{initials}</div>
+   )}
    {status && (
     <div className={cn(
      "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
@@ -882,10 +890,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          {msgState.conversations.slice(0, 6).map(conv => (
           <button key={conv.id} onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
            className="group relative" title={conv.otherParticipant.fullName}>
-           <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-md  transition-all">
-            <img src={conv.otherParticipant.profile?.profilePhoto || `https://picsum.photos/seed/${conv.otherParticipant.id}/100/100`}
-             alt={conv.otherParticipant.fullName} className="w-full h-full object-cover" />
-           </div>
+           <Avatar src={conv.otherParticipant.profile?.profilePhoto || avatarFor(conv.otherParticipant.id)} alt={conv.otherParticipant.fullName} size="md" />
            {conv.otherParticipant.isOnline && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
            )}

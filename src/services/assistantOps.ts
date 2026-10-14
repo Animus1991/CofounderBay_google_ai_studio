@@ -317,11 +317,44 @@ function bookMentor(person: CastMember): AssistantResult {
   };
 }
 
+function becomeMentorResult(): AssistantResult {
+  return {
+    tool: 'become-mentor',
+    en: 'To become a mentor, open Profile, add Mentor to the roles you offer, and write two lines on what you will share. Apply to Mentor on the Mentors page uses the same profile. I can also book a session with someone already listed.',
+    el: 'Για να γίνεις μέντορας, άνοιξε το Προφίλ, πρόσθεσε Mentor στους ρόλους και γράψε δύο γραμμές για το τι θα μοιραστείς. Το «Αίτηση μέντορα» στη σελίδα Μέντορες χρησιμοποιεί το ίδιο προφίλ. Μπορώ και να κλείσω συνάντηση με κάποιον που ήδη υπάρχει στη λίστα.',
+    href: '/profile',
+    links: [
+      { href: '/profile', en: 'Open profile', el: 'Άνοιγμα προφίλ' },
+      { href: '/mentors', en: 'Open mentors', el: 'Άνοιγμα μεντόρων' },
+    ],
+  };
+}
+
+function eventsResult(query: string): AssistantResult {
+  const folded = fold(query);
+  if (/\bhost|διοργανωσ|create an event|new event\b/.test(folded)) {
+    return {
+      tool: 'host-event',
+      en: 'Hosting stays on Events. Name the session, pick a date, and I will put a calendar hold once the listing exists. For now open Events and use Host Event — or tell me the title and day.',
+      el: 'Η διοργάνωση μένει στη σελίδα Εκδηλώσεις. Δώσε τίτλο και ημερομηνία και θα μπει κράτηση στο ημερολόγιο όταν υπάρχει η καταχώριση. Προς το παρόν άνοιξε Εκδηλώσεις — ή πες μου τίτλο και μέρα.',
+      href: '/events',
+      links: [{ href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' }],
+    };
+  }
+  return {
+    tool: 'events',
+    en: 'Same list as the Events page: Startup Founders Networking Night (London, 28 Mar), Mastering the Seed Round Pitch (online, 2 Apr), FinTech Demo Day Q2 (New York, 15 Apr).',
+    el: 'Η ίδια λίστα με τη σελίδα Εκδηλώσεις: Startup Founders Networking Night (Λονδίνο, 28 Μαρ), Mastering the Seed Round Pitch (online, 2 Απρ), FinTech Demo Day Q2 (Νέα Υόρκη, 15 Απρ).',
+    href: '/events',
+    links: [{ href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' }, { href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
+  };
+}
+
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “save Sarah”, “what is overdue”, “book David Hoffman”, “how is my round”, or “open fundraising”.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «αποθήκευσε τη Sarah», «τι είναι εκπρόθεσμο», «κλείσε τον David Hoffman», «πώς πάει ο γύρος», ή «άνοιξε χρηματοδότηση».',
+    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “save Sarah”, “what is overdue”, “book David Hoffman”, “how is my round”, “what events are coming”, or “how do I become a mentor”.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «αποθήκευσε τη Sarah», «τι είναι εκπρόθεσμο», «κλείσε τον David Hoffman», «πώς πάει ο γύρος», «ποιες εκδηλώσεις έρχονται», ή «πώς γίνομαι μέντορας».',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
@@ -347,7 +380,9 @@ export function runAssistant(text: string, profile: AssistantProfile | null): As
     || (/\b(match|co-?founder|συνιδρυτ|αντιστοιχ)\b/.test(folded) && !/\bopen|ανοιξ/.test(folded))) {
     return matchesResult(profile, query);
   }
+  if (/\b(become|apply|how do i|πως γιν|γινω)\b/.test(folded) && /\b(mentor|μεντορ)\b/.test(folded)) return becomeMentorResult();
   if (/\b(mentor|μεντορ)\b/.test(folded)) return mentorsResult(query);
+  if (/\b(events?|meetups?|εκδηλ|διοργανωσ)\b/.test(folded)) return eventsResult(query);
   if (/\b(milestone|οροσημ|overdue|εκπροθεσμ|due)\b/.test(folded)) return milestonesResult(query);
   if (/\b(round|raise|runway|valuation|γυρ|χρηματοδ|επενδυτ)\b/.test(folded)) return roundResult();
   if (/\b(today|status|brief|next|τι να κανω|τι εκκρεμ|επομεν)\b/.test(folded)) return briefingResult(profile);

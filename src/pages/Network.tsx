@@ -40,6 +40,7 @@ import { rememberPerson } from "../lib/people";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import { avatarFor } from "../data/cast";
 import { User, Endorsement, UserRole } from "../types";
 import { cn } from "../lib/utils";
 
@@ -57,18 +58,18 @@ export default function Network({ user }: NetworkProps) {
  const [compared, setCompared] = useState(false);
 
  const mockConnections = [
-  { id: "u1", fullName: "Sarah Chen", role: UserRole.MENTOR, industry: "FinTech", status: "Connected", location: "NYC" },
-  { id: "u2", fullName: "Alex Rivera", role: UserRole.FOUNDER, industry: "AI", status: "Connected", location: "SF" },
-  { id: "u3", fullName: "James Wilson", role: UserRole.ADVISOR, industry: "SaaS", status: "Pending", location: "London" },
-  { id: "u4", fullName: "Elena Rodriguez", role: UserRole.CO_FOUNDER_CANDIDATE, industry: "CleanTech", status: "Connected", location: "Berlin" }
+  { id: "sarah-chen", fullName: "Sarah Chen", role: UserRole.FOUNDER, industry: "FinTech", status: "Connected", location: "New York" },
+  { id: "alex-rivera", fullName: "Alex Rivera", role: UserRole.FOUNDER, industry: "AI", status: "Connected", location: "San Francisco" },
+  { id: "james-wilson", fullName: "James Wilson", role: UserRole.ADVISOR, industry: "SaaS", status: "Pending", location: "London" },
+  { id: "elena-rodriguez", fullName: "Elena Rodriguez", role: UserRole.CO_FOUNDER_CANDIDATE, industry: "CleanTech", status: "Connected", location: "Barcelona" }
  ];
  const visibleConnections = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))].filter((conn) =>
   conn.fullName.toLowerCase().includes(networkQuery.trim().toLowerCase())
  );
 
  const mockEndorsements: Endorsement[] = [
-  { id: "e1", endorserId: "u1", recipientId: user.id, skillId: "Product Strategy", comment: "One of the most focused founders I've worked with.", createdAt: "2026-03-15" },
-  { id: "e2", endorserId: "u2", recipientId: user.id, skillId: "Full-Stack Dev", comment: "Incredible technical depth and speed.", createdAt: "2026-03-20" }
+  { id: "e1", endorserId: "sarah-chen", recipientId: user.id, skillId: "Product Strategy", comment: "One of the most focused founders I've worked with.", createdAt: "2026-03-15" },
+  { id: "e2", endorserId: "alex-rivera", recipientId: user.id, skillId: "Full-Stack Dev", comment: "Incredible technical depth and speed.", createdAt: "2026-03-20" }
  ];
 
  const systemMetadata = useMemo(() => ({
@@ -129,7 +130,7 @@ export default function Network({ user }: NetworkProps) {
          <div className="flex flex-col items-center text-center space-y-4">
           <div className="relative">
            <div className="w-16 h-16 rounded-2xl bg-stone-100 overflow-hidden border border-stone-200">
-            <img src={`https://picsum.photos/seed/${conn.id}/200/200`} alt={conn.fullName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={avatarFor(conn.id, 200)} alt={conn.fullName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
            </div>
            <div className={cn(
             "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white",
@@ -168,7 +169,7 @@ export default function Network({ user }: NetworkProps) {
         <Card className="p-5 border-stone-100 hover:border-stone-300 transition-all group">
          <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-stone-100 overflow-hidden border border-stone-200 shrink-0">
-           <img src={`https://picsum.photos/seed/${p.id}/200/200`} alt={p.fullName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+           <img src={avatarFor(p.id, 200)} alt={p.fullName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div className="flex-1 min-w-0">
            <h4 className="text-base font-semibold text-stone-900">{p.fullName}</h4>
@@ -206,14 +207,14 @@ export default function Network({ user }: NetworkProps) {
         <Card className="p-4 border-stone-100 hover:border-stone-200 transition-all group">
          <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-stone-100 overflow-hidden border border-stone-200 shrink-0">
-           <img src={`https://picsum.photos/seed/${e.endorserId}/200/200`} alt="Endorser" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+           <img src={avatarFor(e.endorserId, 200)} alt={e.endorserId === 'sarah-chen' ? 'Sarah Chen' : 'Alex Rivera'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div className="flex-1">
            <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-semibold text-stone-900">Endorsed for</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-semibold">{e.skillId}</span>
            </div>
-           <p className="text-xs text-stone-400 mb-1.5">by {e.endorserId === 'u1' ? 'Sarah Chen' : 'Alex Rivera'} · {new Date(e.createdAt).toLocaleDateString()}</p>
+           <p className="text-xs text-stone-400 mb-1.5">by {e.endorserId === 'sarah-chen' ? 'Sarah Chen' : 'Alex Rivera'} · {new Date(e.createdAt).toLocaleDateString()}</p>
            <p className="text-sm text-stone-500 italic leading-relaxed">"{e.comment}"</p>
           </div>
          </div>

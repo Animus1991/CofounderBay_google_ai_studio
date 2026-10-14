@@ -61,7 +61,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
  const sections = [
   {
-   title: "Founder Tools",
+   title: "Build",
    items: [
     { icon: Rocket, label: "Founder Tools", path: "/founder-tools" },
     { icon: DollarSign, label: "Fundraising", path: "/fundraising" },
@@ -71,9 +71,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
    ]
   },
   {
-   title: "Discovery",
+   title: "Find",
    items: [
-    { icon: Compass, label: "Discovery", path: "/discovery" },
+    { icon: Compass, label: "Explore", path: "/discovery" },
     { icon: Users, label: "Matches", path: "/matches" },
     { icon: GraduationCap, label: "Mentors", path: "/mentors" },
     { icon: Globe, label: tenant?.content?.communityNamingConvention || "Communities", path: "/communities" },

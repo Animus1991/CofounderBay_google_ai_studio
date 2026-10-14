@@ -52,6 +52,7 @@ import { cn } from '../lib/utils';
 import { listKeys, readIds, saveRequest, toggleId } from '../lib/localLists';
 import { lookupPerson } from '../lib/people';
 import { useAuth } from '../App';
+import { avatarFor, findCast } from '../data/cast';
 import { UserProfile, UserSkill, Endorsement, ReadinessScore } from '../types';
 
 enum OperationType {
@@ -108,7 +109,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 // ── Activity feed mock data ──────────────────────────────────────────────────
 const PROFILE_ACTIVITY = [
  { id: 'a1', type: 'endorsement', text: 'Received endorsement for Machine Learning', time: '2h ago', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
- { id: 'a2', type: 'connection', text: 'Connected with Elena Papadopoulos', time: '5h ago', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+ { id: 'a2', type: 'connection', text: 'Connected with Elena Rodriguez', time: '5h ago', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
  { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', time: '1d ago', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' },
  { id: 'a4', type: 'project', text: 'Updated venture "TechFlow AI"', time: '2d ago', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
  { id: 'a5', type: 'skill', text: 'Added React & TypeScript skills', time: '3d ago', icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' },
@@ -125,22 +126,22 @@ const ACHIEVEMENTS = [
 ];
 // ── Mutual connections / People also viewed ──────────────────────────────────
 const MUTUAL_CONNECTIONS = [
- { id: 'm1', name: 'Sarah Chen', headline: 'AI Research Engineer', mutual: 4 },
- { id: 'm2', name: 'Nikos Papadakis', headline: 'Full-stack Developer', mutual: 3 },
- { id: 'm3', name: 'Marcus Chen', headline: 'Growth Marketing Lead', mutual: 2 },
+ { id: 'sarah-chen', name: 'Sarah Chen', headline: 'Product lead building cash-flow tools for freelancers', mutual: 4 },
+ { id: 'marcus-thorne', name: 'Marcus Thorne', headline: 'Growth operator, ex-HubSpot', mutual: 3 },
+ { id: 'jordan-taylor', name: 'Jordan Taylor', headline: 'Growth marketer, ex-Stripe', mutual: 2 },
 ];
 const ALSO_VIEWED = [
- { id: 'av1', name: 'Elena Papadopoulos', headline: 'Product Design Lead', matchScore: 87 },
- { id: 'av2', name: 'Jordan Lee', headline: 'FinTech Founder', matchScore: 82 },
- { id: 'av3', name: 'Emma Wilson', headline: 'SaaS Operations', matchScore: 79 },
+ { id: 'elena-rodriguez', name: 'Elena Rodriguez', headline: 'Product designer with a climate focus', matchScore: 87 },
+ { id: 'priya-sharma', name: 'Priya Sharma', headline: 'ML engineer turned founder', matchScore: 82 },
+ { id: 'emma-kim', name: 'Emma Kim', headline: 'Data scientist working on clinical triage', matchScore: 79 },
 ];
 // ── Mock endorsements fallback (used when Firestore returns empty) ───────────
 const MOCK_ENDORSEMENTS: Endorsement[] = [
- { id: 'me1', endorserId: 'user-sarah', skillId: 'Machine Learning', comment: 'Exceptional understanding of ML pipelines and model deployment.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
- { id: 'me2', endorserId: 'user-nikos', skillId: 'Product Strategy', comment: 'Brilliant product thinking. Always sees the bigger picture.', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
- { id: 'me3', endorserId: 'user-elena', skillId: 'React', comment: 'Clean, maintainable components every time.', createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
- { id: 'me4', endorserId: 'user-marcus', skillId: 'Growth Hacking', comment: 'Data-driven growth strategies that actually work.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
- { id: 'me5', endorserId: 'user-jordan', skillId: 'Node.js', comment: 'Strong backend architecture skills.', createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
+ { id: 'me1', endorserId: 'sarah-chen', skillId: 'Machine Learning', comment: 'Exceptional understanding of ML pipelines and model deployment.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+ { id: 'me2', endorserId: 'alex-rivera', skillId: 'Product Strategy', comment: 'Brilliant product thinking. Always sees the bigger picture.', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+ { id: 'me3', endorserId: 'elena-rodriguez', skillId: 'React', comment: 'Clean, maintainable components every time.', createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
+ { id: 'me4', endorserId: 'marcus-thorne', skillId: 'Growth Hacking', comment: 'Data-driven growth strategies that actually work.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
+ { id: 'me5', endorserId: 'jordan-taylor', skillId: 'Node.js', comment: 'Strong backend architecture skills.', createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
 ];
 // ── Mock readiness fallback ──────────────────────────────────────────────────
 const MOCK_READINESS: ReadinessScore = {
@@ -450,8 +451,8 @@ export default function ProfilePage() {
      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start">
       <div className="relative">
        <img 
-        src={`https://picsum.photos/seed/${profile.uid}/200/200`} 
-        alt={currentUser?.displayName || 'User'} 
+        src={currentUser?.photoURL || avatarFor(profile.uid, 200)} 
+        alt={isOwnProfile ? (currentUser?.displayName || 'User') : (profile.fullName || 'Founder')} 
         className="w-20 h-20 sm:w-28 lg:w-36 rounded-2xl object-cover border-4 border-white shadow-sm"
         referrerPolicy="no-referrer"
        />
@@ -823,12 +824,12 @@ export default function ProfilePage() {
            className="flex gap-3 p-3.5 bg-stone-50/50 rounded-xl border border-stone-100 hover:bg-white hover:border-stone-200 hover:shadow-sm transition-all group"
           >
            <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 overflow-hidden shrink-0 group-hover:border-stone-200 transition-colors">
-            <img src={`https://picsum.photos/seed/${endorsement.endorserId}/100/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src={avatarFor(endorsement.endorserId)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
            </div>
            <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center justify-between">
              <p className="text-sm text-stone-900">
-              <span className="font-medium">Someone</span> endorsed for{' '}
+              <span className="font-medium">{findCast(endorsement.endorserId)?.fullName || 'Someone'}</span> endorsed for{' '}
               <span className="font-semibold text-stone-900 bg-amber-50 px-1.5 py-0.5 rounded-md text-xs border border-amber-100">{endorsement.skillId}</span>
              </p>
             </div>
@@ -1117,7 +1118,7 @@ export default function ProfilePage() {
         {MUTUAL_CONNECTIONS.map(conn => (
          <div key={conn.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
           <img
-           src={`https://picsum.photos/seed/${conn.id}/80/80`}
+           src={avatarFor(conn.id, 80)}
            alt={conn.name}
            className="w-10 h-10 rounded-xl object-cover border border-stone-100"
            referrerPolicy="no-referrer"
@@ -1144,7 +1145,7 @@ export default function ProfilePage() {
        {ALSO_VIEWED.map(person => (
         <div key={person.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
          <img
-          src={`https://picsum.photos/seed/${person.id}/80/80`}
+          src={avatarFor(person.id, 80)}
           alt={person.name}
           className="w-10 h-10 rounded-xl object-cover border border-stone-100"
           referrerPolicy="no-referrer"
@@ -1160,7 +1161,7 @@ export default function ProfilePage() {
         </div>
        ))}
       </div>
-      <button className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
+      <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
        View more suggestions
       </button>
      </div>

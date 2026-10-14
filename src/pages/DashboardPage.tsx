@@ -22,6 +22,9 @@ import { rememberPerson } from '../lib/people';
 import { bothText } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
+import Avatar from '../components/ui/Avatar';
+import { readActivity, saveRequest } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
@@ -256,6 +259,7 @@ export default function DashboardPage() {
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [events, setEvents] = useState<DashEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  const activity = useStored(readActivity, ['cfb.activity']);
 
   const getProfileCompletion = () => {
     if (!profile) return { score: 0, missing: ['Basic Info'] };
@@ -377,7 +381,19 @@ export default function DashboardPage() {
 
   const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
   const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? rankedCircles);
-  const posts = isDemoMode ? DEMO_POSTS : feed;
+  const firstName = user?.displayName?.split(' ')[0] || 'Founder';
+  const activityPosts: FeedPost[] = activity.slice(0, 8).map((item) => ({
+    id: item.id,
+    authorId: item.byAssistant ? 'assistant' : user?.uid || 'you',
+    name: item.byAssistant ? 'Studio' : firstName,
+    avatar: '',
+    text: item.title,
+    time: item.at.slice(11, 16) || '',
+    likes: 0,
+    comments: 0,
+    likedBy: [],
+  }));
+  const posts = isDemoMode ? [...activityPosts, ...DEMO_POSTS] : (activityPosts.length > 0 ? [...activityPosts, ...feed] : feed);
   const schedule = isDemoMode ? DEMO_EVENTS : events;
   const chartSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
   const communities = isDemoMode ? ACTIVE_COMMUNITIES : (live.communities ?? []);
@@ -388,7 +404,6 @@ export default function DashboardPage() {
   const profileViews = isDemoMode ? 124 : live.profileViews;
   const matchScore = isDemoMode ? rankedCircles[0]?.match : live.topMatchScore;
   const unread = isDemoMode ? 3 : live.unreadMessages;
-  const firstName = user?.displayName?.split(' ')[0] || 'Founder';
 
   const toggleLike = async (post: FeedPost) => {
     if (isDemoMode) {
@@ -423,12 +438,15 @@ export default function DashboardPage() {
     );
   }
 
-  const sampleLabel = <Both en="Sample" el="Δείγμα" />;
-
   return (
     <PageShell
       title={bothText(`Good morning, ${firstName}`, `Καλημέρα, ${firstName}`)}
-      description="Ready to build something great today?"
+      description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
+      actions={isDemoMode ? (
+        <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
+          <Both en="Demo — sample data" el="Δείγμα — ενδεικτικά δεδομένα" />
+        </span>
+      ) : undefined}
     >
       <div className="space-y-8">
         <div className="flex items-center gap-3">
@@ -487,7 +505,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-4 min-w-max">
               <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => navigate('/profile')}>
                 <div className="relative">
-                  <img src={user?.photoURL || `https://picsum.photos/seed/${user?.uid || 'you'}/100/100`} alt="You" className="w-12 h-12 rounded-full object-cover border-2 border-stone-200 group-hover:scale-105 transition-transform" />
+                  <Avatar src={user?.photoURL || undefined} fallback={profile?.fullName || firstName} size="lg" className="group-hover:scale-105 transition-transform" />
                   <div className="absolute bottom-0 right-0 w-4 h-4 bg-stone-900 border-2 border-white rounded-full flex items-center justify-center">
                     <Plus className="w-2.5 h-2.5 text-white" />
                   </div>
@@ -496,21 +514,18 @@ export default function DashboardPage() {
               </div>
               {circles.map((match) => (
                 <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
-                  <div className="w-12 h-12 rounded-full p-[2px] bg-stone-100 ring-1 ring-stone-200">
-                    <img src={match.avatar || `https://picsum.photos/seed/${match.id}/100/100`} alt={match.name} className="w-full h-full rounded-full object-cover border border-white group-hover:scale-95 transition-transform" />
-                  </div>
+                  <Avatar src={match.avatar} fallback={match.name} size="lg" className="group-hover:scale-95 transition-transform" />
                   <span className="text-[10px] font-medium text-stone-400">{match.name.split(' ')[0]}</span>
                 </div>
               ))}
             </div>
           </div>
-          {isDemoMode && <p className="text-xs text-stone-400 mt-1">{sampleLabel}</p>}
         </div>
 
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className={cn('text-xs font-semibold text-stone-400', !isDemoMode && 'tracking-wider')}>
-              {isDemoMode ? sampleLabel : 'Activity Feed'}
+            <p className="text-xs font-semibold text-stone-400 tracking-wider">
+              <Both en="What changed" el="Τι άλλαξε" />
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <button onClick={() => navigate('/milestones')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors">
@@ -530,7 +545,9 @@ export default function DashboardPage() {
             return (
               <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
                 <div className="flex items-start gap-3">
-                  <img src={item.avatar || `https://picsum.photos/seed/${item.authorId}/100/100`} alt={item.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-stone-100 cursor-pointer hover:ring-2 hover:ring-stone-300 transition-all" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(`/profile/${item.authorId}`); }} />
+                  <button type="button" className="shrink-0" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
+                    <Avatar src={item.avatar} fallback={item.name} size="sm" />
+                  </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-stone-900">
                       <span className="font-medium">{item.name.split(' ')[0]}</span>{' '}
@@ -557,28 +574,28 @@ export default function DashboardPage() {
             {
               label: 'Profile Views',
               value: profileViews == null ? '—' : String(profileViews),
-              sub: isDemoMode ? sampleLabel : profileViews == null ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
+              sub: profileViews == null && !isDemoMode ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
               href: '/profile',
               hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
             },
             {
               label: 'Match Score',
               value: matchScore == null ? '—' : `${matchScore}%`,
-              sub: isDemoMode ? sampleLabel : null,
+              sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
               href: '/matches',
               hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
             },
             {
               label: 'Streak',
               value: `${streakDays}d`,
-              sub: isDemoMode ? sampleLabel : null,
+              sub: null,
               href: '/milestones',
               hint: bothText('Days in a row the work kept going', 'Μέρες στη σειρά που η δουλειά συνεχίστηκε'),
             },
             {
               label: 'Messages',
               value: unread == null ? '—' : String(unread),
-              sub: isDemoMode ? sampleLabel : null,
+              sub: null,
               href: '/messages',
               hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
             },
@@ -593,7 +610,6 @@ export default function DashboardPage() {
 
         {chartSeries && chartSeries.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
-            {isDemoMode && <p className="text-xs text-stone-400 mb-2">{sampleLabel}</p>}
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartSeries}>
@@ -608,11 +624,11 @@ export default function DashboardPage() {
           {prospect && (
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
               <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
-                {isDemoMode ? sampleLabel : 'Co-founder Prospect'}
+                <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
               </p>
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
-                  <img src={prospect.avatar || `https://picsum.photos/seed/${prospect.id}/100/100`} alt={prospect.name} className="w-11 h-11 rounded-full object-cover border border-stone-200" />
+                  <Avatar src={prospect.avatar || avatarFor(prospect.id)} fallback={prospect.name} size="md" />
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -624,7 +640,7 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => navigate('/messages')} className="flex-1 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors">Connect</button>
+                <button onClick={() => { saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' }); navigate(`/messages?user=${prospect.id}`); }} className="flex-1 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"><Both en="Connect" el="Σύνδεση" /></button>
                 <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">View Profile</button>
               </div>
             </div>
@@ -635,7 +651,7 @@ export default function DashboardPage() {
               <p className="text-[13px] sm:text-[14px] font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-[11px] font-medium text-stone-400">d</span></p>
               <div className="flex items-center gap-1.5 mt-2">
                 <Flame className="w-3.5 h-3.5 text-amber-500" />
-                {isDemoMode && <p className="text-xs text-stone-400">{sampleLabel}</p>}
+                <p className="text-xs text-stone-400"><Both en="Keep the work moving today" el="Συνέχισε τη δουλειά σήμερα" /></p>
               </div>
             </div>
           </div>
@@ -670,7 +686,7 @@ export default function DashboardPage() {
 
         {communities.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
-            {isDemoMode && <p className="text-xs text-stone-400 mb-2">{sampleLabel}</p>}
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3"><Both en="Communities" el="Κοινότητες" /></p>
             <div className="space-y-3">
               {communities.map((community) => (
                 <div key={community.id} className="flex items-center justify-between gap-3">
@@ -684,8 +700,11 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-2xl border border-stone-100 p-4">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-semibold text-stone-400 tracking-wider">Upcoming</p>
-            <NavLink to="/calendar" className="text-xs text-stone-400 hover:text-stone-900 transition-colors">View all →</NavLink>
+            <p className="text-xs font-semibold text-stone-400 tracking-wider"><Both en="Upcoming" el="Επόμενα" /></p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => navigate('/events')} className="text-xs text-stone-400 hover:text-stone-900 transition-colors"><Both en="See map" el="Χάρτης" /></button>
+              <NavLink to="/calendar" className="text-xs text-stone-400 hover:text-stone-900 transition-colors"><Both en="View all" el="Όλα" /> →</NavLink>
+            </div>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
             <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
@@ -708,29 +727,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-stone-400 tracking-wider">Local Meetups</p>
-            <button onClick={() => navigate('/events')} className="text-xs text-stone-400 hover:text-stone-900 transition-colors">See Map</button>
-          </div>
-          {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
-          ) : schedule.map((ev) => (
-            <div key={ev.id} className="bg-white rounded-2xl border border-stone-100 p-4 flex items-center gap-3 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all" onClick={() => navigate('/events')}>
-              <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 text-center shrink-0 min-w-[60px]">
-                <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{ev.day}</p>
-                <p className="text-base font-semibold text-stone-900">{ev.clock}</p>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-stone-900 truncate">{ev.title}</p>
-                <div className="flex items-center gap-3 mt-1">
-                  {ev.location && <span className="text-xs text-stone-400">{ev.location}</span>}
-                  {ev.attendees > 0 && <span className="text-xs text-stone-400">· {ev.attendees} attending</span>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </PageShell>
   );
