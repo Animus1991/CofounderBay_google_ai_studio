@@ -21,17 +21,34 @@ import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
-import { readSaved, removeSaved, saveProfile } from '../lib/localLists';
-const DEMO_MATCHES = [
- { uid: 'demo-sarah', fullName: 'Sarah Chen', headline: 'Product lead', bio: 'Building fintech tools.', location: 'NYC', stage: 'Pre-seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'Fintech', skills: ['React'] },
- { uid: 'demo-alex', fullName: 'Alex Rivera', headline: 'Engineer', bio: 'Ships product with small teams.', location: 'SF', stage: 'Seed', role: 'FOUNDER', commitment: 'Full-time', industry: 'AI', skills: ['TypeScript'] },
- { uid: 'demo-marcus', fullName: 'Marcus Thorne', headline: 'Operator', bio: 'Looks for a technical co-founder.', location: 'London', stage: 'Idea', role: 'CO_FOUNDER_CANDIDATE', commitment: 'Part-time', industry: 'SaaS', skills: ['Sales'] },
-] as UserProfile[];
+import { logActivity, readMatchFilters, readSaved, removeSaved, saveProfile, saveRequest, writeMatchFilters } from '../lib/localLists';
+import { CAST, avatarFor, placeOf } from '../data/cast';
+import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
+import { useStored } from '../lib/useStored';
 import { useAuth } from '../App';
-import { explainMatch } from '../lib/matchReason';
 import { rememberPerson } from '../lib/people';
 import PageShell from '../components/ui/PageShell';
 import { useToast } from '../context/ToastContext';
+
+function directoryProfiles(): UserProfile[] {
+ return CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate').map((person) => ({
+  uid: person.id,
+  fullName: person.fullName,
+  headline: person.headline,
+  bio: person.bio,
+  location: placeOf(person),
+  stage: person.stage,
+  role: person.role,
+  commitment: person.commitment,
+  industry: person.industry,
+  skills: person.skills,
+  lookingFor: person.lookingFor,
+  interests: person.interests,
+  timezone: person.timezone,
+ } as unknown as UserProfile));
+}
+
+const DIRECTORY = directoryProfiles();
 
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
 const ROLES = ['Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
@@ -41,26 +58,46 @@ export default function MatchDiscovery() {
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
- const [profiles, setProfiles] = useState<UserProfile[]>([]);
+ const [profiles, setProfiles] = useState<UserProfile[]>(DIRECTORY);
  const [loading, setLoading] = useState(true);
  const [connecting, setConnecting] = useState<string | null>(null);
- const [searchQuery, setSearchQuery] = useState('');
+ const storedFilters = useStored(readMatchFilters, ['cfb.matchFilters']);
+ const [searchQuery, setSearchQuery] = useState(() => storedFilters.q);
  const [showFilters, setShowFilters] = useState(false);
- const [savedIds, setSavedIds] = useState<string[]>(() => readSaved().map((item) => item.id));
+ const savedIds = useStored(() => readSaved().map((item) => item.id), ['cfb.savedProfiles']);
  const [filters, setFilters] = useState({
-  stage: '',
-  role: '',
-  commitment: '',
-  location: ''
+  stage: storedFilters.stage,
+  role: storedFilters.role,
+  commitment: storedFilters.commitment,
+  location: storedFilters.location
  });
 
- const handleConnect = async (e: React.MouseEvent, targetUid: string) => {
+ const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string }) => {
+  writeMatchFilters({
+   q: next.q ?? searchQuery,
+   role: next.role ?? filters.role,
+   stage: next.stage ?? filters.stage,
+   commitment: next.commitment ?? filters.commitment,
+   location: next.location ?? filters.location,
+   skill: storedFilters.skill,
+  });
+ };
+
+ const handleConnect = async (e: React.MouseEvent, profile: UserProfile) => {
   e.stopPropagation();
   if (!currentUser) return;
-  setConnecting(targetUid);
+  setConnecting(profile.uid);
   try {
-   // Logic to send connection request
-   await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
+   saveRequest({
+    id: profile.uid,
+    fullName: profile.fullName,
+    role: profile.role,
+    industry: profile.industry || '',
+    location: profile.location || '',
+    note: profile.headline || '',
+    status: 'pending',
+   });
+   logActivity({ kind: 'request', title: `Requested ${profile.fullName}`, titleEl: `Αίτημα προς ${profile.fullName}`, href: `/profile/${profile.uid}` });
    toastSuccess('Request sent!', 'Your connection request has been sent.');
   } catch (error) {
    toastError('Failed to send request', 'Please try again.');
@@ -81,7 +118,6 @@ export default function MatchDiscovery() {
    location: profile.location || '',
    note: profile.headline || '',
   });
-  setSavedIds(readSaved().map((item) => item.id));
  };
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
@@ -95,10 +131,13 @@ export default function MatchDiscovery() {
 
  useEffect(() => {
   const fetchProfiles = async () => {
-   if (isDemoMode) setProfiles(DEMO_MATCHES);
+   setProfiles(DIRECTORY);
    setLoading(!isDemoMode);
+   if (isDemoMode) {
+    setLoading(false);
+    return;
+   }
    try {
-    // In a real app, we'd use more complex queries and pagination
     const q = query(
      collection(db, 'profiles'),
      limit(20)
@@ -106,12 +145,13 @@ export default function MatchDiscovery() {
     const querySnapshot = await getDocs(q);
     const fetchedProfiles = querySnapshot.docs
      .map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile))
-     .filter(p => p.uid !== currentUser?.uid); // Don't show self
+     .filter(p => p.uid !== currentUser?.uid);
 
     if (fetchedProfiles.length > 0) setProfiles(fetchedProfiles);
-    else if (isDemoMode) setProfiles(DEMO_MATCHES);
+    else setProfiles(DIRECTORY);
    } catch (error) {
     console.error('Error fetching profiles:', error);
+    setProfiles(DIRECTORY);
    } finally {
     setLoading(false);
    }
@@ -120,18 +160,21 @@ export default function MatchDiscovery() {
   fetchProfiles();
  }, [currentUser, isDemoMode]);
 
+ const viewer = fromProfile(viewerProfile);
  const filteredProfiles = profiles.filter(profile => {
-  const matchesSearch = profile.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             profile.bio.toLowerCase().includes(searchQuery.toLowerCase());
+  const haystack = `${profile.fullName} ${profile.headline} ${profile.bio} ${(profile.skills || []).join(' ')}`.toLowerCase();
+  const matchesSearch = !searchQuery || haystack.includes(searchQuery.toLowerCase());
   const matchesStage = !filters.stage || profile.stage === filters.stage;
   const matchesRole = !filters.role || profile.role === filters.role;
   const matchesCommitment = !filters.commitment || profile.commitment === filters.commitment;
+  const matchesLocation = !filters.location || (profile.location || '').toLowerCase().includes(filters.location.toLowerCase());
 
-  return matchesSearch && matchesStage && matchesRole && matchesCommitment;
+  return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation;
+ }).slice().sort((a, b) => {
+  const sa = compatibility(viewer, fromCast({ skills: a.skills, lookingFor: a.lookingFor, interests: a.interests, industry: a.industry, stage: a.stage, commitment: a.commitment, city: a.location?.split(',')[0], timezone: a.timezone })).score ?? -1;
+  const sb = compatibility(viewer, fromCast({ skills: b.skills, lookingFor: b.lookingFor, interests: b.interests, industry: b.industry, stage: b.stage, commitment: b.commitment, city: b.location?.split(',')[0], timezone: b.timezone })).score ?? -1;
+  return sb - sa;
  });
-
- const viewerSkills = viewerProfile?.skills;
- const viewerIndustry = viewerProfile?.industry ?? (viewerProfile as { profile?: { industry?: string | string[] } } | null)?.profile?.industry;
 
  return (
   <PageShell
@@ -149,7 +192,7 @@ export default function MatchDiscovery() {
        type="text"
        placeholder="Search by skills, interests, or headline..."
        value={searchQuery}
-       onChange={(e) => setSearchQuery(e.target.value)}
+       onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); }}
        className="w-full pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
       />
      </div>
@@ -185,7 +228,7 @@ export default function MatchDiscovery() {
          <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{label}</label>
          <select 
           value={(filters as any)[key]}
-          onChange={(e) => setFilters({...filters, [key]: e.target.value})}
+          onChange={(e) => { const next = {...filters, [key]: e.target.value}; setFilters(next); persistFilters(next); }}
           className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900"
          >
           <option value="">All</option>
@@ -227,7 +270,16 @@ export default function MatchDiscovery() {
      ))
     ) : filteredProfiles.length > 0 ? (
      filteredProfiles.map((profile, idx) => {
-      const explained = explainMatch(viewerSkills, viewerIndustry, profile.skills, profile.industry);
+      const explained = compatibility(viewer, fromCast({
+       skills: profile.skills,
+       lookingFor: profile.lookingFor,
+       interests: profile.interests,
+       industry: profile.industry,
+       stage: profile.stage,
+       commitment: profile.commitment,
+       city: profile.location?.split(',')[0],
+       timezone: profile.timezone,
+      }));
       return (
       <motion.div 
        key={`${profile.uid}-${idx}`}
@@ -240,20 +292,20 @@ export default function MatchDiscovery() {
        <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
          <img 
-          src={`https://picsum.photos/seed/${profile.uid}/100/100`} 
+          src={avatarFor(profile.uid)} 
           alt="Founder" 
           className="w-11 h-11 rounded-xl object-cover border border-stone-100"
           referrerPolicy="no-referrer"
          />
          <div>
           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
-           {profile.headline?.split(' at ')[0] || 'Founder'}
+           {profile.fullName || profile.headline?.split(' at ')[0] || 'Founder'}
           </p>
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
-          {explained.reasonPhrase && <p className="text-xs text-stone-400">{explained.reasonPhrase}</p>}
+          {explained.headline && <p className="text-xs text-stone-400">{explained.headline.en}</p>}
          </div>
         </div>
-        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.pct == null ? '—' : `${explained.pct}%`}</span>
+        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.score == null ? '—' : `${explained.score}%`}</span>
        </div>
 
        <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">
@@ -271,7 +323,7 @@ export default function MatchDiscovery() {
 
        <div className="flex items-center gap-2">
         <button 
-         onClick={(e) => handleConnect(e, profile.uid)}
+         onClick={(e) => handleConnect(e, profile)}
          disabled={connecting === profile.uid}
          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all disabled:opacity-50"
         >

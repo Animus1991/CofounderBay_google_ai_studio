@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -11,6 +11,7 @@ import {
   Clock,
   Flame,
   Filter,
+  Sparkles,
 } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,6 +25,8 @@ import PageShell from '../components/ui/PageShell';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
+import { CAST, avatarFor } from '../data/cast';
+import { fromProfile, rankPeople } from '../lib/compatibility';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -35,13 +38,18 @@ const ACTIVITY_DATA = [
   { name: 'Sun', views: 34, matches: 43 },
 ];
 
-const DEMO_CIRCLES = [
-  { id: '1', name: 'Alex Rivera', role: 'CTO / Full-stack', match: 94, avatar: 'https://picsum.photos/seed/alex/100/100' },
-  { id: '2', name: 'Sarah Chen', role: 'Product Designer', match: 88, avatar: 'https://picsum.photos/seed/sarah/100/100' },
-  { id: '3', name: 'Marcus Thorne', role: 'Growth Marketer', match: 82, avatar: 'https://picsum.photos/seed/marcus/100/100' },
-  { id: '4', name: 'Emma Kim', role: '', match: 0, avatar: 'https://picsum.photos/seed/emma/100/100' },
-  { id: '5', name: 'David Park', role: '', match: 0, avatar: 'https://picsum.photos/seed/david/100/100' },
-];
+function circlesFromCast(profile: Parameters<typeof fromProfile>[0]) {
+  return rankPeople(
+    fromProfile(profile),
+    CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate'),
+  ).slice(0, 5).map(({ person, fit }) => ({
+    id: person.id,
+    name: person.fullName,
+    role: person.headline,
+    match: fit.score ?? 0,
+    avatar: avatarFor(person.id),
+  }));
+}
 
 const ACTIVE_COMMUNITIES = [
   { id: '1', name: 'Fintech Founders', members: '1.2k', newPosts: 12 },
@@ -57,9 +65,9 @@ const DEMO_EVENTS = [
 const DEMO_POSTS = [
   {
     id: 'demo-post-sarah',
-    authorId: '2',
+    authorId: 'sarah-chen',
     name: 'Sarah',
-    avatar: DEMO_CIRCLES[1]!.avatar,
+    avatar: avatarFor('sarah-chen'),
     text: 'just reached a Match score of 98',
     time: '2h ago',
     likes: 4,
@@ -68,9 +76,9 @@ const DEMO_POSTS = [
   },
   {
     id: 'demo-post-alex',
-    authorId: '1',
+    authorId: 'alex-rivera',
     name: 'Alex',
-    avatar: DEMO_CIRCLES[0]!.avatar,
+    avatar: avatarFor('alex-rivera'),
     text: 'hit a 10-day profile activity streak',
     time: '4h ago',
     likes: 12,
@@ -367,17 +375,18 @@ export default function DashboardPage() {
     navigate(`/${action.section}`);
   };
 
-  const circles = isDemoMode ? DEMO_CIRCLES : (live.recentMatches ?? []);
+  const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
+  const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? rankedCircles);
   const posts = isDemoMode ? DEMO_POSTS : feed;
   const schedule = isDemoMode ? DEMO_EVENTS : events;
   const chartSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
   const communities = isDemoMode ? ACTIVE_COMMUNITIES : (live.communities ?? []);
   const prospect = isDemoMode
-    ? { id: DEMO_CIRCLES[1]!.id, name: DEMO_CIRCLES[1]!.name, role: DEMO_CIRCLES[1]!.role, match: DEMO_CIRCLES[1]!.match, avatar: DEMO_CIRCLES[1]!.avatar }
+    ? rankedCircles[0] ?? null
     : live.prospect;
   const streakDays = isDemoMode ? (streak?.currentStreak ?? 12) : (streak?.currentStreak ?? 0);
   const profileViews = isDemoMode ? 124 : live.profileViews;
-  const matchScore = isDemoMode ? DEMO_CIRCLES[0]!.match : live.topMatchScore;
+  const matchScore = isDemoMode ? rankedCircles[0]?.match : live.topMatchScore;
   const unread = isDemoMode ? 3 : live.unreadMessages;
   const firstName = user?.displayName?.split(' ')[0] || 'Founder';
 
@@ -436,6 +445,9 @@ export default function DashboardPage() {
               placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
             />
           </div>
+          <button title={bothText('Ask the studio assistant', 'Ρωτήστε τον βοηθό του στούντιο')} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: searchQuery.trim() } }))} className="flex items-center justify-center w-11 h-11 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-all shrink-0">
+            <Sparkles className="w-4 h-4" />
+          </button>
           <button title={bothText('Open Discovery to narrow this search', 'Ανοίξτε την Εξερεύνηση για να στενέψετε την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-11 h-11 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
             <Filter className="w-4 h-4" />
           </button>

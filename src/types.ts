@@ -707,6 +707,9 @@ export type UserProfile = User & {
   commitment: string;
   industry?: string;
   skills?: string[];
+  lookingFor?: string[];
+  interests?: string[];
+  timezone?: string;
   availability?: string;
   socialLinks?: {
     linkedin?: string;

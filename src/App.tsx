@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, lazy, Suspense } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { UserProfile, UserRole, ProfileStatus, VerificationStatus, AccountStatus } from './types';
+import { User, UserProfile, UserRole, ProfileStatus, VerificationStatus, AccountStatus } from './types';
 
 // Components
 import Layout from './components/Layout';
@@ -13,10 +13,12 @@ import RouteLifecycle from './components/RouteLifecycle';
 import OfflineBanner from './components/OfflineBanner';
 import { ToastProvider } from './context/ToastContext';
 import { LanguageProvider } from './lib/language';
-import { TenantProvider } from './context/TenantContext';
+import { Both } from './lib/both';
+import { TenantProvider, useTenant } from './context/TenantContext';
 import { MessagingProvider } from './context/MessagingContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
+import { setDataScope } from './lib/localLists';
 
 // Lazy-loaded pages (code-splitting)
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -63,7 +65,7 @@ function PageLoader() {
   <div className="min-h-[60vh] flex items-center justify-center">
    <div className="flex flex-col items-center gap-3">
     <div className="w-8 h-8 border-3 border-stone-200 border-t-stone-900 rounded-full animate-spin" />
-    <p className="text-xs font-medium text-stone-400 tracking-wider">Loading</p>
+    <p className="text-xs font-medium text-stone-400"><Both en="Loading" el="Φόρτωση" /></p>
    </div>
   </div>
  );
@@ -73,6 +75,8 @@ function PageLoader() {
 interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile | null;
+  /** The signed-in person in the app's own shape, for pages that take a `user` prop. */
+  appUser: User | null;
   loading: boolean;
   isAdmin: boolean;
   isDemoMode: boolean;
@@ -82,6 +86,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  appUser: null,
   loading: true,
   isAdmin: false,
   isDemoMode: false,
@@ -89,6 +94,56 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const useAuth = () => useContext(AuthContext);
+
+export const DEMO_USER_ID = 'demo-user';
+
+function demoProfile(): UserProfile {
+  const now = new Date().toISOString();
+  return {
+    id: DEMO_USER_ID,
+    uid: DEMO_USER_ID,
+    fullName: 'Demo User',
+    email: 'demo@cofounderbay.com',
+    bio: 'Technical founder exploring CoFounderBay with sample data. Nothing here is saved to a server.',
+    headline: 'Technical founder building a FinTech product',
+    roles: [UserRole.FOUNDER, UserRole.ADMIN],
+    skills: ['React', 'TypeScript', 'Node.js'],
+    lookingFor: ['Sales', 'Growth', 'Fundraising'],
+    interests: ['FinTech', 'SaaS', 'AI'],
+    industry: 'FinTech',
+    location: 'Athens, Greece',
+    timezone: 'Europe/Athens',
+    stage: 'Pre-seed',
+    role: 'Founder',
+    commitment: 'Full-time',
+    avatarUrl: 'https://picsum.photos/seed/demo/100/100',
+    profileStatus: ProfileStatus.PUBLISHED,
+    verificationStatus: VerificationStatus.VERIFIED,
+    profileCompletionScore: 100,
+    accountStatus: AccountStatus.ACTIVE,
+    onboardingCompleted: true,
+    createdAt: now,
+    updatedAt: now,
+  } as unknown as UserProfile;
+}
+
+function toAppUser(id: string, profile: UserProfile | null, firebaseUser: FirebaseUser | null): User {
+  const now = new Date().toISOString();
+  const roles = Array.isArray(profile?.roles) && profile.roles.length > 0 ? profile.roles : [UserRole.FOUNDER];
+  return {
+    id,
+    fullName: profile?.fullName || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Founder',
+    email: profile?.email || firebaseUser?.email || '',
+    roles,
+    profileStatus: profile?.profileStatus ?? ProfileStatus.DRAFT,
+    verificationStatus: profile?.verificationStatus ?? VerificationStatus.UNVERIFIED,
+    profileCompletionScore: profile?.profileCompletionScore ?? 0,
+    accountStatus: profile?.accountStatus ?? AccountStatus.ACTIVE,
+    onboardingCompleted: !!profile,
+    createdAt: profile?.createdAt || now,
+    updatedAt: profile?.updatedAt || now,
+  };
+}
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireOnboarding = true }: { children: React.ReactNode, requireOnboarding?: boolean }) => {
@@ -113,6 +168,30 @@ const ProtectedRoute = ({ children, requireOnboarding = true }: { children: Reac
 
   return <>{children}</>;
 };
+
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin, isDemoMode } = useAuth();
+  return <ProtectedRoute>{isDemoMode || isAdmin ? children : <Navigate to="/dashboard" replace />}</ProtectedRoute>;
+};
+
+/** Pages written for a `user` prop get the signed-in person, never an empty object. */
+function WithUser({ render }: { render: (user: User) => React.ReactNode }) {
+  const { appUser } = useAuth();
+  if (!appUser) return null;
+  return <>{render(appUser)}</>;
+}
+
+function TenantBillingRoute() {
+  const { tenant } = useTenant();
+  if (!tenant) return null;
+  return <TenantBilling tenant={tenant} />;
+}
+
+/** One messaging state for the whole app, so the assistant and every page see the same conversations. */
+function AppMessaging({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  return <MessagingProvider userId={user?.uid || ''}>{children}</MessagingProvider>;
+}
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -224,36 +303,31 @@ export default function App() {
     };
   }, [isDemoMode]);
 
-  // Mock data for demo mode
-  const demoUser = isDemoMode ? {
-    uid: 'demo-user',
-    email: 'demo@cofounderbay.com',
-    displayName: 'Demo User',
-    photoURL: 'https://picsum.photos/seed/demo/100/100',
-  } as FirebaseUser : null;
+  const demo = useMemo(() => {
+    if (!isDemoMode) return null;
+    return {
+      user: {
+        uid: DEMO_USER_ID,
+        email: 'demo@cofounderbay.com',
+        displayName: 'Demo User',
+        photoURL: 'https://picsum.photos/seed/demo/100/100',
+      } as FirebaseUser,
+      profile: demoProfile(),
+    };
+  }, [isDemoMode]);
 
-  const demoProfile = isDemoMode ? {
-    id: 'demo-user',
-    uid: 'demo-user',
-    fullName: 'Demo User',
-    email: 'demo@cofounderbay.com',
-    bio: 'This is a demo account for exploring the platform UI/UX.',
-    headline: 'Serial Entrepreneur & Developer',
-    roles: [UserRole.FOUNDER, UserRole.ADMIN],
-    skills: ['React', 'TypeScript', 'Tailwind CSS'],
-    interests: ['AI', 'SaaS', 'Fintech'],
-    location: 'San Francisco, CA',
-    stage: 'MVP',
-    role: 'Founder',
-    commitment: 'Full-time',
-    avatarUrl: 'https://picsum.photos/seed/demo/100/100',
-    profileStatus: ProfileStatus.PUBLISHED,
-    verificationStatus: VerificationStatus.VERIFIED,
-    profileCompletionScore: 100,
-    accountStatus: AccountStatus.ACTIVE,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  } as unknown as UserProfile : null;
+  const activeUser = demo ? demo.user : user;
+  const activeProfile = demo ? demo.profile : profile;
+  const accountId = activeUser?.uid ?? null;
+
+  useEffect(() => {
+    setDataScope(demo ? null : accountId);
+  }, [demo, accountId]);
+
+  const appUser = useMemo(
+    () => (accountId ? toAppUser(accountId, activeProfile, activeUser) : null),
+    [accountId, activeProfile, activeUser],
+  );
 
   return (
     <ErrorBoundary>
@@ -261,10 +335,11 @@ export default function App() {
      <TenantProvider>
      <ToastProvider>
      <LanguageProvider>
-      <AuthContext.Provider value={{ 
-        user: isDemoMode ? demoUser : user, 
-        profile: isDemoMode ? demoProfile : profile, 
-        loading, 
+      <AuthContext.Provider value={{
+        user: activeUser,
+        profile: activeProfile,
+        appUser,
+        loading,
         isAdmin: isDemoMode ? true : isAdmin,
         isDemoMode,
         toggleDemoMode
@@ -281,140 +356,62 @@ export default function App() {
             <Route path="/signup" element={<SignUpPage />} />
 
             {/* Onboarding */}
-            <Route 
-              path="/onboarding" 
+            <Route
+              path="/onboarding"
               element={
                 <ProtectedRoute requireOnboarding={false}>
                   <OnboardingWizard />
                 </ProtectedRoute>
-              } 
+              }
             />
 
             {/* App Layout Routes */}
-            <Route element={<Layout />}>
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile/:id" 
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/matches" 
-                element={
-                  <ProtectedRoute>
-                    <MatchDiscovery />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/discovery" 
-                element={
-                  <ProtectedRoute>
-                    <DiscoveryPage user={user as any} />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/events" 
-                element={
-                  <ProtectedRoute>
-                    <EventsPage user={user as any} />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/mentors" 
-                element={
-                  <ProtectedRoute>
-                    <MentorsPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/communities" 
-                element={
-                  <ProtectedRoute>
-                    <CommunitiesPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/messages" 
-                element={
-                  <ProtectedRoute>
-                    <MessagingProvider userId={user?.uid || ''}>
-                      <CommunicationHub user={user as any} />
-                    </MessagingProvider>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/milestones" 
-                element={
-                  <ProtectedRoute>
-                    <MilestonesPage />
-                  </ProtectedRoute>
-                } 
-              />
+            <Route element={<AppMessaging><Layout /></AppMessaging>}>
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/matches" element={<ProtectedRoute><MatchDiscovery /></ProtectedRoute>} />
+              <Route path="/discovery" element={<ProtectedRoute><WithUser render={(u) => <DiscoveryPage user={u} />} /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute><WithUser render={(u) => <EventsPage user={u} />} /></ProtectedRoute>} />
+              <Route path="/mentors" element={<ProtectedRoute><MentorsPage /></ProtectedRoute>} />
+              <Route path="/communities" element={<ProtectedRoute><CommunitiesPage /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><WithUser render={(u) => <CommunicationHub user={u} />} /></ProtectedRoute>} />
+              <Route path="/milestones" element={<ProtectedRoute><MilestonesPage /></ProtectedRoute>} />
 
               {/* Founder Tools */}
-              <Route path="/founder-tools" element={<ProtectedRoute><FounderTools user={{} as any} /></ProtectedRoute>} />
-              <Route path="/fundraising" element={<ProtectedRoute><Fundraising user={{} as any} /></ProtectedRoute>} />
-              <Route path="/workspace" element={<ProtectedRoute><Workspace user={{} as any} /></ProtectedRoute>} />
+              <Route path="/founder-tools" element={<ProtectedRoute><WithUser render={(u) => <FounderTools user={u} />} /></ProtectedRoute>} />
+              <Route path="/fundraising" element={<ProtectedRoute><WithUser render={(u) => <Fundraising user={u} />} /></ProtectedRoute>} />
+              <Route path="/workspace" element={<ProtectedRoute><WithUser render={(u) => <Workspace user={u} />} /></ProtectedRoute>} />
               <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
 
               {/* Discovery */}
-              <Route path="/community" element={<ProtectedRoute><CommunitiesPage /></ProtectedRoute>} />
-              <Route path="/programs" element={<ProtectedRoute><Programs user={{} as any} /></ProtectedRoute>} />
-              <Route path="/network" element={<ProtectedRoute><Network user={{} as any} /></ProtectedRoute>} />
+              <Route path="/community" element={<Navigate to="/communities" replace />} />
+              <Route path="/programs" element={<ProtectedRoute><WithUser render={(u) => <Programs user={u} />} /></ProtectedRoute>} />
+              <Route path="/network" element={<ProtectedRoute><WithUser render={(u) => <Network user={u} />} /></ProtectedRoute>} />
 
               {/* Resources */}
-              <Route path="/resources" element={<ProtectedRoute><Resources user={{} as any} /></ProtectedRoute>} />
-              <Route path="/insights" element={<ProtectedRoute><Insights user={{} as any} /></ProtectedRoute>} />
+              <Route path="/resources" element={<ProtectedRoute><WithUser render={(u) => <Resources user={u} />} /></ProtectedRoute>} />
+              <Route path="/insights" element={<ProtectedRoute><WithUser render={(u) => <Insights user={u} />} /></ProtectedRoute>} />
               <Route path="/legal" element={<ProtectedRoute><LegalHub /></ProtectedRoute>} />
               <Route path="/perks" element={<ProtectedRoute><Perks /></ProtectedRoute>} />
 
               {/* User */}
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/settings/billing" element={<ProtectedRoute><BillingPage user={{} as any} /></ProtectedRoute>} />
+              <Route path="/settings/billing" element={<ProtectedRoute><WithUser render={(u) => <BillingPage user={u} />} /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
 
               {/* Admin Routes */}
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute>
-                    {(isDemoMode || isAdmin) ? <AdminDashboard /> : <Navigate to="/dashboard" replace />}
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="/admin/users" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <UserManagement user={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/automation" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <AutomationDashboard user={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/branding" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <BrandingSettings user={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/sso" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <SSOSettings user={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/taxonomy" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <TaxonomySettings user={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/domains" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <DomainSettings /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/billing" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <TenantBilling tenant={{} as any} /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
-              <Route path="/admin/billing-oversight" element={<ProtectedRoute>{(isDemoMode || isAdmin) ? <BillingOversight /> : <Navigate to="/dashboard" replace />}</ProtectedRoute>} />
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/users" element={<AdminRoute><WithUser render={(u) => <UserManagement user={u} />} /></AdminRoute>} />
+              <Route path="/admin/automation" element={<AdminRoute><WithUser render={(u) => <AutomationDashboard user={u} />} /></AdminRoute>} />
+              <Route path="/admin/branding" element={<AdminRoute><WithUser render={(u) => <BrandingSettings user={u} />} /></AdminRoute>} />
+              <Route path="/admin/sso" element={<AdminRoute><WithUser render={(u) => <SSOSettings user={u} />} /></AdminRoute>} />
+              <Route path="/admin/taxonomy" element={<AdminRoute><WithUser render={(u) => <TaxonomySettings user={u} />} /></AdminRoute>} />
+              <Route path="/admin/taxonomies" element={<Navigate to="/admin/taxonomy" replace />} />
+              <Route path="/admin/domains" element={<AdminRoute><DomainSettings /></AdminRoute>} />
+              <Route path="/admin/billing" element={<AdminRoute><TenantBillingRoute /></AdminRoute>} />
+              <Route path="/admin/billing-oversight" element={<AdminRoute><BillingOversight /></AdminRoute>} />
             </Route>
 
             {/* Fallback — professional 404 instead of a silent redirect */}

@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { Both } from '../lib/both';
 import { LanguageToggle, useLanguage } from '../lib/language';
 import Sidebar from './layout/Sidebar';
+import ChatWidget from './ChatWidget';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore } from '../stores/useUIStore';
@@ -81,6 +82,7 @@ export default function Layout() {
    >
     <Outlet />
    </main>
+   <ChatWidget />
   </div>
  );
 }

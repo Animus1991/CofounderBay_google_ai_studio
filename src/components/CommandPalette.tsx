@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
  Search, LayoutDashboard, User, Users, GraduationCap, MessageSquare, Trophy, Compass,
  Calendar, Rocket, DollarSign, Briefcase, Share2, BookOpen, Activity, Scale, Gift,
- Bell, Settings, ShieldCheck, BarChart3, Globe, Zap, ArrowRight, Command
+ Bell, Settings, ShieldCheck, BarChart3, Globe, Zap, ArrowRight, Command, Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
@@ -65,6 +65,7 @@ export default function CommandPalette() {
 
  const commands: CommandItem[] = useMemo(() => {
   const items: CommandItem[] = [
+   { id: 'assistant', label: 'Ask the studio assistant', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Navigation', keywords: ['ai', 'chat', 'help', 'βοηθός'] },
    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => go('/dashboard'), section: 'Navigation', keywords: ['home', 'main'] },
    { id: 'profile', label: 'My Profile', icon: User, action: () => go('/profile'), section: 'Navigation', keywords: ['account', 'me'] },
    { id: 'discovery', label: 'Discovery', icon: Compass, action: () => go('/discovery'), section: 'Navigation', keywords: ['explore', 'browse', 'find'] },

@@ -20,65 +20,22 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import PageShell from '../components/ui/PageShell';
+import { avatarFor, castByRole } from '../data/cast';
 
-const MENTORS = [
- {
-  id: '1',
-  name: 'David Hoffman',
-  role: 'Ex-VP Product @ Uber',
-  company: 'Uber',
-  expertise: ['Product', 'Growth', 'Marketplace'],
-  rating: 4.9,
-  reviews: 124,
-  availability: 'Immediate',
-  avatar: 'https://picsum.photos/seed/david/200/200',
+const MENTORS = castByRole('Mentor').map((person) => ({
+  id: person.id,
+  name: person.fullName,
+  role: person.headline,
+  company: person.company || '',
+  expertise: person.expertise || [],
+  rating: person.rating || 0,
+  reviews: person.reviews || 0,
+  availability: person.availability || 'Flexible',
+  avatar: avatarFor(person.id, 200),
   verified: true,
-  detailedBio: 'David brings 15 years of experience in product management, having led the core marketplace teams at Uber during their hyper-growth phase. He specializes in network effects, scaling operations, and building high-performing product orgs.',
-  achievements: ['Scaled Uber marketplace to 50+ cities', 'Angel investor in 12 startups', 'Ex-YCombinator Founder']
- },
- {
-  id: '2',
-  name: 'Elena Rossi',
-  role: 'Venture Partner @ Sequoia',
-  company: 'Sequoia',
-  expertise: ['Fundraising', 'Pitching', 'Strategy'],
-  rating: 5.0,
-  reviews: 89,
-  availability: 'Flexible',
-  avatar: 'https://picsum.photos/seed/elena/200/200',
-  verified: true,
-  detailedBio: 'Elena is a seasoned venture capitalist with a track record of identifying and supporting unicorn startups across Europe and the US. She focuses on early-stage enterprise SaaS and fintech platforms.',
-  achievements: ['Led Series A for 3 unicorn startups', 'Board member at 5 tech companies', 'Former CEO of Fintech Startup']
- },
- {
-  id: '3',
-  name: 'Samir Patel',
-  role: 'CTO @ Fintech Unicorn',
-  company: 'Fintech Unicorn',
-  expertise: ['Engineering', 'Security', 'Team Building'],
-  rating: 4.8,
-  reviews: 56,
-  availability: '1 month notice',
-  avatar: 'https://picsum.photos/seed/samir/200/200',
-  verified: true,
-  detailedBio: 'Samir has scaled engineering teams from 10 to 500+ engineers. He specializes in transforming monolithic architectures into highly available and secure microservices.',
-  achievements: ['Scaled engineering from 10 to 500+', 'Architected highly available payment systems', 'Authored "Scaling Fintech"']
- },
- {
-  id: '4',
-  name: 'Jessica Wu',
-  role: 'Growth Lead @ Airbnb',
-  company: 'Airbnb',
-  expertise: ['Marketing', 'Retention', 'Virality'],
-  rating: 4.9,
-  reviews: 210,
-  availability: 'Flexible',
-  avatar: 'https://picsum.photos/seed/jessica/200/200',
-  verified: true,
-  detailedBio: 'Jessica is an expert in user acquisition and lifecycle marketing. At Airbnb, she pioneered viral growth loops that resulted in massive exponential adoption.',
-  achievements: ['Increased retention by 40% in Q3', 'Pioneered new viral loop strategies', 'Speaker at GrowthHackers Conf']
- }
-];
+  detailedBio: person.bio,
+  achievements: person.achievements || [],
+}));
 
 export default function MentorsPage() {
  const [searchQuery, setSearchQuery] = useState('');

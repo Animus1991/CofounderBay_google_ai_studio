@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { avatarFor, findCast } from '../data/cast';
+import { MOCK_AGENTS } from '../services/aiService';
 
 export interface Reaction {
  emoji: string;
@@ -78,175 +80,54 @@ type MessagingAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null };
 
-// Mock data for immediate functionality
+function conversationFromCast(
+  convId: string,
+  id: string,
+  lastMessage: string,
+  lastMessageTime: string,
+  unreadCount: number,
+  extras: { isOnline?: boolean; isAI?: boolean; roles?: string[] } = {},
+): Conversation {
+  const person = findCast(id);
+  const agent = MOCK_AGENTS.find((item) => item.id === id);
+  return {
+    id: convId,
+    participants: ['demo-user', id],
+    status: 'Active',
+    createdAt: new Date().toISOString(),
+    otherParticipant: {
+      id,
+      fullName: person?.fullName || agent?.name || id,
+      roles: extras.roles || (person ? [person.role] : agent ? [agent.role] : []),
+      isAI: extras.isAI ?? !!agent,
+      isOnline: extras.isOnline ?? false,
+      profile: {
+        profilePhoto: person ? avatarFor(id) : agent?.avatar,
+        headline: person?.headline || agent?.description,
+      },
+    },
+    lastMessage,
+    lastMessageTime,
+    unreadCount,
+  };
+}
+
 const MOCK_CONVERSATIONS: Conversation[] = [
- {
-  id: 'conv-1',
-  participants: ['u1', 'u2'],
-  status: 'Active',
-  createdAt: new Date().toISOString(),
-  otherParticipant: {
-   id: 'u2',
-   fullName: 'Alex Rivera',
-   roles: ['CTO'],
-   isAI: false,
-   isOnline: true,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/alex/100/100',
-    headline: 'Building the future of AI'
-   }
-  },
-  lastMessage: 'Hey, are we still on for the pitch practice tomorrow?',
-  lastMessageTime: '2m ago',
-  unreadCount: 2
- },
- {
-  id: 'conv-2',
-  participants: ['u1', 'u3'],
-  status: 'Active',
-  createdAt: new Date().toISOString(),
-  otherParticipant: {
-   id: 'u3',
-   fullName: 'Sarah Chen',
-   roles: ['Product Lead'],
-   isAI: false,
-   isOnline: false,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/sarah/100/100',
-    headline: 'Product-led growth expert'
-   }
-  },
-  lastMessage: 'The mockups look great! Just a few tweaks needed.',
-  lastMessageTime: '1h ago',
-  unreadCount: 0
- },
- {
-  id: 'conv-3',
-  participants: ['u1', 'a1'],
-  status: 'Active',
-  createdAt: new Date().toISOString(),
-  otherParticipant: {
-   id: 'a1',
-   fullName: 'Venture Architect',
-   roles: ['AI Strategy Advisor'],
-   isAI: true,
-   isOnline: true,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/ai1/100/100',
-    headline: 'AI-powered startup strategist'
-   }
-  },
-  lastMessage: 'I\'ve analyzed your pitch deck. Here are my recommendations...',
-  lastMessageTime: '5m ago',
-  unreadCount: 1
- },
- {
-  id: 'conv-4',
-  participants: ['u1', 'a2'],
-  status: 'Active',
-  createdAt: new Date().toISOString(),
-  otherParticipant: {
-   id: 'a2',
-   fullName: 'Fundraising Coach',
-   roles: ['AI Funding Expert'],
-   isAI: true,
-   isOnline: true,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/ai2/100/100',
-    headline: 'Helping founders raise capital'
-   }
-  },
-  lastMessage: 'Your valuation model needs some adjustments.',
-  lastMessageTime: '1d ago',
-  unreadCount: 0
- },
- {
-  id: 'conv-5',
-  participants: ['u1', 'u5'],
-  status: 'Active',
-  createdAt: new Date(Date.now() - 7200000).toISOString(),
-  otherParticipant: {
-   id: 'u5',
-   fullName: 'Jordan Taylor',
-   roles: ['Growth Lead'],
-   isAI: false,
-   isOnline: true,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/jordan/100/100',
-    headline: 'Growth hacker · Ex-Stripe'
-   }
-  },
-  lastMessage: 'Let me share the growth playbook I mentioned 📊',
-  lastMessageTime: '3h ago',
-  unreadCount: 1
- },
- {
-  id: 'conv-6',
-  participants: ['u1', 'u6'],
-  status: 'Active',
-  createdAt: new Date(Date.now() - 14400000).toISOString(),
-  otherParticipant: {
-   id: 'u6',
-   fullName: 'Elena Vasquez',
-   roles: ['Mentor'],
-   isAI: false,
-   isOnline: false,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/elena/100/100',
-    headline: 'FinTech Product Lead · 3 exits'
-   }
-  },
-  lastMessage: 'Great progress! Let\'s schedule our next mentoring session.',
-  lastMessageTime: '5h ago',
-  unreadCount: 0
- },
- {
-  id: 'conv-7',
-  participants: ['u1', 'u7'],
-  status: 'Active',
-  createdAt: new Date(Date.now() - 86400000).toISOString(),
-  otherParticipant: {
-   id: 'u7',
-   fullName: 'Marcus Lee',
-   roles: ['Investor'],
-   isAI: false,
-   isOnline: false,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/marcus/100/100',
-    headline: 'Angel investor · 30+ deals'
-   }
-  },
-  lastMessage: 'Interesting deck. Can we set up a 30-min call next week?',
-  lastMessageTime: '1d ago',
-  unreadCount: 0
- },
- {
-  id: 'conv-8',
-  participants: ['u1', 'u8'],
-  status: 'Active',
-  createdAt: new Date(Date.now() - 172800000).toISOString(),
-  otherParticipant: {
-   id: 'u8',
-   fullName: 'Priya Sharma',
-   roles: ['Co-Founder'],
-   isAI: false,
-   isOnline: true,
-   profile: {
-    profilePhoto: 'https://picsum.photos/seed/priya/100/100',
-    headline: 'ML Engineer turned founder'
-   }
-  },
-  lastMessage: 'The integration tests are passing now ✅',
-  lastMessageTime: '2d ago',
-  unreadCount: 0
- }
+ conversationFromCast('conv-1', 'alex-rivera', 'Hey, are we still on for the pitch practice tomorrow?', '2m ago', 2, { isOnline: true, roles: ['Founder'] }),
+ conversationFromCast('conv-2', 'sarah-chen', 'The mockups look great! Just a few tweaks needed.', '1h ago', 0, { roles: ['Founder'] }),
+ conversationFromCast('conv-3', 'a1', 'I\'ve analyzed your pitch deck. Here are my recommendations...', '5m ago', 1, { isAI: true, isOnline: true }),
+ conversationFromCast('conv-4', 'a2', 'Your valuation model needs some adjustments.', '1d ago', 0, { isAI: true, isOnline: true }),
+ conversationFromCast('conv-5', 'jordan-taylor', 'Let me share the growth playbook I mentioned.', '3h ago', 1, { isOnline: true }),
+ conversationFromCast('conv-6', 'elena-rossi', 'Great progress! Let\'s schedule our next mentoring session.', '5h ago', 0),
+ conversationFromCast('conv-7', 'daniel-weiss', 'Interesting deck. Can we set up a 30-min call next week?', '1d ago', 0),
+ conversationFromCast('conv-8', 'priya-sharma', 'The integration tests are passing now.', '2d ago', 0, { isOnline: true }),
 ];
 
 const MOCK_MESSAGES: Message[] = [
  {
   id: 'msg-1',
   conversationId: 'conv-1',
-  senderId: 'u2',
+  senderId: 'alex-rivera',
   senderName: 'Alex Rivera',
   body: 'Hey, are we still on for the pitch practice tomorrow?',
   createdAt: new Date(Date.now() - 120000).toISOString(),
@@ -255,7 +136,7 @@ const MOCK_MESSAGES: Message[] = [
  {
   id: 'msg-2',
   conversationId: 'conv-1',
-  senderId: 'u2',
+  senderId: 'alex-rivera',
   senderName: 'Alex Rivera',
   body: 'I\'ve prepared some notes on the competitor analysis section.',
   createdAt: new Date(Date.now() - 60000).toISOString(),
@@ -265,7 +146,7 @@ const MOCK_MESSAGES: Message[] = [
  {
   id: 'msg-3',
   conversationId: 'conv-2',
-  senderId: 'u3',
+  senderId: 'sarah-chen',
   senderName: 'Sarah Chen',
   body: 'The mockups look great! Just a few tweaks needed on the onboarding flow.',
   createdAt: new Date(Date.now() - 3600000).toISOString(),
@@ -304,7 +185,7 @@ const MOCK_MESSAGES: Message[] = [
  {
   id: 'msg-7',
   conversationId: 'conv-1',
-  senderId: 'u2',
+  senderId: 'alex-rivera',
   senderName: 'Alex Rivera',
   body: 'Sure thing. Send it over and I\'ll take a look tonight. Also, I think we should add a competitive landscape slide.',
   createdAt: new Date(Date.now() - 60000).toISOString(),
@@ -575,14 +456,19 @@ export function MessagingProvider({ children, userId }: { children: React.ReactN
       return conversation;
     } catch {
       // API not available — create conversation locally
-      const existingConv = state.conversations.find(c => 
-        participants.includes(c.otherParticipant.id)
+      const otherId = participants.find((id) => id !== userId) || participants[participants.length - 1];
+      const existingConv = state.conversations.find((c) =>
+        c.otherParticipant.id === otherId || participants.includes(c.otherParticipant.id)
       );
       if (existingConv) {
         dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: existingConv.id });
         return existingConv;
       }
-      return null;
+      if (!otherId) return null;
+      const created = conversationFromCast(`conv-${otherId}`, otherId, '', 'now', 0, { isOnline: true });
+      dispatch({ type: 'SET_CONVERSATIONS', payload: [...state.conversations, created] });
+      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: created.id });
+      return created;
     }
   };
 

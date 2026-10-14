@@ -212,9 +212,9 @@ export default function LoginPage() {
          navigate('/dashboard', { replace: true });
          window.location.reload();
         }}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50 text-xs sm:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all"
+        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
        >
-        <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-emerald-600" />
+        <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         <Both en="Try Demo Mode" el="Δοκιμή δείγματος" />
        </button>
        <p className="mt-2 text-center text-xs text-stone-400">
