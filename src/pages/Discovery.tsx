@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
  Search, 
  Filter, 
@@ -72,6 +72,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
  const [users, setUsers] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const categories: CategoryType[] = ["All", "Matches", "Communities", "Opportunities", "Events"];
  const availableSkills = ["React", "Node.js", "Python", "AI/ML", "Product Management", "Growth Marketing", "UI/UX Design", "Blockchain", "Sales", "Strategy"];
@@ -525,6 +526,10 @@ export default function Discovery({ user }: DiscoveryProps) {
          initial={{ opacity: 0, y: 30 }}
          animate={{ opacity: 1, y: 0 }}
          transition={{ delay: i * 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+         role="button"
+         tabIndex={0}
+         onClick={() => ask(`Tell me about ${opp.title}`)}
+         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${opp.title}`); }}
          className={cn(
           "group cursor-pointer overflow-hidden border border-stone-100 bg-white hover:border-stone-300 hover:shadow-sm transition-all",
           viewMode === "grid" ? "rounded-2xl" : "rounded-2xl flex flex-col md:flex-row items-center"
@@ -565,11 +570,9 @@ export default function Discovery({ user }: DiscoveryProps) {
          </div>
          {viewMode === "list" && (
           <div className="px-12 pb-8 md:pb-0 md:pr-12">
-           <Link to={`/discovery?opportunity=${opp.id}`}>
-            <Button variant="outline" className="rounded-full h-11 px-8 text-sm font-medium tracking-wider border-stone-200 group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 transition-all">
+           <Button type="button" variant="outline" className="rounded-full h-11 px-8 text-sm font-medium tracking-wider border-stone-200 group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 transition-all" onClick={(e: React.MouseEvent) => { e.stopPropagation(); ask(`Tell me about ${opp.title}`); }}>
              Details
             </Button>
-           </Link>
           </div>
          )}
         </motion.div>
@@ -647,7 +650,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         { topic: "Remote Work 2.0", growth: "+42%", count: "120 posts", trend: [50, 45, 40, 42, 45, 48, 52] },
         { topic: "Fintech Regulation", growth: "+30%", count: "95 posts", trend: [10, 12, 15, 18, 22, 25, 30] },
        ].map((t) => (
-        <div key={t.topic} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
+        <div key={t.topic} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${t.topic}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${t.topic}`); }} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
          <div>
           <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{t.topic}</p>
           <p className="text-xs text-stone-400">{t.count}</p>
@@ -663,7 +666,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         </div>
        ))}
       </div>
-      <Button variant="outline" onClick={() => navigate('/dashboard')} className="w-full h-7 rounded-lg text-sm border-stone-100">
+      <Button type="button" variant="outline" onClick={() => navigate('/communities')} className="w-full h-7 rounded-lg text-sm border-stone-100">
        View All Topics
       </Button>
      </section>
@@ -686,7 +689,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         { title: "AI Product Workshop", date: "Oct 20", time: "10:00 AM", type: "Virtual", capacity: "40%", status: "OPEN" },
         { title: "Seed Funding Webinar", date: "Oct 25", time: "2:00 PM", type: "Virtual", capacity: "95%", status: "LAST_CALL" },
        ].map((event) => (
-        <div key={event.title} className="group p-3 rounded-xl border border-stone-100 bg-stone-50 hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
+        <div key={event.title} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-stone-50 hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
          <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 flex flex-col items-center justify-center shrink-0">
           <span className="text-[8px] font-semibold text-stone-400">{event.date.split(' ')[0]}</span>
           <span className="text-base font-bold text-stone-900">{event.date.split(' ')[1]}</span>
@@ -721,7 +724,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        placeholder="Enter your email"
        className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
       />
-      <Button onClick={() => navigate('/dashboard')} className="w-full rounded-lg h-8 bg-stone-900 text-white text-sm hover:bg-stone-800 transition-all">
+      <Button type="button" onClick={() => ask('what should I do today')} className="w-full rounded-lg h-8 bg-stone-900 text-white text-sm hover:bg-stone-800 transition-all">
        Subscribe Now
       </Button>
      </section>

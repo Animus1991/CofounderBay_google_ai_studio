@@ -272,7 +272,7 @@ export default function Network({ user }: NetworkProps) {
        <p className="text-sm text-stone-600 leading-relaxed">
         You are in the <span className="font-semibold text-stone-900">top 5%</span> of founders endorsed for Product Strategy this month.
        </p>
-       <Button onClick={() => { void navigator.clipboard?.writeText('Endorsed for Product Strategy on CoFounderBay'); }} className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm hover:bg-stone-700">
+       <Button type="button" onClick={() => { void navigator.clipboard?.writeText('Endorsed for Product Strategy on CoFounderBay'); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about readiness score' } })); }} className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm hover:bg-stone-700">
         Share Achievement
        </Button>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addSession, listKeys, readIds, toggleId } from '../lib/localLists';
+import { addSession, listKeys, logActivity, readIds, toggleId } from '../lib/localLists';
 import { 
  Star, 
  MessageSquare, 
@@ -474,6 +474,8 @@ export default function MentorsPage() {
            participants: [selectedMentor?.name || 'Mentor'],
            priority: 'Medium',
           });
+          logActivity({ kind: 'session', title: `Requested ${selectedMentor?.name || 'mentor'}`, titleEl: `Αίτημα mentorship: ${selectedMentor?.name || 'μέντορας'}`, href: '/calendar', byAssistant: false });
+          window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${selectedMentor?.name || 'this mentor'}` } }));
           setIsMentorshipModalOpen(false);
           setSelectedMentor(null);
           setFocusAreas('');

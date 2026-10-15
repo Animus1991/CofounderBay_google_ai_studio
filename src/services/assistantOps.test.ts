@@ -76,6 +76,13 @@ describe('runAssistant', () => {
     expect(result.en).toMatch(/Sequoia/);
   });
 
+  it('answers tell-me-about from the same Discovery opportunity list', () => {
+    const result = runAssistant('Tell me about EcoSphere Accelerator', demo);
+    expect(result.tool).toBe('about');
+    expect(result.href).toBe('/discovery');
+    expect(result.en).toMatch(/EcoSphere/);
+  });
+
   it('lists the same communities the Communities page shows', () => {
     const result = runAssistant('what communities can I join', demo);
     expect(result.tool).toBe('communities');

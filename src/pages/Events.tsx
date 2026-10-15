@@ -8,7 +8,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { cn } from "../lib/utils";
-import { eventListKeys, readIds, toggleId } from "../lib/localLists";
+import { addSession, eventListKeys, logActivity, readIds, removeSession, toggleId } from "../lib/localLists";
 import { User } from "../types";
 
 interface EventsProps {
@@ -44,7 +44,25 @@ export default function Events({ user }: EventsProps) {
  const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
 
  const toggleRegistration = (eventId: string) => {
-  setRegisteredEvents(toggleId(eventListKeys.registered, eventId));
+  const next = toggleId(eventListKeys.registered, eventId);
+  setRegisteredEvents(next);
+  const listed = mockEvents.find((item) => item.id === eventId);
+  if (!listed) return;
+  if (next.includes(eventId)) {
+   addSession({
+    id: `evt-${eventId}`,
+    title: listed.title,
+    type: 'Event',
+    time: `${listed.date} ${listed.time}`,
+    duration: listed.time,
+    location: listed.location,
+    participants: [listed.organizer],
+    priority: 'Medium',
+   });
+   logActivity({ kind: 'event', title: `Registered for ${listed.title}`, titleEl: `Εγγραφή: ${listed.title}`, href: '/calendar' });
+  } else {
+   removeSession(`evt-${eventId}`);
+  }
  };
  const toggleBookmark = (eventId: string) => {
   setBookmarkedEvents(toggleId(eventListKeys.bookmarked, eventId));

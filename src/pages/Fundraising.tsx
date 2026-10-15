@@ -627,7 +627,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          </div>
 
          <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => showToast('Downloading SAFE note...')}>
+          <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about SAFE agreement' } }))}>
            <Download className="w-3 h-3 mr-1" /> SAFE
           </Button>
           <Button size="sm" className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => { navigator.clipboard.writeText('https://cofounderbay.app/dataroom/safe-note'); showToast('Share link copied!'); }}>

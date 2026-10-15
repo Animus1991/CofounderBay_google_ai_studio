@@ -181,6 +181,11 @@ export default function MatchDiscovery() {
   <PageShell
    title="Discover Co-Founders"
    description="Find entrepreneurs and builders who complement your skills."
+   actions={
+    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))} className="min-h-11 px-3 py-2 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-800">
+     Ask assistant
+    </button>
+   }
   >
    <div className="space-y-5">
     {/* Search & Filters */}
