@@ -20,9 +20,22 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
+import { keys, listKeys, readIds } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 
 export default function Perks() {
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
+ const [perkQuery, setPerkQuery] = useState('');
+ const [savedPerks, setSavedPerks] = useState<number[]>([]);
+ const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const perkClaimId = (name: string) => {
+  const map: Record<string, string> = {
+   'Amazon Web Services': 'aws', Stripe: 'stripe', HubSpot: 'hubspot', Notion: 'notion',
+   'Google Cloud': 'gcp', Intercom: 'intercom', Slack: 'slack', Mercury: 'mercury',
+  };
+  return map[name] ?? name.toLowerCase();
+ };
 
  const categories = [
   { id: 'all', label: 'All Perks', icon: Gift },
@@ -43,7 +56,10 @@ export default function Perks() {
   { id: 8, name: "Mercury", category: "finance", value: "$500 Bonus", description: "Open a Mercury account and get $500 when you deposit $50,000.", logo: "Mercury" },
  ];
 
- const filteredPerks = activeCategory === 'all' ? perks : perks.filter(p => p.category === activeCategory);
+ const filteredPerks = (activeCategory === 'all' ? perks : perks.filter(p => p.category === activeCategory)).filter((perk) => {
+  const q = perkQuery.trim().toLowerCase();
+  return !q || perk.name.toLowerCase().includes(q) || perk.category.toLowerCase().includes(q) || perk.description.toLowerCase().includes(q);
+ });
 
  return (
   <PageShell title="Perks" description="Exclusive discounts and credits from our ecosystem partners.">
@@ -72,13 +88,19 @@ export default function Perks() {
      <div className="relative flex-1">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
       <input 
-       type="text" 
+       type="text"
+       value={perkQuery}
+       onChange={(e) => setPerkQuery(e.target.value)}
        placeholder="Search perks by name or category..." 
        className="w-full bg-stone-50 border border-stone-200 rounded-full py-2.5 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
       />
      </div>
-     <Button variant="outline" className="h-11 px-6">
-      <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters
+     <Button type="button" variant="outline" className="h-11 px-6" onClick={() => {
+      const ids = ['all', 'cloud', 'finance', 'marketing', 'productivity'] as const;
+      const index = ids.indexOf(activeCategory);
+      setActiveCategory(ids[(index + 1) % ids.length] ?? 'all');
+     }}>
+      <SlidersHorizontal className="w-4 h-4 mr-2" /> {activeCategory === 'all' ? 'Filters' : categories.find((c) => c.id === activeCategory)?.label}
      </Button>
     </Card>
     <Card className="bg-stone-900 text-white border-none flex items-center justify-between p-6">
@@ -98,8 +120,8 @@ export default function Perks() {
        <div className="w-14 h-11 bg-stone-100 rounded-2xl flex items-center justify-center text-stone-900 font-medium text-sm group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm">
         {perk.logo}
        </div>
-       <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-300 hover:text-amber-500">
-        <Star className="w-4 h-4" />
+       <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8 hover:text-amber-500", savedPerks.includes(perk.id) ? "text-amber-500" : "text-stone-300")} onClick={() => setSavedPerks((prev) => prev.includes(perk.id) ? prev.filter((id) => id !== perk.id) : [...prev, perk.id])}>
+        <Star className="w-4 h-4" fill={savedPerks.includes(perk.id) ? 'currentColor' : 'none'} />
        </Button>
       </div>
       <div className="space-y-2 flex-1">
@@ -113,8 +135,8 @@ export default function Perks() {
        <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{perk.description}</p>
       </div>
       <div className="mt-6 pt-4 border-t border-stone-100">
-       <Button variant="primary" size="sm" className="w-full text-sm py-2">
-        Claim Perk <ArrowRight className="w-3 h-3 ml-1" />
+       <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
+        {claimed.includes(perkClaimId(perk.name)) ? 'Claimed' : 'Claim Perk'} <ArrowRight className="w-3 h-3 ml-1" />
        </Button>
       </div>
      </Card>
@@ -131,8 +153,8 @@ export default function Perks() {
       <h3 className="text-md font-medium text-stone-900">AWS Activate for CoFounderBay</h3>
       <p className="text-stone-500 max-w-2xl">Get exclusive access to the AWS Activate program through our partnership. Includes $100,000 in credits, technical support, and training resources.</p>
      </div>
-     <Button variant="primary" className="px-8 h-10">
-      Apply Now
+     <Button type="button" variant="primary" className="px-8 h-10" onClick={() => ask('Claim the Amazon Web Services perk')}>
+      {claimed.includes('aws') ? 'Claimed' : 'Apply Now'}
      </Button>
     </div>
 

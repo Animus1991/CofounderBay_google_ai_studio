@@ -477,7 +477,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="bg-stone-900 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className="studio-nudge bg-stone-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">

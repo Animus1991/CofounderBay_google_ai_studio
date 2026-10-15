@@ -40,6 +40,9 @@ interface ResourcesProps {
 
 export default function Resources({ user }: ResourcesProps) {
  const [activeTab, setActiveTab] = useState<'learning' | 'services' | 'jobs' | 'support'>('learning');
+ const [courseQuery, setCourseQuery] = useState('');
+ const [courseLevel, setCourseLevel] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const mockCourses = [
   { id: "c1", title: "Foundations of Fundraising", instructor: "Naval Ravikant", duration: "4h 20m", level: "Beginner", rating: 4.9, image: "https://picsum.photos/seed/course1/800/450" },
@@ -91,19 +94,30 @@ export default function Resources({ user }: ResourcesProps) {
        <div className="relative group">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
         <input 
-         type="text" 
+         type="text"
+         value={courseQuery}
+         onChange={(e) => setCourseQuery(e.target.value)}
          placeholder="Search courses..." 
          className="bg-stone-50 border border-stone-200/60 rounded-2xl py-3 pl-12 pr-6 text-base focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:bg-white transition-all w-full md:w-[300px] font-light"
         />
        </div>
-       <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide">
-        <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters
+       <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide" onClick={() => {
+        const levels = ['All', 'Beginner', 'Intermediate', 'Advanced'] as const;
+        const index = levels.indexOf(courseLevel);
+        setCourseLevel(levels[(index + 1) % levels.length] ?? 'All');
+       }}>
+        <SlidersHorizontal className="w-4 h-4 mr-2" /> {courseLevel === 'All' ? 'Filters' : courseLevel}
        </Button>
       </div>
      </div>
 
      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 sm:gap-8">
-      {mockCourses.map((course, idx) => (
+      {mockCourses.filter((course) => {
+        const q = courseQuery.trim().toLowerCase();
+        const matchesQuery = !q || course.title.toLowerCase().includes(q) || course.instructor.toLowerCase().includes(q);
+        const matchesLevel = courseLevel === 'All' || course.level === courseLevel;
+        return matchesQuery && matchesLevel;
+       }).map((course, idx) => (
        <motion.div
         key={course.id}
         initial={{ opacity: 0, y: 20 }}
@@ -144,7 +158,7 @@ export default function Resources({ user }: ResourcesProps) {
            </div>
           </div>
          </div>
-         <Button variant="outline" className="w-full mt-8 h-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all">
+         <Button type="button" variant="outline" className="w-full mt-8 h-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => ask(`Tell me about ${course.title}`)}>
           Start Learning
          </Button>
         </Card>
@@ -161,7 +175,7 @@ export default function Resources({ user }: ResourcesProps) {
        <h3 className="text-xl font-medium tracking-tight text-stone-900">Partner Services</h3>
        <p className="text-base text-stone-400 font-light">Exclusive deals and vetted services for our ecosystem members.</p>
       </div>
-      <Button variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide">
+      <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide" onClick={() => ask('How do I list a partner service?')}>
        <Plus className="w-4 h-4 mr-2" /> List Your Service
       </Button>
      </div>
@@ -199,7 +213,7 @@ export default function Resources({ user }: ResourcesProps) {
            </div>
           </div>
          </div>
-         <Button variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium tracking-wider shadow-sm">
+         <Button type="button" variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium tracking-wider shadow-sm" onClick={() => ask(`Tell me about ${service.name}`)}>
           View Details
          </Button>
         </Card>
@@ -216,7 +230,7 @@ export default function Resources({ user }: ResourcesProps) {
        <h3 className="text-xl font-medium tracking-tight text-stone-900">Jobs & Roles</h3>
        <p className="text-base text-stone-400 font-light">Find your next co-founder or early-stage hire.</p>
       </div>
-      <Button variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium tracking-wide shadow-lg shadow-stone-900/10">
+      <Button type="button" variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium tracking-wide shadow-lg shadow-stone-900/10" onClick={() => ask('How do I post a job?')}>
        <Plus className="w-4 h-4 mr-2" /> Post a Job
       </Button>
      </div>
@@ -249,7 +263,7 @@ export default function Resources({ user }: ResourcesProps) {
             <p className="text-base font-medium text-stone-900 tracking-tight">{job.salary}</p>
             <p className="text-sm text-stone-400 font-medium tracking-wider">{job.type}</p>
            </div>
-           <Button variant="outline" className="h-11 px-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all">
+           <Button type="button" variant="outline" className="h-11 px-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => ask(`How do I apply for ${job.title} at ${job.company}?`)}>
             Apply Now
            </Button>
           </div>
@@ -278,6 +292,10 @@ export default function Resources({ user }: ResourcesProps) {
         <motion.div 
          key={i}
          whileHover={{ x: 10 }}
+         role="button"
+         tabIndex={0}
+         onClick={() => ask(q)}
+         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(q); } }}
          className="flex items-center justify-between p-6 sm:p-8 bg-white rounded-xl border border-stone-200/60 hover:border-stone-900 transition-all cursor-pointer group shadow-sm hover:shadow-xl"
         >
          <p className="text-base font-medium text-stone-900">{q}</p>
@@ -287,7 +305,7 @@ export default function Resources({ user }: ResourcesProps) {
         </motion.div>
        ))}
       </div>
-      <Button variant="outline" className="w-full h-16 rounded-xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-50">
+      <Button type="button" variant="outline" className="w-full h-16 rounded-xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-50" onClick={() => ask('what can you do')}>
        Visit Full Help Center
       </Button>
      </div>
@@ -322,12 +340,12 @@ export default function Resources({ user }: ResourcesProps) {
             <p className="text-xl font-medium text-white">$150</p>
             <p className="text-sm text-stone-500 font-medium tracking-wide">per session</p>
            </div>
-           <Button className="h-10 px-8 rounded-xl bg-white text-stone-900 hover:bg-stone-100 transition-all font-medium text-sm tracking-wider">
+           <Button type="button" className="h-10 px-8 rounded-xl bg-white text-stone-900 hover:bg-stone-100 transition-all font-medium text-sm tracking-wider" onClick={() => ask('book Sarah Chen')}>
             Book Now
            </Button>
           </div>
          </div>
-         <Button variant="ghost" className="w-full h-11 rounded-2xl text-sm font-medium tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all">
+         <Button type="button" variant="ghost" className="w-full h-11 rounded-2xl text-sm font-medium tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all" onClick={() => ask('Find a fundraising mentor')}>
           View All Coaches
          </Button>
         </div>
@@ -346,7 +364,7 @@ export default function Resources({ user }: ResourcesProps) {
         <p className="text-base text-stone-500 leading-relaxed font-light">
          Need immediate assistance? Our support team is available 24/7 for premium members.
         </p>
-        <Button variant="outline" className="w-full h-11 rounded-2xl border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all font-medium text-sm tracking-wider">
+        <Button type="button" variant="outline" className="w-full h-11 rounded-2xl border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all font-medium text-sm tracking-wider" onClick={() => ask('what can you do')}>
          Start Chat
         </Button>
        </div>

@@ -547,9 +547,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
             <h4 className="text-sm font-semibold text-stone-900 truncate">{step.title}</h4>
             <span className={cn(
              "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
-             step.status === "Completed" ? "text-emerald-600 bg-emerald-50 border-emerald-100" : 
-             step.status === "In-Progress" ? "text-amber-600 bg-amber-50 border-amber-100" : 
-             "text-stone-400 bg-stone-50 border-stone-100"
+             step.status === "Completed" ? "text-emerald-600 border-transparent" : 
+             step.status === "In-Progress" ? "text-amber-600 border-transparent" : 
+             "text-stone-400 border-transparent"
             )}>{step.status}</span>
            </div>
            <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
@@ -816,9 +816,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
            </div>
           </div>
           <div className="flex items-center gap-2">
-           <Button variant="ghost" size="icon" title="Preview is not available on this page yet. The click only leaves a note. · Η προεπισκόπηση δεν είναι ακόμη διαθέσιμη. Το κλικ αφήνει μόνο σημείωση." className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Preview mode — coming soon')}><Eye className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Editing slide ' + pitchSlide)}><Edit3 className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => showToast('Download started')}><Download className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title="Preview this slide with the studio assistant. · Προεπισκόπηση της διαφάνειας με τον βοηθό." className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Eye className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Edit3 className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast('Download started'); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I export my pitch deck?' } })); }}><Download className="w-4 h-4" /></Button>
           </div>
          </div>
 
@@ -885,7 +885,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
           { label: "Share Link", icon: Globe },
           { label: "Send to Mentor", icon: Send },
          ].map((a) => (
-          <button key={a.label} onClick={() => a.label === 'Send to Mentor' ? navigate('/mentors') : showToast(`${a.label} — processing`)} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
+          <button key={a.label} type="button" onClick={() => a.label === 'Send to Mentor' ? navigate('/mentors') : window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: a.label === 'Export PDF' ? 'How do I export my pitch deck?' : 'How do I share my pitch deck?' } }))} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
            <a.icon className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-900 transition-colors" />
            <span className="text-xs font-medium text-stone-500 group-hover:text-stone-900">{a.label}</span>
           </button>
@@ -1140,10 +1140,10 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title="Copy link" onClick={() => { navigator.clipboard.writeText(`https://cofounderbay.app/templates/${template.id}`); showToast('Link copied!'); }}>
             <Copy className="w-3 h-3 text-stone-400" />
            </button>
-           <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title="Download" onClick={() => showToast(`Downloading ${template.name}...`)}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title="Download" onClick={() => { showToast(`Downloading ${template.name}...`); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } })); }}>
             <Download className="w-3 h-3 text-stone-400" />
            </button>
-           <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title="Open" onClick={() => showToast(`Opening ${template.name}`)}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title="Open" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
             <ExternalLink className="w-3 h-3 text-stone-400" />
            </button>
           </div>

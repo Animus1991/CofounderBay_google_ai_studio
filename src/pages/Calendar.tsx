@@ -8,7 +8,8 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { cn } from "../lib/utils";
-import { readSessions } from "../lib/localLists";
+import { keys, readSessions } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 import { motion } from "framer-motion";
 
 interface Event {
@@ -26,6 +27,8 @@ interface Event {
 export default function Calendar() {
  const [currentMonth, setCurrentMonth] = useState("March 2026");
  const [view, setView] = useState('Month');
+ const [searchQuery, setSearchQuery] = useState('');
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const starterEvents: Event[] = [
   {
@@ -67,7 +70,11 @@ export default function Calendar() {
    priority: 'Medium'
   }
  ];
- const events: Event[] = [...readSessions(), ...starterEvents];
+ const storedSessions = useStored(readSessions, [keys.sessions]);
+ const events: Event[] = [...storedSessions, ...starterEvents].filter((event) => {
+  const q = searchQuery.trim().toLowerCase();
+  return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
+ });
 
  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -81,11 +88,13 @@ export default function Calendar() {
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400" />
       <input
        type="text"
+       value={searchQuery}
+       onChange={(e) => setSearchQuery(e.target.value)}
        placeholder="Search events..."
        className="pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 w-36 transition-all"
       />
      </div>
-     <Button className="h-8 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
+     <Button type="button" onClick={() => ask('Schedule a meeting on my calendar')} className="h-8 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
       <Plus className="w-3.5 h-3.5 mr-1.5" /> Schedule
      </Button>
     </div>
@@ -99,10 +108,10 @@ export default function Calendar() {
        <div className="flex items-center gap-3">
         <h3 className="text-base font-semibold text-stone-900">{currentMonth}</h3>
         <div className="flex items-center gap-1">
-         <Button variant="ghost" size="icon" aria-label="Previous month" className="rounded-lg border border-stone-100 hover:bg-stone-50">
+         <Button type="button" variant="ghost" size="icon" aria-label="Previous month" className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'March 2026' ? 'February 2026' : prev === 'April 2026' ? 'March 2026' : 'February 2026')}>
           <ChevronLeft className="w-4 h-4" />
          </Button>
-         <Button variant="ghost" size="icon" aria-label="Next month" className="rounded-lg border border-stone-100 hover:bg-stone-50">
+         <Button variant="ghost" size="icon" aria-label="Next month" className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'February 2026' ? 'March 2026' : prev === 'March 2026' ? 'April 2026' : 'April 2026')}>
           <ChevronRight className="w-4 h-4" />
          </Button>
         </div>
@@ -167,7 +176,7 @@ export default function Calendar() {
             </div>
            )}
 
-           <button className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900">
+           <button type="button" className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={() => ask('Schedule a meeting on my calendar')}>
             <Plus className="w-3 h-3" />
            </button>
           </div>
@@ -186,7 +195,7 @@ export default function Calendar() {
         <h4 className="text-sm font-semibold text-stone-900">Upcoming Today</h4>
         <p className="text-xs text-stone-400 mt-0.5">Thursday, March 26</p>
        </div>
-       <Button variant="outline" className="h-7 px-3 text-sm rounded-lg border-stone-200">
+       <Button type="button" variant="outline" className="h-7 px-3 text-sm rounded-lg border-stone-200" onClick={() => ask('what events are coming')}>
         Full Agenda
        </Button>
       </div>
@@ -241,7 +250,7 @@ export default function Calendar() {
      </Card>
 
      {/* Event Reminders — light version */}
-     <Card className="rounded-2xl border-stone-100 p-4 bg-amber-50 border-amber-100">
+     <Card noPadding className="studio-nudge rounded-2xl border-stone-100 bg-amber-50 border-amber-100">
       <div className="flex gap-3 items-start">
        <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-amber-500 border border-amber-100 shrink-0">
         <Bell className="w-4 h-4" />
@@ -251,7 +260,7 @@ export default function Calendar() {
         <p className="text-xs text-stone-500 leading-relaxed mb-3">
          3 events scheduled for tomorrow. Enable morning briefings?
         </p>
-        <Button className="w-full h-7 rounded-lg bg-stone-900 text-white hover:bg-stone-800 text-sm">
+        <Button type="button" onClick={() => ask('what should I do today')} className="w-full h-7 rounded-lg bg-stone-900 text-white hover:bg-stone-800 text-sm">
          Enable Briefing
         </Button>
        </div>

@@ -302,7 +302,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
            <td className="px-4 py-2 text-sm font-medium">${invoice.total}</td>
            <td className="px-4 py-2">
             <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             invoice.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+             invoice.status === 'Paid' ? 'text-green-700' : 'text-amber-700'
             }`}>
              {invoice.status}
             </span>

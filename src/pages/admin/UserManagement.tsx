@@ -244,8 +244,8 @@ export default function UserManagement({ user }: AdminProps) {
              <span className={cn(
               "text-xs font-medium px-3.5 py-1.5 rounded-xl tracking-wide inline-flex items-center gap-2.5 border",
               u.accountStatus === "Active" 
-               ? "bg-emerald-50 text-emerald-600 border-emerald-100/50" 
-               : "bg-red-50 text-red-600 border-red-100/50"
+               ? "text-emerald-600 border-transparent" 
+               : "text-red-600 border-transparent"
              )}>
               <div className={cn("w-1.5 h-1.5 rounded-full shadow-sm", u.accountStatus === "Active" ? "bg-emerald-500" : "bg-red-500")}></div>
               {u.accountStatus}

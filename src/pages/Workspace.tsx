@@ -46,6 +46,8 @@ import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { User } from "../types";
 import { cn } from "../lib/utils";
+import { addStudioTask, keys, readTasks, type StudioTask } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 import { FixedSizeList as VirtualList } from 'react-window';
 
 interface WorkspaceProps {
@@ -56,16 +58,7 @@ type TabType = "Dashboard" | "Builder" | "Canvas" | "Milestones" | "Calendar";
 type TaskView = "list" | "kanban";
 type FocusMode = "work" | "shortBreak" | "longBreak";
 
-interface Task {
- id: string;
- title: string;
- priority: "High" | "Medium" | "Low";
- status: "Todo" | "In Progress" | "Review" | "Done";
- deadline: string;
- timeTracked: number; // minutes
- estimatedTime: number; // minutes
- tags: string[];
-}
+type Task = StudioTask;
 
 export default function Workspace({ user }: WorkspaceProps) {
  const [activeTab, setActiveTab] = useState<TabType>("Dashboard");
@@ -76,14 +69,24 @@ export default function Workspace({ user }: WorkspaceProps) {
  const [focusState, setFocusState] = useState<FocusMode>("work");
  const [isTimerRunning, setIsTimerRunning] = useState(false);
  const [activeTask, setActiveTask] = useState<string | null>(null);
- const [tasks, setTasks] = useState<Task[]>([
-  { id: "1", title: "Refine User Personas", priority: "High", status: "Todo", deadline: "2d left", timeTracked: 120, estimatedTime: 180, tags: ["Product", "Research"] },
-  { id: "2", title: "Landing Page Copywriting", priority: "Medium", status: "In Progress", deadline: "Today", timeTracked: 90, estimatedTime: 120, tags: ["Marketing"] },
-  { id: "3", title: "Competitor Analysis", priority: "Low", status: "Review", deadline: "Tomorrow", timeTracked: 240, estimatedTime: 300, tags: ["Strategy"] },
-  { id: "4", title: "Setup Analytics Pipeline", priority: "High", status: "Todo", deadline: "5d left", timeTracked: 0, estimatedTime: 480, tags: ["Tech", "Data"] },
-  { id: "5", title: "Pitch Deck Revision", priority: "High", status: "In Progress", deadline: "3d left", timeTracked: 180, estimatedTime: 240, tags: ["Fundraising"] },
-  { id: "6", title: "Customer Interviews", priority: "Medium", status: "Done", deadline: "Done", timeTracked: 360, estimatedTime: 360, tags: ["Research", "Product"] },
- ]);
+ const [roadmapFilter, setRoadmapFilter] = useState<'All' | 'completed' | 'in-progress' | 'pending'>('All');
+ const tasks = useStored(readTasks, [keys.tasks]);
+ const roadmap = [
+  { name: "MVP Launch", category: "Product", start: 0, duration: 3, status: "completed" as const, color: "bg-emerald-400" },
+  { name: "Beta Testing", category: "Product", start: 2, duration: 4, status: "in-progress" as const, color: "bg-violet-400" },
+  { name: "Seed Funding", category: "Fundraising", start: 3, duration: 5, status: "in-progress" as const, color: "bg-amber-400" },
+  { name: "First 100 Users", category: "Growth", start: 5, duration: 3, status: "pending" as const, color: "bg-stone-300" },
+  { name: "Product Hunt Launch", category: "Marketing", start: 7, duration: 2, status: "pending" as const, color: "bg-blue-400" },
+ ];
+ const visibleRoadmap = roadmapFilter === 'All' ? roadmap : roadmap.filter((item) => item.status === roadmapFilter);
+
+ const taskQuery = searchQuery.trim().toLowerCase();
+ const visibleTasks = tasks.filter((task) => !taskQuery || task.title.toLowerCase().includes(taskQuery) || task.tags.some((tag) => tag.toLowerCase().includes(taskQuery)));
+ const addTask = (title?: string) => {
+  addStudioTask((title ?? searchQuery).trim() || 'New task');
+  setSearchQuery('');
+ };
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const tabs: TabType[] = ["Dashboard", "Builder", "Canvas", "Milestones", "Calendar"];
 
@@ -163,7 +166,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           <Button
            size="sm"
            className="rounded-lg h-7 bg-stone-900 text-white text-sm px-3"
-           onClick={() => console.log("New Task creation initiated")}
+           onClick={() => addTask()}
           >
            <Plus className="w-3.5 h-3.5 mr-1" /> Task
           </Button>
@@ -173,7 +176,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         {/* List View */}
         {taskView === "list" && (
          <div className="space-y-2">
-          {tasks.filter(t => t.status !== "Done").map((task) => (
+          {visibleTasks.filter(t => t.status !== "Done").map((task) => (
            <div 
             key={task.id} 
             onClick={() => setActiveTask(activeTask === task.id ? null : task.id)}
@@ -242,11 +245,11 @@ export default function Workspace({ user }: WorkspaceProps) {
               status === "Done" ? "text-emerald-500" : "text-stone-400"
              )}>{status}</span>
              <span className="text-xs text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
-              {tasks.filter(t => t.status === status).length}
+              {visibleTasks.filter(t => t.status === status).length}
              </span>
             </div>
             <div className="space-y-2 min-h-[100px]">
-             {tasks.filter(t => t.status === status).map((task) => (
+             {visibleTasks.filter(t => t.status === status).map((task) => (
               <div 
                key={task.id}
                className="p-3 bg-white border border-stone-100 rounded-xl hover:border-stone-300 hover:shadow-sm transition-all cursor-pointer group"
@@ -501,7 +504,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         <Button
          variant="outline"
          className="w-full h-7 rounded-lg text-sm border-stone-200"
-         onClick={() => console.log("Viewing all project assets")}
+         onClick={() => ask('Open my pitch deck and workspace assets')}
         >
          View All Assets
         </Button>
@@ -528,7 +531,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          variant="outline"
          size="sm"
          className="h-7 text-sm border-stone-200"
-         onClick={() => console.log("Saving Lean Canvas draft")}
+         onClick={() => ask('Help me save and refine my Lean Canvas')}
         >
          <Save className="w-3 h-3 mr-1.5" /> Save
         </Button>
@@ -598,10 +601,10 @@ export default function Workspace({ user }: WorkspaceProps) {
          <p className="text-xs text-stone-400 mt-0.5">Q2 2026 Milestones</p>
         </div>
         <div className="flex items-center gap-2">
-         <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg">
-          <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
+         <Button type="button" variant="outline" size="sm" className="h-7 text-sm rounded-lg" onClick={() => setRoadmapFilter((prev) => prev === 'All' ? 'completed' : prev === 'completed' ? 'in-progress' : prev === 'in-progress' ? 'pending' : 'All')}>
+          <Filter className="w-3.5 h-3.5 mr-1.5" /> {roadmapFilter === 'All' ? 'Filter' : roadmapFilter}
          </Button>
-         <Button size="sm" className="h-7 text-sm rounded-lg bg-stone-900 text-white">
+         <Button type="button" size="sm" className="h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone' } }))}>
           <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Milestone
          </Button>
         </div>
@@ -618,13 +621,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
 
         {/* Timeline rows */}
-        {[
-         { name: "MVP Launch", category: "Product", start: 0, duration: 3, status: "completed", color: "bg-emerald-400" },
-         { name: "Beta Testing", category: "Product", start: 2, duration: 4, status: "in-progress", color: "bg-violet-400" },
-         { name: "Seed Funding", category: "Fundraising", start: 3, duration: 5, status: "in-progress", color: "bg-amber-400" },
-         { name: "First 100 Users", category: "Growth", start: 5, duration: 3, status: "pending", color: "bg-stone-300" },
-         { name: "Product Hunt Launch", category: "Marketing", start: 7, duration: 2, status: "pending", color: "bg-blue-400" },
-        ].map((milestone, idx) => (
+        {visibleRoadmap.map((milestone, idx) => (
          <div key={milestone.name} className="grid grid-cols-12 gap-1 items-center py-2 hover:bg-stone-50 rounded-lg transition-colors group min-w-[640px]">
           <div className="col-span-3 px-2">
            <p className="text-sm font-medium text-stone-900">{milestone.name}</p>
@@ -772,14 +769,14 @@ export default function Workspace({ user }: WorkspaceProps) {
        {/* Quick Add */}
        <Card className="p-4 space-y-3">
         <h4 className="text-sm font-semibold text-stone-900">Quick Add</h4>
-        <Button size="sm" className="w-full h-8 text-sm bg-stone-900 text-white rounded-lg">
+        <Button type="button" size="sm" className="w-full h-8 text-sm bg-stone-900 text-white rounded-lg" onClick={() => ask('Schedule a new event on my calendar')}>
          <Plus className="w-3.5 h-3.5 mr-1.5" /> New Event
         </Button>
         <div className="flex gap-2">
-         <Button variant="outline" size="sm" className="flex-1 h-7 text-xs rounded-lg">
+         <Button type="button" variant="outline" size="sm" className="flex-1 h-7 text-xs rounded-lg" onClick={() => ask('Schedule a meeting on my calendar')}>
           <CalendarDays className="w-3 h-3 mr-1" /> Meeting
          </Button>
-         <Button variant="outline" size="sm" className="flex-1 h-7 text-xs rounded-lg">
+         <Button type="button" variant="outline" size="sm" className="flex-1 h-7 text-xs rounded-lg" onClick={() => { addTask('Calendar task'); setActiveTab('Dashboard'); }}>
           <CheckSquare className="w-3 h-3 mr-1" /> Task
          </Button>
         </div>
@@ -823,7 +820,10 @@ export default function Workspace({ user }: WorkspaceProps) {
        <Layers className="w-8 h-8 text-stone-400" />
       </div>
       <h3 className="text-base font-semibold text-stone-900 mb-2">Builder Mode</h3>
-      <p className="text-sm text-stone-400 max-w-xs">Advanced builder tools coming soon. Use Dashboard for now.</p>
+      <p className="text-sm text-stone-400 max-w-xs">Canvas and task tools on this tab stay here. Ask the studio assistant to add a milestone, book time, or open Founder Tools.</p>
+      <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone ship the MVP' } }))}>
+       Ask the studio assistant
+      </Button>
      </motion.div>
     )}
    </AnimatePresence>

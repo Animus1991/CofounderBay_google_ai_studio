@@ -136,6 +136,7 @@ export const keys = {
   activity: 'cfb.activity',
   chat: 'cfb.chat',
   assistant: 'cfb.assistant',
+  tasks: 'cfb.workspaceTasks',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -349,6 +350,54 @@ export function trackApplication(program: string, type: string, deadline = '—'
   const next = [item, ...existing];
   writeTracked(next);
   return next;
+}
+
+// ── Workspace tasks (same list the Venture Builder board and the assistant use) ──
+
+export type StudioTask = {
+  id: string;
+  title: string;
+  priority: 'High' | 'Medium' | 'Low';
+  status: 'Todo' | 'In Progress' | 'Review' | 'Done';
+  deadline: string;
+  timeTracked: number;
+  estimatedTime: number;
+  tags: string[];
+};
+
+const seedTasks = (): StudioTask[] => [
+  { id: '1', title: 'Refine User Personas', priority: 'High', status: 'Todo', deadline: '2d left', timeTracked: 120, estimatedTime: 180, tags: ['Product', 'Research'] },
+  { id: '2', title: 'Landing Page Copywriting', priority: 'Medium', status: 'In Progress', deadline: 'Today', timeTracked: 90, estimatedTime: 120, tags: ['Marketing'] },
+  { id: '3', title: 'Competitor Analysis', priority: 'Low', status: 'Review', deadline: 'Tomorrow', timeTracked: 240, estimatedTime: 300, tags: ['Strategy'] },
+  { id: '4', title: 'Setup Analytics Pipeline', priority: 'High', status: 'Todo', deadline: '5d left', timeTracked: 0, estimatedTime: 480, tags: ['Tech', 'Data'] },
+  { id: '5', title: 'Pitch Deck Revision', priority: 'High', status: 'In Progress', deadline: '3d left', timeTracked: 180, estimatedTime: 240, tags: ['Fundraising'] },
+  { id: '6', title: 'Customer Interviews', priority: 'Medium', status: 'Done', deadline: 'Done', timeTracked: 360, estimatedTime: 360, tags: ['Research', 'Product'] },
+];
+
+export function readTasks(): StudioTask[] {
+  const stored = readJson<StudioTask[] | null>(keys.tasks, null);
+  if (!stored) return seedTasks();
+  return Array.isArray(stored) ? stored : seedTasks();
+}
+
+export function writeTasks(items: StudioTask[]): StudioTask[] {
+  writeJson(keys.tasks, items);
+  return items;
+}
+
+export function addStudioTask(title: string): StudioTask {
+  const task: StudioTask = {
+    id: `t-${Date.now()}`,
+    title: title.trim() || 'New task',
+    priority: 'Medium',
+    status: 'Todo',
+    deadline: 'New',
+    timeTracked: 0,
+    estimatedTime: 60,
+    tags: [],
+  };
+  writeTasks([task, ...readTasks().filter((item) => item.id !== task.id)]);
+  return task;
 }
 
 // ── Calendar sessions ──────────────────────────────────────────────────────

@@ -383,8 +383,8 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
               <td className="px-5 py-3">
                <span className={cn(
                 "px-2 py-0.5 rounded text-xs font-medium tracking-wider",
-                exec.status === 'Success' ? "bg-green-50 text-green-700 border border-green-100" : 
-                exec.status === 'Failure' ? "bg-red-50 text-red-700 border border-red-100" : "bg-blue-50 text-blue-700 border border-blue-100"
+                exec.status === 'Success' ? "text-green-700" : 
+                exec.status === 'Failure' ? "text-red-700" : "text-blue-700"
                )}>
                 {exec.status}
                </span>

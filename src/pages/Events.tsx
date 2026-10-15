@@ -22,7 +22,7 @@ interface Event {
  date: string;
  time: string;
  location: string;
- type: 'Workshop' | 'Networking' | 'Pitch Night' | 'Webinar';
+ type: 'Workshop' | 'Networking' | 'Pitch Night' | 'Webinar' | 'Conference';
  attendees: number;
  image: string;
  isOnline: boolean;
@@ -32,6 +32,13 @@ interface Event {
 export default function Events({ user }: EventsProps) {
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
+ const categoryType: Record<string, Event['type']> = {
+  Workshops: 'Workshop',
+  Networking: 'Networking',
+  'Pitch Nights': 'Pitch Night',
+  Webinars: 'Webinar',
+  Conferences: 'Conference',
+ };
  const [showTypes, setShowTypes] = useState(false);
  const [registeredEvents, setRegisteredEvents] = useState<string[]>(() => readIds(eventListKeys.registered));
  const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
@@ -84,6 +91,7 @@ export default function Events({ user }: EventsProps) {
    organizer: "Finly Ventures"
   }
  ];
+ const visibleEvents = typeFilter === 'All' ? mockEvents : mockEvents.filter((event) => event.type === typeFilter);
 
  return (
   <PageShell
@@ -100,7 +108,7 @@ export default function Events({ user }: EventsProps) {
      </button>
      <button 
       type="button"
-      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I host an event?' } }))}
+      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
      >
       <Plus className="w-3.5 h-3.5" /> Host Event
@@ -131,7 +139,7 @@ export default function Events({ user }: EventsProps) {
 
      {showTypes && (
       <div className="flex flex-wrap gap-2">
-       {(['All', 'Workshop', 'Networking', 'Pitch Night', 'Webinar'] as const).map((type) => (
+       {(['All', 'Workshop', 'Networking', 'Pitch Night', 'Webinar', 'Conference'] as const).map((type) => (
         <button
          key={type}
          type="button"
@@ -148,7 +156,12 @@ export default function Events({ user }: EventsProps) {
      )}
 
      <div id="event-list" className="space-y-4">
-      {(typeFilter === 'All' ? mockEvents : mockEvents.filter((event) => event.type === typeFilter)).map((event) => (
+      {(visibleEvents.length === 0) && (
+       <p className="text-sm text-stone-500 bg-white border border-stone-100 rounded-2xl p-4">
+        No events in this category yet. Ask the studio assistant to host one.
+       </p>
+      )}
+      {visibleEvents.map((event) => (
        <div key={event.id} className="bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl">
         <div className="flex flex-col md:flex-row">
          <div className="md:w-56 h-44 md:h-auto overflow-hidden relative shrink-0">
@@ -271,7 +284,7 @@ export default function Events({ user }: EventsProps) {
         { name: "Webinars", count: 15, icon: Video },
         { name: "Conferences", count: 3, icon: Globe }
        ].map((cat) => (
-        <button key={cat.name} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-50 transition-all group">
+        <button key={cat.name} type="button" onClick={() => { setTypeFilter(categoryType[cat.name] ?? 'All'); setShowTypes(true); document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' }); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-50 transition-all group">
          <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-stone-50 flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
            <cat.icon className="w-3.5 h-3.5" />
@@ -285,7 +298,7 @@ export default function Events({ user }: EventsProps) {
      </div>
 
      {/* Host CTA — light version */}
-     <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-3">
+     <div className="studio-nudge bg-emerald-50 border border-emerald-100 rounded-2xl space-y-3">
       <div className="w-8 h-8 bg-white border border-emerald-100 rounded-xl flex items-center justify-center">
        <Rocket className="w-4 h-4 text-emerald-600" />
       </div>
@@ -297,7 +310,7 @@ export default function Events({ user }: EventsProps) {
       </div>
       <button
        type="button"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I host an event?' } }))}
+       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
        className="w-full py-2 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-all text-sm font-semibold"
       >
        Create Event

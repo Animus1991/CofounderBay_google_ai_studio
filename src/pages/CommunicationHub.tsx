@@ -958,8 +958,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
      </div>
      <div className="md:hidden flex items-center gap-2 overflow-x-auto px-3 pb-3">
-      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Call</button>
-      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Video</button>
+      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>Call</button>
+      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>Video</button>
       <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Search</button>
       <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? "Unpin" : "Pin"}</button>
       <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Details</button>
@@ -972,8 +972,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {(() => { const VIcon = MODE_CONFIG[validationState.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_CONFIG[validationState.mode].color)} />; })()}
        <span className={cn("text-[10px] font-medium", MODE_CONFIG[validationState.mode].color)}>{MODE_CONFIG[validationState.mode].label}</span>
       </button>
-      <IconButton icon={Phone} size="sm" tooltip="Voice Call" />
-      <IconButton icon={Video} size="sm" tooltip="Video Call" />
+      <IconButton icon={Phone} size="sm" tooltip="Voice Call" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
+      <IconButton icon={Video} size="sm" tooltip="Video Call" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
       <IconButton icon={Search} size="sm" tooltip="Search in chat" active={showSearchPanel}
        onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} />
       <div className="w-px h-6 bg-stone-200 mx-1" />

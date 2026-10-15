@@ -34,6 +34,9 @@
   --text-6xl--line-height: 1.05;
   --text-7xl: 3.5rem;          /* 56px — decorative only   (was 72px) */
   --text-7xl--line-height: 1;
+  /* Control height: successive −5% / −3% / −5% / −5% vs Tailwind 2.75rem (h-11).
+     Compact h-8 actions (Run diagnostic, Start) are pinned below and do not follow this ratchet. */
+  --spacing-11: 2.2870478125rem;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -72,7 +75,7 @@
     --muted-foreground: 25 5.3% 44.7%;
     --accent: 60 4.8% 95.9%;
     --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 18 22% 58%;
     --destructive-foreground: 60 9.1% 97.8%;
     --border: 20 5.9% 90%;
     --input: 20 5.9% 90%;
@@ -113,6 +116,11 @@
        disambiguated glyphs) + contextual alternates for crisp UI rendering. */
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
     text-rendering: optimizeLegibility;
+    text-shadow: none;
+  }
+  /* Colored labels keep their ink; drop the halo that sat behind the letters. */
+  html {
+    text-shadow: none;
   }
   /* Display sizes read better with slightly tightened tracking (Inter is
      spaced for body sizes; large headings need optical correction). */
@@ -207,7 +215,23 @@
   .scroll-tabs > button {
     flex-shrink: 0;
     white-space: nowrap;
-    min-height: 2.75rem;
+    min-height: 2.2870478125rem;
+  }
+  /* Native chrome-sized buttons (not compact h-8). Start / Run diagnostic stay pinned unlayered. */
+  button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
+  button.h-8:not([class*="min-h-"]) { height: 2rem; }
+  button.h-9:not([class*="min-h-"]) { height: 1.968815625rem; }
+  button.h-10:not([class*="min-h-"]) { height: 2.18678125rem; }
+  /* Compact action strip: 10% then 5% shorter padding than the original p-4 / sm:p-5. */
+  .studio-nudge {
+    padding-block: 0.855rem;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 640px) {
+    .studio-nudge {
+      padding-block: 1.06875rem;
+      padding-inline: 1.25rem;
+    }
   }
 }
 
@@ -241,6 +265,66 @@
 .dark ::-webkit-scrollbar-thumb {
   @apply bg-stone-800;
 }
+
+/*
+  Colored type stays in hue but drops the alarm saturation so the page
+  content stays first. Red ink is replaced by a dusty rose that still
+  marks caution without pulling the eye off the row.
+*/
+@layer utilities {
+  .text-destructive,
+  [class*="text-red-"],
+  [class*="text-rose-"] {
+    color: oklch(0.648 0.051 25) !important;
+  }
+  [class*="text-orange-"] {
+    color: oklch(0.673 0.061 55) !important;
+  }
+  [class*="text-amber-"],
+  [class*="text-yellow-"] {
+    color: oklch(0.673 0.066 78) !important;
+  }
+  [class*="text-blue-"],
+  [class*="text-sky-"],
+  [class*="text-cyan-"],
+  [class*="text-indigo-"] {
+    color: oklch(0.633 0.051 250) !important;
+  }
+  [class*="text-violet-"],
+  [class*="text-purple-"],
+  [class*="text-fuchsia-"] {
+    color: oklch(0.633 0.056 295) !important;
+  }
+  [class*="text-emerald-"],
+  [class*="text-green-"],
+  [class*="text-teal-"],
+  [class*="text-lime-"] {
+    color: oklch(0.648 0.049 155) !important;
+  }
+  [class*="text-pink-"] {
+    color: oklch(0.673 0.046 350) !important;
+  }
+}
+
+/* Taller chrome (Open AI Chat FAB and large CTAs). Compact h-8 stays pinned below. */
+button.h-12, a.h-12 { height: 2.65335rem; }
+button.h-14, a.h-14 { height: 3.095575rem; }
+button.w-14.h-14, a.w-14.h-14 { width: 3.095575rem; height: 3.095575rem; }
+button.h-16, a.h-16 { height: 3.5378rem; min-height: 3.5378rem; }
+button.min-h-16, a.min-h-16 { min-height: 3.5378rem; }
+button.py-4:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]),
+a.py-4:not([class*="min-h-11"]) { padding-block: 0.88445rem; }
+button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]),
+a.py-3:not([class*="min-h-11"]) { padding-block: 0.6633375rem; }
+a.py-3\.5:not([class*="min-h-11"]) { padding-block: 0.77389375rem; }
+aside nav a.min-h-11 { line-height: 1.455; }
+aside nav a.min-h-11 span { line-height: 1.455; }
+aside .grid.grid-cols-2 a,
+aside .grid.grid-cols-2 button { line-height: 1.42; }
+/* Pin compact card actions so the chrome −5% does not shrink them.
+   Start is a native h-8 (2rem / 32px). Run diagnostic is Button+h-8 (kept at 41px). */
+button.h-8:not([class*="min-h-"]) { height: 2rem; min-height: 2rem; }
+button.h-8[class*="min-h-"] { height: 2.534125rem; min-height: 2.534125rem; }
 
 /* Motion accessibility — respect users who prefer reduced motion (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {

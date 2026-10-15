@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import { 
  Rocket, Search, Filter, SlidersHorizontal, ArrowRight, 
@@ -30,6 +31,7 @@ interface Program {
 }
 
 export default function Programs({ user }: ProgramsProps) {
+ const navigate = useNavigate();
  const [activeTab, setActiveTab] = useState('All');
 
  const mockPrograms: Program[] = [
@@ -75,10 +77,14 @@ export default function Programs({ user }: ProgramsProps) {
   <PageShell title="Programs" description="Curated accelerators, grants, and strategic opportunities for every stage.">
    <div className="space-y-6">
     <div className="flex flex-wrap items-center gap-2">
-     <Button variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5">
+     <Button type="button" variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5" onClick={() => {
+      const order = ['All', 'Accelerators', 'Grants', 'Bootcamps'];
+      const next = order[(order.indexOf(activeTab) + 1) % order.length] || 'All';
+      setActiveTab(next);
+     }}>
       <Filter className="w-3 h-3" /> Filter
      </Button>
-     <Button variant="primary" className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white">
+     <Button type="button" variant="primary" className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
       Find Programs
      </Button>
     </div>
@@ -103,7 +109,13 @@ export default function Programs({ user }: ProgramsProps) {
      </div>
 
      <div className="space-y-3">
-      {mockPrograms.map((program, idx) => (
+      {mockPrograms.filter((program) => {
+       if (activeTab === 'All') return true;
+       if (activeTab === 'Accelerators') return program.type === 'Accelerator';
+       if (activeTab === 'Grants') return program.type === 'Grant';
+       if (activeTab === 'Bootcamps') return program.type === 'Bootcamp';
+       return true;
+      }).map((program, idx) => (
        <motion.div
         key={program.id}
         initial={{ opacity: 0, y: 20 }}
@@ -154,7 +166,7 @@ export default function Programs({ user }: ProgramsProps) {
               <span key={f} className="text-xs font-medium px-2 py-0.5 bg-stone-50 text-stone-500 rounded-md border border-stone-100">{f}</span>
              ))}
             </div>
-            <Button variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0">
+            <Button type="button" variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${program.title}` } }))}>
              Apply Now
             </Button>
            </div>
@@ -179,7 +191,7 @@ export default function Programs({ user }: ProgramsProps) {
        </div>
        <span className="text-sm font-semibold text-stone-700">AI-Powered Matching</span>
       </div>
-      <Button variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all">
+      <Button type="button" variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
        Start Finder
       </Button>
      </Card>
@@ -207,7 +219,7 @@ export default function Programs({ user }: ProgramsProps) {
      </Card>
 
      {/* Premium — light amber instead of dark */}
-     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
+     <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
       <div className="w-8 h-8 bg-white border border-amber-100 rounded-xl flex items-center justify-center">
        <Award className="w-4 h-4 text-amber-600" />
       </div>
@@ -217,7 +229,7 @@ export default function Programs({ user }: ProgramsProps) {
         Upgrade to Pro for early access to exclusive grants and accelerators before they go public.
        </p>
       </div>
-      <Button className="w-full h-8 rounded-xl text-sm font-semibold bg-stone-900 text-white hover:bg-stone-800">
+      <Button onClick={() => navigate('/pricing')} className="w-full h-8 rounded-xl text-sm font-semibold bg-stone-900 text-white hover:bg-stone-800">
        Upgrade Now
       </Button>
      </div>

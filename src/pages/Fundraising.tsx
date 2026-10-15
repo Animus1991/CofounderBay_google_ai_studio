@@ -58,13 +58,13 @@ interface FundraisingProps {
 }
 
 const STAGE_META: Record<string, { color: string; dot: string }> = {
- "Identified":    { color: "bg-stone-100 text-stone-500",   dot: "bg-stone-400" },
- "Contacted":     { color: "bg-blue-50 text-blue-600",       dot: "bg-blue-500" },
- "Meeting":       { color: "bg-violet-50 text-violet-600",   dot: "bg-violet-500" },
- "Due Diligence": { color: "bg-amber-50 text-amber-700",     dot: "bg-amber-500" },
- "Term Sheet":    { color: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
- "Closed":        { color: "bg-green-50 text-green-700",     dot: "bg-green-500" },
- "Passed":        { color: "bg-red-50 text-red-600",         dot: "bg-red-400" },
+ "Identified":    { color: "text-stone-500",   dot: "bg-stone-400" },
+ "Contacted":     { color: "text-blue-600",    dot: "bg-blue-500" },
+ "Meeting":       { color: "text-violet-600",  dot: "bg-violet-500" },
+ "Due Diligence": { color: "text-amber-700",   dot: "bg-amber-500" },
+ "Term Sheet":    { color: "text-emerald-700", dot: "bg-emerald-500" },
+ "Closed":        { color: "text-green-700",   dot: "bg-green-500" },
+ "Passed":        { color: "text-rose-500",    dot: "bg-stone-400" },
 };
 
 export default function Fundraising({ user }: FundraisingProps) {
@@ -77,6 +77,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [meetingWhen, setMeetingWhen] = useState('');
  const [programType, setProgramType] = useState('All');
  const [opportunityType, setOpportunityType] = useState('All');
+ const [investorType, setInvestorType] = useState('All');
  const roomFileRef = useRef<HTMLInputElement>(null);
  const seedRoomFiles: RoomFile[] = [
   { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
@@ -130,10 +131,12 @@ export default function Fundraising({ user }: FundraisingProps) {
   { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
  ];
 
- const filteredInvestors = mockInvestors.filter(inv =>
-  inv.name.toLowerCase().includes(investorSearch.toLowerCase()) ||
-  inv.focus.some((f: string) => f.toLowerCase().includes(investorSearch.toLowerCase()))
- );
+ const filteredInvestors = mockInvestors.filter(inv => {
+  const q = investorSearch.toLowerCase();
+  const matchesQuery = !q || inv.name.toLowerCase().includes(q) || inv.focus.some((f: string) => f.toLowerCase().includes(q));
+  const matchesType = investorType === 'All' || inv.type === investorType;
+  return matchesQuery && matchesType;
+ });
 
  const mockPrograms = [
   { id: "prog_1", title: "Y Combinator S26",       deadline: "2026-04-19", type: "Accelerator", grant: "$500k",  location: "Remote / SF",  match: 96, tags: ["AI", "B2B", "Global"],     status: "open" },
@@ -241,7 +244,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         {/* Header */}
         <div className="flex items-center justify-between">
          <p className="text-xs font-semibold text-stone-400 tracking-wide">Seed Round Progress</p>
-         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md">
+         <span className="px-2 py-0.5 text-emerald-700 text-xs font-semibold rounded-md">
           {mockTracker.status}
          </span>
         </div>
@@ -287,7 +290,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9 rounded-lg" onClick={() => setShowMeetingScheduler(true)}>
           <Users className="w-3.5 h-3.5 shrink-0" /> Log New Meeting
          </Button>
-         <Button className="w-full justify-start gap-2 text-sm h-9 rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={() => showToast('Investment recording — update your round details')}>
+         <Button className="w-full justify-start gap-2 text-sm h-9 rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Record a $50k investment in my round' } }))}>
           <DollarSign className="w-3.5 h-3.5 shrink-0" /> Record Investment
          </Button>
         </div>
@@ -393,7 +396,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         <p className="text-xs font-semibold text-stone-400 tracking-wide">Pipeline Funnel</p>
         <div className="space-y-1.5">
          {stageCounts.filter(s => s.stage !== "Passed").concat(stageCounts.filter(s => s.stage === "Passed")).map(({ stage, count }) => {
-          const meta = STAGE_META[stage] ?? { color: "bg-stone-100 text-stone-500", dot: "bg-stone-400" };
+          const meta = STAGE_META[stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
           return (
            <div key={stage} className="flex items-center gap-2">
             <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
@@ -466,7 +469,7 @@ export default function Fundraising({ user }: FundraisingProps) {
           </thead>
           <tbody className="divide-y divide-stone-50">
            {(mockTracker.investorPipeline ?? []).map((item, i) => {
-            const meta = STAGE_META[item.stage] ?? { color: "bg-stone-100 text-stone-500", dot: "bg-stone-400" };
+            const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
             return (
              <tr key={i} className="hover:bg-stone-50 transition-colors group">
               <td className="px-3 py-2.5">
@@ -481,7 +484,7 @@ export default function Fundraising({ user }: FundraisingProps) {
                </div>
               </td>
               <td className="px-3 py-2.5">
-               <span className={cn("px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide", meta.color)}>
+               <span className={cn("px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide whitespace-nowrap", meta.color)}>
                 {item.stage}
                </span>
               </td>
@@ -654,8 +657,8 @@ export default function Fundraising({ user }: FundraisingProps) {
          className="w-full bg-white border border-stone-200 rounded-xl py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
         />
        </div>
-       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => investorSearchRef.current?.focus()}>
-        <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockInvestors.map((item) => item.type)))]; const index = types.indexOf(investorType); setInvestorType(types[(index + 1) % types.length] ?? 'All'); }}>
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {investorType === 'All' ? 'Filters' : investorType}
        </Button>
       </div>
 
@@ -691,11 +694,11 @@ export default function Fundraising({ user }: FundraisingProps) {
            {crm.tags.map((tag: string) => (
             <span key={tag} className={cn(
              "px-1.5 py-0.5 rounded text-xs font-semibold",
-             tag === "Hot Lead" ? "bg-red-50 text-red-600 border border-red-100" :
-             tag === "Strategic" ? "bg-violet-50 text-violet-600 border border-violet-100" :
-             tag === "Advisor" ? "bg-blue-50 text-blue-600 border border-blue-100" :
-             tag === "Angel" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-             "bg-stone-50 text-stone-600 border border-stone-100"
+             tag === "Hot Lead" ? "text-red-600" :
+             tag === "Strategic" ? "text-violet-600" :
+             tag === "Advisor" ? "text-blue-600" :
+             tag === "Angel" ? "text-emerald-600" :
+             "text-stone-600"
             )}>
              <Tag className="w-2.5 h-2.5 inline mr-0.5" />{tag}
             </span>
@@ -750,7 +753,7 @@ export default function Fundraising({ user }: FundraisingProps) {
           <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => navigate('/messages')}>
            <Mail className="w-3 h-3 mr-1" /> Contact
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => showToast(`Opening ${inv.name} profile`)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${inv.name}` } }))}>
            <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
           </Button>
          </div>
@@ -824,8 +827,8 @@ export default function Fundraising({ user }: FundraisingProps) {
             </div>
            </div>
            <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${p.title} details`)}>Details</Button>
-            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); showToast(`Applying to ${p.title}...`); }}>Apply</Button>
+            <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${p.title}` } }))}>Details</Button>
+            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${p.title}` } })); }}>Apply</Button>
            </div>
           </div>
          </div>
@@ -903,8 +906,8 @@ export default function Fundraising({ user }: FundraisingProps) {
          </div>
 
          <div className="flex gap-1.5 mt-3 pt-3 border-t border-stone-100 justify-end">
-          <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => showToast(`Opening ${opp.title} details`)}>Learn More</Button>
-          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); showToast(`Applying to ${opp.title}...`); }}>Apply Now</Button>
+          <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${opp.title}` } }))}>Learn More</Button>
+          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${opp.title}` } })); }}>Apply Now</Button>
          </div>
         </div>
        ))}
@@ -1038,7 +1041,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <span className="text-xs text-stone-400 flex items-center gap-1">
              <Eye className="w-3 h-3" /> {file.views}
             </span>
-            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" onClick={() => showToast(`Downloading ${file.name}`)}>
+            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about workspace assets and ${file.name}` } }))}>
              <Download className="w-3.5 h-3.5 text-stone-400" />
             </button>
            </div>

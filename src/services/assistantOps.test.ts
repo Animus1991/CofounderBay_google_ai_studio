@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { readMilestones, readSaved, resetAllLists } from '../lib/localLists';
+import { listKeys, readIds, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists } from '../lib/localLists';
 import { runAssistant } from './assistantOps';
 
 const demo = {
@@ -55,5 +55,62 @@ describe('runAssistant', () => {
     const result = runAssistant('what events are coming', demo);
     expect(result.tool).toBe('events');
     expect(result.en).toMatch(/Networking Night/);
+  });
+
+  it('opens the fundraising pipeline the Fundraising page uses', () => {
+    const result = runAssistant('show my pipeline', demo);
+    expect(result.tool).toBe('pipeline');
+    expect(result.href).toBe('/fundraising');
+  });
+
+  it('lists the same programs the Programs page shows', () => {
+    const result = runAssistant('what programs can I apply to', demo);
+    expect(result.tool).toBe('programs');
+    expect(result.en).toMatch(/FinTech Accelerator/);
+  });
+
+  it('answers tell-me-about from the same fundraising opportunity list', () => {
+    const result = runAssistant('Tell me about Series A Scout Network', demo);
+    expect(result.tool).toBe('about');
+    expect(result.href).toBe('/fundraising');
+    expect(result.en).toMatch(/Sequoia/);
+  });
+
+  it('lists the same communities the Communities page shows', () => {
+    const result = runAssistant('what communities can I join', demo);
+    expect(result.tool).toBe('communities');
+    expect(result.en).toMatch(/Fintech Founders/);
+  });
+
+  it('puts a meeting on the same calendar the Calendar page reads', () => {
+    const result = runAssistant('Schedule a meeting on my calendar', demo);
+    expect(result.tool).toBe('session-add');
+    expect(result.href).toBe('/calendar');
+    expect(readSessions().some((item) => item.type === 'Meeting')).toBe(true);
+  });
+
+  it('tracks an application the Fundraising page also writes', () => {
+    const result = runAssistant('Apply to Y Combinator S26', demo);
+    expect(result.tool).toBe('apply');
+    expect(readTracked().some((item) => /y combinator/i.test(item.program))).toBe(true);
+  });
+
+  it('records an investment onto the same round Fundraising shows', () => {
+    const before = readRound().committedAmount;
+    const result = runAssistant('Record a $50k investment in my round', demo);
+    expect(result.tool).toBe('record-investment');
+    expect(readRound().committedAmount).toBe(before + 50_000);
+  });
+
+  it('claims a perk the Perks page reads', () => {
+    const result = runAssistant('Claim the Amazon Web Services perk', demo);
+    expect(result.tool).toBe('claim-perk');
+    expect(readIds(listKeys.perks)).toContain('aws');
+  });
+
+  it('adds a workspace task the Venture Builder board shows', () => {
+    const result = runAssistant('add task ship landing page', demo);
+    expect(result.tool).toBe('task-add');
+    expect(readTasks().some((item) => /landing page/i.test(item.title))).toBe(true);
   });
 });

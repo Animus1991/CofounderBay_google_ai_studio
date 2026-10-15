@@ -84,7 +84,7 @@ export default function LegalHub() {
          </div>
          <span className={cn(
           "text-sm font-medium tracking-wide px-2 py-0.5 rounded-full",
-          template.status === 'Critical' ? "bg-red-50 text-red-600" : "bg-stone-100 text-stone-500"
+          template.status === 'Critical' ? "text-red-600" : "text-stone-500"
          )}>
           {template.status}
          </span>
@@ -92,10 +92,10 @@ export default function LegalHub() {
         <h4 className="font-medium text-lg mb-1">{template.name}</h4>
         <p className="text-base text-stone-500 mb-6 leading-relaxed">{template.description}</p>
         <div className="flex gap-2">
-         <Button size="sm" variant="outline" className="flex-1 text-base py-1.5">
+         <Button type="button" size="sm" variant="outline" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
           <Download className="w-3 h-3 mr-1" /> Download
          </Button>
-         <Button size="sm" variant="ghost" className="flex-1 text-base py-1.5">
+         <Button type="button" size="sm" variant="ghost" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
           Preview
          </Button>
         </div>
@@ -139,7 +139,7 @@ export default function LegalHub() {
         <h4 className="font-medium text-base">Legal Office Hours</h4>
         <p className="text-sm text-white/60 mt-1">Get 15 minutes of free legal advice from our partner firms.</p>
        </div>
-       <Button variant="secondary" size="sm" className="w-full text-sm">
+       <Button type="button" variant="secondary" size="sm" className="w-full text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I book legal office hours?' } }))}>
         Book a Session
        </Button>
       </div>
@@ -153,7 +153,7 @@ export default function LegalHub() {
         { name: "Gunderson Dettmer", specialty: "Emerging Companies", location: "Global" },
         { name: "Cooley LLP", specialty: "IP & Litigation", location: "New York" },
        ].map((firm, i) => (
-        <div key={i} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-xl hover:shadow-md transition-all cursor-pointer group">
+        <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${firm.name}` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${firm.name}` } })); } }} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-xl hover:shadow-md transition-all cursor-pointer group">
          <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
           <Briefcase className="w-5 h-5" />
          </div>

@@ -134,7 +134,7 @@ export default function DomainSettings() {
            <div className="flex items-center gap-2">
             <span className="text-micro">SSL</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.sslStatus === 'Active' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+             domain.sslStatus === 'Active' ? 'text-green-700' : 'text-amber-700'
             }`}>
              {domain.sslStatus}
             </span>
@@ -142,7 +142,7 @@ export default function DomainSettings() {
            <div className="flex items-center gap-2">
             <span className="text-micro">Status</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.verificationStatus === 'Verified' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-stone-50 text-stone-500 border border-stone-100'
+             domain.verificationStatus === 'Verified' ? 'text-green-700' : 'text-stone-500'
             }`}>
              {domain.verificationStatus}
             </span>

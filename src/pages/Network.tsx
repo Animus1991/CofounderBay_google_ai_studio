@@ -54,6 +54,7 @@ export default function Network({ user }: NetworkProps) {
  const [saved, setSaved] = useState<SavedProfile[]>(() => readSaved());
  const [requests] = useState<ConnectionRequest[]>(() => readRequests());
  const [networkQuery, setNetworkQuery] = useState('');
+ const [statusFilter, setStatusFilter] = useState<'All' | 'Connected' | 'Pending'>('All');
  const [picked, setPicked] = useState<string[]>([]);
  const [compared, setCompared] = useState(false);
 
@@ -63,9 +64,13 @@ export default function Network({ user }: NetworkProps) {
   { id: "james-wilson", fullName: "James Wilson", role: UserRole.ADVISOR, industry: "SaaS", status: "Pending", location: "London" },
   { id: "elena-rodriguez", fullName: "Elena Rodriguez", role: UserRole.CO_FOUNDER_CANDIDATE, industry: "CleanTech", status: "Connected", location: "Barcelona" }
  ];
- const visibleConnections = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))].filter((conn) =>
-  conn.fullName.toLowerCase().includes(networkQuery.trim().toLowerCase())
- );
+ const visibleConnections = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))].filter((conn) => {
+  const q = networkQuery.trim().toLowerCase();
+  const matchesQuery = !q || conn.fullName.toLowerCase().includes(q) || String(conn.role).toLowerCase().includes(q) || String(conn.industry ?? '').toLowerCase().includes(q);
+  const status = 'status' in conn ? String(conn.status) : 'Pending';
+  const matchesStatus = statusFilter === 'All' || status === statusFilter;
+  return matchesQuery && matchesStatus;
+ });
 
  const mockEndorsements: Endorsement[] = [
   { id: "e1", endorserId: "sarah-chen", recipientId: user.id, skillId: "Product Strategy", comment: "One of the most focused founders I've worked with.", createdAt: "2026-03-15" },
@@ -112,8 +117,13 @@ export default function Network({ user }: NetworkProps) {
         className="w-full bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-300 transition-all"
        />
       </div>
-      <Button variant="outline" className="h-8 px-3 text-sm rounded-lg border-stone-200">
-       <SlidersHorizontal className="w-3 h-3 mr-1.5" /> Filter
+      <Button
+       type="button"
+       variant="outline"
+       className="h-8 px-3 text-sm rounded-lg border-stone-200"
+       onClick={() => setStatusFilter((prev) => prev === 'All' ? 'Connected' : prev === 'Connected' ? 'Pending' : 'All')}
+      >
+       <SlidersHorizontal className="w-3 h-3 mr-1.5" /> {statusFilter === 'All' ? 'Filter' : statusFilter}
       </Button>
       <span className="text-sm text-stone-400 ml-auto">{visibleConnections.length} connections</span>
      </div>
@@ -254,7 +264,7 @@ export default function Network({ user }: NetworkProps) {
        </div>
       </Card>
 
-      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-2.5">
+      <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-2.5">
        <div className="flex items-center gap-2">
         <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
         <span className="text-sm font-semibold text-stone-900">Expert Badge</span>

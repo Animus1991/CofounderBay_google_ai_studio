@@ -66,7 +66,18 @@ const COMMUNITIES = [
 export default function CommunitiesPage() {
  const [searchQuery, setSearchQuery] = useState('');
  const [activeTab, setActiveTab] = useState('all');
+ const [joinedIds, setJoinedIds] = useState<Set<string>>(() => new Set(COMMUNITIES.filter((c) => c.joined).map((c) => c.id)));
  const navigate = useNavigate();
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const visibleCommunities = COMMUNITIES.filter((community) => {
+  const q = searchQuery.trim().toLowerCase();
+  const matchesQuery = !q || community.name.toLowerCase().includes(q) || community.description.toLowerCase().includes(q) || community.category.toLowerCase().includes(q);
+  const isJoined = joinedIds.has(community.id);
+  if (activeTab === 'joined') return matchesQuery && isJoined;
+  if (activeTab === 'trending') return matchesQuery && community.posts > 80;
+  if (activeTab === 'new') return matchesQuery && !isJoined;
+  return matchesQuery;
+ });
 
  return (
   <PageShell
@@ -74,7 +85,8 @@ export default function CommunitiesPage() {
    description="Connect with like-minded founders. Share insights, ask questions, and grow together."
    actions={
     <button
-     onClick={() => navigate('/dashboard')}
+     type="button"
+     onClick={() => ask('How do I create a community?')}
      className="flex items-center gap-1.5 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
     >
      <Plus className="w-3.5 h-3.5" /> Create
@@ -114,8 +126,13 @@ export default function CommunitiesPage() {
    </div>
 
    {/* Community Grid */}
+   {visibleCommunities.length === 0 && (
+    <p className="text-sm text-stone-500 bg-white border border-stone-100 rounded-2xl p-4">
+     No communities match this filter. Ask the studio assistant to find one, or create a new space.
+    </p>
+   )}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {COMMUNITIES.map((community, idx) => (
+    {visibleCommunities.map((community, idx) => (
      <motion.div 
       key={community.id}
       initial={{ opacity: 0, y: 20 }}
@@ -132,10 +149,10 @@ export default function CommunitiesPage() {
         referrerPolicy="no-referrer"
        />
        <div className="flex items-center gap-1">
-        <button className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+        <button type="button" className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all" onClick={() => ask(`Tell me about ${community.name}`)}>
          <Share2 className="w-4 h-4" />
         </button>
-        <button className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+        <button type="button" className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all" onClick={() => ask(`What can I do in ${community.name}?`)}>
          <MoreVertical className="w-4 h-4" />
         </button>
        </div>
@@ -176,16 +193,18 @@ export default function CommunitiesPage() {
       </div>
 
       {/* CTA */}
-      {community.joined ? (
+      {joinedIds.has(community.id) ? (
        <button 
-        onClick={() => navigate('/dashboard')}
+        type="button"
+        onClick={() => navigate('/messages')}
         className="w-full py-2 bg-stone-50 text-stone-900 rounded-xl text-xs font-semibold hover:bg-stone-100 transition-all border border-stone-200 flex items-center justify-center gap-1.5"
        >
         Enter Community <ArrowRight className="w-3.5 h-3.5" />
        </button>
       ) : (
        <button 
-        onClick={() => navigate('/dashboard')}
+        type="button"
+        onClick={() => setJoinedIds((prev) => new Set([...prev, community.id]))}
         className="w-full py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
        >
         <Plus className="w-3.5 h-3.5" /> Join Community
@@ -199,7 +218,7 @@ export default function CommunitiesPage() {
    <div className="space-y-3">
     <div className="flex items-center justify-between">
      <p className="text-xs font-semibold text-stone-400 tracking-wider">Trending Topics</p>
-     <button className="text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors">View all topics</button>
+     <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors" onClick={() => ask('what events are coming')}>View all topics</button>
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
      {[
@@ -210,7 +229,7 @@ export default function CommunitiesPage() {
      ].map((topic) => (
       <div 
        key={topic.tag} 
-       onClick={() => navigate('/dashboard')}
+       onClick={() => ask(`Tell me about ${topic.tag}`)}
        className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm hover:shadow-md  transition-all cursor-pointer group"
       >
        <p className="text-xs font-semibold text-stone-900 group-hover:text-stone-600 transition-colors">{topic.tag}</p>

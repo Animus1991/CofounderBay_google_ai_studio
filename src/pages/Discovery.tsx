@@ -608,9 +608,9 @@ export default function Discovery({ user }: DiscoveryProps) {
             <h4 className="text-base font-semibold text-stone-900">{comm.name}</h4>
             <span className={cn(
              "text-xs font-semibold px-1.5 py-0.5 rounded-md border",
-             comm.status === "ACTIVE" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-             comm.status === "STABLE" ? "bg-blue-50 text-blue-600 border-blue-100" :
-             "bg-amber-50 text-amber-600 border-amber-100"
+             comm.status === "ACTIVE" ? "text-emerald-600 border-transparent" :
+             comm.status === "STABLE" ? "text-blue-600 border-transparent" :
+             "text-amber-600 border-transparent"
             )}>{comm.status}</span>
            </div>
            <p className="text-sm text-stone-500 line-clamp-1">{comm.description}</p>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -19,6 +20,8 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { User } from "../types";
+import { keys, readActivity } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 
 interface InsightsProps {
  user: User;
@@ -45,7 +48,45 @@ const activityData = [
 ];
 
 export default function Insights({ user }: InsightsProps) {
+ const navigate = useNavigate();
  const [activeRange, setActiveRange] = useState('7D');
+ const studioActivity = useStored(readActivity, [keys.activity]);
+ const readinessView = useMemo(() => {
+  if (activeRange === '24H') return readinessData.slice(-1);
+  if (activeRange === '7D') return readinessData.slice(-2);
+  if (activeRange === '30D') return readinessData.slice(-4);
+  return readinessData;
+ }, [activeRange]);
+ const activityView = useMemo(() => {
+  if (activeRange === '24H') return activityData.slice(-1);
+  if (activeRange === '7D') return activityData.slice(-3);
+  if (activeRange === '30D') return activityData.slice(-5);
+  return activityData;
+ }, [activeRange]);
+ const lastScore = readinessView[readinessView.length - 1]?.score ?? 85;
+ const viewSum = activityView.reduce((sum, row) => sum + row.views, 0);
+ const connectSum = activityView.reduce((sum, row) => sum + row.connections, 0);
+ const kpis = [
+  { label: "Readiness Score", value: `${lastScore}%`, change: "+12%", icon: Target,    dot: "bg-amber-400",   bar: "bg-amber-400",   pct: lastScore, href: '/profile' },
+  { label: "Profile Views",   value: String(viewSum), change: "+24%", icon: Users,     dot: "bg-blue-400",    bar: "bg-blue-400",    pct: Math.min(100, viewSum), href: '/network' },
+  { label: "Connections",     value: String(connectSum), change: "+8%",  icon: Zap,       dot: "bg-violet-400",  bar: "bg-violet-400",  pct: Math.min(100, connectSum * 8), href: '/network' },
+  { label: "Activity Score",  value: `${Math.min(99, 70 + connectSum)}%`,  change: "+5%",  icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
+ ];
+ const feed = [
+  ...studioActivity.slice(0, 4).map((item) => ({
+   user: item.byAssistant ? 'Studio' : (user.fullName?.split(' ')[0] || 'You'),
+   action: item.title,
+   time: item.at.slice(11, 16) || '',
+   icon: Zap,
+   bg: 'bg-stone-50',
+   ic: 'text-stone-600',
+   href: item.href || '/notifications',
+  })),
+  { user: 'Alex Rivera',  action: 'connected with you',          time: '2h ago', icon: Users,    bg: 'bg-stone-50',   ic: 'text-stone-600', href: '/network' },
+  { user: 'You',          action: 'reached 85% Readiness Score', time: '5h ago', icon: Award,    bg: 'bg-amber-50',   ic: 'text-amber-600', href: '/profile' },
+  { user: 'Sarah Chen',   action: 'sent you a message',          time: '1d ago', icon: Zap,      bg: 'bg-violet-50',  ic: 'text-violet-600', href: '/messages' },
+  { user: 'You',          action: 'registered for Pitch Night',  time: '2d ago', icon: Calendar, bg: 'bg-blue-50',    ic: 'text-blue-600', href: '/events' },
+ ].slice(0, 4);
 
  return (
   <PageShell title="Insights" description="Analytics and performance intelligence for your startup journey.">
@@ -69,18 +110,13 @@ export default function Insights({ user }: InsightsProps) {
 
     {/* KPI Stats Row */}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-     {[
-      { label: "Readiness Score", value: "85%", change: "+12%", icon: Target,    dot: "bg-amber-400",   bar: "bg-amber-400",   pct: 85 },
-      { label: "Profile Views",   value: "1,240", change: "+24%", icon: Users,     dot: "bg-blue-400",    bar: "bg-blue-400",    pct: 62 },
-      { label: "Connections",     value: "48",   change: "+8%",  icon: Zap,       dot: "bg-violet-400",  bar: "bg-violet-400",  pct: 48 },
-      { label: "Activity Score",  value: "92%",  change: "+5%",  icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: 92 },
-     ].map((stat, i) => (
-      <div key={i} className="bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all group">
+     {kpis.map((stat, i) => (
+      <div key={stat.label} role="button" tabIndex={0} onClick={() => navigate(stat.href)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(stat.href); }} className="bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all group cursor-pointer">
        <div className="flex items-start justify-between mb-3">
         <div className="w-8 h-8 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center shrink-0">
          <stat.icon className="w-4 h-4 text-stone-500" />
         </div>
-        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
          <ArrowUpRight className="w-2.5 h-2.5" />{stat.change}
         </div>
        </div>
@@ -117,7 +153,7 @@ export default function Insights({ user }: InsightsProps) {
        </div>
        <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
-         <AreaChart data={readinessData}>
+         <AreaChart data={readinessView}>
           <defs>
            <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#1c1917" stopOpacity={0.07}/>
@@ -156,7 +192,7 @@ export default function Insights({ user }: InsightsProps) {
        </div>
        <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
-         <BarChart data={activityData} barGap={2}>
+         <BarChart data={activityView} barGap={2}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f5f5f4" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dy={8} />
           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dx={-8} />
@@ -183,13 +219,8 @@ export default function Insights({ user }: InsightsProps) {
         <p className="text-xs text-stone-400">Real-time ecosystem updates</p>
        </div>
        <div className="space-y-3">
-        {[
-         { user: 'Alex Rivera',  action: 'connected with you',          time: '2h ago', icon: Users,    bg: 'bg-stone-50',   ic: 'text-stone-600' },
-         { user: 'You',          action: 'reached 85% Readiness Score', time: '5h ago', icon: Award,    bg: 'bg-amber-50',   ic: 'text-amber-600' },
-         { user: 'Sarah Chen',   action: 'sent you a message',          time: '1d ago', icon: Zap,      bg: 'bg-violet-50',  ic: 'text-violet-600' },
-         { user: 'You',          action: 'registered for Pitch Night',  time: '2d ago', icon: Calendar, bg: 'bg-blue-50',    ic: 'text-blue-600' },
-        ].map((item, i) => (
-         <div key={i} className="flex items-start gap-2.5 group cursor-pointer">
+        {feed.map((item, i) => (
+         <div key={`${item.user}-${item.action}-${i}`} role="button" tabIndex={0} onClick={() => navigate(item.href)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(item.href); }} className="flex items-start gap-2.5 group cursor-pointer">
           <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border border-stone-100 transition-all group-hover:bg-stone-900 group-hover:text-white", item.bg, item.ic)}>
            <item.icon className="w-3.5 h-3.5" />
           </div>
@@ -202,7 +233,7 @@ export default function Insights({ user }: InsightsProps) {
          </div>
         ))}
        </div>
-       <Button variant="ghost" className="w-full h-7 rounded-xl text-xs font-semibold tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-stone-100 transition-all">
+       <Button type="button" variant="ghost" className="w-full h-7 rounded-xl text-xs font-semibold tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-stone-100 transition-all" onClick={() => navigate('/notifications')}>
         View Full History
        </Button>
       </Card>
@@ -220,7 +251,7 @@ export default function Insights({ user }: InsightsProps) {
          { name: 'Pitch Master', icon: Zap,    unlocked: false },
          { name: 'Funded',       icon: Star,   unlocked: false },
         ].map((badge, i) => (
-         <div key={i} className={cn(
+         <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.name} achievement` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.name} achievement` } })); }} className={cn(
           "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
           badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-stone-100 opacity-40 grayscale"
          )}>
@@ -237,7 +268,7 @@ export default function Insights({ user }: InsightsProps) {
       </Card>
 
       {/* Strategic Insight — light amber version */}
-      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
+      <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
        <div className="flex items-center gap-2">
         <div className="w-7 h-7 rounded-xl bg-white border border-amber-100 flex items-center justify-center shrink-0">
          <Zap className="w-3.5 h-3.5 text-amber-500" />
@@ -247,7 +278,7 @@ export default function Insights({ user }: InsightsProps) {
        <p className="text-sm text-stone-600 leading-relaxed">
         Startups with a <span className="font-semibold text-stone-900">Readiness Score over 80%</span> are <span className="font-semibold text-stone-900">3× more likely</span> to secure funding within 6 months.
        </p>
-       <Button className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
+       <Button onClick={() => navigate('/profile')} className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
         Optimize Score
        </Button>
       </div>

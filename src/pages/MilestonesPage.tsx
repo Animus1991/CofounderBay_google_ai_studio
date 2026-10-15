@@ -34,10 +34,10 @@ interface MilestonesPageProps {
 type ViewMode = 'kanban' | 'timeline' | 'list';
 
 const CATEGORY_COLORS: Record<string, string> = {
- Product: 'bg-blue-50 text-blue-600 border-blue-100',
- Legal: 'bg-purple-50 text-purple-600 border-purple-100',
- Funding: 'bg-emerald-50 text-emerald-600 border-emerald-100',
- Marketing: 'bg-amber-50 text-amber-600 border-amber-100',
+ Product: 'text-blue-600 border-transparent',
+ Legal: 'text-purple-600 border-transparent',
+ Funding: 'text-emerald-600 border-transparent',
+ Marketing: 'text-amber-600 border-transparent',
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
@@ -49,9 +49,9 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> 
 };
 
 const PRIORITY_BADGE: Record<string, string> = {
- High: 'bg-red-50 text-red-600 border-red-100',
- Medium: 'bg-amber-50 text-amber-600 border-amber-100',
- Low: 'bg-stone-50 text-stone-500 border-stone-100',
+ High: 'text-red-600 border-transparent',
+ Medium: 'text-amber-600 border-transparent',
+ Low: 'text-stone-500 border-transparent',
 };
 
 function ProgressRing({ progress, size = 40, stroke = 3.5 }: { progress: number; size?: number; stroke?: number }) {
@@ -106,7 +106,7 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
 
    {/* Tags row */}
    <div className="flex flex-wrap items-center gap-1.5">
-    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[milestone.category] || 'bg-stone-50 text-stone-500 border-stone-100')}>
+    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[milestone.category] || 'text-stone-500 border-transparent')}>
      {milestone.category}
     </span>
     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", PRIORITY_BADGE[milestone.priority])}>
@@ -416,7 +416,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
            </div>
           </div>
           <div className="col-span-2">
-           <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[m.category] || 'bg-stone-50 text-stone-500 border-stone-100')}>{m.category}</span>
+           <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[m.category] || 'text-stone-500 border-transparent')}>{m.category}</span>
           </div>
           <div className="col-span-2 flex items-center gap-1.5">
            <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />

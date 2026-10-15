@@ -222,7 +222,7 @@ export default function AdminDashboard() {
        <p className="text-sm text-stone-400 font-medium">Flags for suspicious XP farming or bot-like behavior.</p>
       </div>
       <div className="flex items-center gap-2">
-       <span className="px-4 py-1.5 bg-red-50 text-red-600 rounded-xl text-xs font-medium tracking-wide">
+       <span className="px-4 py-1.5 text-red-600 rounded-xl text-xs font-medium tracking-wide">
         {abuseFlags.length} Active Flags
        </span>
       </div>
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
          <tr key={idx} className="hover:bg-stone-50/30 transition-colors group">
           <td className="px-8 py-5 font-mono text-xs text-stone-600">{flag.userId}</td>
           <td className="px-8 py-5">
-           <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-medium tracking-wider">
+           <span className="px-2 py-1 text-amber-700 rounded-lg text-xs font-medium tracking-wider">
             {flag.type}
            </span>
           </td>
