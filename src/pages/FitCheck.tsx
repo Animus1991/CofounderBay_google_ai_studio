@@ -71,7 +71,7 @@ export default function FitCheck() {
 
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col">
-      <header className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4">
+      <header className="flex items-center justify-between gap-3 px-2 sm:px-6 py-4">
         <NavLink to="/" className="inline-flex items-center gap-2 min-h-11 text-sm font-medium text-stone-900">
           <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
@@ -91,7 +91,7 @@ export default function FitCheck() {
           <div className="h-1.5 bg-stone-200">
             <div className="h-full bg-stone-900 transition-all duration-300" style={{ width: `${(step / FIT_QUESTIONS.length) * 100}%` }} />
           </div>
-          <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-10">
+          <main className="flex-1 w-full max-w-xl mx-auto px-2 sm:px-6 py-10">
             <p className="text-xs font-medium text-stone-400 mb-2">
               {step + 1} / {FIT_QUESTIONS.length} · {bothText(question.why.en, question.why.el)}
             </p>
@@ -121,7 +121,7 @@ export default function FitCheck() {
       )}
 
       {done && result && (
-        <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+        <main className="flex-1 w-full max-w-xl mx-auto px-2 sm:px-6 py-10 space-y-6">
           <p className="text-xs font-medium text-stone-400 tracking-wide">
             <Both en="Same fields Matches already scores" el="Τα ίδια πεδία που ήδη βαθμολογεί το Matches" />
           </p>

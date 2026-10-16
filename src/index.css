@@ -258,6 +258,15 @@
     white-space: nowrap;
     min-height: var(--studio-dash-h);
   }
+  /* On a phone the strip uses the full content width. Labels keep their
+     text and scroll when they cannot share that width. */
+  @media (max-width: 639px) {
+    .scroll-tabs > button {
+      flex: 1 1 auto;
+      justify-content: center;
+      min-width: max-content;
+    }
+  }
   /* Native chrome-sized buttons (not compact h-8). Start / Run diagnostic stay pinned unlayered. */
   button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
   button.h-8:not([class*="min-h-"]) { height: 2rem; }

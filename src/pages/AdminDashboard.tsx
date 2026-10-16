@@ -66,7 +66,7 @@ export default function AdminDashboard() {
  })) : [];
 
  return (
-  <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
+  <div className="w-full px-2 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
    {/* Header */}
    <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 lg:pr-56">
     <div className="space-y-2">

@@ -334,7 +334,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+    <div className="w-full min-w-0 px-2 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t("Settings", "Ρυθμίσεις")}</h1>

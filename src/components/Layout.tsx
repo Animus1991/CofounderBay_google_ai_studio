@@ -78,7 +78,7 @@ export default function Layout() {
    <main
     id="main-content"
     tabIndex={-1}
-    className="flex-1 overflow-x-hidden overflow-y-auto min-h-screen outline-none pt-16 lg:pt-0"
+    className="w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto min-h-screen outline-none pt-16 pb-24 lg:pt-0 lg:pb-0"
    >
     <Outlet />
    </main>

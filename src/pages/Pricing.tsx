@@ -23,7 +23,7 @@ export default function Pricing() {
  ];
 
  return (
-  <div className="py-20 px-4 max-w-7xl mx-auto space-y-20">
+  <div className="py-20 px-2 sm:px-6 max-w-7xl mx-auto space-y-20">
    {/* Header */}
    <div className="text-center space-y-6 max-w-3xl mx-auto">
     <motion.div

@@ -301,7 +301,7 @@ export default function MentorsPage() {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-sm z-50 overflow-y-auto"
+      className="fixed right-0 top-16 bottom-0 z-[65] w-full overflow-y-auto bg-white shadow-sm sm:inset-y-0 sm:max-w-md"
      >
       <div className="p-6 md:p-8 space-y-8">
        {/* Close Button */}

@@ -106,7 +106,7 @@ export default function Calendar() {
     {/* Main Calendar Grid */}
     <div className="lg:col-span-8">
      <Card noPadding className="rounded-2xl border-stone-100 overflow-hidden bg-white">
-      <div className="px-5 py-4 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="px-3 py-4 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:px-5">
        <div className="flex items-center gap-3">
         <h3 className="text-base font-semibold text-stone-900">{currentMonth}</h3>
         <div className="flex items-center gap-1">
@@ -134,7 +134,7 @@ export default function Calendar() {
        </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-2 sm:p-4">
        <div className="grid grid-cols-7 mb-2">
         {weekDays.map((day) => (
          <div key={day} className="text-center text-xs font-semibold text-stone-400 py-2">

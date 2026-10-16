@@ -414,7 +414,7 @@ export default function ProfilePage() {
  );
 
  return (
-  <div className="w-full px-4 sm:px-6 lg:px-8 pb-24 pt-4 sm:pt-8 space-y-6">
+  <div className="w-full px-2 sm:px-6 lg:px-8 pb-24 pt-4 sm:pt-8 space-y-6">
    <button type="button" onClick={() => navigate(-1)} className="lg:hidden inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-stone-600">
     <ArrowLeft className="w-4 h-4" />
     Back

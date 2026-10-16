@@ -241,7 +241,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        animate={{ x: 0 }}
        exit={{ x: "100%" }}
        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-       className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-sm z-50 p-12 overflow-y-auto border-l border-stone-200"
+       className="fixed top-16 right-0 bottom-0 z-[65] w-full overflow-y-auto border-l border-stone-200 bg-white p-4 shadow-sm sm:top-0 sm:h-full sm:max-w-md sm:p-12"
       >
        <div className="flex items-center justify-between mb-16">
         <div className="space-y-2">

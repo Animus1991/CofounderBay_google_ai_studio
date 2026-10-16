@@ -70,7 +70,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white selection:bg-stone-900 selection:text-white">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3 min-h-16 py-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -237,7 +237,7 @@ export default function LandingPage() {
 
       {/* Stats Section */}
       <section className="py-12 border-y border-stone-100 bg-stone-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
             {stats.map((stat, i) => (
               <div
@@ -258,7 +258,7 @@ export default function LandingPage() {
 
       {/* This week: person, session, operator — one glance */}
       <section className="py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <p className="text-xs font-medium text-stone-400 tracking-wide mb-4">
             <Both en="What you will actually use" el="Τι θα χρησιμοποιήσεις πραγματικά" />
           </p>
@@ -313,7 +313,7 @@ export default function LandingPage() {
 
       {/* Features Section */}
       <section id="features" className="py-16 md:py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-4">
               Not just another social network.
@@ -353,7 +353,7 @@ export default function LandingPage() {
 
       {/* Communities Section */}
       <section id="communities" className="py-16 md:py-24 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16">
             <div className="lg:w-1/2 space-y-8">
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium text-stone-900 tracking-tight">
@@ -456,7 +456,7 @@ export default function LandingPage() {
         id="how-it-works"
         className="py-16 md:py-24 bg-stone-900 text-white overflow-hidden relative"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-16 items-center">
             <div>
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium tracking-tight mb-6">
@@ -490,7 +490,7 @@ export default function LandingPage() {
                 </NavLink>
               </div>
             </div>
-            <div className="relative max-w-[300px] sm:max-w-md mx-auto lg:max-w-none w-full">
+            <div className="relative w-full max-w-full sm:max-w-md mx-auto lg:max-w-none">
               <div className="aspect-[4/3] sm:aspect-square bg-[#1c1917] rounded-xl overflow-hidden border border-stone-800 p-6 sm:p-10 flex flex-col justify-between shadow-sm relative z-10 w-full">
                 <div className="flex justify-between items-start">
                   <div className="space-y-3">
@@ -516,7 +516,7 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section id="pricing" className="py-16 md:py-24 lg:py-32">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 text-center">
           <div className="p-8 md:p-12 lg:p-20 rounded-xl sm:rounded-xl bg-stone-50 border border-stone-100 relative overflow-hidden">
             <div className="relative z-10">
               <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-6">
@@ -544,7 +544,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-stone-100 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-12 mb-20">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-6">

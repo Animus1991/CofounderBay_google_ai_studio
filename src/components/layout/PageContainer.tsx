@@ -28,7 +28,7 @@ const PageContainer: React.FC<PageContainerProps> = ({
 
  return (
   <div className={cn(
-   "w-full mx-auto px-4 sm:px-6 lg:px-8",
+   "w-full mx-auto px-2 sm:px-6 lg:px-8",
    !noPadding && "py-6 md:py-10",
    fullHeight && "h-full flex flex-col",
    maxWidthClasses[maxWidth],
