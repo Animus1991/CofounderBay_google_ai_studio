@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
+import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { 
  Rocket, Search, Filter, SlidersHorizontal, ArrowRight, 
  CheckCircle2, XCircle, Star, MessageSquare, Plus, 
  Users, Globe, Zap, Target, Shield, TrendingUp,
- Calendar, DollarSign, Award, Info, Clock
+ Award, Info, DollarSign
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -73,6 +75,14 @@ export default function Programs({ user }: ProgramsProps) {
   }
  ];
 
+ const visiblePrograms = mockPrograms.filter((program) => {
+  if (activeTab === 'All') return true;
+  if (activeTab === 'Accelerators') return program.type === 'Accelerator';
+  if (activeTab === 'Grants') return program.type === 'Grant';
+  if (activeTab === 'Bootcamps') return program.type === 'Bootcamp';
+  return true;
+ });
+
  return (
   <PageShell title="Programs" description="Curated accelerators, grants, and strategic opportunities for every stage.">
    <div className="space-y-6">
@@ -109,13 +119,12 @@ export default function Programs({ user }: ProgramsProps) {
      </div>
 
      <div className="space-y-3">
-      {mockPrograms.filter((program) => {
-       if (activeTab === 'All') return true;
-       if (activeTab === 'Accelerators') return program.type === 'Accelerator';
-       if (activeTab === 'Grants') return program.type === 'Grant';
-       if (activeTab === 'Bootcamps') return program.type === 'Bootcamp';
-       return true;
-      }).map((program, idx) => (
+      {visiblePrograms.length === 0 && (
+       <EmptyHint title={`No programs in the ${activeTab} filter.`} detail="Ask the studio assistant which programs you can apply to, or switch the tab.">
+        <AskLink prompt="What programs can I apply to?" />
+       </EmptyHint>
+      )}
+      {visiblePrograms.map((program, idx) => (
        <motion.div
         key={program.id}
         initial={{ opacity: 0, y: 20 }}
@@ -146,26 +155,8 @@ export default function Programs({ user }: ProgramsProps) {
             </button>
            </div>
            <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{program.description}</p>
-           <div className="grid grid-cols-3 gap-3 py-3 border-y border-stone-100">
-            {[
-             { icon: DollarSign, label: 'Funding',  value: program.funding ?? 'N/A' },
-             { icon: Clock,      label: 'Duration', value: program.duration },
-             { icon: Calendar,   label: 'Deadline', value: program.deadline },
-            ].map(({ icon: Icon, label, value }) => (
-             <div key={label} className="space-y-0.5">
-              <div className="flex items-center gap-1 text-xs text-stone-400 tracking-wider">
-               <Icon className="w-2.5 h-2.5" />{label}
-              </div>
-              <p className="text-sm font-semibold text-stone-900">{value}</p>
-             </div>
-            ))}
-           </div>
-           <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-1">
-             {program.focus.map((f) => (
-              <span key={f} className="text-xs font-medium px-2 py-0.5 bg-stone-50 text-stone-500 rounded-md border border-stone-100">{f}</span>
-             ))}
-            </div>
+           <FactLine items={[program.funding, program.duration, program.deadline, ...program.focus.slice(0, 2)]} label="Program facts" />
+           <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${program.title}` } }))}>
              Apply Now
             </Button>

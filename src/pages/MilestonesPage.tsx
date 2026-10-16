@@ -26,6 +26,7 @@ import { cn } from '../lib/utils';
 import { Milestone, User } from '../types';
 import { milestoneService } from '../services/milestoneService';
 import PageShell from '../components/ui/PageShell';
+import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 
 interface MilestonesPageProps {
  user?: User;
@@ -94,7 +95,12 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
       </div>
      </div>
     </div>
-    <button className="p-1 text-stone-300 hover:text-stone-600 rounded opacity-0 group-hover:opacity-100 transition-all shrink-0">
+    <button
+     type="button"
+     title="Ask the studio assistant about this goal"
+     onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `What should I do about ${milestone.title}?`, context: milestone.title } }))}
+     className="p-1 text-stone-300 hover:text-stone-600 rounded opacity-0 group-hover:opacity-100 transition-all shrink-0"
+    >
      <MoreVertical className="w-3.5 h-3.5" />
     </button>
    </div>
@@ -233,9 +239,12 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
    title="Milestones"
    description="Track your progress, set goals, and celebrate achievements."
    actions={
-    <button type="button" onClick={() => setAdding(true)} title="Names a goal and puts it on this board. · Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα." className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all">
-     <Plus className="w-3.5 h-3.5" /> Add Milestone
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+     <AskLink prompt="What is overdue?" />
+     <button type="button" onClick={() => setAdding(true)} title="Names a goal and puts it on this board. · Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα." className="flex items-center gap-1.5 px-3 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all">
+      <Plus className="w-3.5 h-3.5" /> Add Milestone
+     </button>
+    </div>
    }
   >
   <div className="space-y-6">
@@ -326,11 +335,10 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
      <button onClick={fetchMilestones} className="text-stone-900 underline font-medium text-xs">Retry</button>
     </div>
    ) : filtered.length === 0 ? (
-    <div className="flex flex-col items-center justify-center py-20 text-stone-400 space-y-3">
-     <Target className="w-10 h-10" />
-     <p className="font-medium text-xs tracking-wider">No milestones found · Δεν βρέθηκαν ορόσημα</p>
-     {searchQuery ? <p className="text-[10px]">Try a different search term · Δοκιμάστε άλλον όρο</p> : <p className="text-[10px]">Add a milestone to put a goal on this board. · Προσθέστε ορόσημο για να μπει ένας στόχος εδώ.</p>}
-    </div>
+    <EmptyHint title="No milestones found · Δεν βρέθηκαν ορόσημα" detail={searchQuery ? 'Try a different search term · Δοκιμάστε άλλον όρο' : 'Add a milestone, or ask the assistant what is overdue. · Προσθέστε ορόσημο, ή ρωτήστε τι είναι εκπρόθεσμο.'}>
+     <AskLink prompt="What is overdue?" />
+     <AskLink prompt="add milestone ship the MVP">Add via assistant</AskLink>
+    </EmptyHint>
    ) : (
     <>
      {/* Kanban View */}

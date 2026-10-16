@@ -137,6 +137,9 @@ export const keys = {
   chat: 'cfb.chat',
   assistant: 'cfb.assistant',
   tasks: 'cfb.workspaceTasks',
+  invites: 'cfb.founderInvites',
+  needs: 'cfb.needCards',
+  openTo: 'cfb.openTo',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -385,9 +388,38 @@ export function writeTasks(items: StudioTask[]): StudioTask[] {
   return items;
 }
 
+export type FounderInvite = {
+  id: string;
+  note: string;
+  href: string;
+  at: string;
+};
+
+export function readInvites(): FounderInvite[] {
+  const stored = readJson<FounderInvite[] | null>(keys.invites, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function writeInvites(items: FounderInvite[]): FounderInvite[] {
+  writeJson(keys.invites, items);
+  return items;
+}
+
+export function seedFounderInvites(count = 3): FounderInvite[] {
+  const href = typeof window !== 'undefined' ? `${window.location.origin}/quiz` : '/quiz';
+  const seeded: FounderInvite[] = Array.from({ length: count }, (_, index) => ({
+    id: `inv-${Date.now()}-${index}`,
+    note: `Invite ${index + 1} of ${count}`,
+    href,
+    at: new Date().toISOString(),
+  }));
+  writeInvites([...seeded, ...readInvites()].slice(0, 12));
+  return seeded;
+}
+
 export function addStudioTask(title: string): StudioTask {
   const task: StudioTask = {
-    id: `t-${Date.now()}`,
+    id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     title: title.trim() || 'New task',
     priority: 'Medium',
     status: 'Todo',
@@ -600,6 +632,10 @@ export function readActivity(): ActivityItem[] {
   return Array.isArray(stored) ? stored : [];
 }
 
+export function unreadActivityCount(): number {
+  return readActivity().filter((item) => !item.read).length;
+}
+
 export function logActivity(item: Omit<ActivityItem, 'id' | 'at' | 'read'> & { read?: boolean }): ActivityItem[] {
   const entry: ActivityItem = { id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString(), read: false, ...item };
   const next = [entry, ...readActivity()].slice(0, 200);
@@ -671,6 +707,7 @@ export type AssistantTurn = {
   role: 'user' | 'assistant';
   text: string;
   href?: string;
+  tool?: string;
   at: string;
 };
 
@@ -686,6 +723,7 @@ export function appendAssistant(turn: Omit<AssistantTurn, 'id' | 'at'> & { id?: 
     role: turn.role,
     text: turn.text,
     href: turn.href,
+    tool: turn.tool,
   };
   const next = [...readAssistant(), entry].slice(-80);
   writeJson(keys.assistant, next);
@@ -695,4 +733,67 @@ export function appendAssistant(turn: Omit<AssistantTurn, 'id' | 'at'> & { id?: 
 export function clearAssistant(): AssistantTurn[] {
   writeJson(keys.assistant, []);
   return [];
+}
+
+/** Search bodies the Messages page already stores. */
+export function searchChat(query: string): StoredMessage[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  return readChat().messages.filter((item) => (item.body || '').toLowerCase().includes(needle)).slice(0, 8);
+}
+
+// ── Need cards: what exists, the outcome, who is missing ───────────────────
+
+export type NeedCard = {
+  id: string;
+  exists: string;
+  outcome: string;
+  missing: string;
+  offer?: string;
+  status: 'open' | 'closed';
+  at: string;
+};
+
+export function readNeeds(): NeedCard[] {
+  const stored = readJson<NeedCard[] | null>(keys.needs, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function upsertNeed(card: NeedCard): NeedCard[] {
+  const next = [card, ...readNeeds().filter((item) => item.id !== card.id)].slice(0, 40);
+  writeJson(keys.needs, next);
+  return next;
+}
+
+export function closeNeed(id: string): NeedCard[] {
+  const next = readNeeds().map((item) => (item.id === id ? { ...item, status: 'closed' as const } : item));
+  writeJson(keys.needs, next);
+  return next;
+}
+
+export type OpenToKind = 'cofounder' | 'investor' | 'advisor';
+
+export function readOpenTo(): OpenToKind[] {
+  const stored = readJson<OpenToKind[] | null>(keys.openTo, null);
+  if (Array.isArray(stored) && stored.length) {
+    return stored.filter((item): item is OpenToKind => item === 'cofounder' || item === 'investor' || item === 'advisor');
+  }
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('cfb.accountSwitches') : null;
+    if (!raw) return ['cofounder', 'advisor'];
+    const parsed = JSON.parse(raw) as { openToCofounder?: boolean; openToInvestors?: boolean; openToAdvisors?: boolean };
+    const out: OpenToKind[] = [];
+    if (parsed.openToCofounder !== false) out.push('cofounder');
+    if (parsed.openToInvestors) out.push('investor');
+    if (parsed.openToAdvisors) out.push('advisor');
+    return out.length ? out : ['cofounder'];
+  } catch {
+    return ['cofounder', 'advisor'];
+  }
+}
+
+export function writeOpenTo(kinds: OpenToKind[]): OpenToKind[] {
+  const next = [...new Set(kinds.filter((item): item is OpenToKind => item === 'cofounder' || item === 'investor' || item === 'advisor'))];
+  writeJson(keys.openTo, next);
+  return next;
 }

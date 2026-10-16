@@ -28,9 +28,9 @@ export default function Button({
  const variants = {
   primary: "bg-stone-900 text-white hover:bg-stone-800 shadow-sm",
   secondary: "bg-stone-100 text-stone-900 hover:bg-stone-200/80",
-  outline: "bg-white border border-stone-200 text-stone-900 hover:bg-stone-50 shadow-sm",
+  outline: "bg-white border border-stone-200 text-stone-900 hover:bg-stone-50 hover:border-stone-300 shadow-sm",
   ghost: "text-stone-500 hover:bg-stone-100/50 hover:text-stone-900",
-  danger: "bg-red-50 text-red-600 hover:bg-red-100/80",
+  danger: "bg-white border border-stone-200 text-red-600 hover:bg-red-50 hover:border-red-100",
  };
 
  const sizes = {
@@ -47,7 +47,7 @@ export default function Button({
    className={cn(
     "inline-flex items-center justify-center gap-2 transition-all duration-200",
     "active:scale-[0.97] active:duration-75",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2",
+    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1",
     "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
     variants[variant],
     sizes[size],

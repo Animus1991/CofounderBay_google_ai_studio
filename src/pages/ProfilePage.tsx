@@ -178,10 +178,13 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
   headline: person?.headline || 'Founder',
   bio: person?.bio || '',
   location: person?.location || '',
-  stage: '',
+  stage: person?.stage || '',
   role: person?.role || 'Founder',
-  commitment: '',
+  commitment: person?.commitment || '',
   industry: person?.industry || '',
+  skills: person?.skills || [],
+  lookingFor: person?.lookingFor || [],
+  interests: person?.industry ? [person.industry] : [],
  } as UserProfile;
 }
 export default function ProfilePage() {
@@ -411,32 +414,50 @@ export default function ProfilePage() {
  );
 
  return (
-  <div className="w-full mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6">
+  <div className="w-full px-4 sm:px-6 lg:px-8 pb-24 pt-4 sm:pt-8 space-y-6">
    <button type="button" onClick={() => navigate(-1)} className="lg:hidden inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-stone-600">
     <ArrowLeft className="w-4 h-4" />
     Back
    </button>
    {/* Profile Header */}
-   <div className="relative">
-    {isOwnProfile && profile.profileCompletionScore !== undefined && profile.profileCompletionScore < 80 && (
+   <div className="relative lg:pr-36">
+    {isOwnProfile && (() => {
+     const gaps = [
+      { ok: !!(profile.skills && profile.skills.length), key: 'Skills', why: 'The scorer uses skills to see what you cover.' },
+      { ok: !!(profile.lookingFor && profile.lookingFor.length), key: 'Looking for', why: 'Matches rank people who cover what you still lack.' },
+      { ok: !!profile.industry, key: 'Industry', why: 'Same industry is a market dimension.' },
+      { ok: !!profile.stage, key: 'Stage', why: 'Stage distance is 15% of the match score.' },
+      { ok: !!profile.commitment, key: 'Commitment', why: 'Full-time vs part-time is scored, not guessed.' },
+      { ok: !!profile.location, key: 'Location', why: 'Working hours come from city and time zone.' },
+     ].filter((item) => !item.ok);
+     if (!gaps.length && (profile.profileCompletionScore ?? 100) >= 80) return null;
+     return (
      <div className="mb-6 bg-amber-50 rounded-3xl border border-amber-200 p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center shadow-sm">
       <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0">
        <Sparkles className="w-6 h-6" />
       </div>
-      <div className="flex-1">
-       <h3 className="text-lg font-semibold text-amber-900 tracking-tight">Boost Your Profile Score ({profile.profileCompletionScore}% Complete)</h3>
+      <div className="flex-1 min-w-0">
+       <h3 className="text-lg font-semibold text-amber-900 tracking-tight">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete)</h3>
        <p className="text-sm text-amber-700 leading-relaxed mt-1">
-        Founders with detailed profiles receive 4x more match requests. Add your skills, bio, and social links to improve your visibility.
+        {gaps.length
+          ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
+          : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.'}
        </p>
       </div>
-      <button 
-       onClick={() => setIsEditing(true)}
-       className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-all shadow-md shrink-0"
-      >
-       Complete Profile
-      </button>
+      <div className="flex flex-col gap-2 shrink-0">
+       <button 
+        onClick={() => setIsEditing(true)}
+        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-all shadow-md"
+       >
+        {gaps[0] ? `Add ${gaps[0].key}` : 'Edit Profile'}
+       </button>
+       <button type="button" className="text-xs font-medium text-amber-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}>
+        Ask what the team still lacks
+       </button>
+      </div>
      </div>
-    )}
+     );
+    })()}
     {/* Banner */}
     <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative">
      {isOwnProfile && (
@@ -562,9 +583,9 @@ export default function ProfilePage() {
     </div>
    </div>
 
-   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-    {/* Left Column */}
-    <div className="lg:col-span-2 space-y-8">
+   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
+    {/* Story: identity */}
+    <div className="min-w-0 space-y-6">
      {/* About Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">About Me</h3>
@@ -708,9 +729,9 @@ export default function ProfilePage() {
      </div>
     </div>
 
-    {/* Right Column */}
-    <div className="space-y-8">
-     {/* Skills Section */}
+    {/* Proof: skills and availability */}
+    <div className="min-w-0 space-y-6">
+{/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
       <div className="flex items-center justify-between">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Skills & Endorsements</h3>
@@ -856,8 +877,164 @@ export default function ProfilePage() {
         )}
        </div>
      </div>
+{/* Achievements / Badges */}
+     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+      <div className="flex items-center justify-between">
+       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+        <Trophy className="w-4 h-4 text-amber-500" />
+        Achievements
+       </h3>
+       <span className="text-xs text-stone-400 font-medium">
+        {ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length} earned
+       </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+       {ACHIEVEMENTS.map(badge => (
+        <motion.div
+         key={badge.id}
+         whileHover={{ scale: badge.earned ? 1.05 : 1 }}
+         className={cn(
+          "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
+          badge.earned
+           ? `${badge.bg} ${badge.border} shadow-sm`
+           : "bg-stone-50/50 border-stone-100 opacity-40 grayscale"
+         )}
+        >
+         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100")}>
+          <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
+         </div>
+         <div>
+          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-400")}>{badge.name}</p>
+          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{badge.desc}</p>
+         </div>
+         {badge.earned && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+           <Check className="w-2.5 h-2.5 text-white" />
+          </div>
+         )}
+        </motion.div>
+       ))}
+      </div>
+     </div>
+{/* Open To / Availability */}
+     {isOwnProfile && (
+      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+        <Heart className="w-4 h-4 text-rose-400" />
+        Open To
+       </h3>
+       <div className="space-y-2">
+        {[
+         { label: 'Co-founder matching', active: true },
+         { label: 'Mentorship sessions', active: true },
+         { label: 'Advisory roles', active: false },
+         { label: 'Investment opportunities', active: false },
+         { label: 'Speaking invitations', active: true },
+        ].map(item => (
+         <div key={item.label} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 transition-colors">
+          <span className="text-sm text-stone-700">{item.label}</span>
+          <div className={cn(
+           "w-8 h-5 rounded-full flex items-center transition-all cursor-pointer",
+           item.active ? "bg-emerald-500 justify-end" : "bg-stone-200 justify-start"
+          )}>
+           <div className="w-3.5 h-3.5 bg-white rounded-full mx-0.5 shadow-sm" />
+          </div>
+         </div>
+        ))}
+       </div>
+       <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">
+        These preferences are visible to other users and affect your match suggestions.
+       </p>
+      </div>
+     )}
+{/* Social Links */}
+     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Connect</h3>
+      <div className="space-y-4">
+       {profile.linkedinUrl && (
+        <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+         <Linkedin className="w-5 h-5" />
+         LinkedIn Profile
+        </a>
+       )}
+       {profile.githubUrl && (
+        <a href={profile.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+         <Github className="w-5 h-5" />
+         GitHub Portfolio
+        </a>
+       )}
+       {profile.twitterUrl && (
+        <a href={profile.twitterUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+         <Twitter className="w-5 h-5" />
+         Twitter / X
+        </a>
+       )}
+       {profile.portfolioUrl && (
+        <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+         <Globe className="w-5 h-5" />
+         Personal Website
+        </a>
+       )}
+       {!profile.linkedinUrl && !profile.githubUrl && !profile.twitterUrl && !profile.portfolioUrl && (
+        <p className="text-stone-500 text-sm">No social links added yet.</p>
+       )}
+      </div>
+      {getPromptForSection('social').map(prompt => (
+       <InlinePrompt key={prompt.id} text={prompt.text} />
+      ))}
+     </div>
+    </div>
 
-     {/* Readiness Score Section */}
+    {/* Signals: AI, readiness, network */}
+    <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
+     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
+{/* AI Match Insight */}
+      <div className="bg-stone-900 p-5 rounded-xl space-y-4">
+       <div>
+        <div className="flex items-center gap-3 mb-3">
+         <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+         </div>
+         <div>
+          <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? 'AI Profile Insight' : 'AI Match Analysis'}</h3>
+          <p className="text-[10px] text-stone-500">Powered by CoFounderBay AI</p>
+         </div>
+        </div>
+        <div className="space-y-3">
+         <div className="flex items-center justify-between text-xs">
+          <span className="text-stone-400">{isOwnProfile ? 'Profile strength' : 'Overall compatibility'}</span>
+          <span className="text-white font-semibold">84%</span>
+         </div>
+         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+           initial={{ width: 0 }}
+           animate={{ width: '84%' }}
+           transition={{ duration: 1.5 }}
+           className="h-full bg-white rounded-full"
+          />
+         </div>
+         <div className="grid grid-cols-3 gap-2 pt-2">
+          {[
+           { label: 'Skills', pct: 92 },
+           { label: 'Values', pct: 78 },
+           { label: 'Goals', pct: 81 },
+          ].map(d => (
+           <div key={d.label} className="text-center p-2 bg-white/5 rounded-lg border border-white/5">
+            <p className="text-white font-semibold text-sm">{d.pct}%</p>
+            <p className="text-[10px] text-stone-500">{d.label}</p>
+           </div>
+          ))}
+         </div>
+         <p className="text-xs text-stone-400 leading-relaxed italic pt-1">
+          {isOwnProfile
+           ? '"Strong technical profile with excellent product thinking. Consider adding more market validation artifacts to boost your readiness score."'
+           : '"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."'
+          }
+         </p>
+        </div>
+       </div>
+      </div>
+{/* Readiness Score Section */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
        <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Startup Readiness</h3>
@@ -865,7 +1042,7 @@ export default function ProfilePage() {
        </div>
 
        <div className="flex items-center gap-6">
-        <div className="w-24 h-24 shrink-0">
+        <div className="relative w-24 h-24 shrink-0">
          <ResponsiveContainer width="100%" height="100%">
           <PieChart>
            <Pie
@@ -913,45 +1090,7 @@ export default function ProfilePage() {
         ))}
        </div>
       </div>
-
-     {/* Social Links */}
-     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Connect</h3>
-      <div className="space-y-4">
-       {profile.linkedinUrl && (
-        <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
-         <Linkedin className="w-5 h-5" />
-         LinkedIn Profile
-        </a>
-       )}
-       {profile.githubUrl && (
-        <a href={profile.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
-         <Github className="w-5 h-5" />
-         GitHub Portfolio
-        </a>
-       )}
-       {profile.twitterUrl && (
-        <a href={profile.twitterUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
-         <Twitter className="w-5 h-5" />
-         Twitter / X
-        </a>
-       )}
-       {profile.portfolioUrl && (
-        <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
-         <Globe className="w-5 h-5" />
-         Personal Website
-        </a>
-       )}
-       {!profile.linkedinUrl && !profile.githubUrl && !profile.twitterUrl && !profile.portfolioUrl && (
-        <p className="text-stone-500 text-sm">No social links added yet.</p>
-       )}
-      </div>
-      {getPromptForSection('social').map(prompt => (
-       <InlinePrompt key={prompt.id} text={prompt.text} />
-      ))}
-     </div>
-
-     {/* Profile Stats — Enhanced */}
+{/* Profile Stats — Enhanced */}
      <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
        <TrendingUp className="w-4 h-4 text-stone-400" />
@@ -988,127 +1127,7 @@ export default function ProfilePage() {
        </div>
       </div>
      </div>
-
-     {/* Achievements / Badges */}
-     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-        <Trophy className="w-4 h-4 text-amber-500" />
-        Achievements
-       </h3>
-       <span className="text-xs text-stone-400 font-medium">
-        {ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length} earned
-       </span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-       {ACHIEVEMENTS.map(badge => (
-        <motion.div
-         key={badge.id}
-         whileHover={{ scale: badge.earned ? 1.05 : 1 }}
-         className={cn(
-          "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
-          badge.earned
-           ? `${badge.bg} ${badge.border} shadow-sm`
-           : "bg-stone-50/50 border-stone-100 opacity-40 grayscale"
-         )}
-        >
-         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100")}>
-          <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
-         </div>
-         <div>
-          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-400")}>{badge.name}</p>
-          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{badge.desc}</p>
-         </div>
-         {badge.earned && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
-           <Check className="w-2.5 h-2.5 text-white" />
-          </div>
-         )}
-        </motion.div>
-       ))}
-      </div>
-     </div>
-
-     {/* Open To / Availability */}
-     {isOwnProfile && (
-      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-        <Heart className="w-4 h-4 text-rose-400" />
-        Open To
-       </h3>
-       <div className="space-y-2">
-        {[
-         { label: 'Co-founder matching', active: true },
-         { label: 'Mentorship sessions', active: true },
-         { label: 'Advisory roles', active: false },
-         { label: 'Investment opportunities', active: false },
-         { label: 'Speaking invitations', active: true },
-        ].map(item => (
-         <div key={item.label} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 transition-colors">
-          <span className="text-sm text-stone-700">{item.label}</span>
-          <div className={cn(
-           "w-8 h-5 rounded-full flex items-center transition-all cursor-pointer",
-           item.active ? "bg-emerald-500 justify-end" : "bg-stone-200 justify-start"
-          )}>
-           <div className="w-3.5 h-3.5 bg-white rounded-full mx-0.5 shadow-sm" />
-          </div>
-         </div>
-        ))}
-       </div>
-       <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">
-        These preferences are visible to other users and affect your match suggestions.
-       </p>
-      </div>
-     )}
-
-     {/* AI Match Insight */}
-      <div className="bg-stone-900 p-5 rounded-xl space-y-4">
-       <div>
-        <div className="flex items-center gap-3 mb-3">
-         <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-         </div>
-         <div>
-          <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? 'AI Profile Insight' : 'AI Match Analysis'}</h3>
-          <p className="text-[10px] text-stone-500">Powered by CoFounderBay AI</p>
-         </div>
-        </div>
-        <div className="space-y-3">
-         <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-400">{isOwnProfile ? 'Profile strength' : 'Overall compatibility'}</span>
-          <span className="text-white font-semibold">84%</span>
-         </div>
-         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-           initial={{ width: 0 }}
-           animate={{ width: '84%' }}
-           transition={{ duration: 1.5 }}
-           className="h-full bg-white rounded-full"
-          />
-         </div>
-         <div className="grid grid-cols-3 gap-2 pt-2">
-          {[
-           { label: 'Skills', pct: 92 },
-           { label: 'Values', pct: 78 },
-           { label: 'Goals', pct: 81 },
-          ].map(d => (
-           <div key={d.label} className="text-center p-2 bg-white/5 rounded-lg border border-white/5">
-            <p className="text-white font-semibold text-sm">{d.pct}%</p>
-            <p className="text-[10px] text-stone-500">{d.label}</p>
-           </div>
-          ))}
-         </div>
-         <p className="text-xs text-stone-400 leading-relaxed italic pt-1">
-          {isOwnProfile
-           ? '"Strong technical profile with excellent product thinking. Consider adding more market validation artifacts to boost your readiness score."'
-           : '"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."'
-          }
-         </p>
-        </div>
-       </div>
-      </div>
-
-     {/* Connections / Mutual Connections */}
+{/* Connections / Mutual Connections */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Handshake className="w-4 h-4 text-stone-400" />
@@ -1134,8 +1153,7 @@ export default function ProfilePage() {
         ))}
        </div>
       </div>
-
-     {/* People Also Viewed */}
+{/* People Also Viewed */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
        <Eye className="w-4 h-4 text-stone-400" />
@@ -1164,6 +1182,7 @@ export default function ProfilePage() {
       <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
        View more suggestions
       </button>
+     </div>
      </div>
     </div>
    </div>

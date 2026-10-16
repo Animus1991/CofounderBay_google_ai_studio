@@ -34,9 +34,9 @@
   --text-6xl--line-height: 1.05;
   --text-7xl: 3.5rem;          /* 56px — decorative only   (was 72px) */
   --text-7xl--line-height: 1;
-  /* Control height: successive −5% / −3% / −5% / −5% vs Tailwind 2.75rem (h-11).
-     Compact h-8 actions (Run diagnostic, Start) are pinned below and do not follow this ratchet. */
-  --spacing-11: 2.2870478125rem;
+  /* Control height = the Dashboard nav item (36.578125px at 16px root).
+     Compact h-8 actions (Start) stay shorter and do not follow this ceiling. */
+  --spacing-11: 2.2861328125rem;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -81,6 +81,17 @@
     --input: 20 5.9% 90%;
     --ring: 20 14.3% 4.1%;
     --radius: 0.5rem;
+    /* Primer *roles* mapped onto stone — not GitHub blue/green brand hues.
+       muted = hairline, default = component frame, emphasis = selected/primary. */
+    --studio-border-muted: 24 10% 96%;
+    --studio-border-default: 20 5.9% 90%;
+    --studio-border-emphasis: 24 9.8% 10%;
+    --studio-fg-muted: 25 5.3% 44.7%;
+    --studio-success: 0.52 0.04 155;
+    --studio-attention: 0.55 0.05 78;
+    --studio-danger: 0.52 0.05 25;
+    /* Measured height of aside a[href="/dashboard"] — ceiling for taller chrome. */
+    --studio-dash-h: 2.2861328125rem;
   }
 
   .dark {
@@ -179,6 +190,16 @@
     @apply text-[10px] font-bold uppercase tracking-[0.1em] text-stone-400;
   }
 
+  /* Facts on cards: the dot rides after each item so a wrap never starts on one. */
+  .facts-dotted > li:not(:last-child)::after {
+    content: "·";
+    margin-left: 0.5rem;
+    color: rgb(168 162 158);
+  }
+  .facts-dotted > li::first-letter {
+    text-transform: uppercase;
+  }
+
   .section-header {
     @apply text-sm font-bold text-stone-900 tracking-tight uppercase mb-4;
   }
@@ -189,8 +210,28 @@
 
   .input-minimal {
     @apply w-full min-h-11 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
-    @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5;
+    @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-400 focus:ring-2 focus:ring-stone-900/10;
   }
+
+  /* Primer Label: source chips, counters, tiny status. Ink + hairline, never a fill. */
+  .studio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid hsl(var(--studio-border-default));
+    border-radius: 999px;
+    background: #fff;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: hsl(var(--studio-fg-muted));
+  }
+
+  /* Status as ink (Primer open/closed/done) — not a colored pill. */
+  .studio-status-open { color: oklch(var(--studio-success)); }
+  .studio-status-attention { color: oklch(var(--studio-attention)); }
+  .studio-status-closed { color: oklch(var(--studio-danger)); }
 
   .dark .input-minimal {
     @apply bg-stone-900/50 border-white/10 focus:border-white/20 focus:ring-white/5 text-stone-100;
@@ -215,7 +256,7 @@
   .scroll-tabs > button {
     flex-shrink: 0;
     white-space: nowrap;
-    min-height: 2.2870478125rem;
+    min-height: var(--studio-dash-h);
   }
   /* Native chrome-sized buttons (not compact h-8). Start / Run diagnostic stay pinned unlayered. */
   button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
@@ -237,11 +278,17 @@
 
 @layer base {
   :focus-visible {
-    @apply outline-none ring-2 ring-stone-900 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-1 ring-stone-400 ring-offset-1 ring-offset-white;
   }
 
   .dark :focus-visible {
-    @apply ring-stone-100 ring-offset-stone-950;
+    @apply ring-stone-500 ring-offset-stone-950;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-stone-400/80 ring-offset-0;
   }
 }
 
@@ -304,27 +351,167 @@
   [class*="text-pink-"] {
     color: oklch(0.673 0.046 350) !important;
   }
+
+  /* Primer muted fills: only the 50-level wash (class~= so bg-green-500 dots stay). */
+  [class~="bg-red-50"],
+  [class~="bg-rose-50"] {
+    background-color: oklch(0.975 0.012 25) !important;
+  }
+  [class~="bg-orange-50"] {
+    background-color: oklch(0.975 0.014 55) !important;
+  }
+  [class~="bg-amber-50"],
+  [class~="bg-yellow-50"] {
+    background-color: oklch(0.975 0.016 78) !important;
+  }
+  [class~="bg-blue-50"],
+  [class~="bg-sky-50"],
+  [class~="bg-cyan-50"],
+  [class~="bg-indigo-50"] {
+    background-color: oklch(0.975 0.012 250) !important;
+  }
+  [class~="bg-violet-50"],
+  [class~="bg-purple-50"],
+  [class~="bg-fuchsia-50"] {
+    background-color: oklch(0.975 0.014 295) !important;
+  }
+  [class~="bg-emerald-50"],
+  [class~="bg-green-50"],
+  [class~="bg-teal-50"],
+  [class~="bg-lime-50"] {
+    background-color: oklch(0.975 0.012 155) !important;
+  }
+  [class~="bg-pink-50"] {
+    background-color: oklch(0.975 0.012 350) !important;
+  }
+
+  /* Semantic frames: muted 100/200 rungs only, not 500 emphasis. */
+  [class~="border-red-100"],
+  [class~="border-red-200"],
+  [class~="hover:border-red-100"],
+  [class~="border-rose-100"],
+  [class~="border-rose-200"] {
+    border-color: oklch(0.88 0.03 25) !important;
+  }
+  [class~="border-amber-100"],
+  [class~="border-amber-200"],
+  [class~="border-yellow-100"],
+  [class~="border-orange-100"] {
+    border-color: oklch(0.88 0.035 78) !important;
+  }
+  [class~="border-emerald-100"],
+  [class~="border-emerald-200"],
+  [class~="border-green-100"],
+  [class~="border-green-200"],
+  [class~="border-teal-100"] {
+    border-color: oklch(0.88 0.03 155) !important;
+  }
+  [class~="border-blue-100"],
+  [class~="border-blue-200"],
+  [class~="border-sky-100"],
+  [class~="border-indigo-100"] {
+    border-color: oklch(0.88 0.03 250) !important;
+  }
+  [class~="border-violet-100"],
+  [class~="border-purple-100"] {
+    border-color: oklch(0.88 0.03 295) !important;
+  }
 }
 
-/* Taller chrome (Open AI Chat FAB and large CTAs). Compact h-8 stays pinned below. */
-button.h-12, a.h-12 { height: 2.65335rem; }
-button.h-14, a.h-14 { height: 3.095575rem; }
-button.w-14.h-14, a.w-14.h-14 { width: 3.095575rem; height: 3.095575rem; }
-button.h-16, a.h-16 { height: 3.5378rem; min-height: 3.5378rem; }
-button.min-h-16, a.min-h-16 { min-height: 3.5378rem; }
-button.py-4:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]),
-a.py-4:not([class*="min-h-11"]) { padding-block: 0.88445rem; }
+/* Ceiling = Dashboard nav (aside → Dashboard · Πίνακας), 2.2861328125rem / 36.578125px.
+   Taller chrome is pulled down. Native compact h-8 (Start, 32px) and other shorter
+   controls are left alone. Card-tiles (text-left / stacked flex-col / photo) stay cards. */
+button.min-h-11, a.min-h-11,
+button.h-11, a.h-11 {
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  padding-block: 0;
+  box-sizing: border-box;
+}
+button.h-12, a.h-12,
+button.h-14, a.h-14,
+button.h-16, a.h-16,
+button.min-h-12, a.min-h-12,
+button.min-h-14, a.min-h-14,
+button.min-h-16:not(.flex-col), a.min-h-16:not(.flex-col) {
+  height: var(--studio-dash-h);
+  min-height: var(--studio-dash-h);
+  padding-block: 0;
+  box-sizing: border-box;
+}
+button.w-14.h-14, a.w-14.h-14,
+button.w-12.h-12, a.w-12.h-12 {
+  width: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  min-height: var(--studio-dash-h);
+}
+button.py-4:not([class*="h-7"]):not([class*="h-8"]),
+a.py-4:not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0;
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
 button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]),
-a.py-3:not([class*="min-h-11"]) { padding-block: 0.6633375rem; }
-a.py-3\.5:not([class*="min-h-11"]) { padding-block: 0.77389375rem; }
-aside nav a.min-h-11 { line-height: 1.455; }
-aside nav a.min-h-11 span { line-height: 1.455; }
+a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0;
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
+button[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]),
+a[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0;
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
+button[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]),
+a[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0;
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
+/* Icon chrome (p-3/p-4/p-5). Leave row/tile buttons (text-left, stacked, full-width). */
+button.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]),
+a.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]),
+button.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
+a.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
+button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
+a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)) {
+  padding-block: 0;
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
+aside nav a {
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  padding-block: 0;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+aside nav a span { line-height: 1.15; }
 aside .grid.grid-cols-2 a,
-aside .grid.grid-cols-2 button { line-height: 1.42; }
-/* Pin compact card actions so the chrome −5% does not shrink them.
-   Start is a native h-8 (2rem / 32px). Run diagnostic is Button+h-8 (kept at 41px). */
+aside .grid.grid-cols-2 button {
+  min-height: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  padding-block: 0;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+/* Start stays 32px. Button+h-8 (min-h-11) was taller — cap to Dashboard. */
 button.h-8:not([class*="min-h-"]) { height: 2rem; min-height: 2rem; }
-button.h-8[class*="min-h-"] { height: 2.534125rem; min-height: 2.534125rem; }
+button.h-8[class*="min-h-"] { height: var(--studio-dash-h); min-height: var(--studio-dash-h); padding-block: 0; }
+/* Safety net: leftover chrome cannot exceed Dashboard. Shorter stays shorter.
+   Tiles/cards/photos stay out. */
+button:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
+a.inline-flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
+a.flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)):not(.sr-only) {
+  max-height: var(--studio-dash-h);
+  box-sizing: border-box;
+}
 
 /* Motion accessibility — respect users who prefer reduced motion (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {

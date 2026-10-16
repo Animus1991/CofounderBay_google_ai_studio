@@ -14,6 +14,8 @@ import { AIService, MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
 import { useAuth } from "../App";
 import { avatarFor } from "../data/cast";
+import { keys, readRequests, removeRequest } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 
 // =============================================================================
 // TYPES
@@ -130,7 +132,7 @@ const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", si
   )}>
    <Icon className={ic[size]} />
    {badge !== undefined && (
-    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{badge}</span>
+    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-stone-900 text-white text-[10px] font-medium rounded-full flex items-center justify-center tabular-nums">{badge}</span>
    )}
   </button>
   </span>
@@ -191,7 +193,19 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  const [attachedFiles, setAttachedFiles] = useState<{ name: string; type: string; size: number; data?: string }[]>([]);
  const [aiIsTyping, setAiIsTyping] = useState(false);
  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
- const [connectionRequests, setConnectionRequests] = useState<ConnectionRequest[]>(MOCK_CONNECTION_REQUESTS);
+ const studioRequests = useStored(readRequests, [keys.requests]);
+ const [dismissedIntroIds, setDismissedIntroIds] = useState<string[]>([]);
+ const connectionRequests = useMemo<ConnectionRequest[]>(() => {
+  const extras = studioRequests
+   .filter((item) => !MOCK_CONNECTION_REQUESTS.some((mock) => mock.from.id === item.id || mock.id === item.id))
+   .map((item) => ({
+    id: item.id,
+    from: { id: item.id, fullName: item.fullName, headline: item.note || item.role, avatar: avatarFor(item.id), role: item.role },
+    message: item.message,
+    createdAt: item.sentAt || new Date().toISOString(),
+   }));
+  return [...MOCK_CONNECTION_REQUESTS, ...extras].filter((item) => !dismissedIntroIds.includes(item.id));
+ }, [studioRequests, dismissedIntroIds]);
  const [pinnedConvIds, setPinnedConvIds] = useState<Set<string>>(new Set(["conv-1"]));
  const [isRecipientTyping, setIsRecipientTyping] = useState(false);
  const [reportBlockModal, setReportBlockModal] = useState<{ open: boolean; mode: 'report' | 'block' }>({ open: false, mode: 'report' });
@@ -294,10 +308,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  };
 
  const handleAcceptIntro = (id: string) => {
-  setConnectionRequests(prev => prev.filter(r => r.id !== id));
+  setDismissedIntroIds((prev) => prev.includes(id) ? prev : [...prev, id]);
  };
  const handleDeclineIntro = (id: string) => {
-  setConnectionRequests(prev => prev.filter(r => r.id !== id));
+  setDismissedIntroIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+  if (studioRequests.some((item) => item.id === id)) removeRequest(id);
  };
  const togglePin = (convId: string) => {
   setPinnedConvIds(prev => { const n = new Set(prev); if (n.has(convId)) n.delete(convId); else n.add(convId); return n; });
@@ -526,7 +541,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <MessageSquare className="w-3.5 h-3.5" />
       Chats
-      {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full">{totalUnread}</span>}
+      {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] font-medium rounded-full tabular-nums">{totalUnread}</span>}
      </button>
      <button onClick={() => setSidebarTab("intros")}
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
@@ -577,12 +592,17 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </div>
        <p className="text-sm text-stone-600 font-semibold">No conversations yet</p>
        <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">Start a new chat or connect with founders in your network</p>
-       <span title={selectedConversation ? undefined : composerTip} className="mt-4 inline-flex">
-        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
-         className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-         <Plus className="w-3.5 h-3.5" /> New Message · Νέο μήνυμα
+       <div className="mt-4 flex flex-col items-center gap-2">
+        <span title={selectedConversation ? undefined : composerTip} className="inline-flex">
+         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
+          className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
+          <Plus className="w-3.5 h-3.5" /> New Message · Νέο μήνυμα
+         </button>
+        </span>
+        <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
+         Ask assistant who to message
         </button>
-       </span>
+       </div>
       </div>
      ) : (
       <div className="px-3 pb-4 space-y-0.5">
@@ -621,6 +641,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         </div>
         <p className="text-sm text-stone-500 font-medium">No pending intros</p>
         <p className="text-xs text-stone-400 mt-1">You're all caught up!</p>
+        <button type="button" className="mt-3 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
+         Ask assistant who to invite
+        </button>
        </div>
       ) : (
        connectionRequests.map(req => (
@@ -644,6 +667,10 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-lg leading-relaxed italic">"{req.message}"</p>
          )}
          <div className="flex items-center gap-2">
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${req.from.fullName}`, context: req.from.fullName } }))}
+           className="px-3 py-2 bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg hover:border-stone-900 transition-all">
+           Ask
+          </button>
           <button onClick={() => handleAcceptIntro(req.id)}
            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-all">
            <Check className="w-3.5 h-3.5" /> Accept
@@ -663,9 +690,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    {/* Bottom Actions */}
    <div className="p-3 border-t border-stone-100">
     <div className="flex items-center justify-between">
-     <button onClick={() => setActiveView(activeView === "ai-center" ? "chat" : "ai-center")}
+     <button type="button" title="Opens the same studio assistant as the corner control — stays on Messages." onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1', prompt: 'Draft a reply in this thread' } }))}
       className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all",
-       activeView === "ai-center" ? "bg-stone-100 text-stone-700 shadow-sm" : "hover:bg-stone-100 text-stone-500")}>
+       "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
       <span className="text-xs font-semibold">AI Center</span>
      </button>
@@ -843,7 +870,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className="flex items-center justify-center gap-3 mb-8">
        {[
         { label: "Conversations", value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
-        { label: "Unread", value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-red-500 text-white" : "bg-stone-100 text-stone-600" },
+        { label: "Unread", value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
         { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
        ].map(({ label, value, icon: Icon, color }) => (
         <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
@@ -866,7 +893,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          <Plus className="w-4 h-4" /> New Message · Νέο μήνυμα
         </button>
        </span>
-       <button onClick={() => setActiveView("ai-center")}
+       <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
         className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
         <Sparkles className="w-4 h-4" /> Talk to AI Agent
        </button>
@@ -895,7 +922,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
            )}
            {conv.unreadCount > 0 && (
-            <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-stone-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center tabular-nums">
              {conv.unreadCount}
             </div>
            )}
@@ -958,8 +985,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
      </div>
      <div className="md:hidden flex items-center gap-2 overflow-x-auto px-3 pb-3">
-      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>Call</button>
-      <button type="button" className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>Video</button>
+      <button type="button" title="Does not start a live call. Opens the studio assistant to draft the first line." className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>Call</button>
+      <button type="button" title="Does not start a live call. Opens the studio assistant to draft the first line." className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>Video</button>
       <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Search</button>
       <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? "Unpin" : "Pin"}</button>
       <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Details</button>
@@ -972,8 +999,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {(() => { const VIcon = MODE_CONFIG[validationState.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_CONFIG[validationState.mode].color)} />; })()}
        <span className={cn("text-[10px] font-medium", MODE_CONFIG[validationState.mode].color)}>{MODE_CONFIG[validationState.mode].label}</span>
       </button>
-      <IconButton icon={Phone} size="sm" tooltip="Voice Call" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
-      <IconButton icon={Video} size="sm" tooltip="Video Call" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
+      <IconButton icon={Phone} size="sm" tooltip="Does not start a live call — drafts the first line in the studio assistant" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
+      <IconButton icon={Video} size="sm" tooltip="Does not start a live call — drafts the first line in the studio assistant" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
       <IconButton icon={Search} size="sm" tooltip="Search in chat" active={showSearchPanel}
        onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} />
       <div className="w-px h-6 bg-stone-200 mx-1" />
@@ -1388,12 +1415,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          key={agent.id}
          whileHover={{ scale: 1.02 }}
          className="p-5 bg-white border border-stone-200 rounded-2xl transition-all cursor-pointer group"
-         onClick={async () => {
-          const conv = await createConversation(['u1', agent.id]);
-          if (conv) {
-           setSelectedConversation(conv.id);
-           setActiveView("chat");
-          }
+         onClick={() => {
+          window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: agent.id } }));
+          setActiveView("chat");
          }}
         >
          <div className="flex items-start gap-4">
@@ -1474,13 +1498,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </div>
        <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">Select an AI Agent</h3>
        <p className="text-sm text-stone-500 max-w-xs mx-auto mb-6 leading-relaxed">
-        Choose from our specialized AI agents to get expert guidance for your startup
+        The corner studio assistant is the same chat. Specialists stay in that panel so Messages is not a second composer.
        </p>
        <button 
-        onClick={() => setAiView("agents")}
+        type="button"
+        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
         className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
        >
-        Browse Agents
+        Open studio assistant
        </button>
       </div>
      </div>

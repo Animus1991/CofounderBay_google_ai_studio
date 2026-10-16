@@ -18,7 +18,8 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { readNotificationPrefs, readSaved, writeNotificationPrefs, type NotificationPrefs } from "../lib/localLists";
+import { readNotificationPrefs, readSaved, writeNotificationPrefs, writeOpenTo, type NotificationPrefs, type OpenToKind } from "../lib/localLists";
+import { AskLink } from "../components/ui/EmptyHint";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { auth } from "../firebase";
@@ -224,6 +225,11 @@ export default function Settings() {
     setSwitches((prev) => {
       const next = { ...prev, ...patch };
       localStorage.setItem(SWITCH_KEY, JSON.stringify(next));
+      const kinds: OpenToKind[] = [];
+      if (next.openToCofounder) kinds.push("cofounder");
+      if (next.openToInvestors) kinds.push("investor");
+      if (next.openToAdvisors) kinds.push("advisor");
+      writeOpenTo(kinds);
       return next;
     });
   };
@@ -337,6 +343,9 @@ export default function Settings() {
               "Account, alerts, privacy, and billing for this workspace. Changes stay in this browser.",
               "Λογαριασμός, ειδοποιήσεις, απόρρητο και χρέωση. Οι αλλαγές μένουν σε αυτόν τον browser.",
             )}
+          </p>
+          <p className="mt-2">
+            <AskLink prompt="What am I marked open to?">{t("Ask what matching reads from these toggles", "Ρώτα τι διαβάζει η αντιστοίχιση από αυτούς τους διακόπτες")}</AskLink>
           </p>
         </div>
         <p className="text-sm text-stone-500 truncate">

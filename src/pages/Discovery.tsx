@@ -38,6 +38,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import FactLine from "../components/ui/FactLine";
 import { User } from "../types";
 import { useAuth } from "../App";
 import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
@@ -393,6 +394,9 @@ export default function Discovery({ user }: DiscoveryProps) {
      <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
     </Button>
    </div>
+   {searchQuery.trim().length > 1 && (
+    <p className="text-xs text-stone-400 -mt-1">Will search names, skills, and industries for “{searchQuery.trim()}”.</p>
+   )}
 
    {/* Category Tabs */}
    <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-1 min-w-0">
@@ -473,20 +477,22 @@ export default function Discovery({ user }: DiscoveryProps) {
              <h4 className="text-base font-semibold text-stone-900">{user.name}</h4>
              <p className="text-sm text-stone-500 line-clamp-1 mt-0.5">{user.profile?.headline}</p>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-             {user.skills?.slice(0, 3).map((skill: any, sIdx: number) => (
-              <span key={skill.id || `skill-${sIdx}`} className="text-xs text-stone-400 border border-stone-100 px-2 py-0.5 rounded-md">{skill.name}</span>
-             ))}
-            </div>
+            <FactLine items={(user.skills ?? []).slice(0, 3).map((skill: { name?: string } | string) => typeof skill === 'string' ? skill : skill.name)} label="Skills" />
             <div className="pt-2 border-t border-stone-50 flex items-center justify-between">
              <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="text-xs text-stone-400">Available · Διαθέσιμος{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
              </div>
-             <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
-              onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/messages?userId=${user.id}`); }}>
-              Message
-             </Button>
+             <div className="flex items-center gap-1.5">
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
+               onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); ask(`Why do I match with ${user.name}?`); }}>
+               Ask
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
+               onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/messages?userId=${user.id}`); }}>
+               Message
+              </Button>
+             </div>
             </div>
            </Link>
           </motion.div>
@@ -497,7 +503,10 @@ export default function Discovery({ user }: DiscoveryProps) {
         <div className="h-32 flex flex-col items-center justify-center bg-stone-50 rounded-2xl border border-dashed border-stone-200">
          <Search className="w-8 h-8 text-stone-300 mb-2" />
          <p className="text-sm text-stone-400">No matches found for your criteria · Καμία αντιστοίχιση με αυτά τα κριτήρια</p>
-         <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="mt-2 text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
+         <div className="mt-2 flex items-center gap-3">
+          <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
+          <button type="button" onClick={() => ask('who is my best match')} className="text-xs font-medium text-stone-900 hover:underline">Ask assistant</button>
+         </div>
         </div>
        )}
       </section>
@@ -560,13 +569,7 @@ export default function Discovery({ user }: DiscoveryProps) {
           <p className="text-xs text-stone-400 flex items-center gap-1">
            <MapPin className="w-3 h-3" /> {opp.location}
           </p>
-          <div className="flex flex-wrap gap-1.5">
-           {opp.tags.map(tag => (
-            <span key={tag} className="text-xs font-semibold text-stone-500 tracking-wider bg-stone-50 px-2 py-0.5 rounded-md border border-stone-100">
-             {tag}
-            </span>
-           ))}
-          </div>
+          <FactLine items={opp.tags} label="Tags" />
          </div>
          {viewMode === "list" && (
           <div className="px-12 pb-8 md:pb-0 md:pr-12">

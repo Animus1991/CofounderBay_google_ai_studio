@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Bell, MessageSquare, UserPlus, Zap, Trophy, Rocket, Check, Trash2, MoreVertical, ArrowRight } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import { cn } from "../lib/utils";
+import PageShell from "../components/ui/PageShell";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import { cn, formatRelativeTime } from "../lib/utils";
 import { clearActivity, keys, markActivityRead, readActivity, type ActivityKind } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 
@@ -37,7 +39,7 @@ export default function Notifications() {
    description: "Sarah Chen is a 94% match for your Fintech project. View her profile to connect.",
    time: "2 hours ago",
    read: false,
-   actionUrl: "/profile/sarah"
+   actionUrl: "/profile/sarah-chen"
   },
   {
    id: "2",
@@ -71,7 +73,7 @@ export default function Notifications() {
   type: kindToType(item.kind),
   title: item.title,
   description: item.titleEl || item.title,
-  time: item.at.slice(0, 16).replace('T', ' '),
+  time: formatRelativeTime(item.at),
   read: item.read,
   actionUrl: item.href,
  })), [activity]);
@@ -94,24 +96,24 @@ export default function Notifications() {
  };
 
  const getIcon = (type: Notification['type']) => {
+  const iconCls = "w-4 h-4 text-stone-500";
   switch (type) {
-   case 'message': return <MessageSquare className="w-4 h-4 text-blue-500" />;
-   case 'match': return <UserPlus className="w-4 h-4 text-amber-500" />;
-   case 'milestone': return <Trophy className="w-4 h-4 text-green-500" />;
-   case 'system': return <Zap className="w-4 h-4 text-purple-500" />;
-   case 'community': return <Rocket className="w-4 h-4 text-rose-500" />;
-   default: return <Bell className="w-4 h-4 text-stone-400" />;
+   case 'message': return <MessageSquare className={iconCls} />;
+   case 'match': return <UserPlus className={iconCls} />;
+   case 'milestone': return <Trophy className={iconCls} />;
+   case 'system': return <Zap className={iconCls} />;
+   case 'community': return <Rocket className={iconCls} />;
+   default: return <Bell className={iconCls} />;
   }
  };
 
  return (
-  <div className="max-w-4xl mx-auto space-y-8">
-   <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-    <div>
-     <h2 className="text-xl font-medium tracking-tight mb-2">Notifications</h2>
-     <p className="text-stone-500">Stay updated with your ecosystem activity and connections.</p>
-    </div>
-    <div className="flex items-center gap-3">
+  <PageShell
+   title="Notifications"
+   description="Stay updated with your ecosystem activity and connections."
+   actions={
+    <div className="flex flex-wrap items-center gap-2">
+     <AskLink prompt="show my studio activity" />
      <Button variant="outline" size="sm" onClick={markAllAsRead}>
       <Check className="w-4 h-4 mr-2" /> Mark all as read
      </Button>
@@ -119,7 +121,9 @@ export default function Notifications() {
       <Trash2 className="w-4 h-4 mr-2" /> Clear all
      </Button>
     </div>
-   </div>
+   }
+  >
+  <div className="space-y-8">
 
    <Card noPadding className="overflow-hidden border-stone-200 shadow-sm">
     <div className="divide-y divide-stone-100">
@@ -178,15 +182,9 @@ export default function Notifications() {
        </div>
       ))
      ) : (
-      <div className="p-20 text-center space-y-4">
-       <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto text-stone-300">
-        <Bell className="w-8 h-8" />
-       </div>
-       <div className="space-y-1">
-        <h3 className="font-medium text-stone-900">All caught up!</h3>
-        <p className="text-sm text-stone-500">You don't have any new notifications at the moment.</p>
-       </div>
-      </div>
+      <EmptyHint className="m-6" title="All caught up" detail="No notifications in this list. Ask the studio assistant what changed today.">
+       <AskLink prompt="show my studio activity" />
+      </EmptyHint>
      )}
     </div>
    </Card>
@@ -202,5 +200,6 @@ export default function Notifications() {
     </div>
    </Card>
   </div>
+  </PageShell>
  );
 }

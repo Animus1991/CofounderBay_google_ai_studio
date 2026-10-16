@@ -1,0 +1,41 @@
+import type { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
+
+/** Compact empty copy that still points the user at the studio assistant. */
+export default function EmptyHint({
+  title,
+  detail,
+  className,
+  children,
+}: {
+  title: string;
+  detail?: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={cn('text-sm text-stone-500 bg-white border border-stone-200/60 rounded-2xl p-4 space-y-2', className)}>
+      <p className="text-stone-700 font-medium">{title}</p>
+      {detail ? <p className="text-xs text-stone-400 leading-relaxed">{detail}</p> : null}
+      {children ? <div className="flex flex-wrap items-center gap-3">{children}</div> : null}
+    </div>
+  );
+}
+
+export function AskLink({
+  prompt,
+  children = 'Ask assistant',
+}: {
+  prompt: string;
+  children?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="text-xs font-medium text-stone-900 hover:underline"
+      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }))}
+    >
+      {children}
+    </button>
+  );
+}

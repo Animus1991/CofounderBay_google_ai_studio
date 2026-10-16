@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
@@ -87,9 +87,16 @@ export default function LoginPage() {
      <Both en="Welcome back" el="Καλώς ήρθατε ξανά" />
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
+     <Both en="After sign-in: dashboard, matches, and the studio assistant on the same lists." el="Μετά την είσοδο: πίνακας, αντιστοιχίσεις, και ο βοηθός στις ίδιες λίστες." />
+    </p>
+    <p className="mt-2 text-center text-sm text-stone-500">
      <Both en="Don't have an account?" el="Δεν έχετε λογαριασμό;" />{' '}
      <NavLink to="/signup" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
       <Both en="Sign up for free" el="Εγγραφή δωρεάν" />
+     </NavLink>
+     {' · '}
+     <NavLink to="/quiz" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
+      <Both en="60s fit check" el="Fit check 60″" />
      </NavLink>
     </p>
    </div>
@@ -155,9 +162,24 @@ export default function LoginPage() {
        </div>
 
        <div className="text-sm">
-        <a href="#" className="font-medium text-stone-600 hover:text-stone-900 transition-colors">
+        <button
+         type="button"
+         className="font-medium text-stone-600 hover:text-stone-900 transition-colors"
+         onClick={async () => {
+          if (!email) {
+           setError('Enter your email first, then try again. · Βάλτε πρώτα το email.');
+           return;
+          }
+          try {
+           await sendPasswordResetEmail(auth, email);
+           toastInfo('Reset email sent.', 'Check that inbox, then sign in.');
+          } catch (err: any) {
+           setError(friendlyError(err.code));
+          }
+         }}
+        >
          <Both en="Forgot your password?" el="Ξεχάσατε τον κωδικό;" />
-        </a>
+        </button>
        </div>
       </div>
 

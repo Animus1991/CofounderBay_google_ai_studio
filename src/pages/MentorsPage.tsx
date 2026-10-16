@@ -20,6 +20,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import PageShell from '../components/ui/PageShell';
+import FactLine from '../components/ui/FactLine';
+import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { avatarFor, castByRole } from '../data/cast';
 
 const MENTORS = castByRole('Mentor').map((person) => ({
@@ -204,13 +206,7 @@ export default function MentorsPage() {
          <p className="text-xs text-stone-400 mt-0.5">{mentor.role}</p>
         </div>
 
-        <div className="flex flex-wrap gap-1 mb-3">
-         {mentor.expertise.slice(0, 3).map(skill => (
-          <span key={skill} className="px-2 py-0.5 bg-stone-50 text-stone-600 rounded text-[10px] font-medium border border-stone-100">
-           {skill}
-          </span>
-         ))}
-        </div>
+        <FactLine className="mb-3" items={mentor.expertise.slice(0, 3)} label="Expertise" />
 
         <div className="flex items-center justify-between mb-3">
          <div className="flex items-center gap-1">
@@ -243,6 +239,11 @@ export default function MentorsPage() {
       </motion.div>
      ))}
     </div>
+    {filteredMentors.length === 0 && (
+     <EmptyHint title="No mentors match these filters." detail="Ask the studio assistant to find a fundraising, product, or growth mentor.">
+      <AskLink prompt="Find a fundraising mentor" />
+     </EmptyHint>
+    )}
    </div>
 
   {/* Become a Mentor CTA */}

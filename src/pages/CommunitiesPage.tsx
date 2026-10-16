@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageShell from '../components/ui/PageShell';
+import FactLine from '../components/ui/FactLine';
+import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { useNavigate } from 'react-router-dom';
 import { 
  TrendingUp, 
- Users, 
- MessageSquare, 
  Plus, 
  Search, 
  Filter, 
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { listKeys, logActivity, readIds, setId } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
 
 const COMMUNITIES = [
  {
@@ -66,9 +68,15 @@ const COMMUNITIES = [
 export default function CommunitiesPage() {
  const [searchQuery, setSearchQuery] = useState('');
  const [activeTab, setActiveTab] = useState('all');
- const [joinedIds, setJoinedIds] = useState<Set<string>>(() => new Set(COMMUNITIES.filter((c) => c.joined).map((c) => c.id)));
+ const joinedList = useStored(() => readIds(listKeys.communities), ['cfb.joinedCommunities']);
+ const joinedIds = new Set(joinedList.length ? joinedList : COMMUNITIES.filter((c) => c.joined).map((c) => c.id));
  const navigate = useNavigate();
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ useEffect(() => {
+  if (readIds(listKeys.communities).length === 0) {
+   COMMUNITIES.filter((c) => c.joined).forEach((c) => setId(listKeys.communities, c.id, true));
+  }
+ }, []);
  const visibleCommunities = COMMUNITIES.filter((community) => {
   const q = searchQuery.trim().toLowerCase();
   const matchesQuery = !q || community.name.toLowerCase().includes(q) || community.description.toLowerCase().includes(q) || community.category.toLowerCase().includes(q);
@@ -127,9 +135,9 @@ export default function CommunitiesPage() {
 
    {/* Community Grid */}
    {visibleCommunities.length === 0 && (
-    <p className="text-sm text-stone-500 bg-white border border-stone-100 rounded-2xl p-4">
-     No communities match this filter. Ask the studio assistant to find one, or create a new space.
-    </p>
+    <EmptyHint title={searchQuery.trim() ? `No communities match search “${searchQuery.trim()}”${activeTab !== 'all' ? ` and the ${activeTab} tab` : ''}.` : `No communities on the ${activeTab} tab.`} detail="Ask the studio assistant to find one, or create a new space.">
+     <AskLink prompt="How do I create a community?" />
+    </EmptyHint>
    )}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {visibleCommunities.map((community, idx) => (
@@ -158,11 +166,8 @@ export default function CommunitiesPage() {
        </div>
       </div>
 
-      {/* Category + trending */}
       <div className="flex items-center gap-2 mb-3">
-       <span className="text-[10px] font-semibold text-stone-400 tracking-wide">
-        {community.category}
-       </span>
+       <FactLine items={[community.category]} />
        {community.posts > 100 && (
         <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-500 tracking-wide">
          <TrendingUp className="w-3 h-3" />Trending
@@ -178,19 +183,11 @@ export default function CommunitiesPage() {
        </p>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-4 mt-4 mb-4">
-       <div className="flex items-center gap-1.5 text-xs text-stone-400">
-        <Users className="w-3.5 h-3.5" />
-        <span className="font-semibold text-stone-700">{typeof community.members === 'number' ? `${(community.members/1000).toFixed(1)}k` : community.members}</span>
-        <span className="uppercase tracking-wider text-[10px]">Members</span>
-       </div>
-       <div className="flex items-center gap-1.5 text-xs text-stone-400">
-        <MessageSquare className="w-3.5 h-3.5" />
-        <span className="font-semibold text-stone-700">{community.posts}</span>
-        <span className="uppercase tracking-wider text-[10px]">Posts</span>
-       </div>
-      </div>
+      <FactLine
+       className="mt-4 mb-4 text-stone-500"
+       items={[`${community.members} members`, `${community.posts} posts`]}
+       label="Community size"
+      />
 
       {/* CTA */}
       {joinedIds.has(community.id) ? (
@@ -204,7 +201,10 @@ export default function CommunitiesPage() {
       ) : (
        <button 
         type="button"
-        onClick={() => setJoinedIds((prev) => new Set([...prev, community.id]))}
+        onClick={() => {
+         setId(listKeys.communities, community.id, true);
+         logActivity({ kind: 'community', title: `Joined ${community.name}`, titleEl: `Έγινε join: ${community.name}`, href: '/communities' });
+        }}
         className="w-full py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
        >
         <Plus className="w-3.5 h-3.5" /> Join Community

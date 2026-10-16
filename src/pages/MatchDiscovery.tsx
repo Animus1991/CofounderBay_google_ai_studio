@@ -29,6 +29,8 @@ import { useAuth } from '../App';
 import { rememberPerson } from '../lib/people';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
+import FactLine from '../components/ui/FactLine';
+import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { useToast } from '../context/ToastContext';
 
 function directoryProfiles(): UserProfile[] {
@@ -176,16 +178,18 @@ export default function MatchDiscovery() {
   const sb = compatibility(viewer, fromCast({ skills: b.skills, lookingFor: b.lookingFor, interests: b.interests, industry: b.industry, stage: b.stage, commitment: b.commitment, city: b.location?.split(',')[0], timezone: b.timezone })).score ?? -1;
   return sb - sa;
  });
+ const filterCause = [
+  searchQuery.trim() && `search “${searchQuery.trim()}”`,
+  filters.stage && `stage ${filters.stage}`,
+  filters.role && `role ${filters.role}`,
+  filters.commitment && `commitment ${filters.commitment}`,
+  filters.location && `location ${filters.location}`,
+ ].filter(Boolean).join(', ');
 
  return (
   <PageShell
    title="Discover Co-Founders"
    description="Find entrepreneurs and builders who complement your skills."
-   actions={
-    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))} className="min-h-11 px-3 py-2 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-800">
-     Ask assistant
-    </button>
-   }
   >
    <div className="space-y-5">
     {/* Search & Filters */}
@@ -220,6 +224,9 @@ export default function MatchDiscovery() {
       )}
      </button>
     </div>
+    {searchQuery.trim().length > 1 && (
+     <p className="text-xs text-stone-400">Will search names, headlines, and skills for “{searchQuery.trim()}”.</p>
+    )}
 
     <AnimatePresence>
      {showFilters && (
@@ -308,7 +315,7 @@ export default function MatchDiscovery() {
            {profile.fullName || profile.headline?.split(' at ')[0] || 'Founder'}
           </p>
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
-          {explained.headline && <p className="text-xs text-stone-400">{explained.headline.en}</p>}
+          {explained.headline && <p className="text-xs text-stone-500">{explained.headline.en} · {explained.headline.el}</p>}
          </div>
         </div>
         <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.score == null ? '—' : `${explained.score}%`}</span>
@@ -318,16 +325,19 @@ export default function MatchDiscovery() {
         {profile.bio || 'Passionate founder looking for the right partner.'}
        </p>
 
-       <div className="flex flex-wrap gap-1.5 mb-4">
-        {profile.stage && (
-         <span className="px-2 py-1 bg-stone-50 text-stone-600 rounded-lg text-[10px] font-medium border border-stone-100">{profile.stage}</span>
-        )}
-        {profile.commitment && (
-         <span className="px-2 py-1 bg-stone-50 text-stone-600 rounded-lg text-[10px] font-medium border border-stone-100">{profile.commitment}</span>
-        )}
-       </div>
+       <FactLine className="mb-4" items={[profile.stage, profile.commitment, profile.location]} label="Profile facts" />
 
        <div className="flex items-center gap-2">
+        <button
+         type="button"
+         onClick={(e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${profile.fullName}?`, context: profile.fullName } }));
+         }}
+         className="px-2 py-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100 text-xs font-medium"
+        >
+         Ask
+        </button>
         <button 
          onClick={(e) => handleConnect(e, profile)}
          disabled={connecting === profile.uid}
@@ -354,19 +364,16 @@ export default function MatchDiscovery() {
       );
      })
     ) : (
-     <div className="col-span-full py-16 text-center">
-      <div className="w-14 h-14 bg-stone-50 rounded-2xl flex items-center justify-center mx-auto text-stone-300 mb-4">
-       <Search className="w-7 h-7" />
-      </div>
-      <p className="text-sm font-medium text-stone-900 mb-1">No founders found</p>
-      <p className="text-xs text-stone-400 mb-4">Try adjusting your filters or search query.</p>
-      <button 
-       onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); }}
-       className="text-xs font-medium text-stone-900 hover:underline"
-      >
-       Clear filters
-      </button>
-     </div>
+     <EmptyHint className="col-span-full" title={filterCause ? `No founders match ${filterCause}.` : 'No founders found'} detail="Clear that filter, or ask the studio assistant who still ranks on this profile.">
+       <button 
+        type="button"
+        onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); }}
+        className="text-xs font-medium text-stone-900 hover:underline"
+       >
+        Clear filters
+       </button>
+       <AskLink prompt="who is my best match" />
+     </EmptyHint>
     )}
    </div>
 

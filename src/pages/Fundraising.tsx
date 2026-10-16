@@ -48,6 +48,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import FactLine from "../components/ui/FactLine";
 import { User, FundraisingTracker } from "../types";
 import { cn } from "../lib/utils";
 import { bothText } from "../lib/labels";
@@ -706,33 +707,13 @@ export default function Fundraising({ user }: FundraisingProps) {
           </div>
          )}
 
-         {/* Focus tags */}
-         <div className="flex flex-wrap gap-1">
-          {inv.focus.slice(0, 3).map((f: string) => (
-           <span key={f} className="px-2 py-0.5 bg-stone-50 border border-stone-100 text-stone-600 rounded-md text-xs font-medium">{f}</span>
-          ))}
-         </div>
+         <FactLine items={inv.focus.slice(0, 3)} label="Focus" />
 
-         {/* Stats + CRM */}
-         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
-          <div>
-           <p className="text-xs text-stone-400">Check</p>
-           <p className="text-xs font-semibold text-stone-700">{inv.checkSize}</p>
-          </div>
-          <div>
-           <p className="text-xs text-stone-400">Portfolio</p>
-           <p className="text-xs font-semibold text-stone-700">{inv.portfolio}</p>
-          </div>
-          <div>
-           <p className="text-xs text-stone-400">{crm ? "Relationship" : "Stage"}</p>
-           <p className={cn(
-            "text-xs font-semibold",
-            crm ? (crm.relationshipScore >= 80 ? "text-emerald-600" : crm.relationshipScore >= 60 ? "text-amber-600" : "text-stone-600") : "text-stone-700"
-           )}>
-            {crm ? `${crm.relationshipScore}%` : inv.stage[0]}
-           </p>
-          </div>
-         </div>
+         <FactLine
+          className="pt-2 border-t border-stone-100 text-stone-600"
+          items={[inv.checkSize, inv.portfolio, crm ? `${crm.relationshipScore}%` : inv.stage[0]]}
+          label={crm ? 'Check, portfolio, relationship' : 'Check, portfolio, stage'}
+         />
 
          {/* Last Contact / Next Action */}
          {crm && (
@@ -807,11 +788,7 @@ export default function Fundraising({ user }: FundraisingProps) {
              </span>
             </div>
 
-            <div className="flex flex-wrap gap-1 mt-2">
-             {p.tags.map((tag: string) => (
-              <span key={tag} className="text-xs bg-stone-50 border border-stone-100 text-stone-500 px-1.5 py-0.5 rounded-md font-medium">{tag}</span>
-             ))}
-            </div>
+            <FactLine className="mt-2" items={p.tags} label="Tags" />
            </div>
           </div>
 
@@ -891,11 +868,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            </div>
 
            <div className="flex items-center gap-3 mt-2">
-            <div className="flex flex-wrap gap-1">
-             {opp.tags.map((tag: string) => (
-              <span key={tag} className="text-xs bg-stone-50 border border-stone-100 text-stone-500 px-1.5 py-0.5 rounded-md font-medium">{tag}</span>
-             ))}
-            </div>
+            <FactLine className="flex-1" items={opp.tags} label="Tags" />
             <span className={cn("text-xs font-semibold ml-auto shrink-0",
              opp.deadline === "Rolling" ? "text-emerald-600" : "text-stone-400"
             )}>

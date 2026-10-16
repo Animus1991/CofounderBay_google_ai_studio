@@ -10,6 +10,7 @@ export type PersonCard = {
   industry: string;
   bio: string;
   skills?: string[];
+  lookingFor?: string[];
   stage?: string;
   commitment?: string;
 };
@@ -26,6 +27,7 @@ export function cardFromCast(person: CastMember): PersonCard {
     industry: person.industry,
     bio: person.bio,
     skills: person.skills,
+    lookingFor: person.lookingFor,
     stage: person.stage,
     commitment: person.commitment,
   };

@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
+import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { User } from "../types";
 import { cn } from "../lib/utils";
 import { motion } from "motion/react";
@@ -111,13 +113,24 @@ export default function Resources({ user }: ResourcesProps) {
       </div>
      </div>
 
-     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 sm:gap-8">
-      {mockCourses.filter((course) => {
+     {(() => {
+      const visibleCourses = mockCourses.filter((course) => {
         const q = courseQuery.trim().toLowerCase();
         const matchesQuery = !q || course.title.toLowerCase().includes(q) || course.instructor.toLowerCase().includes(q);
         const matchesLevel = courseLevel === 'All' || course.level === courseLevel;
         return matchesQuery && matchesLevel;
-       }).map((course, idx) => (
+      });
+      if (visibleCourses.length === 0) {
+        return (
+         <EmptyHint title="No courses match this filter." detail="Clear the search, or ask the assistant which program to start.">
+          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => { setCourseQuery(''); setCourseLevel('All'); }}>Clear filters</button>
+          <AskLink prompt="What programs can I apply to?" />
+         </EmptyHint>
+        );
+      }
+      return (
+     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 sm:gap-8">
+      {visibleCourses.map((course, idx) => (
        <motion.div
         key={course.id}
         initial={{ opacity: 0, y: 20 }}
@@ -165,6 +178,8 @@ export default function Resources({ user }: ResourcesProps) {
        </motion.div>
       ))}
      </div>
+      );
+     })()}
     </div>
    )}
 
@@ -207,7 +222,7 @@ export default function Resources({ user }: ResourcesProps) {
            <p className="text-base text-stone-500 font-light">by {service.provider}</p>
           </div>
           <div className="flex items-center gap-4 pt-4 border-t border-stone-50">
-           <span className="px-3 py-1 bg-stone-50 text-stone-500 rounded-full text-sm font-medium tracking-wide border border-stone-100">{service.type}</span>
+           <FactLine className="text-sm" items={[service.type]} label="Service type" />
            <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-wide">
             <Star className="w-4 h-4 fill-amber-500" /> {service.rating}
            </div>

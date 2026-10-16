@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Compact relative clock for activity rows (GitHub-style “2 hours ago”). */
+export function formatRelativeTime(iso: string, now = Date.now()): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return iso;
+  const sec = Math.round((now - then) / 1000);
+  if (sec < 45) return 'just now';
+  if (sec < 90) return '1 min ago';
+  if (sec < 3600) return `${Math.round(sec / 60)} min ago`;
+  if (sec < 5400) return '1 hour ago';
+  if (sec < 86400) return `${Math.round(sec / 3600)} hours ago`;
+  if (sec < 172800) return '1 day ago';
+  if (sec < 604800) return `${Math.round(sec / 86400)} days ago`;
+  return new Date(then).toLocaleDateString();
+}
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',

@@ -38,7 +38,7 @@ export default function PageShell({
   )}>
    <div className={cn('mx-auto w-full', maxWidthClass[maxWidth])}>
     {(title || actions) && (
-     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 lg:pr-56">
       <div className="min-w-0">
        {title && (
         <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">{title}</h1>

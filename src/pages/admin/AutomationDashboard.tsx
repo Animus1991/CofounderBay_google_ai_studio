@@ -134,8 +134,8 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
  };
 
  return (
-  <div className="space-y-6 max-w-7xl mx-auto">
-   <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+  <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
+   <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4 lg:pr-56">
     <div>
      <div className="flex items-center gap-2.5 mb-1.5">
       <div className="p-1.5 bg-stone-900 text-white rounded-lg">

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { keys, readActivity } from "../../lib/localLists";
+import { useStored } from "../../lib/useStored";
 import { 
  LayoutDashboard, 
  Users, 
@@ -105,6 +107,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
    ]
   }
  ];
+
+ const activity = useStored(readActivity, [keys.activity]);
+ const unread = activity.filter((item) => !item.read).length;
 
  return (
   <>
@@ -320,10 +325,15 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
       <NavLink 
        to="/notifications"
        title={navTitle("Alerts", "/notifications")}
-       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
+       className="relative flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
       >
        <Bell className="w-3 h-3" />
        {withEl("Alerts")}
+       {unread > 0 && (
+        <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-[9px] font-medium tabular-nums leading-4">
+         {unread > 99 ? '99+' : unread}
+        </span>
+       )}
       </NavLink>
       <button 
        onClick={handleLogout}
@@ -339,9 +349,14 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
       <NavLink 
        to="/notifications"
        title={navTitle("Alerts", "/notifications")}
-       className="p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
+       className="relative p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
       >
        <Bell className="w-4.5 h-4.5" />
+       {unread > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-stone-900 text-white text-[8px] font-medium tabular-nums leading-[14px] text-center">
+         {unread > 99 ? '99+' : unread}
+        </span>
+       )}
       </NavLink>
      </div>
     )}

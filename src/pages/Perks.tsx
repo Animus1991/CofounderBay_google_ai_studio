@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
+import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { keys, listKeys, readIds } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
@@ -112,6 +114,11 @@ export default function Perks() {
     </Card>
    </div>
 
+   {filteredPerks.length === 0 && (
+    <EmptyHint title="No perks match this search." detail="Ask the studio assistant which credits you can claim.">
+     <AskLink prompt="What perks can I claim?" />
+    </EmptyHint>
+   )}
    {/* Perks Grid */}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     {filteredPerks.map((perk) => (
@@ -125,11 +132,9 @@ export default function Perks() {
        </Button>
       </div>
       <div className="space-y-2 flex-1">
-       <div className="flex items-center justify-between">
+       <div className="space-y-1">
         <h4 className="font-medium text-base">{perk.name}</h4>
-        <span className="text-sm bg-stone-100 px-2 py-0.5 rounded-full text-stone-500 font-medium tracking-wide">
-         {perk.category}
-        </span>
+        <FactLine items={[perk.category]} label="Category" />
        </div>
        <p className="text-sm font-medium text-stone-900">{perk.value}</p>
        <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{perk.description}</p>

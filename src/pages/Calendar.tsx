@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { 
- Calendar as CalendarIcon, Clock, Plus,
- ChevronLeft, ChevronRight, MoreVertical, MapPin,
- Users, Video, Bell, Search
+ Plus,
+ ChevronLeft, ChevronRight, MoreVertical,
+ Bell, Search
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { keys, readSessions } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
@@ -200,6 +202,11 @@ export default function Calendar() {
        </Button>
       </div>
       <div className="space-y-2">
+       {events.length === 0 && (
+        <EmptyHint title="No events match this search." detail="Ask the studio assistant to schedule one, or clear the search.">
+         <AskLink prompt="Schedule a meeting on my calendar" />
+        </EmptyHint>
+       )}
        {events.map((event, idx) => (
         <motion.div
          key={event.id}
@@ -225,25 +232,7 @@ export default function Calendar() {
          </div>
 
          <h4 className="text-sm font-semibold text-stone-900 mb-2 leading-tight">{event.title}</h4>
-
-         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-stone-400">
-           <Clock className="w-3 h-3 shrink-0" />
-           <span>{event.time} · {event.duration}</span>
-          </div>
-          {event.location && (
-           <div className="flex items-center gap-2 text-xs text-stone-400">
-            {event.location.includes('Meet') || event.location.includes('Zoom') ? <Video className="w-3 h-3 shrink-0" /> : <MapPin className="w-3 h-3 shrink-0" />}
-            <span className="truncate">{event.location}</span>
-           </div>
-          )}
-          {event.participants && (
-           <div className="flex items-center gap-2 text-xs text-stone-400">
-            <Users className="w-3 h-3 shrink-0" />
-            <span className="truncate">{event.participants.join(", ")}</span>
-           </div>
-          )}
-         </div>
+         <FactLine items={[`${event.time} · ${event.duration}`, event.location, event.participants?.join(', ')]} label="When and where" />
         </motion.div>
        ))}
       </div>

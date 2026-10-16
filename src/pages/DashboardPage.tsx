@@ -16,7 +16,7 @@ import {
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { arrayRemove, arrayUnion, collection, doc, increment, limit, onSnapshot, query, updateDoc } from 'firebase/firestore';
-import { cn } from '../lib/utils';
+import { cn, formatRelativeTime } from '../lib/utils';
 import { Both } from '../lib/both';
 import { rememberPerson } from '../lib/people';
 import { bothText } from '../lib/labels';
@@ -30,6 +30,7 @@ import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
 import { CAST, avatarFor } from '../data/cast';
 import { fromProfile, rankPeople } from '../lib/compatibility';
+import { studioNextStep } from '../lib/nextStep';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -106,11 +107,14 @@ const MISSING_EL: Record<string, string> = {
   Role: 'Ρόλος',
   Industry: 'Κλάδος',
   Skills: 'Δεξιότητες',
+  'Looking for': 'Τι ψάχνεις',
+  Stage: 'Στάδιο',
+  Commitment: 'Δέσμευση',
   Location: 'Τοποθεσία',
   'Social Links': 'Σύνδεσμοι',
 };
 
-type Circle = { id: string; name: string; avatar: string };
+type Circle = { id: string; name: string; avatar: string; role?: string };
 type CommunityRow = { id: string; name: string; members: string | number; newPosts: number };
 type ActivityPoint = { name: string; views: number; matches: number };
 type Prospect = { id: string; name: string; role: string; match: number; avatar: string };
@@ -188,10 +192,10 @@ function asCircles(value: unknown): Circle[] | null {
   if (!Array.isArray(value)) return null;
   return value.flatMap((row) => {
     if (!row || typeof row !== 'object') return [];
-    const item = row as { id?: unknown; name?: unknown; avatar?: unknown };
+    const item = row as { id?: unknown; name?: unknown; avatar?: unknown; role?: unknown };
     const id = item.id == null ? '' : String(item.id);
     if (!id) return [];
-    return [{ id, name: item.name == null ? '' : String(item.name), avatar: typeof item.avatar === 'string' ? item.avatar : '' }];
+    return [{ id, name: item.name == null ? '' : String(item.name), avatar: typeof item.avatar === 'string' ? item.avatar : '', role: item.role == null ? undefined : String(item.role) }];
   });
 }
 
@@ -266,13 +270,16 @@ export default function DashboardPage() {
     let score = 0;
     const missing = [];
 
-    if (profile.fullName) score += 20; else missing.push('Full Name');
-    if (profile.bio) score += 20; else missing.push('Bio');
-    if (profile.role) score += 10; else missing.push('Role');
+    if (profile.fullName) score += 10; else missing.push('Full Name');
+    if (profile.bio) score += 10; else missing.push('Bio');
+    if (profile.role) score += 5; else missing.push('Role');
     if (profile.industry) score += 10; else missing.push('Industry');
-    if (profile.skills && profile.skills.length > 0) score += 20; else missing.push('Skills');
+    if (profile.skills && profile.skills.length > 0) score += 15; else missing.push('Skills');
+    if (profile.lookingFor && profile.lookingFor.length > 0) score += 15; else missing.push('Looking for');
+    if (profile.stage) score += 10; else missing.push('Stage');
+    if (profile.commitment) score += 10; else missing.push('Commitment');
     if (profile.location) score += 10; else missing.push('Location');
-    if (profile.socialLinks && Object.keys(profile.socialLinks).length > 0) score += 10; else missing.push('Social Links');
+    if (profile.socialLinks && Object.keys(profile.socialLinks).length > 0) score += 5; else missing.push('Social Links');
 
     return { score, missing };
   };
@@ -372,15 +379,19 @@ export default function DashboardPage() {
   }, [user, isDemoMode]);
 
   const heroAction = nextActions[0];
-  const handleActionClick = (action: NextBestAction) => {
-    if (user) {
-      logNudgeConversion(user.uid, action.id);
+  const studioNext = useMemo(() => studioNextStep(fromProfile(profile)), [profile, activity]);
+  const goStudioNext = () => {
+    if (heroAction && user) logNudgeConversion(user.uid, heroAction.id);
+    if (studioNext.prompt) {
+      window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: studioNext.prompt } }));
+      return;
     }
-    navigate(`/${action.section}`);
+    navigate(studioNext.href);
   };
 
   const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
   const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? rankedCircles);
+  const leadMatch = circles[0];
   const firstName = user?.displayName?.split(' ')[0] || 'Founder';
   const activityPosts: FeedPost[] = activity.slice(0, 8).map((item) => ({
     id: item.id,
@@ -388,7 +399,7 @@ export default function DashboardPage() {
     name: item.byAssistant ? 'Studio' : firstName,
     avatar: '',
     text: item.title,
-    time: item.at.slice(11, 16) || '',
+    time: formatRelativeTime(item.at),
     likes: 0,
     comments: 0,
     likedBy: [],
@@ -472,32 +483,57 @@ export default function DashboardPage() {
         </div>
 
         <AnimatePresence mode="wait">
-          {heroAction && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="studio-nudge bg-stone-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                </div>
-                <p className="text-[12.5px] sm:text-sm font-medium text-white">
-                  {ACTION_EL[heroAction.id] ? (
-                    <Both en={heroAction.description} el={ACTION_EL[heroAction.id]} />
-                  ) : heroAction.description}
-                </p>
+          <motion.div
+            key={studioNext.id}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="studio-nudge bg-stone-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-white" />
               </div>
-              <button
-                onClick={() => handleActionClick(heroAction)}
-                className="min-h-11 self-start sm:self-center px-4 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
-              >
-                Go
-              </button>
-            </motion.div>
-          )}
+              <p className="text-[12.5px] sm:text-sm font-medium text-white">
+                <Both en={studioNext.en} el={studioNext.el} />
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={goStudioNext}
+              className="min-h-11 self-start sm:self-center px-4 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
+            >
+              Go
+            </button>
+          </motion.div>
         </AnimatePresence>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
+            {leadMatch ? (
+              <div className="flex items-center gap-3">
+                <img src={leadMatch.avatar} alt="" className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-stone-900 truncate">{leadMatch.name}</p>
+                  <p className="text-xs text-stone-500 truncate">{leadMatch.role}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
+            )}
+          </button>
+          <button type="button" onClick={() => navigate('/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
+            <p className="text-sm font-medium text-stone-900">{schedule[0]?.title ?? DEMO_EVENTS[0]?.title}</p>
+            <p className="text-xs text-stone-500 mt-1">{schedule[0]?.time ?? DEMO_EVENTS[0]?.time}</p>
+          </button>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-900 rounded-2xl p-4 text-white hover:bg-stone-800 transition-all">
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · playbook" /></p>
+            <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
+            <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks the Task button writes." el="Γράφει τις ίδιες εργασίες Workspace με το κουμπί Task." /></p>
+          </button>
+        </div>
 
         <div>
           <p className="text-xs text-stone-400 mb-2"><Both en="Matches" el="Αντιστοιχίσεις" /></p>
@@ -520,6 +556,11 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+          {leadMatch && (
+            <button type="button" className="mt-2 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${leadMatch.name}?` } }))}>
+              <Both en={`Why ${leadMatch.name.split(' ')[0]}?`} el={`Γιατί ${leadMatch.name.split(' ')[0]};`} />
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -538,7 +579,12 @@ export default function DashboardPage() {
           </div>
 
           {!isDemoMode && feedLoaded && posts.length === 0 ? (
-            <p className="text-sm text-stone-400"><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
+            <div className="text-sm text-stone-400 bg-white border border-stone-100 rounded-2xl p-4 space-y-2">
+              <p><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
+              <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'what should I do today' } }))}>
+                <Both en="Ask assistant" el="Ρωτήστε τον βοηθό" />
+              </button>
+            </div>
           ) : posts.map((item) => {
             const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
             const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
@@ -679,7 +725,10 @@ export default function DashboardPage() {
                 ))}
                 {missing.length > 3 ? ` +${missing.length - 3} more` : ''}
               </p>
-              <button onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">Edit Profile →</button>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))} className="text-xs font-medium text-stone-900 hover:underline">Ask</button>
+                <button onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">Edit Profile →</button>
+              </div>
             </div>
           )}
         </div>

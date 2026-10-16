@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { listKeys, readIds, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists } from '../lib/localLists';
+import { listKeys, logActivity, readIds, readInvites, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists } from '../lib/localLists';
 import { runAssistant } from './assistantOps';
 
 const demo = {
@@ -25,6 +25,22 @@ describe('runAssistant', () => {
     expect(result.href).toBe('/matches');
     expect(result.en.toLowerCase()).toMatch(/jordan|marcus|mia|elena/);
     expect(result.links.length).toBeGreaterThan(0);
+    expect(result.followUps?.[0]?.en).toMatch(/Why do I match with/);
+  });
+
+  it('explains one named match with reasons, friction and a first conversation', () => {
+    const result = runAssistant('Why do I match with Sarah Chen?', demo);
+    expect(result.tool).toBe('match-detail');
+    expect(result.href).toBe('/profile/sarah-chen');
+    expect(result.en).toMatch(/Sarah Chen/);
+    expect(result.en).toMatch(/First conversation/);
+    expect(result.followUps?.[0]?.en).toMatch(/Connect with Sarah Chen/);
+  });
+
+  it('says what the founding team still lacks from looking-for', () => {
+    const result = runAssistant('What does my founding team still lack?', demo);
+    expect(result.tool).toBe('team-gap');
+    expect(result.en.toLowerCase()).toMatch(/sales|growth|fundraising/);
   });
 
   it('saves a named person onto the same list Network reads', () => {
@@ -115,9 +131,96 @@ describe('runAssistant', () => {
     expect(readIds(listKeys.perks)).toContain('aws');
   });
 
+  it('lists perks instead of claiming one when asked what can be claimed', () => {
+    const result = runAssistant('What perks can I claim?', demo);
+    expect(result.tool).toBe('perks');
+    expect(result.href).toBe('/perks');
+    expect(readIds(listKeys.perks)).not.toContain('aws');
+  });
+
+  it('answers readiness from the same copy Insights shows', () => {
+    const result = runAssistant('Tell me about readiness score', demo);
+    expect(result.tool).toBe('about');
+    expect(result.href).toBe('/insights');
+    expect(result.en).toMatch(/80%/);
+  });
+
   it('adds a workspace task the Venture Builder board shows', () => {
     const result = runAssistant('add task ship landing page', demo);
     expect(result.tool).toBe('task-add');
     expect(readTasks().some((item) => /landing page/i.test(item.title))).toBe(true);
+  });
+
+  it('writes a 7-day match plan onto the same Workspace task board', () => {
+    const result = runAssistant('Give me a 7-day match plan', demo);
+    expect(result.tool).toBe('playbook');
+    expect(result.href).toBe('/workspace');
+    expect(readTasks().some((item) => /looking-for/i.test(item.title))).toBe(true);
+    expect(result.followUps?.[0]?.en).toMatch(/meet this week/i);
+  });
+
+  it('prepares three founder invites that share the fit check', () => {
+    const result = runAssistant('Invite 3 founders', demo);
+    expect(result.tool).toBe('invite');
+    expect(readInvites().length).toBeGreaterThanOrEqual(3);
+    expect(result.en).toMatch(/quiz/i);
+  });
+
+  it('names who to meet this week from the same match list', () => {
+    const result = runAssistant('Who should I meet this week?', demo);
+    expect(result.tool).toBe('week-meet');
+    expect(result.en).toMatch(/Networking Night/);
+  });
+
+  it('points at the public fit check when none is stored', () => {
+    const result = runAssistant('What is my fit check?', demo);
+    expect(result.tool).toBe('fit-check');
+    expect(result.href).toBe('/quiz');
+  });
+
+  it('maps /match slash to the same matches tool as the spoken prompt', () => {
+    const result = runAssistant('/match', demo);
+    expect(result.tool).toBe('matches');
+    expect(result.href).toBe('/matches');
+  });
+
+  it('maps /plan slash onto the Workspace playbook', () => {
+    const result = runAssistant('/plan', demo);
+    expect(result.tool).toBe('playbook');
+    expect(readTasks().some((item) => /looking-for/i.test(item.title))).toBe(true);
+  });
+
+  it('maps /quiz slash to the fit check', () => {
+    expect(runAssistant('/quiz', demo).tool).toBe('fit-check');
+  });
+
+  it('scouts three people and refuses to send', () => {
+    const result = runAssistant('Propose three people — do not send', demo);
+    expect(result.tool).toBe('scout');
+    expect(result.en).toMatch(/will not send/i);
+    expect(result.links.length).toBeGreaterThan(0);
+  });
+
+  it('drafts a need card the next-step strip can read', () => {
+    const result = runAssistant('Draft a need card for a technical co-founder', demo);
+    expect(result.tool).toBe('need');
+    expect(result.en).toMatch(/Missing/i);
+  });
+
+  it('maps /next to the same next-step tool Dashboard uses', () => {
+    expect(runAssistant('/next', demo).tool).toBe('next');
+  });
+
+  it('searches stored messages without inventing a live call', () => {
+    const result = runAssistant('search my messages for intro', demo);
+    expect(result.tool).toBe('inbox');
+    expect(result.href).toBe('/messages');
+  });
+
+  it('reports unread count from the same activity Notifications reads', () => {
+    logActivity({ kind: 'profile', title: 'Saved a person' });
+    const result = runAssistant('show my studio activity', demo);
+    expect(result.tool).toBe('activity');
+    expect(result.en).toMatch(/1 unread/);
   });
 });

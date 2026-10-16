@@ -24,6 +24,7 @@ import { setDataScope } from './lib/localLists';
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const FitCheck = lazy(() => import('./pages/FitCheck'));
 const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -354,6 +355,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/quiz" element={<FitCheck />} />
 
             {/* Onboarding */}
             <Route

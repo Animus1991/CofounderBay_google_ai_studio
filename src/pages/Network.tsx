@@ -35,11 +35,14 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { readRequests, readSaved, removeSaved, type ConnectionRequest, type SavedProfile } from "../lib/localLists";
+import { keys, readRequests, readSaved, removeSaved, type ConnectionRequest, type SavedProfile } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
 import { rememberPerson } from "../lib/people";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { avatarFor } from "../data/cast";
 import { User, Endorsement, UserRole } from "../types";
 import { cn } from "../lib/utils";
@@ -51,8 +54,8 @@ interface NetworkProps {
 export default function Network({ user }: NetworkProps) {
  const navigate = useNavigate();
  const [activeTab, setActiveTab] = useState<'connections' | 'saved' | 'endorsements' | 'compare'>('connections');
- const [saved, setSaved] = useState<SavedProfile[]>(() => readSaved());
- const [requests] = useState<ConnectionRequest[]>(() => readRequests());
+ const saved = useStored(readSaved, [keys.saved]);
+ const requests = useStored(readRequests, [keys.requests]);
  const [networkQuery, setNetworkQuery] = useState('');
  const [statusFilter, setStatusFilter] = useState<'All' | 'Connected' | 'Pending'>('All');
  const [picked, setPicked] = useState<string[]>([]);
@@ -87,6 +90,13 @@ export default function Network({ user }: NetworkProps) {
  return (
   <PageShell title="Network" description="Manage connections, endorsements, and saved profiles.">
    <div className="space-y-6">
+    <button
+     type="button"
+     className="text-xs font-medium text-stone-500 hover:text-stone-900"
+     onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Invite 3 founders' } }))}
+    >
+     Invite 3 founders · the assistant prepares the same fit-check link
+    </button>
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {(['connections', 'saved', 'endorsements', 'compare'] as const).map((tab) => (
       <button
@@ -128,6 +138,11 @@ export default function Network({ user }: NetworkProps) {
       <span className="text-sm text-stone-400 ml-auto">{visibleConnections.length} connections</span>
      </div>
 
+     {visibleConnections.length === 0 && (
+      <EmptyHint title="No connections match this filter." detail="Ask the studio assistant who your best match is, then save them here.">
+       <AskLink prompt="who is my best match" />
+      </EmptyHint>
+     )}
      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {visibleConnections.map((conn, i) => (
        <motion.div
@@ -149,13 +164,13 @@ export default function Network({ user }: NetworkProps) {
           </div>
           <div className="space-y-1">
            <h4 className="text-base font-semibold text-stone-900">{conn.fullName}</h4>
-           <div className="flex flex-wrap items-center justify-center gap-1">
-            <span className="px-2 py-0.5 rounded-full bg-stone-100 text-sm text-stone-500">{conn.role}</span>
-            <span className="px-2 py-0.5 rounded-full bg-stone-100 text-sm text-stone-500">{conn.industry}</span>
-           </div>
+           <FactLine className="justify-center text-sm" items={[conn.role, conn.industry]} />
            <p className="text-sm text-stone-400 flex items-center justify-center gap-1"><Globe className="w-3 h-3" />{conn.location}</p>
           </div>
           <div className="flex items-center gap-2 w-full pt-1">
+           <Button type="button" variant="ghost" className="h-8 px-2 text-xs rounded-lg" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${conn.fullName}`, context: conn.fullName } }))}>
+            Ask
+           </Button>
            <Button onClick={() => navigate(`/messages?user=${conn.id}`)} className="flex-1 h-8 rounded-lg bg-stone-900 text-white hover:bg-stone-700 text-sm font-medium transition-all">
             Message
            </Button>
@@ -183,10 +198,10 @@ export default function Network({ user }: NetworkProps) {
           </div>
           <div className="flex-1 min-w-0">
            <h4 className="text-base font-semibold text-stone-900">{p.fullName}</h4>
-           <p className="text-sm text-stone-400">{p.role} · {p.industry} · {p.location}</p>
+           <FactLine className="text-sm" items={[p.role, p.industry, p.location]} />
            <p className="text-sm text-stone-500 mt-1 italic">{p.note}</p>
           </div>
-          <Button variant="ghost" size="icon" title="Remove from saved" onClick={() => setSaved(removeSaved(p.id))} className="w-7 h-7 rounded-lg text-stone-300 hover:text-stone-900 shrink-0">
+          <Button variant="ghost" size="icon" title="Remove from saved" onClick={() => { removeSaved(p.id); }} className="w-7 h-7 rounded-lg text-stone-300 hover:text-stone-900 shrink-0">
            <Star className="w-3.5 h-3.5 fill-current" />
           </Button>
          </div>

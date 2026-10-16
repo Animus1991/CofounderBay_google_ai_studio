@@ -4,26 +4,42 @@
  * the app already shows. Gemini only rewrites the wording.
  */
 import { CAST, castByRole, findCast, placeOf, type CastMember } from '../data/cast';
-import { fromProfile, rankPeople, type CompatibilityInput } from '../lib/compatibility';
+import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
 import {
   addSession,
   addStudioTask,
+  seedFounderInvites,
+  readInvites,
+  readTasks,
   effectiveStatus,
   listKeys,
+  readIds,
   logActivity,
   readActivity,
+  unreadActivityCount,
   readMilestones,
+  readNeeds,
+  readOpenTo,
   readRound,
   readSaved,
   saveProfile,
   saveRequest,
+  searchChat,
   setId,
   trackApplication,
   upsertMilestone,
+  closeNeed,
+  upsertNeed,
   writeMatchFilters,
+  writeOpenTo,
   writeRound,
+  type NeedCard,
+  type OpenToKind,
 } from '../lib/localLists';
 import { milestoneService } from './milestoneService';
+import { readFitCheck } from '../lib/fitCheck';
+import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
+import { studioNextStep } from '../lib/nextStep';
 
 export type AssistantProfile = CompatibilityInput & {
   fullName?: string;
@@ -33,12 +49,15 @@ export type AssistantProfile = CompatibilityInput & {
 
 export type AssistantLink = { href: string; en: string; el: string };
 
+export type AssistantFollowUp = { en: string; el: string };
+
 export type AssistantResult = {
   en: string;
   el: string;
   href?: string;
   links: AssistantLink[];
   tool: string;
+  followUps?: AssistantFollowUp[];
 };
 
 const PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
@@ -63,7 +82,32 @@ const PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
   { keys: ['founder tool', 'εργαλει ιδρυτ'], href: '/founder-tools', en: 'Founder Tools', el: 'Εργαλεία ιδρυτή' },
   { keys: ['workspace', 'venture builder', 'χωροσ εργασ'], href: '/workspace', en: 'Workspace', el: 'Χώρος εργασίας' },
   { keys: ['resource', 'course', 'learning hub', 'πορο'], href: '/resources', en: 'Resources', el: 'Πόροι' },
+  { keys: ['quiz', 'fit check', 'fit-check', 'αρχετυπ'], href: '/quiz', en: 'Fit check', el: 'Fit check' },
 ];
+
+/** Slash shortcuts in the studio chat — same tools as the natural-language router. */
+export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
+  { cmd: '/match', en: 'Rank people on this profile', el: 'Βαθμολόγησε ανθρώπους σε αυτό το προφίλ' },
+  { cmd: '/scout', en: 'Propose three people — never send', el: 'Πρότεινε τρεις — χωρίς αποστολή' },
+  { cmd: '/need', en: 'List or draft a need card', el: 'Δείξε ή γράψε κάρτα ανάγκης' },
+  { cmd: '/next', en: 'What to do first', el: 'Τι να κάνεις πρώτα' },
+  { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον browser' },
+  { cmd: '/plan', en: 'Write a 7-day match plan', el: 'Γράψε πλάνο 7 ημερών' },
+  { cmd: '/invite', en: 'Prepare three founder invites', el: 'Ετοίμασε τρεις προσκλήσεις ιδρυτών' },
+  { cmd: '/round', en: 'Read the fundraising round', el: 'Διάβασε τον γύρο χρηματοδότησης' },
+  { cmd: '/quiz', en: 'Open or recall the fit check', el: 'Άνοιξε ή θυμήσου το fit check' },
+  { cmd: '/overdue', en: 'List overdue milestones', el: 'Δείξε εκπρόθεσμα ορόσημα' },
+  { cmd: '/help', en: 'What this assistant can change', el: 'Τι μπορεί να αλλάξει αυτός ο βοηθός' },
+];
+
+export function pageContext(pathname: string): { href: string; en: string; el: string } {
+  const path = (pathname.split('?')[0] || '/dashboard').replace(/\/+$/, '') || '/dashboard';
+  const exact = PAGES.find((page) => page.href === path);
+  if (exact) return { href: exact.href, en: exact.en, el: exact.el };
+  const nested = PAGES.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
+  if (nested) return { href: nested.href, en: nested.en, el: nested.el };
+  return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
+}
 
 type KnowledgeCard = { keys: string[]; href: string; en: string; el: string };
 
@@ -92,7 +136,7 @@ const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download or preview there, or book legal office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασέ το από εκεί ή κλείσε legal office hours.' },
   { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15 minutes with partner firms on Legal Hub. Open that page and use Book a Session — I keep the same firms: Wilson Sonsini, Gunderson Dettmer, Cooley.', el: 'Τα legal office hours είναι 15 λεπτά με partner firms στο Legal Hub. Άνοιξε τη σελίδα και πάτα Book a Session.' },
   { keys: ['wilson sonsini', 'gunderson dettmer', 'cooley llp'], href: '/legal', en: 'Wilson Sonsini, Gunderson Dettmer and Cooley are the partner firms on Legal Hub. Book office hours from that sidebar.', el: 'Wilson Sonsini, Gunderson Dettmer και Cooley είναι τα partner firms στο Legal Hub.' },
-  { keys: ['start a voice call', 'start a video call'], href: '/messages', en: 'Voice and video stay on Messages. Open the conversation, then Call or Video in the header. I can also book a mentorship slot on Calendar.', el: 'Φωνή και βίντεο μένουν στα Μηνύματα. Άνοιξε τη συνομιλία και πάτα Call ή Video. Μπορώ και να κλείσω mentorship στο Ημερολόγιο.' },
+  { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
   { keys: ['list a partner service', 'list your service'], href: '/resources', en: 'Partner services are listed on Resources → Services. Tell me the service name and price and I will point you at that tab.', el: 'Οι υπηρεσίες partners είναι στους Πόρους → Services. Πες όνομα και τιμή.' },
   { keys: ['post a job', 'post a role'], href: '/resources', en: 'Jobs sit on Resources → Jobs, same cards as Lead Full-Stack Engineer, Growth Marketing Manager, Product Design Intern. Open that tab to post or apply.', el: 'Οι θέσεις είναι στους Πόρους → Jobs. Άνοιξε την καρτέλα για καταχώριση ή αίτηση.' },
   { keys: ['foundations of fundraising', 'scalable sales engine', 'legal essentials for startups', 'product-market fit workshop'], href: '/resources', en: 'That course is on Resources → Learning, same cards as the Learning Hub. Start Learning opens this assistant with the course title.', el: 'Αυτό το μάθημα είναι στους Πόρους → Learning.' },
@@ -203,6 +247,311 @@ function matchesResult(profile: AssistantProfile | null, query: string): Assista
     href: '/matches',
     links: ranked.map((row) => linkFor(row.person)),
   };
+}
+
+function matchDetailResult(profile: AssistantProfile | null, person: CastMember): AssistantResult {
+  const fit = compatibility(meInput(profile), fromCast(person));
+  const known = fit.dimensions.filter((d) => d.score != null && d.reason);
+  const strongest = [...known].sort((a, b) => (b.score as number) - (a.score as number))[0];
+  const friction = [...known].sort((a, b) => (a.score as number) - (b.score as number))[0];
+  const myNeeds = listWords(profile?.lookingFor);
+  const theirSkills = listWords(person.skills);
+  const covered = myNeeds.filter((need) => theirSkills.includes(need));
+  const talk = covered[0] ?? theirSkills[0] ?? person.headline;
+  const score = fit.score == null ? '—' : `${fit.score}%`;
+  const reasonEn = strongest?.reason?.en ?? fit.headline?.en ?? person.headline;
+  const reasonEl = strongest?.reason?.el ?? fit.headline?.el ?? person.headline;
+  const frictionEn = friction && (friction.score as number) < 80 ? `Friction: ${friction.reason?.en}.` : 'No sharp friction on the scored dimensions.';
+  const frictionEl = friction && (friction.score as number) < 80 ? `Τριβή: ${friction.reason?.el}.` : 'Δεν υπάρχει έντονη τριβή στις διαστάσεις με σκορ.';
+  return {
+    tool: 'match-detail',
+    en: `${person.fullName} is ${score} on the same scorer Matches uses. Why: ${reasonEn}. ${frictionEn} First conversation: how they have shipped ${talk}. Same card as Profile.`,
+    el: `${person.fullName} είναι ${score} στον ίδιο υπολογισμό με τις Αντιστοιχίσεις. Γιατί: ${reasonEl}. ${frictionEl} Πρώτη συζήτηση: πώς έχουν παραδώσει ${talk}. Η ίδια κάρτα με το Προφίλ.`,
+    href: `/profile/${person.id}`,
+    links: [linkFor(person), { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' }],
+  };
+}
+
+function teamGapResult(profile: AssistantProfile | null): AssistantResult {
+  const needs = listWords(profile?.lookingFor);
+  const skills = listWords(profile?.skills);
+  const areas = teamGaps(skills);
+  const ranked = rankPeople(meInput(profile), candidates()).slice(0, 5);
+  const gapRoles = areas.gaps.map((area) => TEAM_AREAS[area].role);
+  if (needs.length === 0 && areas.gaps.length === 0) {
+    return {
+      tool: 'team-gap',
+      en: 'Looking-for is empty on Profile, so matching cannot say what the founding team still lacks. Add Sales, Growth, or Engineering there — the same fields the scorer reads.',
+      el: 'Το «τι ψάχνεις» είναι κενό στο Προφίλ, οπότε η αντιστοίχιση δεν ξέρει τι λείπει στην ομάδα. Πρόσθεσε Sales, Growth ή Engineering — τα ίδια πεδία που διαβάζει ο υπολογισμός.',
+      href: '/profile',
+      links: [{ href: '/profile', en: 'Open profile', el: 'Άνοιγμα προφίλ' }],
+    };
+  }
+  const covered = needs.filter((need) =>
+    ranked.some((row) => listWords(row.person.skills).includes(need)),
+  );
+  const lacking = needs.filter((need) => !covered.includes(need));
+  const who = ranked[0]?.person;
+  const areaLine = areas.gaps.length
+    ? ` From your skills, the team still lacks ${gapRoles.map((r) => r.en).join(', ')}.`
+    : ' Your skills already cover build, design, market and operations.';
+  const areaLineEl = areas.gaps.length
+    ? ` Από τις δεξιότητές σου, λείπουν ${gapRoles.map((r) => r.el).join(', ')}.`
+    : ' Οι δεξιότητές σου καλύπτουν κατασκευή, σχεδιασμό, αγορά και λειτουργία.';
+  const lackLine = lacking.length
+    ? ` Looking-for still open: ${lacking.join(', ')}.`
+    : needs.length
+      ? ` The directory already covers ${needs.join(', ')}.`
+      : '';
+  const lackLineEl = lacking.length
+    ? ` Ακόμα ανοιχτά στο «τι ψάχνεις»: ${lacking.join(', ')}.`
+    : needs.length
+      ? ` Ο κατάλογος ήδη καλύπτει ${needs.join(', ')}.`
+      : '';
+  const next = who
+    ? ` Next: talk to ${who.fullName} (${who.headline}).`
+    : ' Open Matches to widen the filter.';
+  const nextEl = who
+    ? ` Επόμενο: μίλα με ${who.fullName} (${who.headline}).`
+    : ' Άνοιξε Αντιστοιχίσεις για ευρύτερο φίλτρο.';
+  return {
+    tool: 'team-gap',
+    en: `Matching reads looking-for as ${needs.join(', ') || 'empty'}.${areaLine}${lackLine}${next}`,
+    el: `Η αντιστοίχιση διαβάζει «τι ψάχνεις» ως ${needs.join(', ') || 'κενό'}.${areaLineEl}${lackLineEl}${nextEl}`,
+    href: '/matches',
+    links: [
+      ...(who ? [linkFor(who)] : []),
+      { href: '/profile', en: 'Open profile', el: 'Άνοιγμα προφίλ' },
+      { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' },
+    ],
+  };
+}
+
+function scoutResult(profile: AssistantProfile | null): AssistantResult {
+  const ranked = rankPeople(meInput(profile), candidates()).slice(0, 3);
+  const openTo = readOpenTo();
+  const needs = listWords(profile?.lookingFor);
+  if (ranked.length === 0) {
+    return {
+      tool: 'scout',
+      en: 'No proposals from the directory. Open Matches to widen the filter. I never send a message for you.',
+      el: 'Δεν υπάρχουν προτάσεις στον κατάλογο. Άνοιξε Αντιστοιχίσεις. Δεν στέλνω ποτέ μήνυμα για σένα.',
+      href: '/matches',
+      links: [{ href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' }],
+    };
+  }
+  const linesEn = ranked.map((row) => {
+    const cover = needs.filter((need) => listWords(row.person.skills).includes(need));
+    return `${row.person.fullName} · ${row.fit.score ?? '—'}% · ${row.fit.headline?.en ?? row.person.headline}${cover.length ? ` · covers ${cover.join(', ')}` : ''}`;
+  });
+  const linesEl = ranked.map((row) => {
+    const cover = needs.filter((need) => listWords(row.person.skills).includes(need));
+    return `${row.person.fullName} · ${row.fit.score ?? '—'}% · ${row.fit.headline?.el ?? row.person.headline}${cover.length ? ` · καλύπτει ${cover.join(', ')}` : ''}`;
+  });
+  const first = ranked[0]!.person;
+  const cover = needs.filter((need) => listWords(first.skills).includes(need));
+  const noteEn = `Hi ${first.fullName.split(' ')[0]} — I'm looking for ${needs.join(', ') || 'a co-founder'}. You cover ${cover.join(', ') || first.skills.slice(0, 2).join(', ')}. Worth twenty minutes on how you've shipped that?`;
+  const noteEl = `Γεια ${first.fullName.split(' ')[0]} — ψάχνω ${needs.join(', ') || 'συνιδρυτή'}. Καλύπτεις ${cover.join(', ') || first.skills.slice(0, 2).join(', ')}. Έχει νόημα ένα εικοσάλεπτο για το πώς το έχεις παραδώσει;`;
+  const openLine = openTo.includes('cofounder')
+    ? ' Settings already marks you open to a co-founder.'
+    : ' Settings does not mark you open to a co-founder yet.';
+  const openLineEl = openTo.includes('cofounder')
+    ? ' Οι Ρυθμίσεις σε έχουν ήδη ανοιχτό σε συνιδρυτή.'
+    : ' Οι Ρυθμίσεις δεν σε έχουν ακόμα ανοιχτό σε συνιδρυτή.';
+  return {
+    tool: 'scout',
+    en: `Three proposals from the same directory Matches uses. I will not send anything.${openLine}\n${linesEn.join('\n')}\nFirst note (copy, do not send until you say so):\n${noteEn}`,
+    el: `Τρεις προτάσεις από τον ίδιο κατάλογο με τις Αντιστοιχίσεις. Δεν στέλνω τίποτα.${openLineEl}\n${linesEl.join('\n')}\nΠρώτο σημείωμα (αντίγραψε, μην το στείλεις μέχρι να το πεις):\n${noteEl}`,
+    href: `/profile/${first.id}`,
+    links: ranked.map((row) => linkFor(row.person)),
+  };
+}
+
+function needResult(query: string): AssistantResult {
+  const folded = fold(query);
+  const closing = /\b(close|κλεισ)\b/.test(folded) && /\b(need|card|καρτα|αναγκ)\b/.test(folded);
+  if (closing) {
+    const open = readNeeds().filter((item) => item.status === 'open');
+    const card = open[0];
+    if (!card) {
+      return {
+        tool: 'need',
+        en: 'No open need card to close. Say “draft a need card for a technical co-founder”.',
+        el: 'Δεν υπάρχει ανοιχτή κάρτα ανάγκης. Πες «γράψε κάρτα ανάγκης για τεχνικό συνιδρυτή».',
+        href: '/network',
+        links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+      };
+    }
+    closeNeed(card.id);
+    logActivity({ kind: 'profile', title: `Closed need: ${card.missing}`, titleEl: `Έκλεισε ανάγκη: ${card.missing}`, href: '/network', byAssistant: true });
+    return {
+      tool: 'need',
+      en: `Closed “${card.missing}”. Other cards stay as they are.`,
+      el: `Έκλεισε το «${card.missing}». Οι άλλες κάρτες μένουν όπως είναι.`,
+      href: '/network',
+      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+    };
+  }
+  const drafting = /\b(draft|write|create|new|γραψ|φτιαξ|δημιουργ)\b/.test(folded);
+  if (drafting || (/\b(need card|καρτα αναγκ)\b/.test(folded) && readNeeds().length === 0)) {
+    const missing = query
+      .replace(/^(please\s+)?(draft|write|create|new|γραψε|φτιαξε|δημιουργησε)\s+(a\s+)?(need card|καρτα αναγκης)?\s*(for|για)?\s*/i, '')
+      .trim() || 'a co-founder';
+    const card: NeedCard = {
+      id: `need-${Date.now().toString(36)}`,
+      exists: 'A founding team with a scored looking-for on Profile',
+      outcome: 'A partner who covers the open skills on this account',
+      missing,
+      offer: 'Equity and a first conversation, not a cold blast',
+      status: 'open',
+      at: new Date().toISOString(),
+    };
+    upsertNeed(card);
+    logActivity({ kind: 'profile', title: `Need card: ${missing}`, titleEl: `Κάρτα ανάγκης: ${missing}`, href: '/network', byAssistant: true });
+    return {
+      tool: 'need',
+      en: `Need card is open: exists — ${card.exists}. Outcome — ${card.outcome}. Missing — ${card.missing}. Same list the next-step strip reads. I did not notify anyone.`,
+      el: `Η κάρτα ανάγκης είναι ανοιχτή: υπάρχει — ${card.exists}. Αποτέλεσμα — ${card.outcome}. Λείπει — ${card.missing}. Η ίδια λίστα με το επόμενο βήμα. Δεν ειδοποίησα κανέναν.`,
+      href: '/network',
+      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+    };
+  }
+  const list = readNeeds();
+  if (list.length === 0) {
+    return {
+      tool: 'need',
+      en: 'No need cards yet. One card, three sentences: what exists, the outcome, who is missing. Say “draft a need card for a technical co-founder”.',
+      el: 'Δεν υπάρχουν κάρτες ανάγκης. Μία κάρτα, τρεις προτάσεις: τι υπάρχει, το αποτέλεσμα, ποιος λείπει. Πες «γράψε κάρτα ανάγκης για τεχνικό συνιδρυτή».',
+      href: '/network',
+      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+    };
+  }
+  const linesEn = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Open' : 'Closed'} · missing ${item.missing} · ${item.outcome}`);
+  const linesEl = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Ανοιχτή' : 'Κλειστή'} · λείπει ${item.missing} · ${item.outcome}`);
+  return {
+    tool: 'need',
+    en: `Your need cards:\n${linesEn.join('\n')}`,
+    el: `Οι κάρτες ανάγκης σου:\n${linesEl.join('\n')}`,
+    href: '/network',
+    links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+  };
+}
+
+function inboxResult(query: string): AssistantResult {
+  const needle = query
+    .replace(/^(please\s+)?(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ(ατα)?)\s*(for|για)?\s*/i, '')
+    .trim();
+  const hits = searchChat(needle || query);
+  if (hits.length === 0) {
+    return {
+      tool: 'inbox',
+      en: needle
+        ? `No stored message contains “${needle}”. Open Messages to write one — Call and Video still do not start a live line.`
+        : 'No messages stored in this browser yet. Open Messages, then ask me to search a word in the thread.',
+      el: needle
+        ? `Κανένα αποθηκευμένο μήνυμα δεν περιέχει «${needle}». Άνοιξε τα Μηνύματα — τα Call/Video δεν ανοίγουν ζωντανή κλήση.`
+        : 'Δεν υπάρχουν μηνύματα σε αυτόν τον browser. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
+      href: '/messages',
+      links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
+    };
+  }
+  const lines = hits.map((item) => `${item.senderName || item.senderId}: ${item.body.slice(0, 120)}`);
+  return {
+    tool: 'inbox',
+    en: `Same thread store Messages uses:\n${lines.join('\n')}`,
+    el: `Το ίδιο νήμα με τα Μηνύματα:\n${lines.join('\n')}`,
+    href: '/messages',
+    links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
+  };
+}
+
+function nextStepAssistant(profile: AssistantProfile | null): AssistantResult {
+  const next = studioNextStep(fromProfile(profile));
+  return {
+    tool: 'next',
+    en: next.en,
+    el: next.el,
+    href: next.href,
+    links: [{ href: next.href, en: 'Open that page', el: 'Άνοιγμα της σελίδας' }],
+  };
+}
+
+function openToResult(query: string): AssistantResult {
+  const folded = fold(query);
+  const kinds: OpenToKind[] = [];
+  if (/\bco-?founder|συνιδρυτ/.test(folded)) kinds.push('cofounder');
+  if (/\binvestor|επενδυτ/.test(folded)) kinds.push('investor');
+  if (/\badvisor|mentor|συμβουλ|μεντορ/.test(folded)) kinds.push('advisor');
+  if (kinds.length && /\b(open|mark|set|ανοιχτ)\b/.test(folded)) {
+    writeOpenTo([...new Set([...readOpenTo(), ...kinds])]);
+    logActivity({ kind: 'settings', title: `Open to ${kinds.join(', ')}`, titleEl: `Ανοιχτός σε ${kinds.join(', ')}`, href: '/settings', byAssistant: true });
+    return {
+      tool: 'open-to',
+      en: `Settings now marks you open to ${readOpenTo().join(', ')}. Matching reads this the next time you scout.`,
+      el: `Οι Ρυθμίσεις σε έχουν ανοιχτό σε ${readOpenTo().join(', ')}. Η αντιστοίχιση το διαβάζει στο επόμενο scout.`,
+      href: '/settings',
+      links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }],
+    };
+  }
+  return {
+    tool: 'open-to',
+    en: `You are marked open to: ${readOpenTo().join(', ') || 'nothing'}. Same toggles as Settings → Privacy.`,
+    el: `Είσαι ανοιχτός σε: ${readOpenTo().join(', ') || 'τίποτα'}. Τα ίδια διακόπτες με Ρυθμίσεις → Απόρρητο.`,
+    href: '/settings',
+    links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }],
+  };
+}
+
+function attachFollowUps(result: AssistantResult): AssistantResult {
+  if (result.followUps?.length) return result;
+  const person = result.links.find((link) => link.href.startsWith('/profile/'))?.en;
+  const out: AssistantFollowUp[] = [];
+  if (result.tool === 'matches' && person) {
+    out.push({ en: `Why do I match with ${person}?`, el: `Γιατί ταιριάζω με ${person};` });
+    out.push({ en: `Save ${person}`, el: `Αποθήκευσε ${person}` });
+  } else if (result.tool === 'match-detail' && person) {
+    out.push({ en: `Connect with ${person}`, el: `Σύνδεση με ${person}` });
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+  } else if (result.tool === 'briefing') {
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+    out.push({ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' });
+  } else if (result.tool === 'team-gap') {
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+  } else if (result.tool === 'round' || result.tool === 'pipeline') {
+    out.push({ en: 'Record a $50k investment in my round', el: 'Κατέγραψε επένδυση $50k στον γύρο' });
+    out.push({ en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' });
+  } else if (result.tool === 'events' || result.tool === 'session-add') {
+    out.push({ en: 'what events are coming', el: 'ποιες εκδηλώσεις έρχονται' });
+  } else if (result.tool === 'perks') {
+    out.push({ en: 'Claim the Amazon Web Services perk', el: 'Διεκδίκησε το AWS perk' });
+  } else if (result.tool === 'programs') {
+    out.push({ en: 'Apply to Y Combinator S26', el: 'Αίτηση στο Y Combinator S26' });
+  } else if (result.tool === 'playbook') {
+    out.push({ en: 'Who should I meet this week?', el: 'Ποιον να γνωρίσω αυτή την εβδομάδα;' });
+    out.push({ en: 'Invite 3 founders', el: 'Προσκάλεσε 3 ιδρυτές' });
+  } else if (result.tool === 'invite') {
+    out.push({ en: 'Give me a 7-day match plan', el: 'Δώσε μου πλάνο 7 ημερών' });
+  } else if (result.tool === 'week-meet') {
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+    out.push({ en: 'what events are coming', el: 'ποιες εκδηλώσεις έρχονται' });
+  } else if (result.tool === 'fit-check') {
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+    out.push({ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' });
+  } else if (result.tool === 'scout') {
+    out.push({ en: 'Draft a need card for a co-founder', el: 'Γράψε κάρτα ανάγκης για συνιδρυτή' });
+    out.push({ en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' });
+  } else if (result.tool === 'need') {
+    out.push({ en: 'Propose three people — do not send', el: 'Πρότεινε τρεις — χωρίς αποστολή' });
+    out.push({ en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' });
+  } else if (result.tool === 'next') {
+    out.push({ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' });
+    out.push({ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' });
+  } else if (result.tool === 'inbox') {
+    out.push({ en: 'How do I start a voice call?', el: 'Πώς ξεκινάω φωνητική κλήση;' });
+  } else if (result.tool === 'open-to') {
+    out.push({ en: 'Propose three people — do not send', el: 'Πρότεινε τρεις — χωρίς αποστολή' });
+  }
+  return out.length ? { ...result, followUps: out.slice(0, 2) } : result;
 }
 
 function saveOrConnect(kind: 'save' | 'connect', person: CastMember): AssistantResult {
@@ -511,6 +860,7 @@ function addTaskResult(query: string): AssistantResult {
 
 function activityResult(): AssistantResult {
   const items = readActivity().slice(0, 8);
+  const unread = unreadActivityCount();
   if (items.length === 0) {
     return {
       tool: 'activity',
@@ -520,10 +870,12 @@ function activityResult(): AssistantResult {
       links: [{ href: '/notifications', en: 'Open notifications', el: 'Άνοιγμα ειδοποιήσεων' }],
     };
   }
+  const unreadEn = unread === 0 ? 'none unread' : `${unread} unread`;
+  const unreadEl = unread === 0 ? 'καμία αδιάβαστη' : `${unread} αδιάβαστες`;
   return {
     tool: 'activity',
-    en: `Same feed Notifications reads:\n${items.map((item) => item.title).join('\n')}`,
-    el: `Το ίδιο feed με τις Ειδοποιήσεις:\n${items.map((item) => item.titleEl || item.title).join('\n')}`,
+    en: `Same feed Notifications reads (${unreadEn}):\n${items.map((item) => item.title).join('\n')}`,
+    el: `Το ίδιο feed με τις Ειδοποιήσεις (${unreadEl}):\n${items.map((item) => item.titleEl || item.title).join('\n')}`,
     href: '/notifications',
     links: [{ href: '/notifications', en: 'Open notifications', el: 'Άνοιγμα ειδοποιήσεων' }, { href: '/insights', en: 'Open insights', el: 'Άνοιγμα εικόνας' }],
   };
@@ -609,21 +961,131 @@ function legalResult(): AssistantResult {
   };
 }
 
-function communitiesResult(): AssistantResult {
+const COMMUNITY_CATALOG = [
+  { id: '1', name: 'Fintech Founders' },
+  { id: '2', name: 'AI & Machine Learning' },
+  { id: '3', name: 'SaaS Builders' },
+  { id: '4', name: 'Web3 & Crypto' },
+];
+
+function communitiesResult(query?: string): AssistantResult {
+  const folded = fold(query || '');
+  const joining = /\b(join|μπες|κανε join)\b/.test(folded);
+  const hit = COMMUNITY_CATALOG.find((item) => folded.includes(fold(item.name)));
+  if (joining && hit) {
+    setId(listKeys.communities, hit.id, true);
+    logActivity({ kind: 'community', title: `Joined ${hit.name}`, titleEl: `Έγινε join: ${hit.name}`, href: '/communities', byAssistant: true });
+    return {
+      tool: 'communities',
+      en: `You joined ${hit.name}. Same joined list the Communities page reads. Enter Community there opens Messages.`,
+      el: `Έγινες μέλος στο ${hit.name}. Η ίδια λίστα join με τη σελίδα Κοινότητες.`,
+      href: '/communities',
+      links: [{ href: '/communities', en: 'Open communities', el: 'Άνοιγμα κοινοτήτων' }],
+    };
+  }
+  const joined = COMMUNITY_CATALOG.filter((item) => readIds(listKeys.communities).includes(item.id));
+  const joinedLine = joined.length ? ` You have joined ${joined.map((item) => item.name).join(', ')}.` : '';
+  const joinedLineEl = joined.length ? ` Έχεις μπει σε ${joined.map((item) => item.name).join(', ')}.` : '';
   return {
     tool: 'communities',
-    en: 'Same list as Communities: Fintech Founders, AI & Machine Learning, SaaS Builders, Web3 & Crypto. Join on that page, or say “create a community” and I will walk the listing.',
-    el: 'Η ίδια λίστα με τις Κοινότητες: Fintech Founders, AI & Machine Learning, SaaS Builders, Web3 & Crypto. Κάνε Join εκεί, ή πες «δημιούργησε κοινότητα».',
+    en: `Same list as Communities: Fintech Founders, AI & Machine Learning, SaaS Builders, Web3 & Crypto.${joinedLine} Join on that page, or say “join Fintech Founders”.`,
+    el: `Η ίδια λίστα με τις Κοινότητες: Fintech Founders, AI & Machine Learning, SaaS Builders, Web3 & Crypto.${joinedLineEl} Κάνε Join εκεί, ή πες «join Fintech Founders».`,
     href: '/communities',
     links: [{ href: '/communities', en: 'Open communities', el: 'Άνοιγμα κοινοτήτων' }],
+  };
+}
+
+
+const PLAYBOOK_TASKS = [
+  'Confirm looking-for on Profile',
+  'Ask why you match with your top person',
+  'Save three people on Network',
+  'Register for this week’s event',
+  'Book a mentor session',
+  'Invite three founders',
+  'Ask what the founding team still lacks',
+];
+
+function playbookResult(): AssistantResult {
+  const existing = new Set(readTasks().map((item) => item.title.toLowerCase()));
+  const added = PLAYBOOK_TASKS.filter((title) => !existing.has(title.toLowerCase()));
+  added.forEach((title) => addStudioTask(title));
+  logActivity({ kind: 'milestone', title: 'Started 7-day match plan', titleEl: 'Ξεκίνησε πλάνο 7 ημερών', href: '/workspace', byAssistant: true });
+  return {
+    tool: 'playbook',
+    en: `Seven tasks are on Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Added ${added.length} new.` : 'They were already there.'} Same board the Task button writes.`,
+    el: `Επτά εργασίες είναι στο Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Προστέθηκαν ${added.length}.` : 'Ήταν ήδη εκεί.'} Ο ίδιος πίνακας με το κουμπί Task.`,
+    href: '/workspace',
+    links: [
+      { href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' },
+      { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+    ],
+  };
+}
+
+function inviteResult(): AssistantResult {
+  const seeded = seedFounderInvites(3);
+  const href = seeded[0]?.href || '/quiz';
+  logActivity({ kind: 'request', title: 'Prepared 3 founder invites', titleEl: 'Ετοιμάστηκαν 3 προσκλήσεις ιδρυτών', href: '/network', byAssistant: true });
+  return {
+    tool: 'invite',
+    en: `Three invite slots are ready (${readInvites().length} on this account). Share ${href} — it is the same 60-second fit check, and Matches will read those fields. Copy the link and send it to three people you would actually work with.`,
+    el: `Τρεις θέσεις πρόσκλησης είναι έτοιμες (${readInvites().length} σε αυτόν τον λογαριασμό). Στείλε το ${href} — είναι το ίδιο fit check 60″, και το Matches θα διαβάσει αυτά τα πεδία.`,
+    href: '/network',
+    links: [
+      { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+      { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' },
+    ],
+  };
+}
+
+function weekMeetResult(profile: AssistantProfile | null): AssistantResult {
+  const ranked = rankPeople(fromProfile(profile ?? {}), CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate')).slice(0, 2);
+  const who = ranked[0]?.person;
+  return {
+    tool: 'week-meet',
+    en: who
+      ? `This week: talk to ${who.fullName} (${who.headline}), then register for Startup Founders Networking Night on Events (London, 28 Mar 2026). Same people Matches ranks; same event the Events page lists.`
+      : 'This week: open Matches, then register for Startup Founders Networking Night on Events (London, 28 Mar 2026).',
+    el: who
+      ? `Αυτή την εβδομάδα: μίλα με ${who.fullName} (${who.headline}), μετά εγγράψου στο Startup Founders Networking Night στις Εκδηλώσεις (Λονδίνο, 28 Μαρ 2026). Τα ίδια άτομα με το Matches.`
+      : 'Αυτή την εβδομάδα: άνοιξε Αντιστοιχίσεις, μετά εγγράψου στο Networking Night στις Εκδηλώσεις.',
+    href: who ? `/profile/${who.id}` : '/matches',
+    links: [
+      ...(who ? [linkFor(who)] : []),
+      { href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' },
+    ],
+  };
+}
+
+function fitCheckResult(): AssistantResult {
+  const fit = readFitCheck();
+  if (!fit) {
+    return {
+      tool: 'fit-check',
+      en: 'No fit check on this browser yet. Five questions, 60 seconds, no login. The answers write skills, looking-for, stage, commitment and hours — the same five dimensions Matches scores.',
+      el: 'Δεν υπάρχει fit check σε αυτόν τον browser. Πέντε ερωτήσεις, 60″, χωρίς είσοδο. Οι απαντήσεις γράφουν τα ίδια πέντε πεδία που βαθμολογεί το Matches.',
+      href: '/quiz',
+      links: [{ href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' }],
+    };
+  }
+  return {
+    tool: 'fit-check',
+    en: `Your fit check is “${fit.archetype.en}”. ${fit.why.en} Open Matches to rank people on those fields, or ask who you should meet this week.`,
+    el: `Το fit check είναι «${fit.archetype.el}». ${fit.why.el} Άνοιξε Αντιστοιχίσεις ή ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα.`,
+    href: '/matches',
+    links: [
+      { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+      { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' },
+    ],
   };
 }
 
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “save Sarah”, “what is overdue”, “book David Hoffman”, “how is my round”, “tell me about Sequoia”, “what events are coming”, or “how do I become a mentor”.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «αποθήκευσε τη Sarah», «τι είναι εκπρόθεσμο», «κλείσε τον David Hoffman», «πώς πάει ο γύρος», «πες μου για τη Sequoia», «ποιες εκδηλώσεις έρχονται», ή «πώς γίνομαι μέντορας».',
+    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Type @ to pin a person, /new to start over.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
@@ -633,17 +1095,49 @@ function helpResult(): AssistantResult {
 }
 
 export function runAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
+  return attachFollowUps(resolveAssistant(text, profile));
+}
+
+function resolveAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
   const query = text.trim();
   const folded = fold(query);
   if (!query) return helpResult();
 
+  const slash = folded.match(/^\/([a-z-]+)(?:\s+(.*))?$/);
+  if (slash) {
+    const cmd = slash[1];
+    const rest = (slash[2] || '').trim();
+    if (cmd === 'match' || cmd === 'matches') return matchesResult(profile, rest || 'who is my best match');
+    if (cmd === 'scout') return scoutResult(profile);
+    if (cmd === 'need') return needResult(rest || query);
+    if (cmd === 'next') return nextStepAssistant(profile);
+    if (cmd === 'inbox') return inboxResult(rest || query);
+    if (cmd === 'plan') return playbookResult();
+    if (cmd === 'invite') return inviteResult();
+    if (cmd === 'round') return roundResult();
+    if (cmd === 'quiz') return fitCheckResult();
+    if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue');
+    if (cmd === 'help') return helpResult();
+  }
+
   const person = namedPerson(query);
+  if (person && /\b(why|γιατι)\b/.test(folded) && /\b(match|ταιριαζ)\b/.test(folded)) return matchDetailResult(profile, person);
   if (person && /\b(save|watch|αποθηκ)\b/.test(folded)) return saveOrConnect('save', person);
   if (person && /\b(connect|request|intro|συνδεσ|αιτημ)\b/.test(folded)) return saveOrConnect('connect', person);
   if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person);
+  if (/\b(still lack|team lack|founding team|τι λειπ|τι χρειάζεται η ομάδα)\b/.test(folded)) return teamGapResult(profile);
+  if (/\b(propose|scout|do not send|μην στειλ|προτειν)\b/.test(folded) && /\b(people|three|3|τρεις|συνιδρυτ|match)\b/.test(folded)) return scoutResult(profile);
+  if (/\b(need card|καρτα αναγκ|draft a need)\b/.test(folded)) return needResult(query);
+  if (/\b(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ)\b/.test(folded)) return inboxResult(query);
+  if (/\b(open to (a )?(co-?founder|investor|advisor)|ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ))\b/.test(folded)) return openToResult(query);
+  if (/\b(what should i do first|next step|τι να κανω πρωτα)\b/.test(folded)) return nextStepAssistant(profile);
+  if (/\b(7-day|seven-day|playbook|match plan|πλανο 7|πλάνο 7)\b/.test(folded)) return playbookResult();
+  if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three|προσκαλεσ.{0,8}3|προσκάλεσ.{0,8}3)\b/.test(folded)) return inviteResult();
+  if (/\b(meet this week|who should i meet|ποιον .{0,20}εβδομαδ|αυτη την εβδομαδα)\b/.test(folded)) return weekMeetResult(profile);
+  if (/\b(fit check|archetype|quiz|τι ειδους|τι είδους συνιδρυτ)\b/.test(folded)) return fitCheckResult();
 
   if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query);
-  if (/\b(claim|how do i claim)\b/.test(folded) && /\b(perk|aws|stripe|hubspot|notion|google cloud|gcp|intercom|slack|mercury|amazon web|παροχ)\b/.test(folded)) {
+  if (/\bclaim\b/.test(folded) && /\b(perk|aws|stripe|hubspot|notion|google cloud|gcp|intercom|slack|mercury|amazon web|παροχ)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) {
     return claimPerkResult(query);
   }
   if (/\brecord\b/.test(folded) && /\binvest/.test(folded)) return recordInvestmentResult(query);
@@ -664,7 +1158,7 @@ export function runAssistant(text: string, profile: AssistantProfile | null): As
   if (/\b(activity|history|notification|τι εγινε)\b/.test(folded)) return activityResult();
   if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded)) return sessionAddResult(query);
   if (/\b(events?|meetups?|εκδηλ|διοργανωσ)\b/.test(folded)) return eventsResult(query);
-  if (/\b(communities|community|κοινοτ)/.test(folded)) return communitiesResult();
+  if (/\b(communities|community|κοινοτ)/.test(folded)) return communitiesResult(query);
   if (/\b(programs?|accelerator|bootcamp|προγραμ)\b/.test(folded)) return programsResult();
   if (/\b(perks?|credits|παροχ)\b/.test(folded)) return perksResult();
   if (/\b(legal|template|nda|νομικ)\b/.test(folded)) return legalResult();

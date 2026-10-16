@@ -17,6 +17,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/': 'Find Your Co-Founder',
   '/login': 'Sign In',
   '/signup': 'Create Account',
+  '/quiz': 'Fit check',
   '/onboarding': 'Onboarding',
   '/dashboard': 'Dashboard',
   '/profile': 'Profile',

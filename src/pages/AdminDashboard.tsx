@@ -66,15 +66,18 @@ export default function AdminDashboard() {
  })) : [];
 
  return (
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+  <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
    {/* Header */}
-   <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+   <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 lg:pr-56">
     <div className="space-y-2">
      <div className="flex items-center gap-2 text-stone-400 font-medium tracking-wide text-xs">
       <ShieldCheck className="w-4 h-4" />
       Admin Control Center
      </div>
      <h1 className="text-lg font-medium text-stone-900 tracking-tight">Ecosystem Health</h1>
+     <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What is overdue?' } }))}>
+      Ask the studio assistant
+     </button>
     </div>
     <div className="flex items-center gap-3">
      <div className="flex bg-stone-100 p-1 rounded-xl">

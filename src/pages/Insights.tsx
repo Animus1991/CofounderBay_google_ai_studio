@@ -269,18 +269,19 @@ export default function Insights({ user }: InsightsProps) {
 
       {/* Strategic Insight — light amber version */}
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
-       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-xl bg-white border border-amber-100 flex items-center justify-center shrink-0">
-         <Zap className="w-3.5 h-3.5 text-amber-500" />
-        </div>
-        <h4 className="text-sm font-semibold text-stone-900">Strategic Insight</h4>
-       </div>
-       <p className="text-sm text-stone-600 leading-relaxed">
-        Startups with a <span className="font-semibold text-stone-900">Readiness Score over 80%</span> are <span className="font-semibold text-stone-900">3× more likely</span> to secure funding within 6 months.
+       <p className="text-xs font-semibold text-stone-400 tracking-wider">Strategic insight</p>
+       <p className="text-sm text-stone-700 leading-relaxed">
+        Teams over 80% readiness are modeled as 3× more likely to close in six months.
        </p>
-       <Button onClick={() => navigate('/profile')} className="w-full h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
-        Optimize Score
-       </Button>
+       <p className="text-xs text-stone-500">Next: fill skills and looking-for on Profile so the score can move.</p>
+       <div className="flex gap-2">
+        <Button onClick={() => navigate('/profile')} className="flex-1 h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
+         Optimize Score
+        </Button>
+        <Button type="button" variant="outline" className="h-7 rounded-lg text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about readiness score' } }))}>
+         Ask
+        </Button>
+       </div>
       </div>
 
      </aside>

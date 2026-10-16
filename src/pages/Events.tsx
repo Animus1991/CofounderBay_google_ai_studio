@@ -7,6 +7,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { addSession, eventListKeys, logActivity, readIds, removeSession, toggleId } from "../lib/localLists";
 import { User } from "../types";
@@ -175,9 +176,9 @@ export default function Events({ user }: EventsProps) {
 
      <div id="event-list" className="space-y-4">
       {(visibleEvents.length === 0) && (
-       <p className="text-sm text-stone-500 bg-white border border-stone-100 rounded-2xl p-4">
-        No events in this category yet. Ask the studio assistant to host one.
-       </p>
+       <EmptyHint title="No events in this category yet." detail="Ask the studio assistant to host one.">
+        <AskLink prompt="Schedule a new event on my calendar" />
+       </EmptyHint>
       )}
       {visibleEvents.map((event) => (
        <div key={event.id} className="bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl">

@@ -75,6 +75,10 @@ const STAGE_ALIASES: Record<string, string> = {
   scale: 'Growth',
 };
 
+export function listWords(value: unknown): string[] {
+  return words(value);
+}
+
 function words(value: unknown): string[] {
   const items = Array.isArray(value) ? value : value == null ? [] : [value];
   const out: string[] = [];

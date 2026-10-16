@@ -92,7 +92,7 @@ export default function LegalHub() {
         <h4 className="font-medium text-lg mb-1">{template.name}</h4>
         <p className="text-base text-stone-500 mb-6 leading-relaxed">{template.description}</p>
         <div className="flex gap-2">
-         <Button type="button" size="sm" variant="outline" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
+         <Button type="button" size="sm" variant="outline" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `How do I download ${template.name}` } }))}>
           <Download className="w-3 h-3 mr-1" /> Download
          </Button>
          <Button type="button" size="sm" variant="ghost" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>

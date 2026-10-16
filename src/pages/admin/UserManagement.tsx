@@ -18,7 +18,7 @@ interface AdminProps {
 }
 
 const UserManagementSkeleton = () => (
- <div className="space-y-6 max-w-7xl mx-auto animate-pulse">
+ <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6 animate-pulse">
   <div className="h-64 w-full bg-stone-100 rounded-xl"></div>
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
    {[1, 2, 3, 4].map(i => (
@@ -70,10 +70,10 @@ export default function UserManagement({ user }: AdminProps) {
   <motion.div 
    initial={{ opacity: 0, y: 10 }}
    animate={{ opacity: 1, y: 0 }}
-   className="space-y-6 max-w-7xl mx-auto pb-20"
+   className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6"
   >
    {/* Premium Header */}
-   <div className="relative overflow-hidden rounded-xl bg-white p-8 border border-stone-100">
+   <div className="relative overflow-hidden rounded-xl bg-white p-8 border border-stone-100 lg:pr-36">
 
     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
      <div className="space-y-4">

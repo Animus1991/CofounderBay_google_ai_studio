@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
  Search, LayoutDashboard, User, Users, GraduationCap, MessageSquare, Trophy, Compass,
  Calendar, Rocket, DollarSign, Briefcase, Share2, BookOpen, Activity, Scale, Gift,
- Bell, Settings, ShieldCheck, BarChart3, Globe, Zap, ArrowRight, Command, Sparkles
+ Bell, Settings, ShieldCheck, BarChart3, Globe, Zap, ArrowRight, Command, Sparkles, Target
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
@@ -63,9 +63,31 @@ export default function CommandPalette() {
   setOpen(false);
  }, [navigate]);
 
+ const ask = useCallback((prompt: string) => {
+  window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+  setOpen(false);
+ }, []);
+
  const commands: CommandItem[] = useMemo(() => {
   const items: CommandItem[] = [
-   { id: 'assistant', label: 'Ask the studio assistant', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Navigation', keywords: ['ai', 'chat', 'help', 'βοηθός'] },
+   { id: 'assistant', label: 'Ask the studio assistant', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Studio', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'] },
+   { id: 'ask-match', label: 'Who is my best match?', icon: Users, action: () => ask('who is my best match'), section: 'Studio', keywords: ['match', 'cofounder', 'αντιστοιχ'] },
+   { id: 'ask-overdue', label: 'What is overdue?', icon: Trophy, action: () => ask('What is overdue?'), section: 'Studio', keywords: ['milestone', 'overdue', 'εκπρόθεσμ'] },
+   { id: 'ask-round', label: 'How is my round?', icon: DollarSign, action: () => ask('How is my round?'), section: 'Studio', keywords: ['raise', 'fundraising', 'γύρ'] },
+   { id: 'ask-invest', label: 'Record a $50k investment', icon: DollarSign, action: () => ask('Record a $50k investment in my round'), section: 'Studio', keywords: ['record', 'investment'] },
+   { id: 'ask-programs', label: 'What programs can I apply to?', icon: Rocket, action: () => ask('What programs can I apply to?'), section: 'Studio', keywords: ['accelerator', 'grant'] },
+   { id: 'ask-events', label: 'What events are coming?', icon: Calendar, action: () => ask('what events are coming'), section: 'Studio', keywords: ['meetup', 'calendar'] },
+   { id: 'ask-readiness', label: 'What is my readiness score?', icon: Activity, action: () => ask('Tell me about readiness score'), section: 'Studio', keywords: ['insights', 'score', 'ετοιμότητα'] },
+   { id: 'ask-mentor', label: 'Find a fundraising mentor', icon: GraduationCap, action: () => ask('Find a fundraising mentor'), section: 'Studio', keywords: ['advisor', 'coach'] },
+   { id: 'ask-perk', label: 'Claim the AWS perk', icon: Gift, action: () => ask('Claim the Amazon Web Services perk'), section: 'Studio', keywords: ['credits', 'aws'] },
+   { id: 'ask-playbook', label: '7-day match plan', icon: Trophy, action: () => ask('Give me a 7-day match plan'), section: 'Studio', keywords: ['playbook', 'plan', 'πλάνο'] },
+   { id: 'ask-week', label: 'Who should I meet this week?', icon: Users, action: () => ask('Who should I meet this week?'), section: 'Studio', keywords: ['week', 'meet', 'εβδομάδ'] },
+   { id: 'ask-invite', label: 'Invite 3 founders', icon: Share2, action: () => ask('Invite 3 founders'), section: 'Studio', keywords: ['invite', 'referral', '1+3'] },
+   { id: 'ask-scout', label: 'Propose three people (do not send)', icon: Users, action: () => ask('Propose three people — do not send'), section: 'Studio', keywords: ['scout', 'propose', '/scout'] },
+   { id: 'ask-need', label: 'Draft a need card', icon: Target, action: () => ask('Draft a need card for a co-founder'), section: 'Studio', keywords: ['need', 'card', 'κάρτα'] },
+   { id: 'ask-next', label: 'What should I do first?', icon: Sparkles, action: () => ask('What should I do first?'), section: 'Studio', keywords: ['next', 'πρώτα', '/next'] },
+   { id: 'ask-inbox', label: 'Search my messages', icon: MessageSquare, action: () => ask('search my messages for intro'), section: 'Studio', keywords: ['inbox', '/inbox'] },
+   { id: 'quiz', label: 'Fit check', icon: Sparkles, action: () => go('/quiz'), section: 'Studio', keywords: ['quiz', 'archetype'] },
    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, action: () => go('/dashboard'), section: 'Navigation', keywords: ['home', 'main'] },
    { id: 'profile', label: 'My Profile', icon: User, action: () => go('/profile'), section: 'Navigation', keywords: ['account', 'me'] },
    { id: 'discovery', label: 'Explore', icon: Compass, action: () => go('/discovery'), section: 'Navigation', keywords: ['explore', 'browse', 'find', 'discovery'] },
@@ -100,7 +122,7 @@ export default function CommandPalette() {
   }
 
   return items.map((item) => ({ ...item, description: pageHelp(COMMAND_PATH[item.id] || '') }));
- }, [go, isAdmin, isDemoMode]);
+ }, [ask, go, isAdmin, isDemoMode]);
 
  const filtered = useMemo(() => {
   if (!query.trim()) return commands;
@@ -151,15 +173,16 @@ export default function CommandPalette() {
  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
   if (e.key === 'ArrowDown') {
    e.preventDefault();
-   setSelectedIndex(prev => Math.min(prev + 1, filtered.length - 1));
+   setSelectedIndex(prev => Math.min(prev + 1, Math.max(filtered.length - 1, 0)));
   } else if (e.key === 'ArrowUp') {
    e.preventDefault();
    setSelectedIndex(prev => Math.max(prev - 1, 0));
-  } else if (e.key === 'Enter' && filtered[selectedIndex]) {
+  } else if (e.key === 'Enter') {
    e.preventDefault();
-   filtered[selectedIndex].action();
+   if (filtered[selectedIndex]) filtered[selectedIndex].action();
+   else if (query.trim()) ask(query.trim());
   }
- }, [filtered, selectedIndex]);
+ }, [filtered, selectedIndex, query, ask]);
 
  // Reset selected index when query changes
  useEffect(() => { setSelectedIndex(0); }, [query]);
@@ -199,7 +222,7 @@ export default function CommandPalette() {
         value={query}
         onChange={e => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Search commands, pages..."
+        placeholder="Search pages, or ask the assistant…"
         className="flex-1 text-sm text-stone-900 placeholder:text-stone-400 outline-none bg-transparent"
        />
        <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-stone-400 bg-stone-50 border border-stone-200 rounded-md tracking-wider">
@@ -210,8 +233,15 @@ export default function CommandPalette() {
       {/* Results */}
       <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2">
        {filtered.length === 0 ? (
-        <div className="px-5 py-8 text-center">
-         <p className="text-sm text-stone-500">No results found for "{query}"</p>
+        <div className="px-5 py-6 space-y-3">
+         <p className="text-sm text-stone-500">No page named “{query}”. The studio assistant can still run it.</p>
+         <button
+          type="button"
+          onClick={() => ask(query.trim())}
+          className="w-full min-h-11 px-3 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-800"
+         >
+          Ask assistant: {query.trim()}
+         </button>
         </div>
        ) : (
         Array.from(sections.entries()).map(([section, items]) => (

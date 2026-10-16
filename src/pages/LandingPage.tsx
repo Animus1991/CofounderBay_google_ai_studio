@@ -12,10 +12,13 @@ import {
   TrendingUp,
   MessageSquare,
   Trophy,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../App";
 import { cn } from "../lib/utils";
 import { LanguageToggle, useLanguage } from "../lib/language";
+import { Both } from "../lib/both";
+import { CAST, avatarFor } from "../data/cast";
 
 export default function LandingPage() {
   const { user, isDemoMode, toggleDemoMode } = useAuth();
@@ -82,6 +85,12 @@ export default function LandingPage() {
               >
                 Features
               </a>
+              <NavLink
+                to="/quiz"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+              >
+                Fit check
+              </NavLink>
               <a
                 href="#how-it-works"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
@@ -184,24 +193,23 @@ export default function LandingPage() {
               transition={{ duration: 0.5 }}
             >
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
-                <TrendingUp className="w-3 h-3" />
-                The Future of Team Formation
+                <Sparkles className="w-3 h-3" />
+                60 seconds · same fields Matches scores
               </span>
               <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
                 Build your startup team with{" "}
                 <span className="text-stone-400 italic">precision.</span>
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-stone-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-                CoFounderBay reduces founder risk by connecting you with
-                compatible partners, mentors, and resources in a structured
-                digital ecosystem.
+                Five questions write skills, looking-for, stage, commitment and hours.
+                The studio assistant then ranks people, explains the score, and books the next step — the same lists every page already uses.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
                 <NavLink
-                  to="/signup"
+                  to="/quiz"
                   className="w-[60%] sm:w-auto bg-stone-900 text-white px-5 py-3 rounded-full text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group shadow-sm"
                 >
-                  Start Building
+                  Take the fit check
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </NavLink>
                 <div className="flex items-center gap-2">
@@ -247,6 +255,61 @@ export default function LandingPage() {
                 <div className="text-[10px] text-stone-500 font-semibold tracking-[0.1em] shrink-0">
                   {stat.label}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* This week: person, session, operator — one glance */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-medium text-stone-400 tracking-wide mb-4">
+            <Both en="What you will actually use" el="Τι θα χρησιμοποιήσεις πραγματικά" />
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <NavLink to="/quiz" className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 transition-all">
+              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
+                <Both en="Featured founder" el="Προτεινόμενος ιδρυτής" />
+              </p>
+              <div className="flex items-center gap-3">
+                <img src={avatarFor('sarah-chen', 80)} alt="Sarah Chen" className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-stone-900 truncate">Sarah Chen</p>
+                  <p className="text-xs text-stone-500 truncate">{CAST.find((p) => p.id === 'sarah-chen')?.headline}</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">New York · FinTech</p>
+                </div>
+              </div>
+            </NavLink>
+            <NavLink to="/events" className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 transition-all">
+              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
+                <Both en="Next session" el="Επόμενη συνάντηση" />
+              </p>
+              <p className="text-sm font-medium text-stone-900">Startup Founders Networking Night</p>
+              <p className="text-xs text-stone-500 mt-1">London · 28 Mar 2026 · 6–9 PM</p>
+              <p className="text-[11px] text-stone-400 mt-2">
+                <Both en="Same card the Events page lists. Register puts it on Calendar." el="Η ίδια κάρτα με τις Εκδηλώσεις. Η εγγραφή τη βάζει στο Ημερολόγιο." />
+              </p>
+            </NavLink>
+            <NavLink to="/quiz" className="bg-stone-900 rounded-2xl p-5 text-white hover:bg-stone-800 transition-all">
+              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
+                <Both en="Studio operator" el="Τελεστής στούντιο" />
+              </p>
+              <p className="text-sm font-medium">Fit check, then ask the assistant</p>
+              <p className="text-xs text-stone-400 mt-1">
+                <Both en="No login. 5 questions. Then “who should I meet this week” runs on the same people Matches ranks." el="Χωρίς είσοδο. 5 ερωτήσεις. Μετά το «ποιον να γνωρίσω» τρέχει στα ίδια άτομα με το Matches." />
+              </p>
+            </NavLink>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-stone-600">
+            {[
+              { n: '1', en: 'Fit check writes the matching fields.', el: 'Το fit check γράφει τα πεδία αντιστοίχισης.' },
+              { n: '2', en: 'Matches ranks people with reasons.', el: 'Το Matches βαθμολογεί ανθρώπους με αιτίες.' },
+              { n: '3', en: 'The assistant saves, connects and books.', el: 'Ο βοηθός αποθηκεύει, συνδέει και κλείνει.' },
+            ].map((step) => (
+              <div key={step.n} className="flex gap-3">
+                <span className="text-stone-900 font-semibold">{step.n}</span>
+                <Both en={step.en} el={step.el} />
               </div>
             ))}
           </div>
@@ -507,6 +570,14 @@ export default function LandingPage() {
                 Platform
               </h4>
               <ul className="space-y-4 text-sm text-stone-500">
+                <li>
+                  <NavLink
+                    to="/quiz"
+                    className="hover:text-stone-900 transition-colors"
+                  >
+                    Fit check
+                  </NavLink>
+                </li>
                 <li>
                   <NavLink
                     to="/matches"
