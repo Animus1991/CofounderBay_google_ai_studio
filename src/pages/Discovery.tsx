@@ -44,6 +44,8 @@ import { useAuth } from "../App";
 import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
 import { cn } from "../lib/utils";
 import { explainMatch } from "../lib/matchReason";
+import { bothText } from "../lib/labels";
+import { useLanguage } from "../lib/language";
 import { rememberPerson } from "../lib/people";
 
 interface DiscoveryProps {
@@ -53,6 +55,7 @@ interface DiscoveryProps {
 type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Events";
 
 export default function Discovery({ user }: DiscoveryProps) {
+ useLanguage();
  const { profile: authProfile } = useAuth();
  const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
  const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
@@ -220,7 +223,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  ], []);
 
  return (
-  <PageShell title="Discovery · Εξερεύνηση" description="Explore founders, communities, opportunities and events in your ecosystem. · Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις." noPadding={false}>
+  <PageShell title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Explore founders, communities, opportunities and events in your ecosystem.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις.")} noPadding={false}>
   <div className="space-y-8">
    {/* Filter Overlay */}
    <AnimatePresence>
@@ -481,7 +484,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             <div className="pt-2 border-t border-stone-50 flex items-center justify-between">
              <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-xs text-stone-400">Available · Διαθέσιμος{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
+              <span className="text-xs text-stone-400">{bothText("Available", "Διαθέσιμος")}{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
              </div>
              <div className="flex items-center gap-1.5">
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
@@ -502,7 +505,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        ) : (
         <div className="h-32 flex flex-col items-center justify-center bg-stone-50 rounded-2xl border border-dashed border-stone-200">
          <Search className="w-8 h-8 text-stone-300 mb-2" />
-         <p className="text-sm text-stone-400">No matches found for your criteria · Καμία αντιστοίχιση με αυτά τα κριτήρια</p>
+         <p className="text-sm text-stone-400">{bothText("No matches found for your criteria", "Καμία αντιστοίχιση με αυτά τα κριτήρια")}</p>
          <div className="mt-2 flex items-center gap-3">
           <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
           <button type="button" onClick={() => ask('who is my best match')} className="text-xs font-medium text-stone-900 hover:underline">Ask assistant</button>

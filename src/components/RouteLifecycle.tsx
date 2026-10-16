@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { trackPage } from '../lib/analytics';
+import { bothText } from '../lib/labels';
+import { useLanguage } from '../lib/language';
 
 const APP_NAME = 'CoFounderBay';
 
@@ -54,15 +56,48 @@ const ROUTE_TITLES: Record<string, string> = {
   '/admin/billing-oversight': 'Billing Oversight',
 };
 
+const EL_TITLES: Record<string, string> = {
+  '/': 'Βρες τον συνιδρυτή σου',
+  '/login': 'Είσοδος',
+  '/signup': 'Εγγραφή',
+  '/quiz': 'Fit check',
+  '/onboarding': 'Εισαγωγή',
+  '/dashboard': 'Πίνακας',
+  '/profile': 'Προφίλ',
+  '/matches': 'Αντιστοιχίσεις',
+  '/discovery': 'Εξερεύνηση',
+  '/events': 'Εκδηλώσεις',
+  '/mentors': 'Μέντορες',
+  '/communities': 'Κοινότητες',
+  '/community': 'Κοινότητα',
+  '/messages': 'Μηνύματα',
+  '/milestones': 'Ορόσημα',
+  '/founder-tools': 'Εργαλεία ιδρυτή',
+  '/fundraising': 'Χρηματοδότηση',
+  '/workspace': 'Χώρος εργασίας',
+  '/calendar': 'Ημερολόγιο',
+  '/programs': 'Προγράμματα',
+  '/network': 'Δίκτυο',
+  '/resources': 'Πόροι',
+  '/insights': 'Εικόνα',
+  '/legal': 'Νομικά',
+  '/perks': 'Παροχές',
+  '/notifications': 'Ειδοποιήσεις',
+  '/settings': 'Ρυθμίσεις',
+  '/settings/billing': 'Χρέωση',
+  '/pricing': 'Τιμές',
+};
+
 export function titleForPath(pathname: string): string {
   const exact = ROUTE_TITLES[pathname];
-  if (exact) return exact;
+  if (exact) return bothText(exact, EL_TITLES[pathname] ?? exact);
   if (pathname.startsWith('/profile/')) return 'Profile';
   return 'Page Not Found';
 }
 
 export default function RouteLifecycle() {
   const { pathname } = useLocation();
+  const { mode } = useLanguage();
   const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
@@ -75,7 +110,7 @@ export default function RouteLifecycle() {
 
     trackPage(pathname, { title: pageTitle });
     setAnnouncement(pageTitle);
-  }, [pathname]);
+  }, [pathname, mode]);
 
   return (
     <div aria-live="polite" role="status" className="sr-only">

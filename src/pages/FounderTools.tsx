@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+import { bothText } from "../lib/labels";
+import { useLanguage } from "../lib/language";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -62,6 +64,7 @@ interface FounderToolsProps {
 }
 
 export default function FounderTools({ user }: FounderToolsProps) {
+ useLanguage();
  const navigate = useNavigate();
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
@@ -816,9 +819,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
            </div>
           </div>
           <div className="flex items-center gap-2">
-           <Button variant="ghost" size="icon" title="Preview this slide with the studio assistant. · Προεπισκόπηση της διαφάνειας με τον βοηθό." className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Eye className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Edit3 className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast('Download started'); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I export my pitch deck?' } })); }}><Download className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={bothText("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} aria-label={bothText("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Eye className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" aria-label="Edit this slide" className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Edit3 className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" aria-label="Download this deck" className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast('Download started'); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I export my pitch deck?' } })); }}><Download className="w-4 h-4" /></Button>
           </div>
          </div>
 

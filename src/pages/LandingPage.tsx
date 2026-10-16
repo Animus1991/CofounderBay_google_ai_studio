@@ -18,6 +18,7 @@ import { useAuth } from "../App";
 import { cn } from "../lib/utils";
 import { LanguageToggle, useLanguage } from "../lib/language";
 import { Both } from "../lib/both";
+import { bothText } from "../lib/labels";
 import { CAST, avatarFor } from "../data/cast";
 
 export default function LandingPage() {
@@ -27,9 +28,11 @@ export default function LandingPage() {
 
   const features = [
     {
-      title: "Structured Matching · Αντιστοίχιση",
-      description:
-        "People with your skills and stage. Άνθρωποι με τις δεξιότητες και το στάδιό σας.",
+      title: bothText("Structured Matching", "Αντιστοίχιση"),
+      description: bothText(
+        "People with your skills and stage.",
+        "Άνθρωποι με τις δεξιότητες και το στάδιό σας.",
+      ),
       icon: Users,
       color: "bg-blue-50 text-blue-600",
     },
@@ -111,7 +114,7 @@ export default function LandingPage() {
               </a>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 shrink min-w-0">
               <LanguageToggle />
               {isDemoMode ? (
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -123,7 +126,7 @@ export default function LandingPage() {
                   </button>
                   <NavLink
                     to="/dashboard"
-                    className="inline-flex min-h-11 items-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
                     <span className="sm:hidden">Dashboard</span>
                     <span className="hidden sm:inline">Go to Dashboard</span>
@@ -136,16 +139,13 @@ export default function LandingPage() {
                       toggleDemoMode(true);
                       navigate("/dashboard");
                     }}
-                    className="text-[10px] sm:text-xs font-semibold text-stone-400 hover:text-stone-900 flex flex-col sm:flex-row leading-tight items-center justify-center sm:gap-1.5 transition-colors -translate-x-[7px]"
+                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    <span className="tracking-wide pl-[0.1em] sm:pl-0">
-                      Demo
-                    </span>
-                    <span>View</span>
+                    Demo
                   </button>
                   <NavLink
                     to="/dashboard"
-                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
                     Go to Dashboard
                   </NavLink>
@@ -157,22 +157,19 @@ export default function LandingPage() {
                       toggleDemoMode(true);
                       navigate("/dashboard");
                     }}
-                    className="text-[10px] sm:text-xs font-semibold text-stone-400 hover:text-stone-900 flex flex-col sm:flex-row leading-tight items-center justify-center sm:gap-1.5 transition-colors -translate-x-[7px]"
+                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    <span className="tracking-wide pl-[0.1em] sm:pl-0">
-                      Demo
-                    </span>
-                    <span>View</span>
+                    Demo
                   </button>
                   <NavLink
                     to="/login"
-                    className="text-sm font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap hidden sm:block"
+                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap"
                   >
                     Log in
                   </NavLink>
                   <NavLink
                     to="/signup"
-                    className="bg-stone-900 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap shadow-md"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
                     Get Started
                   </NavLink>
@@ -204,31 +201,29 @@ export default function LandingPage() {
                 Five questions write skills, looking-for, stage, commitment and hours.
                 The studio assistant then ranks people, explains the score, and books the next step — the same lists every page already uses.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-4 w-full max-w-xl mx-auto">
                 <NavLink
                   to="/quiz"
-                  className="w-[60%] sm:w-auto bg-stone-900 text-white px-5 py-3 rounded-full text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group shadow-sm"
+                  className="w-full sm:w-auto min-h-11 bg-stone-900 text-white px-5 rounded-full text-sm font-semibold hover:bg-stone-800 transition-all inline-flex items-center justify-center gap-2 group"
                 >
                   Take the fit check
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </NavLink>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      toggleDemoMode(true);
-                      navigate("/dashboard");
-                    }}
-                    className="-ml-[2px] px-6 py-3.5 rounded-full text-sm sm:text-base font-medium text-stone-500 hover:text-stone-900 transition-all whitespace-nowrap"
-                  >
-                    Demo View
-                  </button>
-                  <a
-                    href="#features"
-                    className="px-6 py-3.5 rounded-full text-sm sm:text-base font-medium text-stone-600 hover:text-stone-900 transition-all whitespace-nowrap"
-                  >
-                    Explore Features
-                  </a>
-                </div>
+                <button
+                  onClick={() => {
+                    toggleDemoMode(true);
+                    navigate("/dashboard");
+                  }}
+                  className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 border border-stone-200 bg-white transition-all"
+                >
+                  Demo
+                </button>
+                <a
+                  href="#features"
+                  className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 inline-flex items-center justify-center transition-all"
+                >
+                  Explore Features
+                </a>
               </div>
             </motion.div>
           </div>
@@ -622,7 +617,7 @@ export default function LandingPage() {
                     href="#how-it-works"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    About Us · Σχετικά
+                    {bothText("About Us", "Σχετικά")}
                   </a>
                 </li>
                 <li>
@@ -630,7 +625,7 @@ export default function LandingPage() {
                     to="/legal"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Privacy Policy · Πολιτική απορρήτου
+                    {bothText("Privacy Policy", "Πολιτική απορρήτου")}
                   </NavLink>
                 </li>
                 <li>
@@ -638,7 +633,7 @@ export default function LandingPage() {
                     to="/legal"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Terms of Service · Όροι χρήσης
+                    {bothText("Terms of Service", "Όροι χρήσης")}
                   </NavLink>
                 </li>
                 <li>
@@ -646,7 +641,7 @@ export default function LandingPage() {
                     href="mailto:support@cofounderbay.com"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Contact · Επικοινωνία
+                    {bothText("Contact", "Επικοινωνία")}
                   </a>
                 </li>
               </ul>

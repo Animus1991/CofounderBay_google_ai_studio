@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { Both } from '../lib/both';
+import { bothText } from '../lib/labels';
 import { LanguageToggle, useLanguage } from '../lib/language';
 import { FIT_QUESTIONS, scoreFit, writeFitCheck, type FitAnswer } from '../lib/fitCheck';
 import { useAuth } from '../App';
@@ -92,7 +93,7 @@ export default function FitCheck() {
           </div>
           <main className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-10">
             <p className="text-xs font-medium text-stone-400 mb-2">
-              {step + 1} / {FIT_QUESTIONS.length} · {question.why.en}
+              {step + 1} / {FIT_QUESTIONS.length} · {bothText(question.why.en, question.why.el)}
             </p>
             <h1 className="text-xl sm:text-2xl font-medium text-stone-900 tracking-tight mb-6">
               <Both en={question.en} el={question.el} />

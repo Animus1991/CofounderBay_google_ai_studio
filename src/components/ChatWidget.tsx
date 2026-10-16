@@ -139,11 +139,7 @@ export default function ChatWidget() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [visibleTurns, isTyping, isOpen]);
 
-  const speak = (result: AssistantResult): string => {
-    if (mode === 'el') return result.el;
-    if (mode === 'en') return result.en;
-    return `${result.en}\n${result.el}`;
-  };
+  const speak = (result: AssistantResult): string => (mode === 'el' ? result.el : result.en);
 
   const pushStudio = (bubble: Bubble) => {
     appendAssistant({ role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool });
@@ -231,7 +227,7 @@ export default function ChatWidget() {
     try {
       const polished = await Promise.race([
         AIService.chat(
-          `The founder said: ${payload}\nYou already ran the tool "${result.tool}". Restate this result in ${mode === 'el' ? 'Greek' : mode === 'en' ? 'English' : 'English then Greek'}. Do not invent people, scores, or amounts that are not in the result.\nResult:\n${result.en}`,
+          `The founder said: ${payload}\nYou already ran the tool "${result.tool}". Restate this result in ${mode === 'el' ? 'Greek' : 'English'} only. Do not invent people, scores, or amounts that are not in the result.\nResult:\n${mode === 'el' ? result.el : result.en}`,
           `On page ${page.en} (${page.href}).\n${assistantContextBlock(viewerFromAuth(profile))}`,
         ),
         new Promise<{ text: string }>((_, reject) => { window.setTimeout(() => reject(new Error('timeout')), 4500); }),
@@ -367,7 +363,7 @@ export default function ChatWidget() {
                           <div className="flex flex-wrap items-center gap-2">
                             {(msg.tool || msg.href) && (
                               <span className="studio-label">
-                                {msg.href ? pageContext(msg.href).en : page.en}
+                                {msg.href ? bothText(pageContext(msg.href).en, pageContext(msg.href).el) : bothText(page.en, page.el)}
                                 {msg.tool ? ` · ${msg.tool}` : ''}
                               </span>
                             )}
@@ -484,17 +480,18 @@ export default function ChatWidget() {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
                             if (isTyping) { stop(); return; }
-                            if (atHits.length === 1) { pinPerson(atHits[0].fullName); return; }
+                            const onlyPerson = atHits[0];
+                            if (atHits.length === 1 && onlyPerson) { pinPerson(onlyPerson.fullName); return; }
                             run(inputText);
                           }
                         }}
-                        className="flex-1 bg-transparent border-none text-xs focus:ring-0 px-2 py-1.5"
+                        className="flex-1 min-h-11 bg-transparent border-none text-base sm:text-sm focus:ring-0 px-2"
                       />
                       {isTyping ? (
                         <button
                           type="button"
                           onClick={stop}
-                          className="w-8 h-8 bg-stone-900 text-white rounded-lg flex items-center justify-center"
+                          className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center"
                           aria-label={bothText('Stop', 'Διακοπή')}
                         >
                           <Square className="w-3 h-3 fill-current" />
@@ -504,7 +501,7 @@ export default function ChatWidget() {
                           type="button"
                           onClick={() => run(inputText)}
                           disabled={!inputText.trim()}
-                          className="w-8 h-8 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
+                          className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
                           aria-label="Send"
                         >
                           <Send className="w-3.5 h-3.5" />
@@ -518,7 +515,7 @@ export default function ChatWidget() {
                             key={prompt.en}
                             type="button"
                             onClick={() => run(mode === 'el' ? prompt.el : prompt.en)}
-                            className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400"
+                            className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400"
                           >
                             {bothText(prompt.en, prompt.el)}
                           </button>
@@ -528,7 +525,7 @@ export default function ChatWidget() {
                     {agent?.suggestedPrompts && visibleTurns.length === 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {agent.suggestedPrompts.slice(0, 3).map((prompt) => (
-                          <button key={prompt} type="button" onClick={() => run(prompt)} className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400">
+                          <button key={prompt} type="button" onClick={() => run(prompt)} className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400">
                             {prompt}
                           </button>
                         ))}
