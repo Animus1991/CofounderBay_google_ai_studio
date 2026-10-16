@@ -19,7 +19,6 @@ import {
  ShieldCheck,
  Zap,
  ArrowLeft,
- ArrowRight,
  Sparkles,
  Share2,
  MoreVertical,
@@ -201,6 +200,7 @@ export default function ProfilePage() {
  const [endorsementComment, setEndorsementComment] = useState('');
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
+ const [showMatchNote, setShowMatchNote] = useState(false);
 
  const isOwnProfile = !id || id === currentUser?.uid;
  const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
@@ -214,49 +214,6 @@ export default function ProfilePage() {
    setEditForm(profile);
   }
  }, [isEditing, profile]);
-
- // Calculate profile completion for prompts (Diderot Effect: Action A -> Suggest Action B)
- const getNextStepPrompts = () => {
-  if (!profile || !isOwnProfile) return [];
-  const prompts = [];
-  const hasSkills = profile.skills && profile.skills.length > 0;
-  const hasSocial = profile.linkedinUrl || profile.githubUrl || profile.twitterUrl || profile.portfolioUrl;
-
-  // Header Section Prompts
-  if (!profile.headline) {
-   prompts.push({ id: 'headline', text: 'Add a compelling headline to stand out.', section: 'header' });
-  } else if (!hasSkills) {
-   prompts.push({ id: 'suggest-skills', text: 'Add your key skills to improve your match score.', section: 'header' });
-  }
-
-  // Skills Section Prompts
-  if (!hasSkills) {
-   prompts.push({ id: 'skills', text: 'Add your key skills to improve your match score.', section: 'skills' });
-  } else if (!profile.bio) {
-   prompts.push({ id: 'suggest-bio', text: 'A detailed bio helps others understand your vision and values.', section: 'skills' });
-  }
-
-  // About Section Prompts
-  if (!profile.bio) {
-   prompts.push({ id: 'bio', text: 'A detailed bio helps others understand your vision and values.', section: 'about' });
-  } else if (!hasSocial) {
-   prompts.push({ id: 'suggest-social', text: 'Connect your social profiles to verify your professional identity.', section: 'about' });
-  }
-
-  // Social Section Prompts
-  if (!hasSocial) {
-   prompts.push({ id: 'social', text: 'Connect your social profiles to verify your professional identity.', section: 'social' });
-  } else {
-   prompts.push({ id: 'suggest-matching', text: 'Set your matching preferences to find the perfect co-founder.', section: 'social' });
-  }
-
-  return prompts;
- };
-
- const nextStepPrompts = getNextStepPrompts();
- const getPromptForSection = (section: string) => {
-  return nextStepPrompts.filter(item => item.section === section);
- };
 
  useEffect(() => {
   const fetchProfileAndEndorsements = async () => {
@@ -391,27 +348,18 @@ export default function ProfilePage() {
   );
  }
 
- const InlinePrompt = ({ text }: { text: string }) => (
-  <motion.div 
-   initial={{ opacity: 0, y: 10 }}
-   animate={{ opacity: 1, y: 0 }}
-   whileHover={{ scale: 1.02 }}
-   className="mt-4 p-5 bg-stone-900 text-white rounded-2xl flex items-center gap-4 group/prompt shadow-sm cursor-pointer overflow-hidden relative"
-   onClick={() => setIsEditing(true)}
-  >
-   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover/prompt:scale-150 transition-transform">
-    <Sparkles className="w-12 h-12" />
-   </div>
-   <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md">
-    <Sparkles className="w-5 h-5 text-amber-400" />
-   </div>
-   <div className="flex-1">
-    <p className="text-xs font-medium text-stone-400 tracking-wide mb-0.5">Next Best Action</p>
-    <p className="text-sm font-medium text-white">{text}</p>
-   </div>
-   <ArrowRight className="w-5 h-5 text-white/50 group-hover/prompt:translate-x-1 transition-transform" />
-  </motion.div>
- );
+ const matchGaps = [
+  { ok: !!(profile.skills && profile.skills.length), key: 'Skills', why: 'The scorer uses skills to see what you cover.' },
+  { ok: !!(profile.lookingFor && profile.lookingFor.length), key: 'Looking for', why: 'Matches rank people who cover what you still lack.' },
+  { ok: !!profile.industry, key: 'Industry', why: 'Same industry is a market dimension.' },
+  { ok: !!profile.stage, key: 'Stage', why: 'Stage distance is 15% of the match score.' },
+  { ok: !!profile.commitment, key: 'Commitment', why: 'Full-time vs part-time is scored, not guessed.' },
+  { ok: !!profile.location, key: 'Location', why: 'Working hours come from city and time zone.' },
+ ].filter((item) => !item.ok);
+ const showMatchStatus = isOwnProfile && (matchGaps.length > 0 || (profile.profileCompletionScore ?? 100) < 80);
+ const matchNote = matchGaps.length
+  ? matchGaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
+  : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.';
 
  return (
   <div className="w-full px-2 sm:px-6 lg:px-8 pb-24 pt-4 sm:pt-8 space-y-6">
@@ -421,51 +369,7 @@ export default function ProfilePage() {
    </button>
    {/* Profile Header */}
    <div className="relative lg:pr-36">
-    {isOwnProfile && (() => {
-     const gaps = [
-      { ok: !!(profile.skills && profile.skills.length), key: 'Skills', why: 'The scorer uses skills to see what you cover.' },
-      { ok: !!(profile.lookingFor && profile.lookingFor.length), key: 'Looking for', why: 'Matches rank people who cover what you still lack.' },
-      { ok: !!profile.industry, key: 'Industry', why: 'Same industry is a market dimension.' },
-      { ok: !!profile.stage, key: 'Stage', why: 'Stage distance is 15% of the match score.' },
-      { ok: !!profile.commitment, key: 'Commitment', why: 'Full-time vs part-time is scored, not guessed.' },
-      { ok: !!profile.location, key: 'Location', why: 'Working hours come from city and time zone.' },
-     ].filter((item) => !item.ok);
-     if (!gaps.length && (profile.profileCompletionScore ?? 100) >= 80) return null;
-     return (
-     <div className="mb-6 bg-amber-50 rounded-3xl border border-amber-200 p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center shadow-sm">
-      <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0">
-       <Sparkles className="w-6 h-6" />
-      </div>
-      <div className="flex-1 min-w-0">
-       <h3 className="text-lg font-semibold text-amber-900 tracking-tight">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete)</h3>
-       <p className="text-sm text-amber-700 leading-relaxed mt-1">
-        {gaps.length
-          ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
-          : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.'}
-       </p>
-      </div>
-      <div className="flex flex-col gap-2 shrink-0">
-       <button 
-        onClick={() => setIsEditing(true)}
-        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-all shadow-md"
-       >
-        {gaps[0] ? `Add ${gaps[0].key}` : 'Edit Profile'}
-       </button>
-       <button type="button" className="text-xs font-medium text-amber-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}>
-        Ask what the team still lacks
-       </button>
-      </div>
-     </div>
-     );
-    })()}
-    {/* Banner */}
-    <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative">
-     {isOwnProfile && (
-      <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md transition-all">
-       <Edit3 className="w-5 h-5" />
-      </button>
-     )}
-    </div>
+    <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative" />
 
     {/* Profile Info Card */}
     <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
@@ -572,12 +476,44 @@ export default function ProfilePage() {
          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
          80% Match Score
         </div>
+        {showMatchStatus && (
+         <div
+          className="relative"
+          onMouseEnter={() => setShowMatchNote(true)}
+          onMouseLeave={() => setShowMatchNote(false)}
+          onFocus={() => setShowMatchNote(true)}
+          onBlur={(event) => {
+           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setShowMatchNote(false);
+          }}
+         >
+          <span tabIndex={0} className="cursor-default underline decoration-stone-300 underline-offset-4" aria-describedby="match-fields-note">
+           {profile.profileCompletionScore ?? 0}% complete
+          </span>
+          <div
+           id="match-fields-note"
+           role="tooltip"
+           className={cn(
+            'absolute left-0 top-full z-30 w-[min(22rem,calc(100vw-1.5rem))] pt-1 text-left font-normal',
+            showMatchNote ? 'visible' : 'invisible',
+           )}
+          >
+           <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-sm leading-relaxed text-stone-500">
+             <span className="font-medium text-stone-700">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete).</span>{' '}
+             {matchNote}
+            </p>
+            <button
+             type="button"
+             className="mt-1 min-h-11 text-sm text-stone-500 hover:text-stone-800"
+             onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}
+            >
+             Ask what the team still lacks
+            </button>
+           </div>
+          </div>
+         </div>
+        )}
        </div>
-
-       {/* Header Prompts */}
-       {getPromptForSection('header').map(prompt => (
-        <InlinePrompt key={prompt.id} text={prompt.text} />
-       ))}
       </div>
      </div>
     </div>
@@ -651,21 +587,11 @@ export default function ProfilePage() {
         {profile.bio || 'No bio provided yet.'}
        </p>
       )}
-      {getPromptForSection('about').map(prompt => (
-       <InlinePrompt key={prompt.id} text={prompt.text} />
-      ))}
      </div>
 
      {/* Experience / Projects */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Experience & Projects</h3>
-       {isOwnProfile && (
-        <button className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-all">
-         <Plus className="w-5 h-5" />
-        </button>
-       )}
-      </div>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Experience & Projects</h3>
       <div className="space-y-8">
        {[
         { title: 'Founder & CEO', company: 'TechFlow AI', period: '2021 - Present', desc: 'Building the future of automated logistics using computer vision.' },
@@ -733,16 +659,12 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6">
 {/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Skills & Endorsements</h3>
-       {isOwnProfile && (
-        <button className="p-2 text-stone-400 hover:text-stone-900 hover:bg-stone-50 rounded-lg transition-all">
-         <Plus className="w-5 h-5" />
-        </button>
-       )}
-      </div>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Skills & Endorsements</h3>
 
       <div className="flex flex-wrap gap-2">
+       {Array.isArray(profile.skills) && profile.skills.length === 0 && (
+        <p className="text-sm text-stone-500">No skills yet.</p>
+       )}
        {(profile.skills || ['Product Strategy', 'Machine Learning', 'React', 'Node.js', 'Venture Capital', 'Growth Hacking']).map(skill => {
         const skillName = typeof skill === 'string' ? skill : (skill as any).name;
         const skillProficiency = typeof skill === 'object' && (skill as any).proficiency ? (skill as any).proficiency : 0;
@@ -787,9 +709,6 @@ export default function ProfilePage() {
        })}
       </div>
 
-      {getPromptForSection('skills').map(prompt => (
-       <InlinePrompt key={prompt.id} text={prompt.text} />
-      ))}
 
       {/* Endorsement Form (Modal-like) */}
       <AnimatePresence>
@@ -979,9 +898,6 @@ export default function ProfilePage() {
         <p className="text-stone-500 text-sm">No social links added yet.</p>
        )}
       </div>
-      {getPromptForSection('social').map(prompt => (
-       <InlinePrompt key={prompt.id} text={prompt.text} />
-      ))}
      </div>
     </div>
 
