@@ -258,6 +258,19 @@
     white-space: nowrap;
     min-height: var(--studio-dash-h);
   }
+  /* On a phone, labels wrap onto another row so the last word is never cut. */
+  @media (max-width: 639px) {
+    .scroll-tabs {
+      flex-wrap: wrap;
+      overflow: visible;
+    }
+    .scroll-tabs > button {
+      flex: 1 1 auto;
+      justify-content: center;
+      min-width: max-content;
+      overflow: visible;
+    }
+  }
   /* Native chrome-sized buttons (not compact h-8). Start / Run diagnostic stay pinned unlayered. */
   button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
   button.h-8:not([class*="min-h-"]) { height: 2rem; }

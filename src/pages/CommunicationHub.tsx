@@ -889,7 +889,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
 
       {/* Action buttons */}
-      <div className="flex flex-col items-center gap-2.5 w-full max-w-xs mx-auto">
+      <div className="flex flex-col items-center gap-2.5 w-full mx-auto">
        <span title={selectedConversation ? undefined : composerTip} className="w-full">
         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
          className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
@@ -1084,7 +1084,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     </div>
 
     {/* Input Area */}
-    <div className="px-5 py-3 bg-white border-t border-stone-100 space-y-2 shrink-0">
+    <div className="px-3 py-3 bg-white border-t border-stone-100 space-y-2 shrink-0 sm:px-5">
      {/* Reply Preview */}
      {replyingTo && (
       <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg border-l-2 border-stone-400">
@@ -1554,7 +1554,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // =============================================================================
 
  return (
-  <div className="h-[calc(100dvh-4rem)] lg:h-dvh flex overflow-hidden bg-white">
+  <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
    {/* Left Sidebar */}
    {renderLeftSidebar()}
 
@@ -1578,7 +1578,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setShowValidationDialog(false)}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-2 sm:mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -1649,7 +1649,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}>
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-4 overflow-hidden"
+       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-2 sm:mx-4 overflow-hidden"
        onClick={(e) => e.stopPropagation()}>
        <div className="p-6">
         <div className="flex items-center gap-3 mb-4">

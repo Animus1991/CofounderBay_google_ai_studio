@@ -258,7 +258,7 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-[90] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
+    <div className="fixed bottom-3 right-3 left-3 sm:left-auto sm:bottom-6 sm:right-6 z-[55] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div

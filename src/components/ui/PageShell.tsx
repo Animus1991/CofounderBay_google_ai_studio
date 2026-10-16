@@ -32,11 +32,11 @@ export default function PageShell({
 }: PageShellProps) {
  return (
   <div className={cn(
-   'min-h-full w-full',
-   !noPadding && 'px-4 sm:px-6 lg:px-8 py-6 sm:py-8',
+   'min-h-full w-full min-w-0',
+   !noPadding && 'px-2 sm:px-6 lg:px-8 py-6 sm:py-8',
    className
   )}>
-   <div className={cn('mx-auto w-full', maxWidthClass[maxWidth])}>
+   <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
     {(title || actions) && (
      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 lg:pr-56">
       <div className="min-w-0">

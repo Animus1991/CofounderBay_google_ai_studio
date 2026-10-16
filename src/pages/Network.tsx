@@ -116,15 +116,15 @@ export default function Network({ user }: NetworkProps) {
 
    {activeTab === 'connections' && (
     <div className="space-y-4">
-     <div className="flex items-center gap-3">
-      <div className="relative flex-1 max-w-xs">
+     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
        <input
         type="text"
         placeholder="Search network..."
         value={networkQuery}
         onChange={(e) => setNetworkQuery(e.target.value)}
-        className="w-full bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-300 transition-all"
+        className="w-full min-h-11 bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-300 transition-all"
        />
       </div>
       <Button

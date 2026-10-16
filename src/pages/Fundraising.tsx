@@ -458,8 +458,27 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        {/* Investor Pipeline Table */}
        <Card title="Investor Pipeline" subtitle="Manage your investor relationships and deal stages">
-        <div className="overflow-x-auto">
-         <table className="w-full text-left border-collapse">
+        <ul className="divide-y divide-stone-100 sm:hidden">
+         {(mockTracker.investorPipeline ?? []).map((item, i) => {
+          const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
+          return (
+           <li key={i} className="flex items-start gap-3 px-3 py-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-400">
+             <Briefcase className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+             <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `Investor ${i + 1}`}</p>
+             <p className="text-xs text-stone-400">Lead investor</p>
+             <p className={cn("mt-1 text-sm font-semibold", meta.color)}>{item.stage}</p>
+             <p className="mt-1 text-sm text-stone-600">{item.notes}</p>
+            </div>
+            <ChevronRight className="mt-1 w-4 h-4 shrink-0 text-stone-300" />
+           </li>
+          );
+         })}
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
+         <table className="w-full min-w-[640px] text-left border-collapse">
           <thead>
            <tr className="bg-stone-50 border-b border-stone-100">
             <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Investor</th>
