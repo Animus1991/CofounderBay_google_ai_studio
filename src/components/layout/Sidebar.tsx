@@ -33,7 +33,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { NavLink, useNavigate } from "react-router-dom";
 import { User, UserRole } from "../../types";
 import { cn } from "../../lib/utils";
-import { withEl } from "../../lib/labels";
+import { bothText, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
 import { useTenant } from "../../context/TenantContext";
 import { auth } from "../../firebase";
@@ -313,7 +313,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
      )}
      {!collapsed && (
       <div className="flex items-center">
-       <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label="Settings" className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
+       <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label={bothText('Settings', 'Ρυθμίσεις')} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
         <Settings className="w-4 h-4" />
        </button>
       </div>
