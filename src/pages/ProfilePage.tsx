@@ -432,26 +432,22 @@ export default function ProfilePage() {
      ].filter((item) => !item.ok);
      if (!gaps.length && (profile.profileCompletionScore ?? 100) >= 80) return null;
      return (
-     <div className="mb-6 bg-amber-50 rounded-3xl border border-amber-200 p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center shadow-sm">
-      <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0">
-       <Sparkles className="w-6 h-6" />
-      </div>
-      <div className="flex-1 min-w-0">
-       <h3 className="text-lg font-semibold text-amber-900 tracking-tight">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete)</h3>
-       <p className="text-sm text-amber-700 leading-relaxed mt-1">
-        {gaps.length
-          ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
-          : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.'}
-       </p>
-      </div>
-      <div className="flex flex-col gap-2 shrink-0">
-       <button 
+     <div className="mb-4 flex flex-col gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="min-w-0 text-sm leading-relaxed text-stone-500">
+       <span className="font-medium text-stone-700">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete).</span>{' '}
+       {gaps.length
+         ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
+         : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.'}
+      </p>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
+       <button
+        type="button"
         onClick={() => setIsEditing(true)}
-        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-all shadow-md"
+        className="min-h-11 text-sm font-medium text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-stone-950"
        >
         {gaps[0] ? `Add ${gaps[0].key}` : 'Edit Profile'}
        </button>
-       <button type="button" className="text-xs font-medium text-amber-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}>
+       <button type="button" className="min-h-11 text-sm text-stone-500 hover:text-stone-800" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}>
         Ask what the team still lacks
        </button>
       </div>
