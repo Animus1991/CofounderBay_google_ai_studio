@@ -201,6 +201,7 @@ export default function ProfilePage() {
  const [endorsementComment, setEndorsementComment] = useState('');
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
+ const [showMatchNote, setShowMatchNote] = useState(false);
 
  const isOwnProfile = !id || id === currentUser?.uid;
  const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
@@ -431,25 +432,48 @@ export default function ProfilePage() {
       { ok: !!profile.location, key: 'Location', why: 'Working hours come from city and time zone.' },
      ].filter((item) => !item.ok);
      if (!gaps.length && (profile.profileCompletionScore ?? 100) >= 80) return null;
+     const matchNote = gaps.length
+      ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
+      : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.';
      return (
-     <div className="mb-4 flex flex-col gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="min-w-0 text-sm leading-relaxed text-stone-500">
-       <span className="font-medium text-stone-700">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete).</span>{' '}
-       {gaps.length
-         ? gaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
-         : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.'}
-      </p>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
-       <button
-        type="button"
-        onClick={() => setIsEditing(true)}
-        className="min-h-11 text-sm font-medium text-stone-800 underline decoration-stone-300 underline-offset-4 hover:text-stone-950"
-       >
-        {gaps[0] ? `Add ${gaps[0].key}` : 'Edit Profile'}
-       </button>
-       <button type="button" className="min-h-11 text-sm text-stone-500 hover:text-stone-800" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}>
-        Ask what the team still lacks
-       </button>
+     <div
+      className="relative mb-3 flex justify-end"
+      onMouseEnter={() => setShowMatchNote(true)}
+      onMouseLeave={() => setShowMatchNote(false)}
+      onFocus={() => setShowMatchNote(true)}
+      onBlur={(event) => {
+       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setShowMatchNote(false);
+      }}
+     >
+      <button
+       type="button"
+       onClick={() => { setShowMatchNote(false); setIsEditing(true); }}
+       className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-600 hover:border-stone-400 hover:text-stone-900"
+       aria-describedby="match-fields-note"
+      >
+       {gaps[0] ? `Add ${gaps[0].key}` : 'Edit Profile'}
+      </button>
+      <div
+       id="match-fields-note"
+       role="tooltip"
+       className={cn(
+        'absolute right-0 top-full z-30 w-[min(22rem,calc(100vw-1.5rem))] pt-1 text-left',
+        showMatchNote ? 'visible' : 'invisible',
+       )}
+      >
+       <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 shadow-sm">
+        <p className="text-sm leading-relaxed text-stone-500">
+         <span className="font-medium text-stone-700">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete).</span>{' '}
+         {matchNote}
+        </p>
+        <button
+         type="button"
+         className="mt-1 min-h-11 text-sm text-stone-500 hover:text-stone-800"
+         onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}
+        >
+         Ask what the team still lacks
+        </button>
+       </div>
       </div>
      </div>
      );
