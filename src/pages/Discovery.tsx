@@ -517,17 +517,10 @@ export default function Discovery({ user }: DiscoveryProps) {
 
      {/* Featured Section */}
      <section className="space-y-4">
-      <div className="flex items-center justify-between">
        <div>
         <p className="text-xs font-semibold tracking-wider text-stone-400">Featured</p>
         <h3 className="text-base font-semibold text-stone-900">Curated Opportunities</h3>
        </div>
-       <Link to="/discovery">
-        <Button variant="ghost" size="sm" className="text-base font-medium text-stone-900 tracking-wider hover:bg-stone-100 px-8 rounded-full h-11 border border-stone-200/50 hover:border-stone-400 transition-all">
-         View All <ArrowRight className="ml-4 w-5 h-5" />
-        </Button>
-       </Link>
-      </div>
       <div className={cn(
        "grid gap-4",
        viewMode === "grid" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"

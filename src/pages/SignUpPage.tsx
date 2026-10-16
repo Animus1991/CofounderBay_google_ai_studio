@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import { bothText } from '../lib/labels';
 import { LanguageToggle } from '../lib/language';
+import { useToast } from '../context/ToastContext';
 
 export default function SignUpPage() {
  const [email, setEmail] = useState('');
@@ -16,6 +17,7 @@ export default function SignUpPage() {
  const [loading, setLoading] = useState(false);
  const navigate = useNavigate();
  const { toggleDemoMode } = useAuth();
+ const { info: toastInfo } = useToast();
 
  const handleDemoMode = () => {
   toggleDemoMode(true);
@@ -206,6 +208,8 @@ export default function SignUpPage() {
         Google
        </button>
        <button
+        type="button"
+        onClick={() => toastInfo('GitHub sign-in is not available here.', 'Use email, Google, or Demo Mode.')}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
