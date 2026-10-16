@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
  Search, Plus, MoreVertical, Send, Paperclip, Smile, Phone, Video, Info,
  ChevronLeft, Check, CheckCheck, MessageSquare, Clock, X, FileText, Mic,
  Sparkles, Pin, Reply, Forward, Trash2, Archive, BellOff, Users,
- Calendar, CheckSquare, Play, Download, Filter, Zap, Settings,
+ Play, Download, Filter, Zap, Settings,
  BarChart3, Lightbulb, Target, MessageCircle, Bookmark, Copy,
  BrainCircuit, UserPlus, User as UserIcon, Flag, Ban, Shield, ShieldCheck
 } from "lucide-react";
@@ -170,6 +171,7 @@ const DateSeparator = ({ date }: { date: string }) => {
 // =============================================================================
 export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
  useLanguage();
+ const navigate = useNavigate();
  const { user: authUser, profile } = useAuth();
  const user = {
   ...(routeUser ?? {}),
@@ -968,7 +970,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className="relative shrink-0">
        <IconButton icon={MoreVertical} size="sm" tooltip="More options" onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
        <div className={cn("absolute right-0 top-full mt-1 w-48 bg-white border border-stone-200 rounded-xl shadow-sm z-30", openMenu === "chat-more" ? "opacity-100" : "opacity-0 pointer-events-none")}>
-        <button type="button" onClick={() => setOpenMenu(null)} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50 rounded-t-xl">
+        <button type="button" onClick={() => { setOpenMenu(null); if (activeConv?.otherParticipant.id) navigate(`/profile/${activeConv.otherParticipant.id}`); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50 rounded-t-xl">
          <UserIcon className="w-4 h-4" /> View Profile
         </button>
         <button type="button" onClick={() => { setShowValidationDialog(true); setOpenMenu(null); }}
@@ -1216,41 +1218,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <p className="text-xs text-stone-500 mb-3">
        {activeConv.otherParticipant.roles?.join(" \u2022 ") || "Co-founder"}
       </p>
-      <div className="flex items-center justify-center gap-2">
-       <button className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
-        <UserIcon className="w-3 h-3" /> View Profile
-       </button>
-       <button className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all">
-        <MoreVertical className="w-3.5 h-3.5" />
-       </button>
-      </div>
-     </div>
-
-     {/* Quick Actions */}
-     <div className="p-3 border-b border-stone-100">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-       {[
-        { icon: Phone, label: "Call" },
-        { icon: Video, label: "Video" },
-        { icon: Calendar, label: "Meet" },
-        { icon: CheckSquare, label: "Task" },
-       ].map(({ icon: Icon, label }) => (
-        <button key={label} className="flex flex-col items-center justify-center gap-1 min-h-16 p-2 rounded-xl hover:bg-stone-50 transition-all">
-         <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center">
-          <Icon className="w-3.5 h-3.5 text-stone-600" />
-         </div>
-         <span className="text-[10px] text-stone-500">{label}</span>
-        </button>
-       ))}
-      </div>
+      <button type="button" onClick={() => activeConv.otherParticipant.id && navigate(`/profile/${activeConv.otherParticipant.id}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
+       <UserIcon className="w-3 h-3" /> View Profile
+      </button>
      </div>
 
      {/* Shared Media */}
      <div className="p-3 border-b border-stone-100">
-      <div className="flex items-center justify-between mb-2">
-       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">Shared Media</h4>
-       <button className="text-[10px] text-stone-400 hover:text-stone-900">See all</button>
-      </div>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">Shared Media</h4>
       <div className="grid grid-cols-3 gap-1.5">
        {SHARED_MEDIA_MOCK.map(i => (
         <div key={i} className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 cursor-pointer transition-opacity">
@@ -1262,10 +1237,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
      {/* Shared Files */}
      <div className="p-3 border-b border-stone-100">
-      <div className="flex items-center justify-between mb-2">
-       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">Shared Files</h4>
-       <button className="text-[10px] text-stone-400 hover:text-stone-900">See all</button>
-      </div>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">Shared Files</h4>
       <div className="space-y-1.5">
        {SHARED_FILES_MOCK.map(({ name, size, icon: Icon, date }) => (
         <div key={name} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 cursor-pointer group">

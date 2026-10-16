@@ -104,6 +104,8 @@ export default function OnboardingWizard() {
   experience: '',
   skills: [] as string[],
   interests: [] as string[],
+  industry: '',
+  lookingFor: [] as string[],
   location: '',
   linkedinUrl: '',
  });
@@ -245,6 +247,8 @@ export default function OnboardingWizard() {
     profileUpdateData.createdAt = serverTimestamp();
    }
 
+   if (formData.industry) profileUpdateData.industry = formData.industry;
+   if (formData.lookingFor.length) profileUpdateData.lookingFor = formData.lookingFor;
    if (formData.headline.trim()) profileUpdateData.headline = formData.headline.trim();
    if (formData.bio.trim()) profileUpdateData.bio = formData.bio.trim();
    if (formData.location.trim()) profileUpdateData.location = formData.location.trim();
@@ -375,6 +379,24 @@ export default function OnboardingWizard() {
        </div>
 
        <div>
+        <label className="block text-sm font-medium text-stone-700 mb-2">Industry</label>
+        <div className="flex flex-wrap gap-2">
+         {['Technology', 'Finance', 'Health', 'Climate', 'Education', 'Consumer'].map((item) => (
+          <button
+           key={item}
+           type="button"
+           onClick={() => updateFormData({ industry: item })}
+           className={cn(
+            'min-h-11 rounded-full border px-3 text-sm',
+            formData.industry === item ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400',
+           )}
+          >
+           {item}
+          </button>
+         ))}
+        </div>
+       </div>
+       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">About Me (Bio)</label>
         <textarea
          rows={4}
@@ -386,7 +408,7 @@ export default function OnboardingWizard() {
           errors.bio ? "border-red-500 focus:ring-red-500" : "border-stone-200 focus:ring-stone-900 focus:border-stone-900"
          )}
         />
-        <p className="text-xs text-stone-500 mt-1">Tip: Include your vision and what you're looking for to enhance profile completeness.</p>
+        <p className="text-xs text-stone-500 mt-1">A short bio is enough. Looking-for comes on the next step.</p>
         {errors.bio && <p className="text-xs text-red-500 mt-1">{errors.bio}</p>}
        </div>
        <div className="grid grid-cols-2 gap-4">
@@ -479,6 +501,27 @@ export default function OnboardingWizard() {
         </div>
        </div>
       </div>
+      <div>
+       <label className="block text-sm font-medium text-stone-900 tracking-wider mb-2">Looking for</label>
+       <div className="flex flex-wrap gap-2">
+        {['Co-founder', 'Investor', 'Mentor', 'Sales', 'Growth', 'Technical help'].map((item) => {
+         const on = formData.lookingFor.includes(item);
+         return (
+          <button
+           key={item}
+           type="button"
+           onClick={() => updateFormData({ lookingFor: on ? formData.lookingFor.filter((value) => value !== item) : [...formData.lookingFor, item] })}
+           className={cn(
+            'min-h-11 rounded-full border px-3 text-sm',
+            on ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400',
+           )}
+          >
+           {item}
+          </button>
+         );
+        })}
+       </div>
+      </div>
      </div>
     );
 
@@ -512,14 +555,6 @@ export default function OnboardingWizard() {
         <div className="flex justify-between">
          <span className="text-stone-500">Location:</span>
          <span className="font-medium text-stone-900">{formData.location || 'Not specified'}</span>
-        </div>
-       </div>
-
-       <div className="mt-6 p-4 bg-amber-50 text-amber-900 rounded-xl border border-amber-100 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 mt-0.5 shrink-0" />
-        <div className="text-sm">
-         <p className="font-medium">Boost your profile score!</p>
-         <p className="mt-1 opacity-90">After finishing, visit your profile to add your social links (LinkedIn, GitHub). Verified identities get 3x more matches.</p>
         </div>
        </div>
       </div>

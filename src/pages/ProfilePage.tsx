@@ -649,9 +649,6 @@ export default function ProfilePage() {
         </motion.div>
        ))}
       </div>
-      <button className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
-       View all activity
-      </button>
      </div>
     </div>
 
@@ -789,11 +786,6 @@ export default function ProfilePage() {
           </motion.div>
          ))}
         </div>
-        {displayEndorsements.length > 5 && (
-         <button className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
-          View all {displayEndorsements.length} endorsements
-         </button>
-        )}
        </div>
      </div>
 {/* Achievements / Badges */}
