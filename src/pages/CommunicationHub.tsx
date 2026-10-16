@@ -15,6 +15,8 @@ import { User } from "../types";
 import { useAuth } from "../App";
 import { avatarFor } from "../data/cast";
 import { keys, readRequests, removeRequest } from "../lib/localLists";
+import { bothText } from "../lib/labels";
+import { useLanguage } from "../lib/language";
 import { useStored } from "../lib/useStored";
 
 // =============================================================================
@@ -167,6 +169,7 @@ const DateSeparator = ({ date }: { date: string }) => {
 // MAIN COMPONENT
 // =============================================================================
 export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
+ useLanguage();
  const { user: authUser, profile } = useAuth();
  const user = {
   ...(routeUser ?? {}),
@@ -500,7 +503,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   </div>
  );
 
- const composerTip = "Open a chat first. The composer is the box under that chat. · Ανοίξτε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.";
+ const composerTip = bothText("Open a chat first. The composer is the box under that chat.", "Ανοίξτε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.");
  const focusComposer = () => {
   if (!selectedConversation) return;
   textareaRef.current?.focus();
@@ -527,9 +530,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
      </div>
      <div className="flex items-center gap-1">
-      <IconButton icon={Users} size="sm" disabled tooltip="This page has no group composer. Start with one person. · Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκινήστε με ένα άτομο." />
+      <IconButton icon={Users} size="sm" disabled tooltip={bothText("This page has no group composer. Start with one person.", "Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκινήστε με ένα άτομο.")} />
       <IconButton icon={Plus} size="sm" variant="filled" disabled={!selectedConversation}
-       tooltip={selectedConversation ? "New message · Νέο μήνυμα" : composerTip}
+       tooltip={selectedConversation ? bothText("New message", "Νέο μήνυμα") : composerTip}
        onClick={focusComposer} />
      </div>
     </div>
@@ -596,7 +599,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <span title={selectedConversation ? undefined : composerTip} className="inline-flex">
          <button type="button" disabled={!selectedConversation} onClick={focusComposer}
           className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-          <Plus className="w-3.5 h-3.5" /> New Message · Νέο μήνυμα
+          <Plus className="w-3.5 h-3.5" /> {bothText("New message", "Νέο μήνυμα")}
          </button>
         </span>
         <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
@@ -890,7 +893,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <span title={selectedConversation ? undefined : composerTip} className="w-full">
         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
          className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-         <Plus className="w-4 h-4" /> New Message · Νέο μήνυμα
+         <Plus className="w-4 h-4" /> {bothText("New message", "Νέο μήνυμα")}
         </button>
        </span>
        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}

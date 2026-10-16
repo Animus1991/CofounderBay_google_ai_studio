@@ -48,11 +48,11 @@ export default function Layout() {
      onMouseLeave={() => setShowDemoHint(false)}
      onFocus={() => setShowDemoHint(true)}
      onBlur={() => setShowDemoHint(false)}
-     className="relative min-h-11 rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
+     className="relative inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
     >
      <Both en="Exit" el="Έξοδος" />
      {showDemoHint && (
-      <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-xs rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
+      <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-[min(16rem,calc(100vw-1.5rem))] rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
        <Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" />
       </span>
      )}

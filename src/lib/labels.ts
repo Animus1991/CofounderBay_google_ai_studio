@@ -38,12 +38,9 @@ const EL: Record<string, string> = {
   'Collapse sidebar': 'Κλείσιμο πλευρικής στήλης',
 };
 
-/** One string for placeholders and titles. */
+/** The active language only. */
 export function bothText(en: string, el: string): string {
-  const mode = getLang();
-  if (mode === 'en') return en;
-  if (mode === 'el') return el;
-  return `${en} · ${el}`;
+  return getLang() === 'el' ? el : en;
 }
 
 /** Translate a known label. An unknown key, including a tenant name, stays English. */

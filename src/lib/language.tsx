@@ -1,18 +1,18 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { Languages } from 'lucide-react';
 
-export type LangMode = 'both' | 'en' | 'el';
+export type LangMode = 'en' | 'el';
 
 const KEY = 'cfb.lang';
 
 function readMode(): LangMode {
   try {
     const stored = localStorage.getItem(KEY);
-    if (stored === 'en' || stored === 'el' || stored === 'both') return stored;
+    if (stored === 'el') return 'el';
   } catch {
-    /* keep both languages */
+    /* English is the fallback */
   }
-  return 'both';
+  return 'en';
 }
 
 let current: LangMode = readMode();
@@ -21,11 +21,9 @@ export function getLang(): LangMode {
   return current;
 }
 
-const nextMode = (mode: LangMode): LangMode => (mode === 'both' ? 'en' : mode === 'en' ? 'el' : 'both');
-
 type LanguageValue = { mode: LangMode; cycle: () => void; setMode: (mode: LangMode) => void };
 
-const LanguageContext = createContext<LanguageValue>({ mode: 'both', cycle: () => {}, setMode: () => {} });
+const LanguageContext = createContext<LanguageValue>({ mode: 'en', cycle: () => {}, setMode: () => {} });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<LangMode>(current);
@@ -38,7 +36,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   const cycle = () => {
-    setMode((prev) => apply(nextMode(prev)));
+    setMode((prev) => apply(prev === 'en' ? 'el' : 'en'));
   };
 
   const choose = (next: LangMode) => {
@@ -53,21 +51,20 @@ export function useLanguage() {
 }
 
 const hint: Record<LangMode, string> = {
-  both: 'Both languages. Click for English only. · Και οι δύο γλώσσες. Κλικ για μόνο αγγλικά.',
-  en: 'English only. Click for Greek only.',
-  el: 'Μόνο ελληνικά. Κλικ για και τις δύο γλώσσες.',
+  en: 'English. Click for Greek.',
+  el: 'Ελληνικά. Κλικ για αγγλικά.',
 };
 
 export function LanguageToggle({ className = '' }: { className?: string }) {
   const { mode, cycle } = useLanguage();
-  const label = mode === 'both' ? 'EN · EL' : mode === 'en' ? 'EN' : 'EL';
+  const label = mode === 'en' ? 'EN' : 'EL';
   return (
     <button
       type="button"
       onClick={cycle}
       title={hint[mode]}
       aria-label={hint[mode]}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 ${className}`}
     >
       <Languages className="h-4 w-4 shrink-0" />
       <span className="whitespace-nowrap">{label}</span>

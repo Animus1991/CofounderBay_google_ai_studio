@@ -1,3 +1,5 @@
+import { getLang } from './language';
+
 type Named = { name?: string | null };
 type SkillInput = string | Named | null | undefined;
 type ListInput = SkillInput | SkillInput[] | null | undefined;
@@ -52,7 +54,7 @@ export function reasonPhrase(sharedSkills: number, sharedIndustries: number): st
     el.push('ίδιος κλάδος');
   }
   if (en.length === 0) return null;
-  return `${en.join(', ')} · ${el.join(', ')}`;
+  return (getLang() === 'el' ? el : en).join(', ');
 }
 
 /**

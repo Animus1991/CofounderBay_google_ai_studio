@@ -491,9 +491,8 @@ export default function Settings() {
           <Card className="lg:col-span-2" title={t("Language and region", "Γλώσσα και περιοχή")} subtitle={t("The language choice is the same control as the button at the top of the app.", "Η γλώσσα είναι ο ίδιος διακόπτης με το κουμπί στην κορυφή.")}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label={t("Interface language", "Γλώσσα διεπαφής")}>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {([
-                    ["both", "EN · EL"],
                     ["en", "EN"],
                     ["el", "EL"],
                   ] as [LangMode, string][]).map(([id, label]) => (

@@ -27,6 +27,8 @@ import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { useStored } from '../lib/useStored';
 import { useAuth } from '../App';
 import { rememberPerson } from '../lib/people';
+import { bothText } from '../lib/labels';
+import { useLanguage } from '../lib/language';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
 import FactLine from '../components/ui/FactLine';
@@ -58,6 +60,7 @@ const ROLES = ['Technical Founder', 'Product Founder', 'Business Founder', 'Grow
 const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
 export default function MatchDiscovery() {
+ useLanguage();
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
@@ -315,7 +318,7 @@ export default function MatchDiscovery() {
            {profile.fullName || profile.headline?.split(' at ')[0] || 'Founder'}
           </p>
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
-          {explained.headline && <p className="text-xs text-stone-500">{explained.headline.en} · {explained.headline.el}</p>}
+          {explained.headline && <p className="text-xs text-stone-500">{bothText(explained.headline.en, explained.headline.el)}</p>}
          </div>
         </div>
         <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.score == null ? '—' : `${explained.score}%`}</span>

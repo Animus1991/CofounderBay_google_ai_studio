@@ -5,6 +5,8 @@ import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
+import { bothText } from '../lib/labels';
+import { LanguageToggle } from '../lib/language';
 import { useToast } from '../context/ToastContext';
 
 export default function LoginPage() {
@@ -61,7 +63,7 @@ export default function LoginPage() {
    console.error('Google Auth Error:', err);
    // Better error handling for Google Auth issues
    if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
-    setError('Google sign-in is not available here. Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.');
+    setError(bothText('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
    } else if (err.code === 'auth/popup-closed-by-user') {
     setError('Sign-in popup was closed. Please try again.');
    } else if (err.code === 'auth/popup-blocked') {
@@ -75,7 +77,10 @@ export default function LoginPage() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative">
+   <div className="absolute top-4 right-4">
+    <LanguageToggle />
+   </div>
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
     <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
@@ -120,7 +125,7 @@ export default function LoginPage() {
          required
          value={email}
          onChange={(e) => setEmail(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full min-h-11 pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 text-base sm:text-sm transition-all"
          placeholder="name@company.com"
         />
        </div>
@@ -142,32 +147,30 @@ export default function LoginPage() {
          required
          value={password}
          onChange={(e) => setPassword(e.target.value)}
-         className="appearance-none block w-full pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 sm:text-sm transition-all"
+         className="appearance-none block w-full min-h-11 pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 text-base sm:text-sm transition-all"
          placeholder="••••••••"
         />
        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-       <div className="flex items-center">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+       <label htmlFor="remember-me" className="inline-flex min-h-11 items-center gap-2 text-sm text-stone-600">
         <input
          id="remember-me"
          name="remember-me"
          type="checkbox"
-         className="h-4 w-4 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
+         className="h-5 w-5 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
         />
-        <label htmlFor="remember-me" className="ml-2 block text-sm text-stone-600">
-         <Both en="Remember me" el="Να με θυμάται" />
-        </label>
-       </div>
+        <Both en="Remember me" el="Να με θυμάται" />
+       </label>
 
        <div className="text-sm">
         <button
          type="button"
-         className="font-medium text-stone-600 hover:text-stone-900 transition-colors"
+         className="inline-flex min-h-11 items-center font-medium text-stone-600 hover:text-stone-900 transition-colors"
          onClick={async () => {
           if (!email) {
-           setError('Enter your email first, then try again. · Βάλτε πρώτα το email.');
+           setError(bothText('Enter your email first, then try again.', 'Βάλτε πρώτα το email.'));
            return;
           }
           try {
@@ -193,7 +196,7 @@ export default function LoginPage() {
        <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 rounded-xl shadow-sm text-xs sm:text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
+        className="w-full min-h-11 flex justify-center items-center py-2 px-4 rounded-xl text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
        >
         {loading ? <Both en="Logging in..." el="Σύνδεση..." /> : <Both en="Sign in" el="Είσοδος" />}
         <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
@@ -214,7 +217,7 @@ export default function LoginPage() {
       <div className="mt-6 grid grid-cols-2 gap-3">
        <button
         onClick={handleGoogleLogin}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
@@ -222,7 +225,7 @@ export default function LoginPage() {
        <button
         type="button"
         onClick={() => toastInfo('GitHub sign-in is not available here.', 'Use email, Google, or Demo Mode.')}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         GitHub
@@ -238,7 +241,7 @@ export default function LoginPage() {
          navigate('/dashboard', { replace: true });
          window.location.reload();
         }}
-        className="w-full inline-flex justify-center py-2 sm:py-2.5 px-4 sm:px-6 border border-stone-200 rounded-xl bg-white text-xs sm:text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
+        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
        >
         <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         <Both en="Try Demo Mode" el="Δοκιμή δείγματος" />

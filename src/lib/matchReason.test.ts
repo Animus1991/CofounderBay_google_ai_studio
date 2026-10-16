@@ -11,7 +11,7 @@ describe('explainMatch', () => {
       'fintech',
     );
     expect(result.pct).toBe(67);
-    expect(result.reasonPhrase).toBe('Same skills, Same industry · ίδιες δεξιότητες, ίδιος κλάδος');
+    expect(result.reasonPhrase).toBe('Same skills, Same industry');
   });
 
   it('returns null when neither side has a skill or an industry', () => {
