@@ -522,8 +522,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
      {/* Startup Builder Overview */}
      <div className="lg:col-span-8 space-y-4">
-      <Card className="p-6 rounded-2xl border-stone-100 shadow-sm bg-white">
-       <div className="flex items-center justify-between mb-5">
+      <Card className="p-4 sm:p-6 rounded-2xl border-stone-100 shadow-sm bg-white">
+       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
         <div>
          <h3 className="text-base font-semibold text-stone-900">Startup Builder Progress</h3>
          <p className="text-sm text-stone-400 mt-0.5">Complete core modules to optimize your venture architecture</p>
@@ -547,7 +547,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
            <div className="flex items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold text-stone-900 truncate">{step.title}</h4>
+            <h4 className="min-w-0 text-sm font-semibold text-stone-900">{step.title}</h4>
             <span className={cn(
              "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
              step.status === "Completed" ? "text-emerald-600 border-transparent" : 
@@ -651,7 +651,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            "text-[10px] tracking-wider mb-0.5",
            builderStep === step.id ? "text-stone-400" : "text-stone-400"
           )}>Module {step.id}</p>
-          <h4 className={cn("text-sm font-semibold truncate", builderStep === step.id ? "text-white" : "text-stone-900")}>{step.title}</h4>
+          <h4 className={cn("min-w-0 text-sm font-semibold", builderStep === step.id ? "text-white" : "text-stone-900")}>{step.title}</h4>
          </div>
          {step.status === "Completed" ? (
           <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">

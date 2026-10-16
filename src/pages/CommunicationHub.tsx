@@ -1554,7 +1554,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // =============================================================================
 
  return (
-  <div className="h-[calc(100dvh-4rem)] lg:h-dvh flex overflow-hidden bg-white">
+  <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
    {/* Left Sidebar */}
    {renderLeftSidebar()}
 
