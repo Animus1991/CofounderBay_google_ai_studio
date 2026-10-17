@@ -90,8 +90,10 @@
     --studio-success: 0.52 0.04 155;
     --studio-attention: 0.55 0.05 78;
     --studio-danger: 0.52 0.05 25;
-    /* Dashboard-height chrome, 3% shorter than the measured 2.2861328125rem nav row. */
-    --studio-dash-h: 2.217548828125rem;
+    /* Height of the Matches "Connect" button. Exit, tabs, and Record Investment match it. */
+    --studio-dash-h: 1.99625rem;
+    /* Previous ceiling. Stops leftover chrome from growing, without pulling shorter controls down. */
+    --studio-chrome-max: 2.217548828125rem;
   }
 
   .dark {
@@ -256,7 +258,10 @@
   .scroll-tabs > button {
     flex-shrink: 0;
     white-space: nowrap;
+    height: var(--studio-dash-h);
     min-height: var(--studio-dash-h);
+    padding-block: 0;
+    box-sizing: border-box;
   }
   /* On a phone, labels wrap onto another row so the last word is never cut. */
   @media (max-width: 639px) {
@@ -275,7 +280,7 @@
   button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
   button.h-8:not([class*="min-h-"]) { height: 2rem; }
   button.h-9:not([class*="min-h-"]) { height: 1.968815625rem; }
-  button.h-10:not([class*="min-h-"]) { height: 2.18678125rem; }
+  button.h-10:not([class*="min-h-"]) { height: var(--studio-dash-h); min-height: var(--studio-dash-h); }
   /* Compact action strip: 10% then 5% shorter padding than the original p-4 / sm:p-5. */
   .studio-nudge {
     padding-block: 0.855rem;
@@ -431,9 +436,10 @@
   }
 }
 
-/* Ceiling = Dashboard-height buttons (black, or black when selected), 3% under
-   the measured nav row: 2.217548828125rem / 35.48078125px. Shorter controls
-   (h-7, h-8, chips) stay at their own height. Card-tiles stay cards. */
+/* Height = Matches Connect button, 1.99625rem / 31.94px.
+   Black buttons and tabs that turn black, plus every control that shared
+   that taller row, use it. Shorter controls (h-7, h-8, chips, Ask) stay put.
+   Card-tiles stay cards. */
 button.min-h-11, a.min-h-11,
 button.h-11, a.h-11 {
   min-height: var(--studio-dash-h);
@@ -515,6 +521,12 @@ aside .grid.grid-cols-2 button {
   box-sizing: border-box;
 }
 /* Start stays 32px. Button+h-8 (min-h-11) was taller — cap to Dashboard. */
+.scroll-tabs > button {
+  height: var(--studio-dash-h);
+  min-height: var(--studio-dash-h);
+  padding-block: 0;
+  box-sizing: border-box;
+}
 button.h-8:not([class*="min-h-"]) { height: 2rem; min-height: 2rem; }
 button.h-8[class*="min-h-"] { height: var(--studio-dash-h); min-height: var(--studio-dash-h); padding-block: 0; }
 /* Safety net: leftover chrome cannot exceed Dashboard. Shorter stays shorter.
@@ -522,7 +534,7 @@ button.h-8[class*="min-h-"] { height: var(--studio-dash-h); min-height: var(--st
 button:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
 a.inline-flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
 a.flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)):not(.sr-only) {
-  max-height: var(--studio-dash-h);
+  max-height: var(--studio-chrome-max);
   box-sizing: border-box;
 }
 
