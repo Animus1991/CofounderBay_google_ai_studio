@@ -90,8 +90,8 @@
     --studio-success: 0.52 0.04 155;
     --studio-attention: 0.55 0.05 78;
     --studio-danger: 0.52 0.05 25;
-    /* Measured height of aside a[href="/dashboard"] — ceiling for taller chrome. */
-    --studio-dash-h: 2.2861328125rem;
+    /* Dashboard-height chrome, 3% shorter than the measured 2.2861328125rem nav row. */
+    --studio-dash-h: 2.217548828125rem;
   }
 
   .dark {
@@ -431,9 +431,9 @@
   }
 }
 
-/* Ceiling = Dashboard nav (aside → Dashboard · Πίνακας), 2.2861328125rem / 36.578125px.
-   Taller chrome is pulled down. Native compact h-8 (Start, 32px) and other shorter
-   controls are left alone. Card-tiles (text-left / stacked flex-col / photo) stay cards. */
+/* Ceiling = Dashboard-height buttons (black, or black when selected), 3% under
+   the measured nav row: 2.217548828125rem / 35.48078125px. Shorter controls
+   (h-7, h-8, chips) stay at their own height. Card-tiles stay cards. */
 button.min-h-11, a.min-h-11,
 button.h-11, a.h-11 {
   min-height: var(--studio-dash-h);
