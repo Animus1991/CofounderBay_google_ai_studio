@@ -439,20 +439,28 @@
 /* Height = Matches Connect button, 1.99625rem / 31.94px.
    Black buttons and tabs that turn black, plus every control that shared
    that taller row, use it. Shorter controls (h-7, h-8, chips, Ask) stay put.
-   Card-tiles stay cards. */
-button.min-h-11, a.min-h-11,
-button.h-11, a.h-11 {
+   Card-tiles and choice tiles (text-left / flex-col) keep their content height. */
+button.min-h-11:not(.flex-col):not([class*="text-left"]),
+a.min-h-11:not(.flex-col):not([class*="text-left"]),
+button.h-11:not(.flex-col):not([class*="text-left"]),
+a.h-11:not(.flex-col):not([class*="text-left"]) {
   min-height: var(--studio-dash-h);
   height: var(--studio-dash-h);
   padding-block: 0;
   box-sizing: border-box;
 }
-button.h-12, a.h-12,
-button.h-14, a.h-14,
-button.h-16, a.h-16,
-button.min-h-12, a.min-h-12,
-button.min-h-14, a.min-h-14,
-button.min-h-16:not(.flex-col), a.min-h-16:not(.flex-col) {
+button.h-12:not(.flex-col):not([class*="text-left"]),
+a.h-12:not(.flex-col):not([class*="text-left"]),
+button.h-14:not(.flex-col):not([class*="text-left"]),
+a.h-14:not(.flex-col):not([class*="text-left"]),
+button.h-16:not(.flex-col):not([class*="text-left"]),
+a.h-16:not(.flex-col):not([class*="text-left"]),
+button.min-h-12:not(.flex-col):not([class*="text-left"]),
+a.min-h-12:not(.flex-col):not([class*="text-left"]),
+button.min-h-14:not(.flex-col):not([class*="text-left"]),
+a.min-h-14:not(.flex-col):not([class*="text-left"]),
+button.min-h-16:not(.flex-col):not([class*="text-left"]),
+a.min-h-16:not(.flex-col):not([class*="text-left"]) {
   height: var(--studio-dash-h);
   min-height: var(--studio-dash-h);
   padding-block: 0;
@@ -464,15 +472,15 @@ button.w-12.h-12, a.w-12.h-12 {
   height: var(--studio-dash-h);
   min-height: var(--studio-dash-h);
 }
-button.py-4:not([class*="h-7"]):not([class*="h-8"]),
-a.py-4:not([class*="h-7"]):not([class*="h-8"]) {
+button.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
+a.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
   height: var(--studio-dash-h);
   box-sizing: border-box;
 }
-button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]),
-a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]) {
+button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
+a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
   height: var(--studio-dash-h);

@@ -713,12 +713,12 @@ export default function Settings() {
                   type="button"
                   onClick={() => patchSwitches({ messagesFrom: id })}
                   className={cn(
-                    "flex w-full min-h-11 flex-col items-start rounded-xl border px-4 py-3 text-left",
+                    "flex w-full min-h-11 flex-col items-start justify-center rounded-xl border px-4 py-3 text-left",
                     switches.messagesFrom === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-800",
                   )}
                 >
-                  <span className="text-sm font-semibold">{title}</span>
-                  <span className={cn("mt-0.5 text-sm", switches.messagesFrom === id ? "text-white/70" : "text-stone-500")}>{desc}</span>
+                  <span className="text-sm font-semibold leading-snug">{title}</span>
+                  <span className={cn("mt-0.5 text-sm leading-snug", switches.messagesFrom === id ? "text-white/70" : "text-stone-500")}>{desc}</span>
                 </button>
               ))}
             </div>
@@ -764,17 +764,17 @@ export default function Settings() {
           <Card className="xl:col-span-2" title={t("Your data", "Τα δεδομένα σου")} subtitle={t("A file of what this browser has stored for you.", "Αρχείο με ό,τι έχει κρατήσει αυτός ο browser.")}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button type="button" onClick={downloadMyData} className="flex min-h-16 items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left hover:bg-stone-50">
-                <FileText className="h-4 w-4 text-stone-500" />
-                <span>
-                  <span className="block text-sm font-semibold text-stone-900">{t("Download my data", "Λήψη δεδομένων")}</span>
-                  <span className="mt-0.5 block text-sm text-stone-500">JSON</span>
+                <FileText className="h-4 w-4 shrink-0 text-stone-500" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-snug text-stone-900">{t("Download my data", "Λήψη δεδομένων")}</span>
+                  <span className="mt-0.5 block text-sm leading-snug text-stone-500">JSON</span>
                 </span>
               </button>
               <button type="button" onClick={() => setDeleteOpen(true)} className="flex min-h-16 items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left hover:bg-red-50">
-                <Trash2 className="h-4 w-4 text-red-600" />
-                <span>
-                  <span className="block text-sm font-semibold text-red-700">{t("Delete account", "Διαγραφή λογαριασμού")}</span>
-                  <span className="mt-0.5 block text-sm text-stone-500">{t("Signs you out of this browser.", "Σε αποσυνδέει από αυτόν τον browser.")}</span>
+                <Trash2 className="h-4 w-4 shrink-0 text-red-600" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-snug text-red-700">{t("Delete account", "Διαγραφή λογαριασμού")}</span>
+                  <span className="mt-0.5 block text-sm leading-snug text-stone-500">{t("Signs you out of this browser.", "Σε αποσυνδέει από αυτόν τον browser.")}</span>
                 </span>
               </button>
             </div>
