@@ -1,98 +1,122 @@
+/**
+ * Messages: private conversations with members, the AI specialists, and the
+ * introductions (connection requests) that wait for an answer.
+ *
+ * Everything here reads and writes through `useMessaging()` and the social
+ * layer, so the same state is visible to the sidebar badge, the assistant and
+ * every other page. Nothing on this page is sample-only for a real account.
+ */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
  Search, Plus, MoreVertical, Send, Paperclip, Smile, Phone, Video, Info,
  ChevronLeft, Check, CheckCheck, MessageSquare, Clock, X, FileText, Mic,
- Sparkles, Pin, Reply, Forward, Trash2, Archive, BellOff, Users,
- Play, Download, Filter, Zap, Settings,
- BarChart3, Lightbulb, Target, MessageCircle, Bookmark, Copy,
- BrainCircuit, UserPlus, User as UserIcon, Flag, Ban, Shield, ShieldCheck
+ Sparkles, Pin, Reply, Forward, Trash2, Archive, BellOff, Bell, Users,
+ Download, Lightbulb, MessageCircle, Copy, Pencil, ExternalLink, AlertCircle,
+ BrainCircuit, UserPlus, User as UserIcon, Flag, Ban, Shield, ShieldCheck, Settings, Loader2, Square
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
-import { useMessaging, Conversation, Message } from "../context/MessagingContext";
-import { AIService, MOCK_AGENTS } from "../services/aiService";
+import { useMessaging, type ChatConversation, type ChatMessage, type ChatAttachment } from "../context/MessagingContext";
+import { MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
 import { useAuth } from "../App";
-import { avatarFor } from "../data/cast";
-import { keys, readRequests, removeRequest } from "../lib/localLists";
+import { avatarFor, findCast } from "../data/cast";
+import { keys, logActivity, readRequests, removeRequest } from "../lib/localLists";
 import { labelOf } from "../lib/labels";
-import { useT } from "../lib/language";
+import { useLanguage, useT } from "../lib/language";
 import { formatDate, formatDateTime, formatTime } from "../lib/dates";
 import RelTime from "../components/ui/RelTime";
+import Modal from "../components/ui/Modal";
 import { useStored } from "../lib/useStored";
+import { useToast } from "../context/ToastContext";
+import { usePeople } from "../lib/directory";
+import { avatarOf, findPerson, isOnline, type Person } from "../lib/peopleSource";
+import { REACTIONS, newCallLink, transcriptHash, type ValidationMode } from "../lib/chat";
+import { formatBytes, MAX_UPLOAD_BYTES, uploadFile, UploadError } from "../lib/files";
+import { downloadJson, downloadText } from "../lib/download";
+import {
+ blockPerson,
+ connectionRecords,
+ otherSide,
+ reportContent,
+ respondToConnection,
+ unblockPerson,
+ useBlocks,
+ useConnections,
+ withdrawConnection,
+ type ConnectionRecord,
+} from "../lib/social";
 
 // =============================================================================
 // TYPES
 // =============================================================================
 interface CommunicationHubProps { user: User | null; }
-type MessageFilter = "all" | "unread" | "ai";
+type MessageFilter = "all" | "unread" | "ai" | "archived";
 type ViewMode = "chat" | "ai-center";
-type AIView = "chat" | "agents" | "insights" | "history";
+type AIView = "agents" | "insights" | "history";
 
-interface AIInsight {
- id: string;
- type: "action" | "suggestion" | "insight" | "task";
- title: string;
- description: string;
- priority: "high" | "medium" | "low";
-}
-
-interface ConnectionRequest {
+interface IntroCard {
  id: string;
  from: { id: string; fullName: string; headline?: string; avatar?: string; role?: string };
  message?: string;
  createdAt: string;
+ record?: ConnectionRecord;
 }
 
-type ValidationMode = 'casual' | 'one_party' | 'two_party';
-
-interface ConversationValidationState {
- mode: ValidationMode;
- initiatedBy: string | null;
- initiatedAt: string | null;
- acceptedBy: string | null;
- acceptedAt: string | null;
- lastValidatedAt: string | null;
- validationHash: string | null;
- transcriptAvailable: boolean;
-}
-
-const MODE_CONFIG: Record<ValidationMode, { label: string; description: string; icon: React.ElementType; color: string; bgColor: string }> = {
- casual: { label: 'Casual Chat', description: 'Standard private messaging, no validation', icon: MessageCircle, color: 'text-stone-500', bgColor: 'bg-stone-100' },
- one_party: { label: 'One-Party Validation', description: 'You can save/validate your side of the conversation', icon: Shield, color: 'text-amber-500', bgColor: 'bg-amber-50' },
- two_party: { label: 'Two-Party Validation', description: 'Both parties agree to validated transcript', icon: ShieldCheck, color: 'text-emerald-500', bgColor: 'bg-emerald-50' },
-};
-
-// =============================================================================
-// MOCK DATA
-// =============================================================================
-const EMOJI_REACTIONS = ["👍", "❤️", "😂", "😮", "🎉", "🔥", "👏", "🤔", "👀", "🚀"];
 const EMOJI_GRID = ['😀','😂','😍','🥰','😎','🤔','😅','🙈','👍','👎','❤️','🔥','🎉','✅','💡','🚀','💪','🙏','👏','😢','😡','🤝','💰','⭐','🌟','📈','💻','🎯'];
+const TYPING_WINDOW = 6_000;
 
-const MOCK_CONNECTION_REQUESTS: ConnectionRequest[] = [
- { id: "cr1", from: { id: "jordan-taylor", fullName: "Jordan Taylor", headline: "Growth marketer, ex-Stripe", avatar: avatarFor("jordan-taylor"), role: "Co-Founder Candidate" }, message: "Hi! I saw your pitch deck project. I'd love to discuss a potential collaboration on growth strategy.", createdAt: new Date(Date.now() - 3600000).toISOString() },
- { id: "cr2", from: { id: "elena-rossi", fullName: "Elena Rossi", headline: "Venture partner, FinTech and SaaS", avatar: avatarFor("elena-rossi"), role: "Mentor" }, message: "I mentor startups in the FinTech space — happy to connect!", createdAt: new Date(Date.now() - 86400000).toISOString() },
- { id: "cr3", from: { id: "daniel-weiss", fullName: "Daniel Weiss", headline: "Angel investor, 30+ pre-seed deals", avatar: avatarFor("daniel-weiss"), role: "Investor" }, createdAt: new Date(Date.now() - 172800000).toISOString() },
-];
+/** Sample introductions shown only while the demo account is open. */
+function sampleIntros(): IntroCard[] {
+ const make = (id: string, message: string | undefined, hoursAgo: number): IntroCard | null => {
+  const person = findCast(id);
+  if (!person) return null;
+  return {
+   id: `sample-${id}`,
+   from: { id, fullName: person.fullName, headline: person.headline, avatar: avatarFor(id), role: person.role },
+   message,
+   createdAt: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(),
+  };
+ };
+ return [
+  make("jordan-taylor", "Hi! I saw your pitch deck project. I'd love to discuss a potential collaboration on growth strategy.", 1),
+  make("elena-rossi", "I mentor startups in the FinTech space — happy to connect!", 24),
+  make("daniel-weiss", undefined, 48),
+ ].filter((item): item is IntroCard => item !== null);
+}
 
-const SHARED_MEDIA_MOCK = [1, 2, 3, 4, 5, 6];
-const SHARED_FILES_MOCK = [
- { name: "Pitch Deck v3.pdf", size: "2.4 MB", icon: FileText, date: "Apr 28" },
- { name: "Financial Model.xlsx", size: "856 KB", icon: BarChart3, date: "Apr 25" },
- { name: "Product Demo.mp4", size: "48.1 MB", icon: Play, date: "Apr 22" },
-];
+function reactionEmoji(key: string): string {
+ return REACTIONS.find((item) => item.key === key)?.emoji ?? key;
+}
+
+function isImage(attachment: ChatAttachment): boolean {
+ return attachment.type.startsWith("image/");
+}
+
+function isAudio(attachment: ChatAttachment): boolean {
+ return attachment.type.startsWith("audio/");
+}
+
+function readAsDataUrl(file: Blob): Promise<string> {
+ return new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ""));
+  reader.onerror = () => reject(reader.error ?? new Error("read-failed"));
+  reader.readAsDataURL(file);
+ });
+}
 
 // =============================================================================
 // UTILITY COMPONENTS
 // =============================================================================
-const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
+const Avatar = ({ src, alt, size = "md", status, isAI = false, icon }: {
  src?: string; alt: string; size?: "xs" | "sm" | "md" | "lg" | "xl";
- status?: "online" | "offline" | "busy" | "away"; isAI?: boolean;
+ status?: "online" | "offline"; isAI?: boolean; icon?: string;
 }) => {
  const s: Record<string, string> = {
-  xs: "w-6 h-6 rounded-lg", sm: "w-8 h-8 rounded-xl", md: "w-10 h-10 rounded-2xl",
-  lg: "w-14 h-14 rounded-xl", xl: "w-20 h-20 rounded-xl"
+  xs: "w-6 h-6 rounded-lg text-[10px]", sm: "w-8 h-8 rounded-xl text-xs", md: "w-10 h-10 rounded-2xl text-xs",
+  lg: "w-14 h-14 rounded-xl text-sm", xl: "w-20 h-20 rounded-xl text-base"
  };
  const initials = alt.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
  const [failed, setFailed] = useState(false);
@@ -100,49 +124,37 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false }: {
  return (
   <div className={cn("relative shrink-0", s[size])}>
    {showImage ? (
-    <img src={src} alt={alt} className="w-full h-full object-cover rounded-[inherit]" onError={() => setFailed(true)} />
+    <img src={src} alt={alt} className="w-full h-full object-cover rounded-[inherit]" onError={() => setFailed(true)} referrerPolicy="no-referrer" />
+   ) : isAI ? (
+    <div className="w-full h-full rounded-[inherit] bg-stone-900 text-white flex items-center justify-center text-base" aria-hidden="true">{icon || <Sparkles className="w-4 h-4" />}</div>
    ) : (
-    <div className="w-full h-full rounded-[inherit] bg-stone-100 border border-stone-200 flex items-center justify-center text-xs font-semibold text-stone-600">{initials}</div>
+    <div className="w-full h-full rounded-[inherit] bg-stone-100 border border-stone-200 flex items-center justify-center font-semibold text-stone-600">{initials}</div>
    )}
-   {status && (
-    <div className={cn(
-     "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
-     status === "online" ? "bg-emerald-500" : status === "busy" ? "bg-red-500" : status === "away" ? "bg-amber-500" : "bg-stone-300"
-    )} />
-   )}
-   {isAI && (
-    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-stone-800 rounded-full border-2 border-white flex items-center justify-center">
-     <Sparkles className="w-2 h-2 text-white" />
-    </div>
+   {status && !isAI && (
+    <div className={cn("absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white", status === "online" ? "bg-emerald-500" : "bg-stone-300")} />
    )}
   </div>
  );
 };
 
-const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", size = "md", badge, tooltip, disabled = false }: {
+const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", badge, tooltip, disabled = false, danger = false }: {
  icon: React.ElementType; onClick?: () => void; active?: boolean;
- variant?: "ghost" | "filled" | "outline"; size?: "sm" | "md" | "lg"; badge?: number | string; tooltip?: string;
- disabled?: boolean;
-}) => {
- const sc: Record<string, string> = { sm: "w-11 h-11", md: "w-11 h-11", lg: "w-11 h-11" };
- const ic: Record<string, string> = { sm: "w-4 h-4", md: "w-4 h-4", lg: "w-5 h-5" };
- return (
-  <span title={tooltip} className="inline-flex">
-  <button type="button" aria-label={tooltip} disabled={disabled} onClick={onClick} className={cn(
-   "relative rounded-xl flex items-center justify-center transition-all", sc[size],
-   disabled && "opacity-50 cursor-not-allowed",
-   variant === "ghost" && ["text-stone-500 hover:text-stone-900 hover:bg-stone-100", active && "text-stone-900 bg-stone-100"],
-   variant === "filled" && ["bg-stone-900 text-white hover:bg-stone-800", active && "bg-stone-700"],
-   variant === "outline" && ["border border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900", active && "border-stone-900 text-stone-900 bg-stone-50"]
-  )}>
-   <Icon className={ic[size]} />
-   {badge !== undefined && (
-    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-stone-900 text-white text-[10px] font-medium rounded-full flex items-center justify-center tabular-nums">{badge}</span>
-   )}
-  </button>
-  </span>
- );
-};
+ variant?: "ghost" | "filled" | "outline"; badge?: number | string; tooltip: string;
+ disabled?: boolean; danger?: boolean;
+}) => (
+ <button type="button" aria-label={tooltip} title={tooltip} disabled={disabled} onClick={onClick} className={cn(
+  "relative w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0",
+  disabled && "opacity-50 cursor-not-allowed",
+  variant === "ghost" && ["text-stone-500 hover:text-stone-900 hover:bg-stone-100", active && "text-stone-900 bg-stone-100", danger && "hover:text-red-600 hover:bg-red-50"],
+  variant === "filled" && ["bg-stone-900 text-white hover:bg-stone-800", active && "bg-stone-700"],
+  variant === "outline" && ["border border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900", active && "border-stone-900 text-stone-900 bg-stone-50"]
+ )}>
+  <Icon className="w-4 h-4" />
+  {badge !== undefined && (
+   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-stone-900 text-white text-[10px] font-medium rounded-full flex items-center justify-center tabular-nums">{badge}</span>
+  )}
+ </button>
+);
 
 const TypingDots = () => (
  <div className="flex items-center gap-1 px-4 py-2.5 bg-white border border-stone-200 rounded-2xl rounded-bl-lg w-fit">
@@ -152,9 +164,9 @@ const TypingDots = () => (
  </div>
 );
 
-const DateSeparator = ({ date }: { date: string }) => {
+const DateSeparator = ({ at }: { at: number }) => {
  const t = useT();
- const d = new Date(date);
+ const d = new Date(at);
  const today = new Date();
  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
  const label = d.toDateString() === today.toDateString() ? t("Today", "Σήμερα")
@@ -169,428 +181,598 @@ const DateSeparator = ({ date }: { date: string }) => {
  );
 };
 
+/** A member or specialist to start (or forward) a conversation with. */
+function PeoplePicker({ open, onClose, title, description, people, onPick, includeAgents, conversations }: {
+ open: boolean; onClose: () => void; title: string; description: string; people: Person[];
+ onPick: (id: string) => void; includeAgents?: boolean; conversations?: ChatConversation[];
+}) {
+ const t = useT();
+ const { mode } = useLanguage();
+ const [query, setQuery] = useState("");
+ useEffect(() => { if (!open) setQuery(""); }, [open]);
+ const q = query.trim().toLowerCase();
+ const recent = (conversations ?? []).filter((item) => item.kind !== "ai" && (!q || item.other.fullName.toLowerCase().includes(q))).slice(0, 6);
+ const recentIds = new Set(recent.map((item) => item.otherId));
+ const members = people.filter((person) => !recentIds.has(person.id) && (!q || `${person.fullName} ${person.headline} ${person.role}`.toLowerCase().includes(q))).slice(0, 40);
+ const agents = includeAgents ? MOCK_AGENTS.filter((agent) => !q || `${agent.name} ${agent.nameEl || ""} ${agent.role}`.toLowerCase().includes(q)) : [];
+ return (
+  <Modal open={open} onClose={onClose} title={title} description={description} size="md">
+   <div className="space-y-3">
+    <div className="relative">
+     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+     <input type="text" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Search by name, role or headline…", "Αναζήτηση με όνομα, ρόλο ή τίτλο…")}
+      className="w-full min-h-11 pl-10 pr-3 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900" />
+    </div>
+    <div className="max-h-[50vh] overflow-y-auto -mx-1 px-1 space-y-1">
+     {recent.length > 0 && (
+      <p className="px-2 pt-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("Recent", "Πρόσφατα")}</p>
+     )}
+     {recent.map((item) => (
+      <button key={item.id} type="button" onClick={() => onPick(item.otherId)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
+       <Avatar src={item.other.avatar} alt={item.other.fullName} size="sm" />
+       <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-stone-900 truncate">{item.other.fullName}</p>
+        <p className="text-xs text-stone-500 truncate">{item.other.headline || labelOf(item.other.role)}</p>
+       </div>
+      </button>
+     ))}
+     {members.length > 0 && (
+      <p className="px-2 pt-2 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("Members", "Μέλη")}</p>
+     )}
+     {members.map((person) => (
+      <button key={person.id} type="button" onClick={() => onPick(person.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
+       <Avatar src={avatarOf(person)} alt={person.fullName} size="sm" status={isOnline(person) ? "online" : undefined} />
+       <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-stone-900 truncate">{person.fullName}</p>
+        <p className="text-xs text-stone-500 truncate">{person.headline || labelOf(person.role)}</p>
+       </div>
+       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">{labelOf(person.role)}</span>
+      </button>
+     ))}
+     {agents.length > 0 && (
+      <p className="px-2 pt-2 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("AI specialists", "Ειδικοί AI")}</p>
+     )}
+     {agents.map((agent) => (
+      <button key={agent.id} type="button" onClick={() => onPick(agent.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
+       <Avatar alt={agent.name} size="sm" isAI icon={agent.icon} />
+       <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-stone-900 truncate">{mode === "el" ? agent.nameEl || agent.name : agent.name}</p>
+        <p className="text-xs text-stone-500 truncate">{mode === "el" ? agent.roleEl || agent.role : agent.role}</p>
+       </div>
+      </button>
+     ))}
+     {recent.length === 0 && members.length === 0 && agents.length === 0 && (
+      <p className="p-4 text-sm text-stone-500 text-center">{t("No one matches this search.", "Κανένα αποτέλεσμα για αυτή την αναζήτηση.")}</p>
+     )}
+    </div>
+   </div>
+  </Modal>
+ );
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
  const t = useT();
+ const { mode: lang } = useLanguage();
  const navigate = useNavigate();
- const modeText = (mode: ValidationMode) => {
-  if (mode === "casual") return { label: t("Casual Chat", "Απλή συνομιλία"), description: t("Standard private messaging, no validation", "Ιδιωτική συνομιλία χωρίς επαλήθευση") };
-  if (mode === "one_party") return { label: t("One-Party Validation", "Επαλήθευση από μία πλευρά"), description: t("You can save/validate your side of the conversation", "Μπορείς να αποθηκεύσεις την πλευρά σου στη συνομιλία") };
-  return { label: t("Two-Party Validation", "Επαλήθευση από τις δύο πλευρές"), description: t("Both parties agree to validated transcript", "Και οι δύο πλευρές συμφωνούν σε επαληθευμένο αντίγραφο") };
- };
- const agentRoleOf = (role: string) => ({
-  "Matchmaking Expert": t("Matchmaking Expert", "Ειδικός αντιστοίχισης"),
-  "Investment Advisor": t("Investment Advisor", "Σύμβουλος επενδύσεων"),
-  "Strategy Consultant": t("Strategy Consultant", "Σύμβουλος στρατηγικής"),
-  "Market Intelligence": t("Market Intelligence", "Πληροφόρηση αγοράς"),
-  "Venture Consultant": t("Venture Consultant", "Σύμβουλος venture"),
-  "Compliance Expert": t("Compliance Expert", "Ειδικός συμμόρφωσης"),
-  "CTO Consultant": t("CTO Consultant", "Σύμβουλος CTO"),
-  "Marketing Expert": t("Marketing Expert", "Ειδικός μάρκετινγκ"),
-  "Academic Researcher": t("Academic Researcher", "Ακαδημαϊκή έρευνα"),
-  "Networking Expert": t("Networking Expert", "Ειδικός δικτύωσης"),
- }[role] || role);
- const agentDescOf = (text: string) => ({
-  "I analyze profiles to find your perfect co-founder match.": t("I analyze profiles to find your perfect co-founder match.", "Αναλύω προφίλ για να βρω τον ιδανικό συνιδρυτή για εσένα."),
-  "Upload your pitch deck (PDF/Image) for AI-driven feedback on clarity, completeness, and market appeal.": t("Upload your pitch deck (PDF/Image) for AI-driven feedback on clarity, completeness, and market appeal.", "Ανέβασε το pitch deck (PDF ή εικόνα) για σχόλια AI σε σαφήνεια, πληρότητα και απήχηση στην αγορά."),
-  "I help you refine your startup ideas, business model, and provide market insights.": t("I help you refine your startup ideas, business model, and provide market insights.", "Σε βοηθάω να δουλέψεις την ιδέα, το μοντέλο και την εικόνα της αγοράς."),
-  "I provide deep market research, competitor analysis, and industry trends.": t("I provide deep market research, competitor analysis, and industry trends.", "Προσφέρω έρευνα αγοράς, ανάλυση ανταγωνισμού και τάσεις του κλάδου."),
-  "I help you prepare for fundraising, from valuation to investor targeting.": t("I help you prepare for fundraising, from valuation to investor targeting.", "Σε βοηθάω στην προετοιμασία για fundraising, από την αποτίμηση ως την επιλογή επενδυτών."),
-  "I provide guidance on startup legal structures, IP protection, and compliance.": t("I provide guidance on startup legal structures, IP protection, and compliance.", "Καθοδήγηση για νομική μορφή, προστασία IP και συμμόρφωση."),
-  "I help with tech stack selection, architecture, and engineering management.": t("I help with tech stack selection, architecture, and engineering management.", "Σε βοηθάω στην επιλογή stack, στην αρχιτεκτονική και στη διαχείριση μηχανικής."),
-  "I help you scale your user base through GTM strategy and growth hacking.": t("I help you scale your user base through GTM strategy and growth hacking.", "Σε βοηθάω να μεγαλώσεις τη βάση χρηστών με GTM και growth hacking."),
-  "I help you find academic papers, patents, and technical documentation.": t("I help you find academic papers, patents, and technical documentation.", "Σε βοηθάω να βρεις ακαδημαϊκές εργασίες, πατέντες και τεχνική τεκμηρίωση."),
-  "I help you find the right mentors based on your specific needs.": t("I help you find the right mentors based on your specific needs.", "Σε βοηθάω να βρεις μέντορες με βάση τις ανάγκες σου."),
- }[text] || text);
- const capOf = (cap: string) => ({
-  "Profile Analysis": t("Profile Analysis", "Ανάλυση προφίλ"),
-  "Compatibility Scoring": t("Compatibility Scoring", "Βαθμός συμβατότητας"),
-  "Skill Gap Identification": t("Skill Gap Identification", "Εντοπισμός κενών δεξιοτήτων"),
-  "Deck Review": t("Deck Review", "Έλεγχος deck"),
-  "Financial Analysis": t("Financial Analysis", "Οικονομική ανάλυση"),
-  "Storytelling Feedback": t("Storytelling Feedback", "Σχόλια αφήγησης"),
-  "Visual Analysis": t("Visual Analysis", "Οπτική ανάλυση"),
-  "Idea Refinement": t("Idea Refinement", "Δούλεμα ιδέας"),
-  "Business Model Feedback": t("Business Model Feedback", "Σχόλια μοντέλου"),
-  "Market Insights": t("Market Insights", "Εικόνα αγοράς"),
-  "Market Sizing": t("Market Sizing", "Μέγεθος αγοράς"),
-  "Competitor Research": t("Competitor Research", "Έρευνα ανταγωνισμού"),
-  "Trend Analysis": t("Trend Analysis", "Ανάλυση τάσεων"),
-  "Valuation Modeling": t("Valuation Modeling", "Μοντέλο αποτίμησης"),
-  "Investor Targeting": t("Investor Targeting", "Στόχευση επενδυτών"),
-  "Term Sheet Review": t("Term Sheet Review", "Έλεγχος term sheet"),
-  "Entity Formation": t("Entity Formation", "Σύσταση εταιρείας"),
-  "IP Protection": t("IP Protection", "Προστασία IP"),
-  "Contract Review": t("Contract Review", "Έλεγχος σύμβασης"),
-  "Stack Selection": t("Stack Selection", "Επιλογή stack"),
-  "Architecture Review": t("Architecture Review", "Έλεγχος αρχιτεκτονικής"),
-  "Team Scaling": t("Team Scaling", "Κλιμάκωση ομάδας"),
-  "GTM Strategy": t("GTM Strategy", "Στρατηγική GTM"),
-  "Growth Hacking": t("Growth Hacking", "Growth hacking"),
-  "User Acquisition": t("User Acquisition", "Απόκτηση χρηστών"),
-  "Paper Search": t("Paper Search", "Αναζήτηση εργασιών"),
-  "Patent Analysis": t("Patent Analysis", "Ανάλυση πατεντών"),
-  "Technical Writing": t("Technical Writing", "Τεχνική συγγραφή"),
-  "Mentor Matching": t("Mentor Matching", "Αντιστοίχιση μέντορα"),
-  "Networking Advice": t("Networking Advice", "Συμβουλές δικτύωσης"),
-  "Relationship Management": t("Relationship Management", "Διαχείριση σχέσεων"),
- }[cap] || cap);
- const fileDateOf = (date: string) =>
-  date === "Apr 28" ? t("Apr 28", "28 Απρ")
-   : date === "Apr 25" ? t("Apr 25", "25 Απρ")
-    : date === "Apr 22" ? t("Apr 22", "22 Απρ")
-     : date;
+ const [params, setParams] = useSearchParams();
+ const toast = useToast();
  const { user: authUser, profile, isDemoMode } = useAuth();
- const user = {
-  ...(routeUser ?? {}),
-  id: authUser?.uid || profile?.id || 'demo-user',
- } as User;
- // ── State ────────────────────────────────────────────────────────────────
- const { state: msgState, sendMessage, markAsRead, createConversation } = useMessaging();
+ const user = { ...(routeUser ?? {}), id: authUser?.uid || profile?.id || 'demo-user', fullName: profile?.fullName || routeUser?.fullName || authUser?.displayName || 'You' } as User;
+ const real = !isDemoMode && Boolean(authUser?.uid);
+
+ const messaging = useMessaging();
+ const { conversations, active, activeId, setActiveId, messages, totalUnread, ready, aiTyping, hasOlder, loadOlder } = messaging;
+ const { people } = usePeople(user.id);
+ const connections = useConnections();
+ const blocks = useBlocks();
+ const studioRequests = useStored(readRequests, [keys.requests]);
+
+ // ── UI state ──────────────────────────────────────────────────────────────
  const [activeView, setActiveView] = useState<ViewMode>("chat");
- const [aiView, setAiView] = useState<AIView>("chat");
- const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+ const [aiView, setAiView] = useState<AIView>("agents");
  const [sidebarTab, setSidebarTab] = useState<"chats" | "intros">("chats");
  const [inputText, setInputText] = useState("");
  const [searchQuery, setSearchQuery] = useState("");
  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
- const [showEmojiPicker, setShowEmojiPicker] = useState<string | false>(false);
- const [replyingTo, setReplyingTo] = useState<Message | null>(null);
- const [isRecording, setIsRecording] = useState(false);
+ const [reactionFor, setReactionFor] = useState<string | null>(null);
+ const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+ const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
+ const [recording, setRecording] = useState<{ since: number } | null>(null);
  const [recordingTime, setRecordingTime] = useState(0);
- const [showRightSidebar, setShowRightSidebar] = useState(() =>
-  typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches
- );
+ const [showRightSidebar, setShowRightSidebar] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches);
  const [showSearchPanel, setShowSearchPanel] = useState(false);
  const [chatSearchQuery, setChatSearchQuery] = useState("");
- const [attachedFiles, setAttachedFiles] = useState<{ name: string; type: string; size: number; data?: string }[]>([]);
- const [aiIsTyping, setAiIsTyping] = useState(false);
- const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
- const studioRequests = useStored(readRequests, [keys.requests]);
+ const [pendingFiles, setPendingFiles] = useState<{ file: File; preview?: string }[]>([]);
+ const [uploading, setUploading] = useState(false);
+ const [sending, setSending] = useState(false);
  const [dismissedIntroIds, setDismissedIntroIds] = useState<string[]>([]);
- const connectionRequests = useMemo<ConnectionRequest[]>(() => {
-  const sample = isDemoMode ? MOCK_CONNECTION_REQUESTS : [];
-  const extras = studioRequests
-   .filter((item) => !sample.some((mock) => mock.from.id === item.id || mock.id === item.id))
-   .map((item) => ({
-    id: item.id,
-    from: { id: item.id, fullName: item.fullName, headline: item.note || item.role, avatar: avatarFor(item.id), role: item.role },
-    message: item.message,
-    createdAt: item.sentAt || new Date().toISOString(),
-   }));
-  return [...sample, ...extras].filter((item) => !dismissedIntroIds.includes(item.id));
- }, [studioRequests, dismissedIntroIds, isDemoMode]);
- const [pinnedConvIds, setPinnedConvIds] = useState<Set<string>>(() => isDemoMode ? new Set(["conv-1"]) : new Set());
- const [isRecipientTyping, setIsRecipientTyping] = useState(false);
  const [reportBlockModal, setReportBlockModal] = useState<{ open: boolean; mode: 'report' | 'block' }>({ open: false, mode: 'report' });
+ const [reportReason, setReportReason] = useState("");
+ const [reportDetails, setReportDetails] = useState("");
  const [showEmojiDropdown, setShowEmojiDropdown] = useState(false);
- const [validationState, setValidationState] = useState<ConversationValidationState>({
-  mode: 'casual', initiatedBy: null, initiatedAt: null, acceptedBy: null,
-  acceptedAt: null, lastValidatedAt: null, validationHash: null, transcriptAvailable: false,
- });
  const [showValidationDialog, setShowValidationDialog] = useState(false);
  const [hashCopied, setHashCopied] = useState(false);
  const [openMenu, setOpenMenu] = useState<string | null>(null);
+ const [picker, setPicker] = useState<{ open: boolean; mode: 'new' | 'forward'; message?: ChatMessage }>({ open: false, mode: 'new' });
+ const [now, setNow] = useState(() => Date.now());
  const fileInputRef = useRef<HTMLInputElement>(null);
  const messagesEndRef = useRef<HTMLDivElement>(null);
- const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
  const textareaRef = useRef<HTMLTextAreaElement>(null);
- const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
- const isTypingRef = useRef(false);
+ const recorderRef = useRef<MediaRecorder | null>(null);
+ const chunksRef = useRef<Blob[]>([]);
+ const lastReadRef = useRef<string>("");
 
- // ── Derived ──────────────────────────────────────────────────────────────
- const activeConv = useMemo(() =>
-  msgState.conversations.find(c => c.id === selectedConversation) || null,
- [msgState.conversations, selectedConversation]);
- const isAIChat = activeConv?.otherParticipant.isAI || false;
- const totalUnread = useMemo(() => msgState.conversations.reduce((a, c) => a + c.unreadCount, 0), [msgState.conversations]);
+ // ── Derived ───────────────────────────────────────────────────────────────
+ const isAIChat = active?.kind === "ai";
+ const activeAgent = isAIChat ? MOCK_AGENTS.find((agent) => agent.id === active?.otherId) : undefined;
+ const otherPerson = active && active.kind !== "ai" ? findPerson(active.otherId) : undefined;
+ const otherOnline = Boolean(active && !isAIChat && isOnline({ lastActiveAt: otherPerson?.lastActiveAt ?? active.other.lastActiveAt }, now));
+ const otherTyping = Boolean(active && active.otherTypingAt && now - active.otherTypingAt < TYPING_WINDOW);
+ const permission = messaging.canMessage(active);
+ const isBlockedByMe = Boolean(active && (active.blockedByMe || blocks.some((item) => item.id === active.otherId)));
+
+ const intros = useMemo<IntroCard[]>(() => {
+  if (real) {
+   return connections.incoming.map((record) => ({
+    id: record.id,
+    from: { id: record.senderId, fullName: record.senderName, headline: record.senderHeadline, avatar: record.senderAvatar, role: record.requestType },
+    message: record.note || undefined,
+    createdAt: new Date(record.createdAt).toISOString(),
+    record,
+   }));
+  }
+  const sample = isDemoMode ? sampleIntros() : [];
+  return sample.filter((item) => !dismissedIntroIds.includes(item.id));
+ }, [real, connections.incoming, isDemoMode, dismissedIntroIds]);
+
+ const sentRequests = useMemo(() => {
+  if (real) return connections.outgoing.map((record) => ({ id: record.id, person: otherSide(record, user.id), note: record.note, at: record.createdAt, record }));
+  return studioRequests.map((item) => ({ id: item.id, person: { id: item.id, name: item.fullName, headline: item.note, avatar: avatarFor(item.id) }, note: item.message || "", at: Date.parse(item.sentAt || "") || Date.now(), record: undefined }));
+ }, [real, connections.outgoing, studioRequests, user.id]);
 
  const filteredConversations = useMemo(() => {
-  let convs = msgState.conversations;
-  if (searchQuery) {
-   convs = convs.filter(c =>
-    c.otherParticipant.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
-   );
-  }
-  switch (messageFilter) {
-   case "unread": return convs.filter(c => c.unreadCount > 0);
-   case "ai": return convs.filter(c => c.otherParticipant.isAI);
-   default: return convs;
-  }
- }, [msgState.conversations, searchQuery, messageFilter]);
+  const q = searchQuery.trim().toLowerCase();
+  return conversations.filter((item) => {
+   if (q && !item.other.fullName.toLowerCase().includes(q) && !item.lastMessage.toLowerCase().includes(q)) return false;
+   if (messageFilter === "archived") return item.archived;
+   if (item.archived) return false;
+   if (messageFilter === "unread") return item.unread > 0;
+   if (messageFilter === "ai") return item.kind === "ai";
+   return true;
+  });
+ }, [conversations, searchQuery, messageFilter]);
+ const pinnedConversations = filteredConversations.filter((item) => item.pinned);
+ const unpinnedConversations = filteredConversations.filter((item) => !item.pinned);
+ const archivedCount = conversations.filter((item) => item.archived).length;
 
- const pinnedConversations = useMemo(() => filteredConversations.filter(c => pinnedConvIds.has(c.id)), [filteredConversations, pinnedConvIds]);
- const unpinnedConversations = useMemo(() => filteredConversations.filter(c => !pinnedConvIds.has(c.id)), [filteredConversations, pinnedConvIds]);
+ const sharedAttachments = useMemo(() => messages.flatMap((message) => (message.attachments ?? []).map((attachment) => ({ attachment, message }))), [messages]);
+ const sharedMedia = sharedAttachments.filter(({ attachment }) => isImage(attachment));
+ const sharedFiles = sharedAttachments.filter(({ attachment }) => !isImage(attachment));
 
- const chatMessages = useMemo(() =>
-  msgState.messages.filter(m => m.conversationId === selectedConversation),
- [msgState.messages, selectedConversation]);
+ const searchHits = chatSearchQuery.trim() ? messages.filter((message) => message.body.toLowerCase().includes(chatSearchQuery.trim().toLowerCase())).length : 0;
 
- // ── Effects ──────────────────────────────────────────────────────────────
- // Auto-select first conversation on mount so the page never looks empty
+ // ── Effects ───────────────────────────────────────────────────────────────
  useEffect(() => {
-  if (!selectedConversation && msgState.conversations.length > 0) {
-   const firstConv = msgState.conversations[0];
-   if (!firstConv) return;
-   setSelectedConversation(firstConv.id);
-   markAsRead(firstConv.id);
-  }
- }, [msgState.conversations]); // eslint-disable-line react-hooks/exhaustive-deps
+  const timer = setInterval(() => setNow(Date.now()), 1000);
+  return () => clearInterval(timer);
+ }, []);
 
- useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+ // `?user=<id>` or `?agent=<id>` opens that conversation (from profile, network, assistant links).
  useEffect(() => {
-  if (isRecording) {
-   recordingIntervalRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000);
-  } else { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); }
-  return () => { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
- }, [isRecording]);
+  const target = params.get("user") || params.get("agent");
+  if (!target || !ready) return;
+  void messaging.openConversationWith(target).then((id) => {
+   if (!id) toast.info(t("Could not open that conversation", "Δεν ήταν δυνατό να ανοίξει η συνομιλία"), t("This member may have left or is not visible to you.", "Το μέλος ίσως αποχώρησε ή δεν είναι ορατό σε εσένα."));
+   const next = new URLSearchParams(params);
+   next.delete("user");
+   next.delete("agent");
+   setParams(next, { replace: true });
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [params, ready]);
 
- // ── Handlers ─────────────────────────────────────────────────────────────
+ // Opening a conversation (or receiving while it is open) marks it read.
+ useEffect(() => {
+  if (!active) return;
+  const key = `${active.id}:${active.unread}:${messages.length}`;
+  if (active.unread > 0 && lastReadRef.current !== key) {
+   lastReadRef.current = key;
+   messaging.markRead(active.id);
+  }
+ }, [active, messages.length, messaging]);
+
+ useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length, activeId, aiTyping]);
+
+ useEffect(() => {
+  if (!recording) { setRecordingTime(0); return undefined; }
+  const timer = setInterval(() => setRecordingTime(Math.floor((Date.now() - recording.since) / 1000)), 500);
+  return () => clearInterval(timer);
+ }, [recording]);
+
+ useEffect(() => {
+  setReplyingTo(null);
+  setEditing(null);
+  setReactionFor(null);
+  setShowSearchPanel(false);
+  setChatSearchQuery("");
+  setOpenMenu(null);
+ }, [activeId]);
+
+ useEffect(() => {
+  if (!openMenu && !reactionFor && !showEmojiDropdown) return undefined;
+  const close = () => { setOpenMenu(null); setReactionFor(null); setShowEmojiDropdown(false); };
+  window.addEventListener("click", close);
+  return () => window.removeEventListener("click", close);
+ }, [openMenu, reactionFor, showEmojiDropdown]);
+
+ // ── Handlers ──────────────────────────────────────────────────────────────
+ const openConversation = useCallback((id: string) => {
+  setActiveId(id);
+  setActiveView("chat");
+ }, [setActiveId]);
+
+ const startWith = async (personId: string) => {
+  setPicker({ open: false, mode: 'new' });
+  const id = await messaging.openConversationWith(personId);
+  if (!id) {
+   toast.error(t("Could not start the conversation", "Δεν ήταν δυνατή η έναρξη συνομιλίας"), t("This member is not available right now.", "Το μέλος δεν είναι διαθέσιμο αυτή τη στιγμή."));
+   return;
+  }
+  setActiveView("chat");
+  setSidebarTab("chats");
+  setTimeout(() => textareaRef.current?.focus(), 50);
+ };
+
+ const uploadPending = async (): Promise<ChatAttachment[]> => {
+  if (pendingFiles.length === 0) return [];
+  setUploading(true);
+  try {
+   const out: ChatAttachment[] = [];
+   for (const { file } of pendingFiles) {
+    if (real) {
+     const uploaded = await uploadFile(file, { folder: "chat", uid: user.id });
+     out.push({ name: uploaded.name, type: uploaded.type, size: uploaded.size, url: uploaded.url });
+    } else {
+     out.push({ name: file.name, type: file.type || "application/octet-stream", size: file.size, url: file.size <= 2_000_000 ? await readAsDataUrl(file) : "" });
+    }
+   }
+   return out;
+  } finally {
+   setUploading(false);
+  }
+ };
+
  const handleSendMessage = useCallback(async (textOverride?: string) => {
-  const text = textOverride || inputText;
-  if ((!text.trim() && attachedFiles.length === 0) || !selectedConversation) return;
-  const finalText = replyingTo
-   ? `${text}\n\n[${t("Replying to", "Απάντηση προς")} ${replyingTo.senderName}: "${replyingTo.body.substring(0, 50)}..."]`
-   : text;
-  const firstFile = attachedFiles[0];
-  if (isAIChat && activeConv) {
-   const agent = MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id);
-   if (!agent) return;
-   sendMessage(finalText, firstFile ? { name: firstFile.name, data: firstFile.data } : undefined);
-   setInputText(""); setAttachedFiles([]); setReplyingTo(null); setAiIsTyping(true);
+  const text = (textOverride ?? inputText).trim();
+  if ((!text && pendingFiles.length === 0) || !active) return;
+  if (!permission.ok) return;
+  setSending(true);
+  try {
+   let attachments: ChatAttachment[] = [];
    try {
-    const response = await AIService.chat(finalText, agent.role, 'llama3.2', firstFile?.data);
-    sendMessage(response.text, undefined, agent.id);
-    setAiInsights(prev => [{ id: `insight-${Date.now()}`, type: "suggestion" as const, title: t("Follow-up Opportunity", "Ευκαιρία συνέχειας"), description: t("Consider scheduling a follow-up meeting to discuss these points in detail.", "Σκέψου μια επόμενη συνάντηση για να συζητήσετε αυτά τα σημεία αναλυτικά."), priority: "medium" as const }, ...prev].slice(0, 5));
+    attachments = await uploadPending();
    } catch (error) {
-    console.error('AI Chat Error:', error);
-    sendMessage(t("I'm having trouble connecting. Please try again.", "Δυσκολεύομαι να συνδεθώ. Δοκίμασε ξανά."), undefined, agent.id);
-   } finally { setAiIsTyping(false); }
-  } else {
-   sendMessage(finalText, firstFile ? { name: firstFile.name, data: firstFile.data } : undefined);
-   setInputText(""); setAttachedFiles([]); setReplyingTo(null);
+    const code = error instanceof UploadError ? error.code : "failed";
+    toast.error(
+     t("Attachment not sent", "Το συνημμένο δεν στάλθηκε"),
+     code === "too-large" ? t(`Files must be under ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.`, `Τα αρχεία πρέπει να είναι κάτω από ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.`)
+      : t("File storage is not available right now. Try a smaller file or try again later.", "Η αποθήκευση αρχείων δεν είναι διαθέσιμη τώρα. Δοκίμασε μικρότερο αρχείο ή ξανά αργότερα."),
+    );
+    return;
+   }
+   const reply = replyingTo ? { messageId: replyingTo.id, senderName: replyingTo.senderName, body: replyingTo.body.slice(0, 200) } : undefined;
+   await messaging.send(text, { attachments: attachments.length ? attachments : undefined, replyTo: reply });
+   setInputText("");
+   pendingFiles.forEach((f) => { if (f.preview) URL.revokeObjectURL(f.preview); });
+   setPendingFiles([]);
+   setReplyingTo(null);
+   if (textareaRef.current) textareaRef.current.style.height = "auto";
+   if (active.kind === "dm" && !active.exists) logActivity({ kind: "message", title: `Messaged ${active.other.fullName}`, titleEl: `Μήνυμα προς ${active.other.fullName}`, href: `/messages?user=${active.otherId}` });
+  } catch (error) {
+   const blocked = error instanceof Error && error.message === "blocked";
+   toast.error(
+    blocked ? t("This conversation is blocked", "Η συνομιλία είναι αποκλεισμένη") : t("Message not sent", "Το μήνυμα δεν στάλθηκε"),
+    blocked ? t("Unblock the member to write again.", "Άρε τον αποκλεισμό για να γράψεις ξανά.") : t("Check your connection and try again.", "Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά."),
+   );
+  } finally {
+   setSending(false);
   }
- }, [inputText, attachedFiles, selectedConversation, replyingTo, isAIChat, activeConv, sendMessage, t]);
+ }, [inputText, pendingFiles, active, permission.ok, replyingTo, messaging, toast, t, real, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  Array.from(e.target.files || []).forEach(file => {
-   const reader = new FileReader();
-   reader.onloadend = () => setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, size: file.size, data: reader.result as string }]);
-   reader.readAsDataURL(file);
+  const files = Array.from(e.target.files || []);
+  e.target.value = "";
+  const accepted = files.filter((file) => {
+   if (file.size > MAX_UPLOAD_BYTES) {
+    toast.warning(t("File too large", "Πολύ μεγάλο αρχείο"), t(`${file.name} is over ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.`, `Το ${file.name} ξεπερνά τα ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB.`));
+    return false;
+   }
+   return true;
   });
+  setPendingFiles((prev) => [...prev, ...accepted.map((file) => ({ file, preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined }))].slice(0, 5));
  };
 
- const handleAcceptIntro = (id: string) => {
-  setDismissedIntroIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+ const startRecording = async () => {
+  if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+   toast.info(t("Voice messages are not supported here", "Τα φωνητικά μηνύματα δεν υποστηρίζονται εδώ"), t("Your browser cannot record audio. You can attach an audio file instead.", "Ο browser δεν μπορεί να ηχογραφήσει. Μπορείς να επισυνάψεις αρχείο ήχου."));
+   return;
+  }
+  try {
+   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+   const recorder = new MediaRecorder(stream);
+   chunksRef.current = [];
+   recorder.ondataavailable = (event) => { if (event.data.size > 0) chunksRef.current.push(event.data); };
+   recorder.onstop = () => stream.getTracks().forEach((track) => track.stop());
+   recorder.start();
+   recorderRef.current = recorder;
+   setRecording({ since: Date.now() });
+  } catch {
+   toast.error(t("Microphone not available", "Το μικρόφωνο δεν είναι διαθέσιμο"), t("Allow microphone access in your browser to record a voice message.", "Επίτρεψε την πρόσβαση στο μικρόφωνο για να ηχογραφήσεις."));
+  }
  };
- const handleDeclineIntro = (id: string) => {
-  setDismissedIntroIds((prev) => prev.includes(id) ? prev : [...prev, id]);
-  if (studioRequests.some((item) => item.id === id)) removeRequest(id);
- };
- const togglePin = (convId: string) => {
-  setPinnedConvIds(prev => { const n = new Set(prev); if (n.has(convId)) n.delete(convId); else n.add(convId); return n; });
- };
- const handleArchiveConv = (convId: string) => {
-  if (selectedConversation === convId) setSelectedConversation(null);
-  // In production: call API to archive — for now just deselect
- };
- const handleDeleteConv = (convId: string) => {
-  if (selectedConversation === convId) setSelectedConversation(null);
-  // In production: call API to delete — for now just deselect
- };
- const formatRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
- const handleValidationModeChange = (mode: ValidationMode) => {
-  if (mode === 'two_party') {
-   setValidationState(prev => ({
-    ...prev, mode, initiatedBy: user.id, initiatedAt: new Date().toISOString(),
-    acceptedBy: null, acceptedAt: null, transcriptAvailable: false, validationHash: null,
-   }));
+ const stopRecording = (send: boolean) => {
+  const recorder = recorderRef.current;
+  if (!recorder) { setRecording(null); return; }
+  recorder.onstop = () => {
+   recorder.stream.getTracks().forEach((track) => track.stop());
+   if (send && chunksRef.current.length) {
+    const type = recorder.mimeType || "audio/webm";
+    const blob = new Blob(chunksRef.current, { type });
+    const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+    const file = new File([blob], `voice-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${ext}`, { type });
+    setPendingFiles((prev) => [...prev, { file }].slice(0, 5));
+   }
+   chunksRef.current = [];
+  };
+  recorder.stop();
+  recorderRef.current = null;
+  setRecording(null);
+ };
+
+ const startCall = (kind: "video" | "audio") => {
+  if (!active || isAIChat) return;
+  const url = newCallLink(kind);
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  void messaging.send(kind === "video" ? t("Video call", "Βιντεοκλήση") : t("Voice call", "Φωνητική κλήση"), { kind: "call", callUrl: url });
+  if (!opened) toast.info(t("Call link sent", "Ο σύνδεσμος κλήσης στάλθηκε"), t("Open it from the conversation when you are ready.", "Άνοιξέ τον από τη συνομιλία όταν είσαι έτοιμος/η."));
+ };
+
+ const handleAcceptIntro = async (intro: IntroCard) => {
+  if (intro.record) {
+   try {
+    await respondToConnection(intro.record, true);
+    toast.success(t("Connected", "Συνδεθήκατε"), t(`You and ${intro.from.fullName} can message each other now.`, `Εσύ και ο/η ${intro.from.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+    logActivity({ kind: "request", title: `Connected with ${intro.from.fullName}`, titleEl: `Σύνδεση με ${intro.from.fullName}`, href: `/profile/${intro.from.id}` });
+   } catch {
+    toast.error(t("Could not accept", "Η αποδοχή απέτυχε"), t("Please try again.", "Δοκίμασε ξανά."));
+   }
+   return;
+  }
+  setDismissedIntroIds((prev) => [...prev, intro.id]);
+  void messaging.openConversationWith(intro.from.id).then((id) => { if (id) openConversation(id); });
+ };
+
+ const handleDeclineIntro = async (intro: IntroCard) => {
+  if (intro.record) {
+   try {
+    await respondToConnection(intro.record, false);
+   } catch {
+    toast.error(t("Could not decline", "Η απόρριψη απέτυχε"), t("Please try again.", "Δοκίμασε ξανά."));
+   }
+   return;
+  }
+  setDismissedIntroIds((prev) => [...prev, intro.id]);
+ };
+
+ const handleWithdraw = async (item: (typeof sentRequests)[number]) => {
+  if (item.record) {
+   try { await withdrawConnection(item.record); } catch { toast.error(t("Could not withdraw", "Η ανάκληση απέτυχε")); }
+   return;
+  }
+  removeRequest(item.id);
+ };
+
+ const setValidationMode = async (mode: ValidationMode) => {
+  if (!active) return;
+  if (mode === "casual") {
+   messaging.setValidation(active.id, { mode });
+  } else if (mode === "one_party") {
+   const hash = await transcriptHash(messages.map((m) => `${m.createdAt}|${m.senderId}|${m.body}`));
+   messaging.setValidation(active.id, { mode, requestedBy: user.id, hash, at: Date.now() });
   } else {
-   setValidationState(prev => ({
-    ...prev, mode, initiatedBy: mode === 'one_party' ? user.id : null,
-    initiatedAt: mode === 'one_party' ? new Date().toISOString() : null,
-    acceptedBy: null, acceptedAt: null,
-    transcriptAvailable: mode === 'one_party',
-    validationHash: mode === 'one_party' ? `sha256:${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}` : null,
-   }));
+   messaging.setValidation(active.id, { mode, requestedBy: user.id, at: Date.now() });
   }
   setShowValidationDialog(false);
  };
 
+ const acceptTwoParty = async () => {
+  if (!active) return;
+  const hash = await transcriptHash(messages.map((m) => `${m.createdAt}|${m.senderId}|${m.body}`));
+  messaging.setValidation(active.id, { ...active.validation, acceptedBy: user.id, hash, at: Date.now() });
+  toast.success(t("Transcript validated", "Το αντίγραφο επικυρώθηκε"), t("Both sides now share the same verifiable hash.", "Και οι δύο πλευρές έχουν πλέον τον ίδιο επαληθεύσιμο κωδικό (hash)."));
+ };
+
+ const refreshHash = async () => {
+  if (!active) return;
+  const hash = await transcriptHash(messages.map((m) => `${m.createdAt}|${m.senderId}|${m.body}`));
+  messaging.setValidation(active.id, { ...active.validation, hash, at: Date.now() });
+ };
+
  const handleExportTranscript = (format: 'json' | 'txt') => {
-  if (!activeConv) return;
-  const transcript = chatMessages.map(m => ({
-   sender: m.senderName, body: m.body, timestamp: m.createdAt,
-  }));
-  let blob: Blob;
+  if (!active) return;
+  const transcript = messages.map((m) => ({ sender: m.senderName, body: m.body, at: new Date(m.createdAt).toISOString(), attachments: (m.attachments ?? []).map((a) => a.name) }));
+  const stamp = new Date().toISOString().split('T')[0];
   if (format === 'json') {
-   blob = new Blob([JSON.stringify({ conversationId: activeConv.id, participants: [user.fullName, activeConv.otherParticipant.fullName], exportedAt: new Date().toISOString(), validationHash: validationState.validationHash, messages: transcript }, null, 2)], { type: 'application/json' });
+   downloadJson(`transcript-${active.id.slice(0, 12)}-${stamp}.json`, {
+    conversationId: active.id,
+    participants: [user.fullName, active.other.fullName],
+    exportedAt: new Date().toISOString(),
+    validation: active.validation,
+    messages: transcript,
+   });
   } else {
-   const lines = transcript.map(m => `[${formatDateTime(m.timestamp)}] ${m.sender}: ${m.body}`);
-   blob = new Blob([`${t("Conversation Transcript", "Αντίγραφο συνομιλίας")}\n${t("Exported", "Εξαγωγή")}: ${new Date().toISOString()}\nHash: ${validationState.validationHash || 'N/A'}\n${'='.repeat(50)}\n\n${lines.join('\n')}`], { type: 'text/plain' });
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `transcript-${activeConv.id.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.${format}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
- };
-
- const copyValidationHash = () => {
-  if (validationState.validationHash) {
-   navigator.clipboard.writeText(validationState.validationHash);
-   setHashCopied(true);
-   setTimeout(() => setHashCopied(false), 2000);
+   const lines = transcript.map((m) => `[${formatDateTime(m.at)}] ${m.sender}: ${m.body}${m.attachments.length ? ` (${m.attachments.join(', ')})` : ''}`);
+   downloadText(`transcript-${active.id.slice(0, 12)}-${stamp}.txt`, `${t("Conversation transcript", "Αντίγραφο συνομιλίας")}\n${t("Exported", "Εξαγωγή")}: ${formatDateTime(Date.now())}\nSHA-256: ${active.validation.hash || '—'}\n${'='.repeat(50)}\n\n${lines.join('\n')}`);
   }
  };
 
- // Typing indicator handler (debounced)
- const handleTypingChange = useCallback((value: string) => {
-  setInputText(value);
-  if (value.trim()) {
-   if (!isTypingRef.current) {
-    isTypingRef.current = true;
-    // In production: socketRef.current?.emit('typing:start', { conversationId: selectedConversation });
+ const copyValidationHash = async () => {
+  if (!active?.validation.hash) return;
+  await navigator.clipboard.writeText(active.validation.hash).catch(() => undefined);
+  setHashCopied(true);
+  setTimeout(() => setHashCopied(false), 2000);
+ };
+
+ const submitReportOrBlock = async () => {
+  if (!active) return;
+  const target = active.other;
+  try {
+   if (reportBlockModal.mode === "report") {
+    if (!reportReason) { toast.warning(t("Choose a reason", "Επίλεξε αιτία")); return; }
+    if (real) {
+     await reportContent({ targetType: "user", targetId: active.otherId, targetName: target.fullName, targetOwnerId: active.otherId, reason: reportReason, details: reportDetails, excerpt: messages.slice(-5).map((m) => `${m.senderName}: ${m.body}`).join("\n").slice(0, 500), href: `/profile/${active.otherId}` });
+    }
+    toast.success(t("Report sent", "Η αναφορά στάλθηκε"), t("Our team reviews every report. Thank you.", "Η ομάδα μας εξετάζει κάθε αναφορά. Ευχαριστούμε."));
+   } else if (isBlockedByMe) {
+    if (real) await unblockPerson(active.otherId);
+    toast.success(t("Member unblocked", "Ο αποκλεισμός αφαιρέθηκε"), t(`${target.fullName} can message you again.`, `Ο/Η ${target.fullName} μπορεί ξανά να σου στείλει μήνυμα.`));
+   } else {
+    if (real) await blockPerson({ id: active.otherId, fullName: target.fullName });
+    toast.success(t("Member blocked", "Το μέλος αποκλείστηκε"), t("You can undo this from Settings › Privacy.", "Μπορείς να το αναιρέσεις από Ρυθμίσεις › Απόρρητο."));
    }
-   if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-   typingTimerRef.current = setTimeout(() => {
-    isTypingRef.current = false;
-    // In production: socketRef.current?.emit('typing:stop', { conversationId: selectedConversation });
-   }, 2000);
-  } else if (isTypingRef.current) {
-   isTypingRef.current = false;
-   if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+   setReportBlockModal({ open: false, mode: reportBlockModal.mode });
+   setReportReason("");
+   setReportDetails("");
+  } catch {
+   toast.error(t("Something went wrong", "Κάτι πήγε στραβά"), t("Please try again.", "Δοκίμασε ξανά."));
   }
- }, [selectedConversation]);
+ };
 
- // Auto-resize textarea
- const autoResizeTextarea = useCallback(() => {
+ const forwardTo = async (targetId: string) => {
+  const message = picker.message;
+  setPicker({ open: false, mode: 'new' });
+  if (!message) return;
+  const id = await messaging.openConversationWith(targetId);
+  if (!id) return;
+  await messaging.sendTo(id, message.body, { attachments: message.attachments });
+  toast.success(t("Forwarded", "Προωθήθηκε"));
+  openConversation(id);
+ };
+
+ const autoResizeTextarea = () => {
   const el = textareaRef.current;
   if (!el) return;
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
- }, []);
+ };
+
+ const formatRecTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+ const agentName = (agent: typeof MOCK_AGENTS[number]) => (lang === "el" ? agent.nameEl || agent.name : agent.name);
+ const agentRole = (agent: typeof MOCK_AGENTS[number]) => (lang === "el" ? agent.roleEl || agent.role : agent.role);
+ const agentDescription = (agent: typeof MOCK_AGENTS[number]) => (lang === "el" ? agent.descriptionEl || agent.description : agent.description);
+ const agentPrompts = (agent: typeof MOCK_AGENTS[number] | undefined) => (agent ? (lang === "el" ? agent.suggestedPromptsEl || agent.suggestedPrompts : agent.suggestedPrompts) ?? [] : []);
+ const agentCapabilities = (agent: typeof MOCK_AGENTS[number]) => (lang === "el" ? agent.capabilitiesEl || agent.capabilities : agent.capabilities);
+
+ const modeText = (mode: ValidationMode) => {
+  if (mode === "casual") return { label: t("Standard chat", "Απλή συνομιλία"), description: t("Private messaging without a verified transcript.", "Ιδιωτική συνομιλία χωρίς επικυρωμένο αντίγραφο.") };
+  if (mode === "one_party") return { label: t("Verified by you", "Επικύρωση από εσένα"), description: t("You keep a transcript with a SHA-256 fingerprint; the other side is informed.", "Κρατάς αντίγραφο με αποτύπωμα SHA-256· η άλλη πλευρά ενημερώνεται.") };
+  return { label: t("Verified by both", "Επικύρωση και από τους δύο"), description: t("Both sides accept the same verifiable transcript.", "Και οι δύο πλευρές αποδέχονται το ίδιο επαληθεύσιμο αντίγραφο.") };
+ };
+ const MODE_STYLE: Record<ValidationMode, { icon: React.ElementType; color: string; bgColor: string; border: string }> = {
+  casual: { icon: MessageCircle, color: 'text-stone-500', bgColor: 'bg-stone-100', border: 'border-stone-200' },
+  one_party: { icon: Shield, color: 'text-amber-600', bgColor: 'bg-amber-50', border: 'border-amber-200' },
+  two_party: { icon: ShieldCheck, color: 'text-emerald-600', bgColor: 'bg-emerald-50', border: 'border-emerald-200' },
+ };
+ const validation = active?.validation ?? { mode: 'casual' as ValidationMode };
+ const twoPartyWaitingOnMe = validation.mode === "two_party" && validation.requestedBy && validation.requestedBy !== user.id && !validation.acceptedBy;
+ const twoPartyWaitingOnOther = validation.mode === "two_party" && validation.requestedBy === user.id && !validation.acceptedBy;
+ const transcriptAvailable = validation.mode === "one_party" || (validation.mode === "two_party" && Boolean(validation.acceptedBy));
 
  // =============================================================================
- // RENDER HELPERS
+ // RENDER: CONVERSATION CARD
  // =============================================================================
- const renderConvCard = (conv: Conversation, isPinned = false) => (
-  <div
-   key={conv.id}
-   role="button"
-   tabIndex={0}
-   onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
-   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setSelectedConversation(conv.id); markAsRead(conv.id); } }}
-   className={cn(
-    "w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group/conv relative cursor-pointer",
-    selectedConversation === conv.id
-     ? "bg-white shadow-lg shadow-stone-200/50 border border-stone-200"
-     : "hover:bg-white/80 border border-transparent"
-   )}
-  >
-   {isPinned && <Pin className="absolute top-2 right-2 w-3 h-3 text-stone-400 rotate-45" />}
-   <Avatar src={conv.otherParticipant.profile?.profilePhoto} alt={conv.otherParticipant.fullName}
-    size="md" status={conv.otherParticipant.isOnline ? "online" : "offline"} isAI={conv.otherParticipant.isAI} />
-   <div className="flex-1 min-w-0">
-    <div className="flex items-center justify-between mb-0.5">
-     <div className="flex items-center gap-1.5 min-w-0">
-      <h3 className={cn("text-sm font-semibold truncate", conv.unreadCount > 0 ? "text-stone-900" : "text-stone-700")}>
-       {conv.otherParticipant.fullName}
-      </h3>
-      {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-700 text-[10px] rounded-full font-medium">AI</span>}
-      {!conv.otherParticipant.isAI && conv.otherParticipant.roles?.[0] && (
-       <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">
-        {labelOf(conv.otherParticipant.roles[0])}
-       </span>
-      )}
-     </div>
-     <span className="text-[11px] text-stone-400 shrink-0 ml-2">{conv.lastMessageTime}</span>
-    </div>
-    <div className="flex items-center justify-between">
-     <p className={cn("text-xs truncate pr-2", conv.unreadCount > 0 ? "text-stone-700 font-medium" : "text-stone-500")}>
-      {conv.lastMessage || t("Start a conversation...", "Ξεκίνα μια συνομιλία...")}
-     </p>
-     {conv.unreadCount > 0 && (
-      <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-       {conv.unreadCount > 99 ? '99+' : conv.unreadCount}
-      </span>
-     )}
-    </div>
-   </div>
-   {/* Conversation actions. One labeled menu on a phone; the same actions on hover at larger sizes. */}
-   <button
-    type="button"
-    aria-label={t("Conversation actions", "Ενέργειες συνομιλίας")}
-    onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
-    className="sm:hidden shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:bg-stone-100 rounded-xl"
-   >
-    <MoreVertical className="w-4 h-4" />
+ const convMenu = (conv: ChatConversation, className: string) => (
+  <div className={className} onClick={(e) => e.stopPropagation()}>
+   <button type="button" onClick={() => { messaging.setFlag(conv.id, "pinned", !conv.pinned); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+    <Pin className="w-4 h-4" /> {conv.pinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
    </button>
-   {openMenu === conv.id && (
-    <div className="sm:hidden absolute right-2 bottom-14 z-30 w-44 bg-white border border-stone-200 rounded-xl shadow-sm py-1" onClick={(e) => e.stopPropagation()}>
-     <button type="button" onClick={() => { togglePin(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <Pin className="w-4 h-4" /> {isPinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
-     </button>
-     <button type="button" onClick={() => { handleArchiveConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <Archive className="w-4 h-4" /> {t("Archive", "Αρχειοθέτηση")}
-     </button>
-     <button type="button" className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <BellOff className="w-4 h-4" /> {t("Mute", "Σίγαση")}
-     </button>
-     <button type="button" onClick={() => { handleDeleteConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
-      <Trash2 className="w-4 h-4" /> {t("Delete", "Διαγραφή")}
-     </button>
-    </div>
-   )}
-   <div className="hidden sm:flex absolute right-2 bottom-2 opacity-0 group-hover/conv:opacity-100 transition-opacity items-center gap-0.5">
-    <button onClick={(e) => { e.stopPropagation(); togglePin(conv.id); }} title={isPinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
-     className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
-     <Pin className="w-3 h-3" />
-    </button>
-    <button onClick={(e) => { e.stopPropagation(); handleArchiveConv(conv.id); }} title={t("Archive", "Αρχειοθέτηση")}
-     className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
-     <Archive className="w-3 h-3" />
-    </button>
-    <div className="relative group/ctx" onClick={(e) => e.stopPropagation()}>
-     <button title={t("More", "Περισσότερα")} className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
-      <MoreVertical className="w-3 h-3" />
-     </button>
-     <div className="absolute right-0 bottom-full mb-1 w-36 bg-white border border-stone-200 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/ctx:opacity-100 group-hover/ctx:pointer-events-auto transition-all z-30">
-      <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50 rounded-t-xl">
-       <BellOff className="w-3 h-3" /> {t("Mute", "Σίγαση")}
-      </button>
-      <button onClick={() => handleDeleteConv(conv.id)}
-       className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-b-xl">
-       <Trash2 className="w-3 h-3" /> {t("Delete", "Διαγραφή")}
-      </button>
-     </div>
-    </div>
-   </div>
+   <button type="button" onClick={() => { messaging.setFlag(conv.id, "muted", !conv.muted); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+    {conv.muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />} {conv.muted ? t("Unmute", "Κατάργηση σίγασης") : t("Mute", "Σίγαση")}
+   </button>
+   <button type="button" onClick={() => { messaging.setFlag(conv.id, "archived", !conv.archived); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
+    <Archive className="w-4 h-4" /> {conv.archived ? t("Unarchive", "Επαναφορά από αρχείο") : t("Archive", "Αρχειοθέτηση")}
+   </button>
+   <button type="button" onClick={() => { messaging.deleteForMe(conv.id); setOpenMenu(null); toast.info(t("Conversation removed", "Η συνομιλία αφαιρέθηκε"), t("It disappears from your list; the other member keeps their copy.", "Φεύγει από τη λίστα σου· το άλλο μέλος κρατά το δικό του αντίγραφο.")); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
+    <Trash2 className="w-4 h-4" /> {t("Delete for me", "Διαγραφή για εμένα")}
+   </button>
   </div>
  );
 
- const composerTip = t("Open a chat first. The composer is the box under that chat.", "Άνοιξε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.");
- const focusComposer = () => {
-  if (!selectedConversation) return;
-  textareaRef.current?.focus();
+ const renderConvCard = (conv: ChatConversation) => {
+  const online = conv.kind !== "ai" && isOnline({ lastActiveAt: findPerson(conv.otherId)?.lastActiveAt ?? conv.other.lastActiveAt }, now);
+  const preview = conv.lastMessage || (conv.kind === "ai" ? t("Ask anything", "Ρώτα ό,τι θέλεις") : t("No messages yet", "Δεν υπάρχουν μηνύματα ακόμη"));
+  const mine = conv.lastSenderId === user.id && conv.lastMessage;
+  const agent = conv.kind === "ai" ? MOCK_AGENTS.find((a) => a.id === conv.otherId) : undefined;
+  return (
+   <div
+    key={conv.id}
+    role="button"
+    tabIndex={0}
+    aria-current={activeId === conv.id ? "true" : undefined}
+    onClick={() => openConversation(conv.id)}
+    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openConversation(conv.id); } }}
+    className={cn(
+     "w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group/conv relative cursor-pointer",
+     activeId === conv.id ? "bg-white shadow-lg shadow-stone-200/50 border border-stone-200" : "hover:bg-white/80 border border-transparent"
+    )}
+   >
+    {conv.pinned && <Pin className="absolute top-2 right-2 w-3 h-3 text-stone-400 rotate-45" aria-hidden="true" />}
+    <Avatar src={conv.other.avatar} alt={conv.other.fullName} size="md" status={conv.kind === "ai" ? undefined : online ? "online" : "offline"} isAI={conv.kind === "ai"} icon={agent?.icon} />
+    <div className="flex-1 min-w-0">
+     <div className="flex items-center justify-between mb-0.5">
+      <div className="flex items-center gap-1.5 min-w-0">
+       <h3 className={cn("text-sm font-semibold truncate", conv.unread > 0 ? "text-stone-900" : "text-stone-700")}>
+        {agent ? agentName(agent) : conv.other.fullName}
+       </h3>
+       {conv.kind === "ai" ? <span className="shrink-0 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] rounded-full font-medium">AI</span>
+        : conv.other.role ? <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">{labelOf(conv.other.role)}</span> : null}
+       {conv.muted && <BellOff className="w-3 h-3 text-stone-400 shrink-0" aria-label={t("Muted", "Σε σίγαση")} />}
+      </div>
+      {conv.lastMessage && <span className="text-[11px] text-stone-400 shrink-0 ml-2 mr-3"><RelTime iso={new Date(conv.lastMessageAt).toISOString()} /></span>}
+     </div>
+     <div className="flex items-center justify-between">
+      <p className={cn("text-xs truncate pr-2", conv.unread > 0 ? "text-stone-700 font-medium" : "text-stone-500")}>
+       {mine ? <span className="text-stone-400">{t("You: ", "Εσύ: ")}</span> : null}{preview}
+      </p>
+      {conv.unread > 0 && (
+       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{conv.unread > 99 ? '99+' : conv.unread}</span>
+      )}
+     </div>
+    </div>
+    <button
+     type="button"
+     aria-label={t("Conversation actions", "Ενέργειες συνομιλίας")}
+     onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
+     className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-xl sm:opacity-0 sm:group-hover/conv:opacity-100 sm:focus:opacity-100"
+    >
+     <MoreVertical className="w-4 h-4" />
+    </button>
+    {openMenu === conv.id && convMenu(conv, "absolute right-2 top-12 z-30 w-52 bg-white border border-stone-200 rounded-xl shadow-lg py-1")}
+   </div>
+  );
  };
+
+ const composerTip = t("Pick a member or a specialist to start writing.", "Διάλεξε ένα μέλος ή έναν ειδικό για να αρχίσεις να γράφεις.");
 
  // =============================================================================
  // RENDER: LEFT SIDEBAR
  // =============================================================================
  const renderLeftSidebar = () => (
-  <aside className={cn(
-   "w-full md:w-80 lg:w-[22rem] border-r border-stone-200/80 bg-white flex flex-col shrink-0",
-   selectedConversation && "hidden md:flex"
-  )}>
-   {/* Header */}
+  <aside className={cn("w-full md:w-80 lg:w-[22rem] border-r border-stone-200/80 bg-white flex flex-col shrink-0", (activeId || activeView === "ai-center") && "hidden md:flex")}>
    <div className="p-4 space-y-3">
     <div className="flex items-center justify-between">
      <div className="flex items-center gap-3">
@@ -599,57 +781,40 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
       <div>
        <h1 className="text-base font-bold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
-       <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Connect & Collaborate", "Σύνδεση και συνεργασία")}</p>
+       <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Private conversations", "Ιδιωτικές συνομιλίες")}</p>
       </div>
      </div>
-     <div className="flex items-center gap-1">
-      <IconButton icon={Users} size="sm" disabled tooltip={t("This page has no group composer. Start with one person.", "Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκίνα με ένα άτομο.")} />
-      <IconButton icon={Plus} size="sm" variant="filled" disabled={!selectedConversation}
-       tooltip={selectedConversation ? t("New message", "Νέο μήνυμα") : composerTip}
-       onClick={focusComposer} />
-     </div>
+     <IconButton icon={Plus} variant="filled" tooltip={t("New message", "Νέο μήνυμα")} onClick={() => setPicker({ open: true, mode: 'new' })} />
     </div>
 
-    {/* Sidebar Tabs: Chats / Intros */}
-    <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
-     <button onClick={() => setSidebarTab("chats")}
-      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
-       sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
+    <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl" role="tablist">
+     <button role="tab" aria-selected={sidebarTab === "chats"} onClick={() => setSidebarTab("chats")}
+      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all", sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <MessageSquare className="w-3.5 h-3.5" />
       {t("Chats", "Συνομιλίες")}
       {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] font-medium rounded-full tabular-nums">{totalUnread}</span>}
      </button>
-     <button onClick={() => setSidebarTab("intros")}
-      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
-       sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
+     <button role="tab" aria-selected={sidebarTab === "intros"} onClick={() => setSidebarTab("intros")}
+      className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all", sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
-      {t("Intros", "Συστάσεις")}
-      {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
+      {t("Requests", "Αιτήματα")}
+      {intros.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{intros.length}</span>}
      </button>
     </div>
 
-    {/* Search (Chats tab only) */}
     {sidebarTab === "chats" && (
      <>
       <div className="relative">
        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-       <input type="text" placeholder={t("Search messages, people...", "Αναζήτηση μηνυμάτων, ατόμων...")}
+       <input type="search" placeholder={t("Search conversations…", "Αναζήτηση συνομιλιών…")} aria-label={t("Search conversations", "Αναζήτηση συνομιλιών")}
         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full min-h-11 pl-10 pr-10 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 transition-colors" />
-       <div className="absolute right-2 top-1/2 -translate-y-1/2">
-        <button type="button" aria-label={t("Filter", "Φίλτρο")} className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
-         <Filter className="w-3.5 h-3.5" />
-        </button>
-       </div>
+        className="w-full min-h-11 pl-10 pr-3 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 transition-colors" />
       </div>
-
-      {/* Filter Chips */}
       <div className="flex items-center gap-1 p-0.5 bg-stone-100 rounded-lg">
-       {(["all", "unread", "ai"] as MessageFilter[]).map((filter) => (
-        <button key={filter} onClick={() => setMessageFilter(filter)}
-         className={cn("flex-1 min-h-11 px-2 py-2 text-sm font-medium rounded-md transition-all capitalize",
-          messageFilter === filter ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
-         {filter === "ai" ? t("AI Agents", "Πράκτορες AI") : filter === "unread" ? t("Unread", "Μη αναγνωσμένα") : t("All", "Όλα")}
+       {(["all", "unread", "ai", "archived"] as MessageFilter[]).map((filter) => (
+        <button key={filter} onClick={() => setMessageFilter(filter)} aria-pressed={messageFilter === filter}
+         className={cn("flex-1 min-h-10 px-1 py-2 text-xs font-medium rounded-md transition-all", messageFilter === filter ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
+         {filter === "ai" ? "AI" : filter === "unread" ? t("Unread", "Αδιάβαστες") : filter === "archived" ? `${t("Archived", "Αρχείο")}${archivedCount ? ` · ${archivedCount}` : ""}` : t("All", "Όλες")}
         </button>
        ))}
       </div>
@@ -657,261 +822,284 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     )}
    </div>
 
-   {/* Content Area */}
    <div className="flex-1 overflow-y-auto bg-stone-50/30">
     {sidebarTab === "chats" ? (
-     /* ── Chats Tab ── */
-     filteredConversations.length === 0 ? (
+     !ready ? (
+      <div className="px-3 space-y-2 pt-1">
+       {[0, 1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-stone-100 animate-pulse" />)}
+      </div>
+     ) : filteredConversations.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
         <MessageSquare className="w-8 h-8 text-stone-300" />
        </div>
-       <p className="text-sm text-stone-600 font-semibold">{t("No conversations yet", "Δεν υπάρχουν συνομιλίες ακόμη")}</p>
-       <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">{t("Start a new chat or connect with founders in your network", "Ξεκίνα μια νέα συνομιλία ή συνδέσου με ιδρυτές στο δίκτυό σου")}</p>
+       <p className="text-sm text-stone-600 font-semibold">
+        {messageFilter === "archived" ? t("Nothing archived", "Τίποτα στο αρχείο") : messageFilter === "unread" ? t("No unread conversations", "Καμία αδιάβαστη συνομιλία") : searchQuery ? t("No conversation matches", "Καμία συνομιλία δεν ταιριάζει") : t("No conversations yet", "Δεν υπάρχουν συνομιλίες ακόμη")}
+       </p>
+       <p className="text-xs text-stone-400 mt-1.5 max-w-[220px] leading-relaxed">
+        {messageFilter === "all" && !searchQuery ? t("Write to a member from Matches or Network, or ask an AI specialist.", "Γράψε σε ένα μέλος από τις Αντιστοιχίσεις ή το Δίκτυο, ή ρώτησε έναν ειδικό AI.") : t("Try another filter or search term.", "Δοκίμασε άλλο φίλτρο ή όρο αναζήτησης.")}
+       </p>
        <div className="mt-4 flex flex-col items-center gap-2">
-        <span title={selectedConversation ? undefined : composerTip} className="inline-flex">
-         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
-          className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-          <Plus className="w-3.5 h-3.5" /> {t("New message", "Νέο μήνυμα")}
-         </button>
-        </span>
-        <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
-         {t("Ask assistant who to message", "Ρώτα τον βοηθό ποιον να στείλεις μήνυμα")}
+        <button type="button" onClick={() => setPicker({ open: true, mode: 'new' })}
+         className="flex items-center gap-2 min-h-11 px-4 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15">
+         <Plus className="w-3.5 h-3.5" /> {t("New message", "Νέο μήνυμα")}
+        </button>
+        <button type="button" className="text-xs font-medium text-stone-900 hover:underline min-h-11" onClick={() => navigate("/matches")}>
+         {t("Find people to talk to", "Βρες άτομα για συζήτηση")}
         </button>
        </div>
       </div>
      ) : (
       <div className="px-3 pb-4 space-y-0.5">
-       {/* Pinned Section */}
        {pinnedConversations.length > 0 && (
         <>
          <div className="flex items-center gap-2 px-2 py-2">
           <Pin className="w-3 h-3 text-stone-400 rotate-45" />
-          <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Pinned", "Καρφιτσωμένα")}</span>
+          <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Pinned", "Καρφιτσωμένες")}</span>
          </div>
-         {pinnedConversations.map(c => renderConvCard(c, true))}
+         {pinnedConversations.map((c) => renderConvCard(c))}
          <div className="h-px bg-stone-200 mx-2 my-2" />
         </>
        )}
-       {/* Recent Section */}
        {unpinnedConversations.length > 0 && (
         <>
          {pinnedConversations.length > 0 && (
           <div className="flex items-center gap-2 px-2 py-2">
            <Clock className="w-3 h-3 text-stone-400" />
-           <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Recent", "Πρόσφατα")}</span>
+           <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Recent", "Πρόσφατες")}</span>
           </div>
          )}
-         {unpinnedConversations.map(c => renderConvCard(c, false))}
+         {unpinnedConversations.map((c) => renderConvCard(c))}
         </>
        )}
       </div>
      )
     ) : (
-     /* ── Intros Tab (Connection Requests) ── */
      <div className="px-3 pb-4 space-y-3">
-      {connectionRequests.length === 0 ? (
-       <div className="flex flex-col items-center justify-center py-16 text-center">
+      {!real && !isDemoMode ? null : intros.length === 0 ? (
+       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
          <UserPlus className="w-8 h-8 text-stone-300" />
         </div>
-        <p className="text-sm text-stone-500 font-medium">{t("No pending intros", "Δεν υπάρχουν εκκρεμείς συστάσεις")}</p>
-        <p className="text-xs text-stone-400 mt-1">{t("You're all caught up!", "Τα έχεις δει όλα!")}</p>
-        <button type="button" className="mt-3 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
-         {t("Ask assistant who to invite", "Ρώτα τον βοηθό ποιον να προσκαλέσεις")}
-        </button>
+        <p className="text-sm text-stone-500 font-medium">{t("No pending requests", "Κανένα εκκρεμές αίτημα")}</p>
+        <p className="text-xs text-stone-400 mt-1 max-w-[220px]">{t("When a member asks to connect, you will accept or decline it here.", "Όταν ένα μέλος ζητήσει σύνδεση, θα την αποδεχτείς ή θα την απορρίψεις εδώ.")}</p>
        </div>
       ) : (
-       connectionRequests.map(req => (
-        <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-         exit={{ opacity: 0, x: -100 }}
+       intros.map((req) => (
+        <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100 }}
          className="p-4 bg-white border border-stone-200 rounded-xl space-y-3 hover:shadow-md transition-shadow">
          <div className="flex items-start gap-3">
-          <Avatar src={req.from.avatar} alt={req.from.fullName} size="md" />
+          <button type="button" className="block" onClick={() => navigate(`/profile/${req.from.id}`)} aria-label={t("View profile", "Προβολή προφίλ")}>
+           <Avatar src={req.from.avatar} alt={req.from.fullName} size="md" />
+          </button>
           <div className="flex-1 min-w-0">
            <h4 className="text-sm font-semibold text-stone-900">{req.from.fullName}</h4>
            <p className="text-xs text-stone-500 truncate">{req.from.headline}</p>
-           {req.from.role && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{labelOf(req.from.role)}</span>
-           )}
+           {req.from.role && <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{labelOf(req.from.role)}</span>}
           </div>
-          <span className="text-[10px] text-stone-400 shrink-0">
-           <RelTime iso={req.createdAt} />
-          </span>
+          <span className="text-[10px] text-stone-400 shrink-0"><RelTime iso={req.createdAt} /></span>
          </div>
-         {req.message && (
-          <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-lg leading-relaxed italic">"{req.message}"</p>
-         )}
+         {req.message && <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-lg leading-relaxed italic">“{req.message}”</p>}
          <div className="flex items-center gap-2">
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${req.from.fullName}`, context: req.from.fullName } }))}
-           className="px-3 py-2 bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg hover:border-stone-900 transition-all">
-           {t("Ask", "Ρώτα")}
+          <button type="button" onClick={() => navigate(`/profile/${req.from.id}`)} className="min-h-11 px-3 bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg hover:border-stone-900 transition-all">
+           {t("Profile", "Προφίλ")}
           </button>
-          <button onClick={() => handleAcceptIntro(req.id)}
-           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-all">
+          <button type="button" onClick={() => void handleAcceptIntro(req)} className="flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-all">
            <Check className="w-3.5 h-3.5" /> {t("Accept", "Αποδοχή")}
           </button>
-          <button onClick={() => handleDeclineIntro(req.id)}
-           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-100 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-200 transition-all">
+          <button type="button" onClick={() => void handleDeclineIntro(req)} className="flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 bg-stone-100 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-200 transition-all">
            <X className="w-3.5 h-3.5" /> {t("Decline", "Απόρριψη")}
           </button>
          </div>
         </motion.div>
        ))
       )}
+      {sentRequests.length > 0 && (
+       <div className="pt-2">
+        <p className="px-1 pb-2 text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Sent by you", "Σταλμένα από εσένα")}</p>
+        <div className="space-y-2">
+         {sentRequests.map((item) => (
+          <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-xl">
+           <Avatar src={item.person.avatar} alt={item.person.name} size="sm" />
+           <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-stone-900 truncate">{item.person.name}</p>
+            <p className="text-[11px] text-stone-400">{t("Waiting for a reply", "Αναμονή απάντησης")} · <RelTime iso={new Date(item.at).toISOString()} /></p>
+           </div>
+           <button type="button" onClick={() => void handleWithdraw(item)} className="min-h-11 px-2 text-xs font-medium text-stone-500 hover:text-red-600">{t("Withdraw", "Ανάκληση")}</button>
+          </div>
+         ))}
+        </div>
+       </div>
+      )}
      </div>
     )}
    </div>
 
-   {/* Bottom Actions */}
    <div className="p-3 border-t border-stone-100">
     <div className="flex items-center justify-between">
-     <button type="button" title={t("Opens the same studio assistant as the corner control — stays on Messages.", "Ανοίγει τον ίδιο βοηθό studio με το κουμπί στη γωνία — μένεις στα Μηνύματα.")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1', prompt: 'Draft a reply in this thread' } }))}
-      className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all",
-       "hover:bg-stone-100 text-stone-500")}>
+     <button type="button" onClick={() => { setActiveView(activeView === "ai-center" ? "chat" : "ai-center"); setActiveId(null); }} aria-pressed={activeView === "ai-center"}
+      className={cn("flex items-center gap-2 min-h-11 px-3 rounded-xl transition-all", activeView === "ai-center" ? "bg-stone-900 text-white" : "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
-      <span className="text-xs font-semibold">{t("AI Center", "Κέντρο AI")}</span>
+      <span className="text-xs font-semibold">{t("AI specialists", "Ειδικοί AI")}</span>
      </button>
-     <button type="button" aria-label={t("Settings", "Ρυθμίσεις")} title={t("Settings", "Ρυθμίσεις")} className="flex items-center gap-2 p-2 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-all">
-      <Settings className="w-4 h-4" />
-     </button>
+     <IconButton icon={Settings} tooltip={t("Notification settings", "Ρυθμίσεις ειδοποιήσεων")} onClick={() => navigate("/settings?tab=notifications")} />
     </div>
    </div>
   </aside>
  );
 
  // =============================================================================
- // RENDER: MAIN CHAT AREA
+ // RENDER: MESSAGE BUBBLE
  // =============================================================================
+ const renderAttachment = (att: ChatAttachment, isMe: boolean, key: number) => {
+  if (isImage(att) && att.url) {
+   return (
+    <a key={key} href={att.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-stone-200/60 max-w-[260px]">
+     <img src={att.url} alt={att.name} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
+    </a>
+   );
+  }
+  if (isAudio(att) && att.url) {
+   return (
+    <div key={key} className={cn("flex items-center gap-2 p-2 rounded-lg", isMe ? "bg-stone-800" : "bg-stone-100")}>
+     <Mic className={cn("w-4 h-4 shrink-0", isMe ? "text-stone-300" : "text-stone-500")} />
+     <audio controls src={att.url} className="h-8 max-w-[220px]" preload="metadata" />
+    </div>
+   );
+  }
+  return (
+   <a key={key} href={att.url || undefined} target="_blank" rel="noopener noreferrer" download={att.name}
+    className={cn("flex items-center gap-2 p-2 rounded-lg transition-colors", isMe ? "bg-stone-800 hover:bg-stone-700" : "bg-stone-100 hover:bg-stone-200", !att.url && "pointer-events-none opacity-70")}>
+    <FileText className={cn("w-4 h-4 shrink-0", isMe ? "text-stone-400" : "text-stone-500")} />
+    <span className={cn("text-xs truncate", isMe ? "text-stone-200" : "text-stone-700")}>{att.name}</span>
+    <span className={cn("text-[10px] shrink-0", isMe ? "text-stone-400" : "text-stone-400")}>{formatBytes(att.size)}</span>
+    <Download className={cn("w-3 h-3 ml-auto shrink-0", isMe ? "text-stone-400" : "text-stone-500")} />
+   </a>
+  );
+ };
 
- const renderMessageBubble = (msg: Message, idx: number) => {
+ const renderMessageBubble = (msg: ChatMessage, idx: number) => {
   const isMe = msg.senderId === user.id;
-  const showAvatar = idx === 0 || chatMessages[idx - 1]?.senderId !== msg.senderId;
-  const reactions = msg.reactions || [];
-  const hasThread = (msg.threadCount || 0) > 0;
+  const prev = messages[idx - 1];
+  const showAvatar = idx === 0 || prev?.senderId !== msg.senderId;
+  const showDateSep = idx === 0 || new Date(msg.createdAt).toDateString() !== new Date(prev?.createdAt ?? 0).toDateString();
+  const reactions = Object.entries(msg.reactions ?? {}).filter(([, ids]) => ids.length > 0);
+  const highlighted = Boolean(chatSearchQuery.trim()) && msg.body.toLowerCase().includes(chatSearchQuery.trim().toLowerCase());
+  const read = isMe && active ? (active.kind !== "dm" || (active.otherLastReadAt >= msg.createdAt)) : false;
+  const isCall = msg.kind === "call" && msg.callUrl;
+  const isSystem = msg.kind === "system";
+  const canEdit = isMe && !msg.deleted && !isCall && !isSystem && active?.kind !== "ai";
 
-  // Date separator logic
-  const showDateSep = idx === 0 || new Date(msg.createdAt).toDateString() !== new Date(chatMessages[idx - 1]?.createdAt ?? 0).toDateString();
+  if (isSystem) {
+   return (
+    <div key={msg.id}>
+     {showDateSep && <DateSeparator at={msg.createdAt} />}
+     <p className="text-center text-xs text-stone-400 py-2 px-6">{msg.body}</p>
+    </div>
+   );
+  }
 
   return (
-   <div key={msg.id}>
-    {showDateSep && <DateSeparator date={msg.createdAt} />}
-    <motion.div
-     initial={{ opacity: 0, y: 10 }}
-     animate={{ opacity: 1, y: 0 }}
-     className={cn("flex items-end gap-2 group/message", isMe ? "flex-row-reverse" : "flex-row")}
-    >
-     {/* Avatar */}
+   <div key={msg.id} id={`msg-${msg.id}`}>
+    {showDateSep && <DateSeparator at={msg.createdAt} />}
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn("flex items-end gap-2 group/message", isMe ? "flex-row-reverse" : "flex-row")}>
      {!isMe && (
       <div className="w-8 h-8 shrink-0">
-       {showAvatar ? (
-        <Avatar src={activeConv?.otherParticipant.profile?.profilePhoto} alt={msg.senderName || t("User", "Χρήστης")} size="sm" />
-       ) : <div className="w-full h-full" />}
+       {showAvatar ? <Avatar src={active?.other.avatar} alt={msg.senderName || t("Member", "Μέλος")} size="sm" isAI={msg.isAI} icon={activeAgent?.icon} /> : null}
       </div>
      )}
-
-     {/* Message Content */}
-     <div className={cn("max-w-[75%] sm:max-w-[65%] space-y-1", isMe ? "items-end" : "items-start")}>
-      {/* Bubble */}
+     <div className={cn("max-w-[80%] sm:max-w-[65%] space-y-1 flex flex-col", isMe ? "items-end" : "items-start")}>
       <div className={cn(
        "relative px-4 py-2.5 rounded-2xl text-sm shadow-sm",
-       isMe ? "bg-stone-900 text-white rounded-br-lg"
-        : msg.isAI ? "bg-stone-50 text-stone-900 border border-stone-200 rounded-bl-lg"
-        : "bg-white text-stone-800 border border-stone-200 rounded-bl-lg"
+       isMe ? "bg-stone-900 text-white rounded-br-lg" : msg.isAI ? "bg-stone-50 text-stone-900 border border-stone-200 rounded-bl-lg" : "bg-white text-stone-800 border border-stone-200 rounded-bl-lg",
+       highlighted && "ring-2 ring-amber-300",
+       msg.failed && "opacity-70 ring-1 ring-red-300",
       )}>
-       {/* AI Badge */}
-       {msg.isAI && (
+       {msg.isAI && activeAgent && (
         <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-stone-200/50">
          <Sparkles className="w-3 h-3 text-stone-500" />
-         <span className="text-[10px] font-semibold text-stone-600 tracking-wider">{activeConv?.otherParticipant.fullName}</span>
+         <span className="text-[10px] font-semibold text-stone-600 tracking-wider">{agentName(activeAgent)}</span>
         </div>
        )}
-
-       {/* Reply Reference */}
        {msg.replyTo && (
-        <div className={cn("mb-2 p-2 rounded-lg text-xs border-l-2",
-         isMe ? "bg-stone-800 border-stone-600" : "bg-stone-50 border-stone-300")}>
+        <button type="button" onClick={() => document.getElementById(`msg-${msg.replyTo?.messageId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+         className={cn("mb-2 p-2 rounded-lg text-xs border-l-2 text-left w-full", isMe ? "bg-stone-800 border-stone-600" : "bg-stone-50 border-stone-300")}>
          <p className={cn("font-medium", isMe ? "text-stone-300" : "text-stone-600")}>{msg.replyTo.senderName}</p>
          <p className={cn("truncate", isMe ? "text-stone-400" : "text-stone-500")}>{msg.replyTo.body}</p>
-        </div>
-       )}
-
-       {/* Message Body */}
-       <p className="leading-relaxed whitespace-pre-wrap">{msg.body}</p>
-
-       {/* Attachments */}
-       {msg.attachments && msg.attachments.length > 0 && (
-        <div className="mt-2 space-y-1.5">
-         {msg.attachments.map((att, i) => (
-          <div key={i} className={cn("flex items-center gap-2 p-2 rounded-lg", isMe ? "bg-stone-800" : "bg-stone-100")}>
-           <FileText className={cn("w-4 h-4", isMe ? "text-stone-400" : "text-stone-500")} />
-           <span className={cn("text-xs", isMe ? "text-stone-300" : "text-stone-600")}>{att.name}</span>
-           <Download className={cn("w-3 h-3 ml-auto cursor-pointer", isMe ? "text-stone-400" : "text-stone-500")} />
-          </div>
-         ))}
-        </div>
-       )}
-
-       {/* Hover Actions (expanded) */}
-       <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity z-10",
-        isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1")}>
-        <div className="flex items-center gap-0.5 p-1 bg-white rounded-lg shadow-lg border border-stone-200">
-         <button type="button" aria-label={t("Reply", "Απάντηση")} onClick={() => setReplyingTo(msg)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Reply", "Απάντηση")}>
-          <Reply className="w-3.5 h-3.5" />
-         </button>
-         <button type="button" aria-label={t("React", "Αντίδραση")} onClick={() => setShowEmojiPicker(msg.id)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("React", "Αντίδραση")}>
-          <Smile className="w-3.5 h-3.5" />
-         </button>
-         <button type="button" aria-label={t("Copy", "Αντιγραφή")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Copy", "Αντιγραφή")}
-          onClick={() => navigator.clipboard.writeText(msg.body)}>
-          <Copy className="w-3.5 h-3.5" />
-         </button>
-         <button type="button" aria-label={t("Forward", "Προώθηση")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Forward", "Προώθηση")}>
-          <Forward className="w-3.5 h-3.5" />
-         </button>
-         <button type="button" aria-label={t("Bookmark", "Σελιδοδείκτης")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Bookmark", "Σελιδοδείκτης")}>
-          <Bookmark className="w-3.5 h-3.5" />
-         </button>
-        </div>
-       </div>
-
-       {/* Emoji Picker Popup */}
-       {showEmojiPicker === msg.id && (
-        <div className={cn("absolute -bottom-10 z-20 flex items-center gap-1 p-1.5 bg-white rounded-xl shadow-xl border border-stone-200",
-         isMe ? "right-0" : "left-0")}>
-         {EMOJI_REACTIONS.slice(0, 6).map(emoji => (
-          <button key={emoji} onClick={() => setShowEmojiPicker(false)}
-           className="w-7 h-7 flex items-center justify-center text-base hover:bg-stone-100 rounded-lg transition-colors">{emoji}</button>
-         ))}
-        </div>
-       )}
-      </div>
-
-      {/* Meta Row */}
-      <div className={cn("flex items-center gap-2 px-1", isMe ? "flex-row-reverse" : "flex-row")}>
-       <span className="text-[10px] text-stone-400">
-        {formatTime(msg.createdAt)}
-       </span>
-       {isMe && (
-        <span className="text-stone-400">
-         {msg.readStatus ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3" />}
-        </span>
-       )}
-       {hasThread && (
-        <button className="flex items-center gap-1 text-[10px] text-stone-500 hover:text-stone-900">
-         <MessageCircle className="w-3 h-3" />
-         {msg.threadCount} {t("replies", "απαντήσεις")}
         </button>
        )}
+       {isCall ? (
+        <div className="flex items-center gap-3">
+         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", isMe ? "bg-stone-800" : "bg-stone-100")}>
+          {msg.body.toLowerCase().includes("video") || msg.body.includes("Βιντεο") ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+         </div>
+         <div className="min-w-0">
+          <p className="font-medium">{msg.body}</p>
+          <a href={msg.callUrl} target="_blank" rel="noopener noreferrer" className={cn("inline-flex items-center gap-1 text-xs underline", isMe ? "text-stone-300" : "text-stone-600")}>
+           {t("Join call", "Συμμετοχή στην κλήση")} <ExternalLink className="w-3 h-3" />
+          </a>
+         </div>
+        </div>
+       ) : editing?.id === msg.id ? (
+        <div className="space-y-2 min-w-[200px]">
+         <textarea autoFocus value={editing.body} onChange={(e) => setEditing({ id: msg.id, body: e.target.value })} rows={2}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); messaging.editMessage(msg.id, editing.body); setEditing(null); } if (e.key === "Escape") setEditing(null); }}
+          className="w-full text-sm text-stone-900 bg-white rounded-lg p-2 border border-stone-300 focus:outline-none" />
+         <div className="flex gap-2 justify-end">
+          <button type="button" onClick={() => setEditing(null)} className="text-xs text-stone-300 hover:text-white">{t("Cancel", "Ακύρωση")}</button>
+          <button type="button" onClick={() => { messaging.editMessage(msg.id, editing.body); setEditing(null); }} className="text-xs font-semibold text-white">{t("Save", "Αποθήκευση")}</button>
+         </div>
+        </div>
+       ) : (
+        <p className={cn("leading-relaxed whitespace-pre-wrap break-words", msg.deleted && "italic opacity-60")}>{msg.deleted ? t("Message deleted", "Το μήνυμα διαγράφηκε") : msg.body}</p>
+       )}
+       {!msg.deleted && msg.attachments && msg.attachments.length > 0 && (
+        <div className="mt-2 space-y-1.5">{msg.attachments.map((att, i) => renderAttachment(att, isMe, i))}</div>
+       )}
+
+       {!msg.deleted && !isCall && (
+        <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 md:focus-within:opacity-100 transition-opacity z-10", isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1")}>
+         <div className="flex items-center gap-0.5 p-1 bg-white rounded-lg shadow-lg border border-stone-200">
+          <button type="button" aria-label={t("Reply", "Απάντηση")} title={t("Reply", "Απάντηση")} onClick={() => { setReplyingTo(msg); textareaRef.current?.focus(); }} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Reply className="w-3.5 h-3.5" /></button>
+          <button type="button" aria-label={t("React", "Προσθήκη αντίδρασης")} title={t("React", "Προσθήκη αντίδρασης")} onClick={(e) => { e.stopPropagation(); setReactionFor(reactionFor === msg.id ? null : msg.id); }} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Smile className="w-3.5 h-3.5" /></button>
+          <button type="button" aria-label={t("Copy", "Αντιγραφή")} title={t("Copy", "Αντιγραφή")} onClick={() => { void navigator.clipboard.writeText(msg.body).then(() => toast.info(t("Copied", "Αντιγράφηκε"))).catch(() => toast.error(t("Failed to copy", "Αποτυχία αντιγραφής"))); }} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Copy className="w-3.5 h-3.5" /></button>
+          <button type="button" aria-label={t("Forward", "Προώθηση")} title={t("Forward", "Προώθηση")} onClick={() => setPicker({ open: true, mode: 'forward', message: msg })} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Forward className="w-3.5 h-3.5" /></button>
+          {canEdit && (
+           <>
+            <button type="button" aria-label={t("Edit", "Επεξεργασία")} title={t("Edit", "Επεξεργασία")} onClick={() => setEditing({ id: msg.id, body: msg.body })} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Pencil className="w-3.5 h-3.5" /></button>
+            <button type="button" aria-label={t("Delete", "Διαγραφή")} title={t("Delete", "Διαγραφή")} onClick={() => messaging.removeMessage(msg.id)} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-red-600 hover:bg-red-50 rounded-md"><Trash2 className="w-3.5 h-3.5" /></button>
+           </>
+          )}
+         </div>
+        </div>
+       )}
+
+       {reactionFor === msg.id && (
+        <div className={cn("absolute -bottom-11 z-20 flex items-center gap-0.5 p-1.5 bg-white rounded-xl shadow-xl border border-stone-200", isMe ? "right-0" : "left-0")} onClick={(e) => e.stopPropagation()}>
+         {REACTIONS.map(({ key, emoji }) => (
+          <button key={key} type="button" aria-label={key} onClick={() => { messaging.react(msg.id, key); setReactionFor(null); }}
+           className={cn("w-8 h-8 flex items-center justify-center text-base hover:bg-stone-100 rounded-lg transition-colors", (msg.reactions?.[key] ?? []).includes(user.id) && "bg-stone-100")}>{emoji}</button>
+         ))}
+        </div>
+       )}
       </div>
 
-      {/* Reactions */}
+      <div className={cn("flex items-center gap-2 px-1", isMe ? "flex-row-reverse" : "flex-row")}>
+       <span className="text-[10px] text-stone-400">{formatTime(msg.createdAt)}</span>
+       {msg.edited && !msg.deleted && <span className="text-[10px] text-stone-400">· {t("edited", "επεξεργασμένο")}</span>}
+       {isMe && (
+        <span className="text-stone-400" aria-label={msg.failed ? t("Not sent", "Δεν στάλθηκε") : msg.pending ? t("Sending", "Αποστολή") : read ? t("Read", "Διαβάστηκε") : t("Sent", "Στάλθηκε")}>
+         {msg.failed ? <AlertCircle className="w-3 h-3 text-red-500" /> : msg.pending ? <Clock className="w-3 h-3" /> : read ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3" />}
+        </span>
+       )}
+      </div>
+
       {reactions.length > 0 && (
        <div className={cn("flex items-center gap-1 flex-wrap", isMe ? "justify-end" : "justify-start")}>
-        {reactions.map((reaction, i) => (
-         <button key={i} className={cn("px-1.5 py-0.5 rounded-full text-xs border transition-all",
-          reaction.userIds.includes(user.id) ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300")}>
-          {reaction.emoji} {reaction.userIds.length > 1 && reaction.userIds.length}
+        {reactions.map(([key, ids]) => (
+         <button key={key} type="button" onClick={() => messaging.react(msg.id, key)} aria-pressed={ids.includes(user.id)}
+          className={cn("px-1.5 py-0.5 rounded-full text-xs border transition-all", ids.includes(user.id) ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300")}>
+          {reactionEmoji(key)} {ids.length > 1 && ids.length}
          </button>
         ))}
        </div>
@@ -922,232 +1110,216 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   );
  };
 
- const renderMainChat = () => {
-  if (!activeConv) {
-   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50 relative overflow-hidden">
-
-     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative z-10 max-w-lg w-full">
-
-      {/* Logo icon */}
-      <div className="relative w-20 h-20 mx-auto mb-8">
-       <div className="w-full h-full bg-stone-900 rounded-xl flex items-center justify-center">
-        <MessageSquare className="w-9 h-9 text-white" />
+ // =============================================================================
+ // RENDER: MAIN CHAT
+ // =============================================================================
+ const renderEmptyState = () => (
+  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50 relative overflow-hidden">
+   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="relative z-10 max-w-lg w-full">
+    <div className="w-20 h-20 mx-auto mb-8 bg-stone-900 rounded-xl flex items-center justify-center">
+     <MessageSquare className="w-9 h-9 text-white" />
+    </div>
+    <h2 className="text-2xl font-bold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
+    <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
+     {t("Message co-founders, mentors and investors, share files, start a call, or ask an AI specialist.", "Στείλε μήνυμα σε συνιδρυτές, μέντορες και επενδυτές, μοιράσου αρχεία, ξεκίνα κλήση ή ρώτησε έναν ειδικό AI.")}
+    </p>
+    <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
+     {[
+      { label: t("Conversations", "Συνομιλίες"), value: conversations.filter((c) => !c.archived).length, icon: MessageSquare, color: "bg-stone-900 text-white" },
+      { label: t("Unread", "Αδιάβαστα"), value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
+      { label: t("Requests", "Αιτήματα"), value: intros.length, icon: UserPlus, color: intros.length > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
+     ].map(({ label, value, icon: Icon, color }) => (
+      <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
+       <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}><Icon className="w-3.5 h-3.5" /></div>
+       <div className="text-left">
+        <p className="text-base font-bold text-stone-900 leading-none tabular-nums">{value}</p>
+        <p className="text-[10px] text-stone-400 font-medium tracking-wider">{label}</p>
        </div>
       </div>
-
-      <h2 className="text-2xl font-bold text-stone-900 mb-2 tracking-tight">{t("Your Communication Hub", "Ο κόμβος επικοινωνίας σου")}</h2>
-      <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
-       {t("Connect with co-founders, mentors, and AI agents. Schedule meetings, share files, and collaborate seamlessly.", "Συνδέσου με συνιδρυτές, μέντορες και πράκτορες AI. Προγραμμάτισε συναντήσεις, μοίρασε αρχεία και συνεργάσου χωρίς εμπόδια.")}
-      </p>
-
-      {/* Quick stats row */}
-      <div className="flex items-center justify-center gap-3 mb-8">
-       {[
-        { label: t("Conversations", "Συνομιλίες"), value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
-        { label: t("Unread", "Μη αναγνωσμένα"), value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
-        { label: t("AI Agents", "Πράκτορες AI"), value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
-       ].map(({ label, value, icon: Icon, color }) => (
-        <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
-         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
-          <Icon className="w-3.5 h-3.5" />
-         </div>
-         <div className="text-left">
-          <p className="text-base font-bold text-stone-900 leading-none">{value}</p>
-          <p className="text-[10px] text-stone-400 font-medium tracking-wider">{label}</p>
-         </div>
-        </div>
+     ))}
+    </div>
+    <div className="flex flex-col items-center gap-2.5 w-full mx-auto">
+     <button type="button" onClick={() => setPicker({ open: true, mode: 'new' })}
+      className="w-full flex items-center justify-center gap-2.5 min-h-12 px-5 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm">
+      <Plus className="w-4 h-4" /> {t("New message", "Νέο μήνυμα")}
+     </button>
+     <button type="button" onClick={() => { setActiveView("ai-center"); setAiView("agents"); }}
+      className="w-full flex items-center justify-center gap-2.5 min-h-12 px-5 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
+      <Sparkles className="w-4 h-4" /> {t("Ask an AI specialist", "Ρώτησε έναν ειδικό AI")}
+     </button>
+     <div className="flex items-center gap-2.5 w-full">
+      <button type="button" onClick={() => navigate("/matches")} className="flex-1 flex items-center justify-center gap-2 min-h-11 px-4 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
+       <Users className="w-3.5 h-3.5" /> {t("Find people", "Εύρεση ατόμων")}
+      </button>
+      <button type="button" onClick={() => navigate("/network")} className="flex-1 flex items-center justify-center gap-2 min-h-11 px-4 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
+       <UserIcon className="w-3.5 h-3.5" /> {t("My network", "Το δίκτυό μου")}
+      </button>
+     </div>
+    </div>
+    {conversations.length > 0 && (
+     <div className="mt-8 pt-6 border-t border-stone-200/60">
+      <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">{t("Recent conversations", "Πρόσφατες συνομιλίες")}</p>
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+       {conversations.filter((c) => !c.archived).slice(0, 6).map((conv) => (
+        <button key={conv.id} type="button" onClick={() => openConversation(conv.id)} className="relative block" title={conv.other.fullName} aria-label={conv.other.fullName}>
+         <Avatar src={conv.other.avatar} alt={conv.other.fullName} size="md" isAI={conv.kind === "ai"} icon={MOCK_AGENTS.find((a) => a.id === conv.otherId)?.icon} />
+         {conv.unread > 0 && <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-stone-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center tabular-nums">{conv.unread}</div>}
+        </button>
        ))}
       </div>
+     </div>
+    )}
+   </motion.div>
+  </div>
+ );
 
-      {/* Action buttons */}
-      <div className="flex flex-col items-center gap-2.5 w-full mx-auto">
-       <span title={selectedConversation ? undefined : composerTip} className="w-full">
-        <button type="button" disabled={!selectedConversation} onClick={focusComposer}
-         className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-         <Plus className="w-4 h-4" /> {t("New message", "Νέο μήνυμα")}
-        </button>
-       </span>
-       <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
-        className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
-        <Sparkles className="w-4 h-4" /> {t("Talk to AI Agent", "Συνομιλία με πράκτορα AI")}
-       </button>
-       <div className="flex items-center gap-2.5 w-full">
-        <a href="/discovery"
-         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
-         <Users className="w-3.5 h-3.5" /> {t("Find People", "Εύρεση ατόμων")}
-        </a>
-        <a href="/network"
-         className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
-         <UserIcon className="w-3.5 h-3.5" /> {t("Connections", "Συνδέσεις")}
-        </a>
-       </div>
-      </div>
-
-      {/* Recent contacts strip */}
-      {msgState.conversations.length > 0 && (
-       <div className="mt-8 pt-6 border-t border-stone-200/60">
-        <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">{t("Recent Conversations", "Πρόσφατες συνομιλίες")}</p>
-        <div className="flex items-center justify-center gap-2">
-         {msgState.conversations.slice(0, 6).map(conv => (
-          <button key={conv.id} onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
-           className="group relative" title={conv.otherParticipant.fullName}>
-           <Avatar src={conv.otherParticipant.profile?.profilePhoto || avatarFor(conv.otherParticipant.id)} alt={conv.otherParticipant.fullName} size="md" />
-           {conv.otherParticipant.isOnline && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-           )}
-           {conv.unreadCount > 0 && (
-            <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-stone-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center tabular-nums">
-             {conv.unreadCount}
-            </div>
-           )}
-          </button>
-         ))}
-        </div>
-       </div>
-      )}
-     </motion.div>
-    </div>
-   );
-  }
-
+ const renderMainChat = () => {
+  if (!active) return renderEmptyState();
+  const prompts = agentPrompts(activeAgent);
+  const canWrite = permission.ok && !isBlockedByMe;
   return (
    <div className="flex-1 flex flex-col min-w-0">
-    {/* Header */}
     <header className="border-b border-stone-100 bg-white shrink-0">
      <div className="min-h-16 flex items-center gap-2 px-3 sm:px-5 py-2">
-      <button type="button" aria-label={t("Back to conversations", "Πίσω στις συνομιλίες")} onClick={() => setSelectedConversation(null)} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0">
+      <button type="button" aria-label={t("Back to conversations", "Πίσω στις συνομιλίες")} onClick={() => setActiveId(null)} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0">
        <ChevronLeft className="w-5 h-5" />
       </button>
-      <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName}
-       size="md" status={activeConv.otherParticipant.isOnline ? "online" : "offline"} isAI={activeConv.otherParticipant.isAI} />
-      <div className="min-w-0 flex-1">
-       <div className="flex items-center gap-2 min-w-0">
-        <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeConv.otherParticipant.fullName}</h2>
-        {activeConv.otherParticipant.roles?.[0] && (
-         <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{labelOf(activeConv.otherParticipant.roles[0])}</span>
-        )}
+      <button type="button" onClick={() => !isAIChat && navigate(`/profile/${active.otherId}`)} className="flex items-center gap-3 min-w-0 flex-1 text-left" disabled={isAIChat}>
+       <Avatar src={active.other.avatar} alt={active.other.fullName} size="md" status={isAIChat ? undefined : otherOnline ? "online" : "offline"} isAI={isAIChat} icon={activeAgent?.icon} />
+       <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0">
+         <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h2>
+         {!isAIChat && active.other.role && <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{labelOf(active.other.role)}</span>}
+        </div>
+        <p className="text-xs text-stone-500 truncate">
+         {otherTyping ? <span className="text-emerald-600 font-medium animate-pulse">{t("typing…", "πληκτρολογεί…")}</span>
+          : isAIChat ? (activeAgent ? agentRole(activeAgent) : t("AI specialist", "Ειδικός AI"))
+          : otherOnline ? <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block" /> {t("Online now", "Σε σύνδεση τώρα")}</span>
+          : otherPerson?.lastActiveAt ? <>{t("Last seen", "Τελευταία φορά")} <RelTime iso={new Date(otherPerson.lastActiveAt).toISOString()} /></>
+          : active.other.headline || t("Member", "Μέλος")}
+        </p>
        </div>
-       <p className="text-xs text-stone-500 truncate">
-        {isRecipientTyping ? (
-         <span className="text-emerald-600 font-medium animate-pulse">{t("typing...", "πληκτρολογεί...")}</span>
-        ) : activeConv.otherParticipant.isAI ? t("AI Assistant \u2022 Always online", "Βοηθός AI \u2022 Πάντα σε σύνδεση")
-         : activeConv.otherParticipant.isOnline ? (
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" /> {t("Online now", "Σε σύνδεση τώρα")}</span>
-         ) : t("Last seen recently", "Τελευταία εμφάνιση πρόσφατα")}
-       </p>
-      </div>
-      <div className="relative shrink-0">
-       <IconButton icon={MoreVertical} size="sm" tooltip={t("More options", "Περισσότερες επιλογές")} onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
-       <div className={cn("absolute right-0 top-full mt-1 w-48 bg-white border border-stone-200 rounded-xl shadow-sm z-30", openMenu === "chat-more" ? "opacity-100" : "opacity-0 pointer-events-none")}>
-        <button type="button" onClick={() => { setOpenMenu(null); if (activeConv?.otherParticipant.id) navigate(`/profile/${activeConv.otherParticipant.id}`); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50 rounded-t-xl">
-         <UserIcon className="w-4 h-4" /> {t("View Profile", "Προφίλ")}
-        </button>
-        <button type="button" onClick={() => { setShowValidationDialog(true); setOpenMenu(null); }}
-         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
-         <Shield className="w-4 h-4" /> {t("Conversation Mode", "Λειτουργία συνομιλίας")}
-        </button>
-        <div className="h-px bg-stone-100 mx-2" />
-        <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'report' }); setOpenMenu(null); }}
-         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-amber-600 hover:bg-amber-50">
-         <Flag className="w-4 h-4" /> {t("Report", "Αναφορά")}
-        </button>
-        <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'block' }); setOpenMenu(null); }}
-         className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl">
-         <Ban className="w-4 h-4" /> {t("Block", "Αποκλεισμός")}
-        </button>
-       </div>
-      </div>
-     </div>
-     <div className="md:hidden flex items-center gap-2 overflow-x-auto px-3 pb-3">
-      <button type="button" title={t("Does not start a live call. Opens the studio assistant to draft the first line.", "Δεν ξεκινά ζωντανή κλήση. Ανοίγει τον βοηθό του studio για την πρώτη γραμμή.")} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>{t("Call", "Κλήση")}</button>
-      <button type="button" title={t("Does not start a live call. Opens the studio assistant to draft the first line.", "Δεν ξεκινά ζωντανή κλήση. Ανοίγει τον βοηθό του studio για την πρώτη γραμμή.")} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>{t("Video", "Βίντεο")}</button>
-      <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{t("Search", "Αναζήτηση")}</button>
-      <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}</button>
-      <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{t("Details", "Λεπτομέρειες")}</button>
-     </div>
-     <div className="hidden md:flex items-center gap-1 px-5 pb-3">
-      {/* Validation badge — dynamic */}
-      <button onClick={() => setShowValidationDialog(true)}
-       className={cn("hidden sm:flex items-center gap-1 mr-1 px-2 py-1 rounded-lg transition-colors",
-        MODE_CONFIG[validationState.mode].bgColor)}>
-       {(() => { const VIcon = MODE_CONFIG[validationState.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_CONFIG[validationState.mode].color)} />; })()}
-       <span className={cn("text-[10px] font-medium", MODE_CONFIG[validationState.mode].color)}>{modeText(validationState.mode).label}</span>
       </button>
-      <IconButton icon={Phone} size="sm" tooltip={t("Does not start a live call — drafts the first line in the studio assistant", "Δεν ξεκινά ζωντανή κλήση — γράφει την πρώτη γραμμή στον βοηθό του studio")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
-      <IconButton icon={Video} size="sm" tooltip={t("Does not start a live call — drafts the first line in the studio assistant", "Δεν ξεκινά ζωντανή κλήση — γράφει την πρώτη γραμμή στον βοηθό του studio")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
-      <IconButton icon={Search} size="sm" tooltip={t("Search in chat", "Αναζήτηση στη συνομιλία")} active={showSearchPanel}
-       onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} />
+      <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+       <IconButton icon={MoreVertical} tooltip={t("More options", "Περισσότερες επιλογές")} active={openMenu === "chat-more"} onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
+       {openMenu === "chat-more" && (
+        <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-stone-200 rounded-xl shadow-lg z-30 py-1">
+         {!isAIChat && (
+          <button type="button" onClick={() => { setOpenMenu(null); navigate(`/profile/${active.otherId}`); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+           <UserIcon className="w-4 h-4" /> {t("View profile", "Προβολή προφίλ")}
+          </button>
+         )}
+         {!isAIChat && (
+          <button type="button" onClick={() => { setShowValidationDialog(true); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+           <Shield className="w-4 h-4" /> {t("Transcript verification", "Επικύρωση αντιγράφου")}
+          </button>
+         )}
+         <button type="button" onClick={() => { messaging.setFlag(active.id, "muted", !active.muted); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+          {active.muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />} {active.muted ? t("Unmute", "Κατάργηση σίγασης") : t("Mute notifications", "Σίγαση ειδοποιήσεων")}
+         </button>
+         <button type="button" onClick={() => { messaging.setFlag(active.id, "archived", !active.archived); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+          <Archive className="w-4 h-4" /> {active.archived ? t("Unarchive", "Επαναφορά από αρχείο") : t("Archive", "Αρχειοθέτηση")}
+         </button>
+         <button type="button" onClick={() => { handleExportTranscript('txt'); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
+          <Download className="w-4 h-4" /> {t("Export transcript", "Εξαγωγή αντιγράφου")}
+         </button>
+         {!isAIChat && (
+          <>
+           <div className="h-px bg-stone-100 mx-2 my-1" />
+           <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'report' }); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-amber-600 hover:bg-amber-50">
+            <Flag className="w-4 h-4" /> {t("Report", "Αναφορά")}
+           </button>
+           <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'block' }); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
+            <Ban className="w-4 h-4" /> {isBlockedByMe ? t("Unblock", "Άρση αποκλεισμού") : t("Block", "Αποκλεισμός")}
+           </button>
+          </>
+         )}
+         <div className="h-px bg-stone-100 mx-2 my-1" />
+         <button type="button" onClick={() => { messaging.deleteForMe(active.id); setOpenMenu(null); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
+          <Trash2 className="w-4 h-4" /> {t("Delete for me", "Διαγραφή για εμένα")}
+         </button>
+        </div>
+       )}
+      </div>
+     </div>
+     <div className="flex items-center gap-1 px-3 sm:px-5 pb-3 overflow-x-auto no-scrollbar">
+      {!isAIChat && (
+       <button type="button" onClick={() => setShowValidationDialog(true)} className={cn("flex items-center gap-1 mr-1 min-h-9 px-2 rounded-lg transition-colors shrink-0", MODE_STYLE[validation.mode].bgColor)} title={modeText(validation.mode).description}>
+        {(() => { const VIcon = MODE_STYLE[validation.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_STYLE[validation.mode].color)} />; })()}
+        <span className={cn("text-[10px] font-medium", MODE_STYLE[validation.mode].color)}>{modeText(validation.mode).label}</span>
+       </button>
+      )}
+      {!isAIChat && (
+       <>
+        <IconButton icon={Phone} tooltip={t("Start a voice call (opens a private room)", "Έναρξη φωνητικής κλήσης (ανοίγει ιδιωτικό δωμάτιο)")} onClick={() => startCall("audio")} disabled={!canWrite} />
+        <IconButton icon={Video} tooltip={t("Start a video call (opens a private room)", "Έναρξη βιντεοκλήσης (ανοίγει ιδιωτικό δωμάτιο)")} onClick={() => startCall("video")} disabled={!canWrite} />
+       </>
+      )}
+      <IconButton icon={Search} tooltip={t("Search in this conversation", "Αναζήτηση σε αυτή τη συνομιλία")} active={showSearchPanel} onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} />
       <div className="w-px h-6 bg-stone-200 mx-1" />
-      <IconButton icon={Pin} size="sm" tooltip={pinnedConvIds.has(activeConv.id) ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
-       active={pinnedConvIds.has(activeConv.id)} onClick={() => togglePin(activeConv.id)} />
-      <IconButton icon={Info} size="sm" tooltip={t("Details", "Λεπτομέρειες")} active={showRightSidebar}
-       onClick={() => setShowRightSidebar(!showRightSidebar)} />
+      <IconButton icon={Pin} tooltip={active.pinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")} active={active.pinned} onClick={() => messaging.setFlag(active.id, "pinned", !active.pinned)} />
+      <IconButton icon={Info} tooltip={t("Details", "Λεπτομέρειες")} active={showRightSidebar} onClick={() => setShowRightSidebar(!showRightSidebar)} />
      </div>
     </header>
 
-    {/* In-Chat Search Panel */}
     <AnimatePresence>
      {showSearchPanel && (
-      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-       exit={{ height: 0, opacity: 0 }} className="border-b border-stone-200 bg-white overflow-hidden shrink-0">
+      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b border-stone-200 bg-white overflow-hidden shrink-0">
        <div className="p-3 flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400 shrink-0" />
-        <input type="text" placeholder={t("Search in this conversation...", "Αναζήτηση σε αυτή τη συνομιλία...")} value={chatSearchQuery}
-         onChange={(e) => setChatSearchQuery(e.target.value)} autoFocus
-         className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-stone-400" />
-        <span className="text-[10px] text-stone-400">
-         {chatSearchQuery ? `${chatMessages.filter(m => m.body.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} ${t("found", "βρέθηκαν")}` : ""}
-        </span>
-         <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }}
-         className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded">
-         <X className="w-4 h-4" />
-        </button>
+        <input type="search" placeholder={t("Search in this conversation…", "Αναζήτηση σε αυτή τη συνομιλία…")} value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} autoFocus
+         className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-stone-400 min-h-11" />
+        <span className="text-[10px] text-stone-400 tabular-nums">{chatSearchQuery ? t(`${searchHits} found`, `${searchHits} βρέθηκαν`) : ""}</span>
+        <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded"><X className="w-4 h-4" /></button>
        </div>
       </motion.div>
      )}
     </AnimatePresence>
 
-    {/* Messages Area */}
+    {twoPartyWaitingOnMe && (
+     <div className="px-5 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3 text-xs text-emerald-800">
+      <ShieldCheck className="w-4 h-4 shrink-0" />
+      <span className="flex-1">{t(`${active.other.fullName} asks both of you to verify this transcript.`, `Ο/Η ${active.other.fullName} ζητά να επικυρώσετε και οι δύο αυτό το αντίγραφο.`)}</span>
+      <button type="button" onClick={() => void acceptTwoParty()} className="min-h-9 px-3 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700">{t("Accept", "Αποδοχή")}</button>
+      <button type="button" onClick={() => messaging.setValidation(active.id, { mode: "casual" })} className="min-h-9 px-2 text-emerald-700 hover:underline">{t("Decline", "Απόρριψη")}</button>
+     </div>
+    )}
+
     <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-gradient-to-b from-stone-50/50 to-white">
-     {/* Load older messages */}
-     {chatMessages.length > 10 && (
+     {hasOlder && (
       <div className="flex justify-center py-2">
-       <button className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
-        {t("Load older messages", "Φόρτωση παλαιότερων μηνυμάτων")}
-       </button>
+       <button type="button" onClick={loadOlder} className="min-h-10 px-3 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">{t("Load older messages", "Φόρτωση παλαιότερων μηνυμάτων")}</button>
       </div>
      )}
-     {chatMessages.length === 0 ? (
+     {messages.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full text-center">
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-        {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
+        {isAIChat ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
        </div>
-       <p className="text-sm text-stone-500 font-medium">
-        {activeConv.otherParticipant.isAI ? t("Start chatting with", "Ξεκίνα συνομιλία με") + ` ${activeConv.otherParticipant.fullName}` : t("No messages yet. Say hello!", "Δεν υπάρχουν μηνύματα ακόμη. Πες ένα γεια!")}
+       <p className="text-sm text-stone-600 font-medium">
+        {isAIChat && activeAgent ? agentDescription(activeAgent) : t(`Say hello to ${active.other.fullName.split(" ")[0]}.`, `Πες ένα γεια στον/στην ${active.other.fullName.split(" ")[0]}.`)}
        </p>
-       {activeConv.otherParticipant.isAI && (
-        <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-sm">
-         {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.slice(0, 3).map((prompt, i) => (
-          <button key={i} onClick={() => handleSendMessage(prompt)}
-           className="px-3 py-1.5 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors">{prompt}</button>
+       {!isAIChat && active.other.headline && <p className="text-xs text-stone-400 mt-1 max-w-sm">{active.other.headline}</p>}
+       {isAIChat && prompts.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-md">
+         {prompts.slice(0, 3).map((prompt, i) => (
+          <button key={i} type="button" onClick={() => void handleSendMessage(prompt)} className="min-h-10 px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-xs rounded-full hover:border-stone-900 transition-colors">{prompt}</button>
          ))}
         </div>
        )}
       </div>
      ) : (
       <>
-       {chatMessages.map((msg, idx) => renderMessageBubble(msg, idx))}
-       {aiIsTyping && (
+       {messages.map((msg, idx) => renderMessageBubble(msg, idx))}
+       {(aiTyping && isAIChat) && (
         <div className="flex items-center gap-3">
-         <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName} size="sm" isAI={true} />
+         <Avatar alt={active.other.fullName} size="sm" isAI icon={activeAgent?.icon} />
          <TypingDots />
         </div>
        )}
-       {isRecipientTyping && !aiIsTyping && (
+       {otherTyping && !isAIChat && (
         <div className="flex items-center gap-3">
-         <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName} size="sm" />
+         <Avatar src={active.other.avatar} alt={active.other.fullName} size="sm" />
          <TypingDots />
         </div>
        )}
@@ -1156,99 +1328,100 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div ref={messagesEndRef} />
     </div>
 
-    {/* Input Area */}
     <div className="px-3 py-3 bg-white border-t border-stone-100 space-y-2 shrink-0 sm:px-5">
-     {/* Reply Preview */}
-     {replyingTo && (
-      <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg border-l-2 border-stone-400">
-       <div className="flex items-center gap-2 min-w-0">
-        <Reply className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-        <div className="min-w-0">
-         <span className="text-xs font-medium text-stone-700">{replyingTo.senderName}</span>
-         <p className="text-xs text-stone-500 truncate">{replyingTo.body}</p>
-        </div>
-       </div>
-       <button onClick={() => setReplyingTo(null)} className="p-1 text-stone-400 hover:text-stone-900 shrink-0">
-        <X className="w-3.5 h-3.5" />
-       </button>
-      </div>
-     )}
-
-     {/* File Attachments Preview */}
-     {attachedFiles.length > 0 && (
-      <div className="flex flex-wrap gap-2">
-       {attachedFiles.map((file, i) => (
-        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-stone-100 rounded-lg">
-         <FileText className="w-3.5 h-3.5 text-stone-500" />
-         <span className="text-xs text-stone-600 truncate max-w-[120px]">{file.name}</span>
-         <button onClick={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))}
-          className="p-0.5 text-stone-400 hover:text-red-500"><X className="w-3 h-3" /></button>
-        </div>
-       ))}
-      </div>
-     )}
-
-     {/* AI Suggestions */}
-     {isAIChat && !inputText && (
-      <div className="flex flex-wrap gap-1.5">
-       {MOCK_AGENTS.find(a => a.id === activeConv.otherParticipant.id)?.suggestedPrompts?.map((prompt, i) => (
-        <button key={i} onClick={() => handleSendMessage(prompt)}
-         className="px-2.5 py-1 bg-stone-100 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors border border-stone-200">{prompt}</button>
-       ))}
-      </div>
-     )}
-
-     {/* Voice Recorder */}
-     {isRecording ? (
-      <div className="flex items-center gap-3 p-2 bg-red-50 rounded-xl border border-red-200">
-       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-       <span className="text-sm font-mono text-red-700 font-medium">{formatRecTime(recordingTime)}</span>
-       <div className="flex-1 h-1.5 bg-red-200 rounded-full overflow-hidden">
-        <div className="h-full bg-red-500 rounded-full animate-pulse" style={{ width: `${Math.min(100, (recordingTime / 120) * 100)}%` }} />
-       </div>
-       <button onClick={() => { setIsRecording(false); setRecordingTime(0); }}
-        className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-white rounded-lg" title={t("Cancel", "Ακύρωση")}><X className="w-4 h-4" /></button>
-       <button onClick={() => { setIsRecording(false); setRecordingTime(0); handleSendMessage(t("[Voice message]", "[Φωνητικό μήνυμα]")); }}
-        className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600" title={t("Send", "Αποστολή")}><Send className="w-4 h-4" /></button>
+     {!canWrite ? (
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm text-stone-600">
+       <Ban className="w-4 h-4 shrink-0 text-stone-400" />
+       <span className="flex-1">
+        {isBlockedByMe ? t("You blocked this member. Unblock them to write again.", "Έχεις αποκλείσει αυτό το μέλος. Άρε τον αποκλεισμό για να γράψεις ξανά.")
+         : permission.ok ? "" : permission.reason === "blocked" ? t("This member is not accepting messages from you.", "Αυτό το μέλος δεν δέχεται μηνύματα από εσένα.")
+         : permission.reason === "connections-only" ? t("This member accepts messages from connections only. Send a connection request first.", "Αυτό το μέλος δέχεται μηνύματα μόνο από συνδέσεις. Στείλε πρώτα αίτημα σύνδεσης.")
+         : permission.reason === "self" ? t("This is your own account.", "Αυτός είναι ο δικός σου λογαριασμός.")
+         : t("This member has turned off new messages.", "Αυτό το μέλος έχει απενεργοποιήσει τα νέα μηνύματα.")}
+       </span>
+       {isBlockedByMe ? (
+        <button type="button" onClick={() => setReportBlockModal({ open: true, mode: 'block' })} className="min-h-9 px-3 rounded-lg bg-stone-900 text-white text-xs font-medium">{t("Unblock", "Άρση αποκλεισμού")}</button>
+       ) : permission.ok === false && permission.reason === "connections-only" ? (
+        <button type="button" onClick={() => navigate(`/profile/${active.otherId}`)} className="min-h-9 px-3 rounded-lg bg-stone-900 text-white text-xs font-medium">{t("Open profile", "Άνοιγμα προφίλ")}</button>
+       ) : null}
       </div>
      ) : (
-      /* Input Row */
-      <div className="flex items-end gap-2">
-       <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
-       <IconButton icon={Paperclip} size="sm" tooltip={t("Attach files", "Επισύναψη αρχείων")} onClick={() => fileInputRef.current?.click()} />
-       <IconButton icon={Mic} size="sm" tooltip={t("Voice message", "Φωνητικό μήνυμα")} onClick={() => { setIsRecording(true); setRecordingTime(0); }} />
-
-       <div className="flex-1 relative">
-        <textarea ref={textareaRef} value={inputText}
-         onChange={(e) => { handleTypingChange(e.target.value); autoResizeTextarea(); }}
-         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-         placeholder={isAIChat ? t("Ask anything... (Shift+Enter for new line)", "Ρώτα ό,τι θέλεις... (Shift+Enter για νέα γραμμή)") : t("Type a message... (Shift+Enter for new line)", "Γράψε μήνυμα... (Shift+Enter για νέα γραμμή)")}
-         rows={1}
-         className="w-full px-4 py-2.5 pr-10 bg-stone-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 transition-all resize-none min-h-[44px] max-h-[120px]" />
-        <div className="absolute right-2 bottom-2">
-         <button onClick={() => setShowEmojiDropdown(!showEmojiDropdown)} className="p-1.5 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-200 transition-colors">
-          <Smile className="w-4 h-4" />
-         </button>
-         {/* Emoji Grid Dropdown */}
-         {showEmojiDropdown && (
-          <div className="absolute bottom-12 right-0 p-2 bg-white rounded-xl shadow-sm border border-stone-200 z-30 w-[min(18rem,calc(100vw-2rem))]">
-           <div className="grid grid-cols-6 gap-1">
-            {EMOJI_GRID.map(e => (
-             <button key={e} type="button" onClick={() => { setInputText(prev => prev + e); setShowEmojiDropdown(false); textareaRef.current?.focus(); }}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-stone-100 text-base transition-colors">{e}</button>
-            ))}
-           </div>
+      <>
+       {replyingTo && (
+        <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg border-l-2 border-stone-400">
+         <div className="flex items-center gap-2 min-w-0">
+          <Reply className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+          <div className="min-w-0">
+           <span className="text-xs font-medium text-stone-700">{replyingTo.senderName}</span>
+           <p className="text-xs text-stone-500 truncate">{replyingTo.body}</p>
           </div>
-         )}
+         </div>
+         <button type="button" aria-label={t("Cancel reply", "Ακύρωση απάντησης")} onClick={() => setReplyingTo(null)} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
-       </div>
-
-       <button onClick={() => handleSendMessage()} disabled={!inputText.trim() && attachedFiles.length === 0}
-        aria-label={t("Send", "Αποστολή")}
-        className="w-11 h-11 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0 self-end">
-        <Send className="w-4 h-4" />
-       </button>
-      </div>
+       )}
+       {pendingFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+         {pendingFiles.map(({ file, preview }, i) => (
+          <div key={i} className="flex items-center gap-2 pl-1.5 pr-1 py-1 bg-stone-100 rounded-lg">
+           {preview ? <img src={preview} alt="" className="w-7 h-7 rounded object-cover" /> : file.type.startsWith("audio/") ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
+           <span className="text-xs text-stone-600 truncate max-w-[140px]">{file.name}</span>
+           <span className="text-[10px] text-stone-400">{formatBytes(file.size)}</span>
+           <button type="button" aria-label={t("Remove attachment", "Αφαίρεση συνημμένου")} onClick={() => { if (preview) URL.revokeObjectURL(preview); setPendingFiles((prev) => prev.filter((_, idx) => idx !== i)); }} className="min-h-7 min-w-7 inline-flex items-center justify-center text-stone-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+          </div>
+         ))}
+        </div>
+       )}
+       {isAIChat && !inputText && messages.length > 0 && prompts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+         {prompts.map((prompt, i) => (
+          <button key={i} type="button" onClick={() => void handleSendMessage(prompt)} className="min-h-9 px-2.5 py-1 bg-stone-50 text-stone-700 text-xs rounded-full hover:bg-stone-100 transition-colors border border-stone-200">{prompt}</button>
+         ))}
+        </div>
+       )}
+       {recording ? (
+        <div className="flex items-center gap-3 p-2 bg-red-50 rounded-xl border border-red-200">
+         <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+         <span className="text-sm font-mono text-red-700 font-medium tabular-nums">{formatRecTime(recordingTime)}</span>
+         <span className="flex-1 text-xs text-red-700">{t("Recording… stop to attach the voice message.", "Ηχογράφηση… σταμάτησε για να επισυναφθεί το φωνητικό μήνυμα.")}</span>
+         <button type="button" onClick={() => stopRecording(false)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-white rounded-lg" title={t("Cancel", "Ακύρωση")} aria-label={t("Cancel recording", "Ακύρωση ηχογράφησης")}><X className="w-4 h-4" /></button>
+         <button type="button" onClick={() => stopRecording(true)} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-red-500 text-white rounded-lg hover:bg-red-600" title={t("Stop", "Διακοπή")} aria-label={t("Stop recording", "Διακοπή ηχογράφησης")}><Square className="w-4 h-4" /></button>
+        </div>
+       ) : (
+        <div className="flex items-end gap-2">
+         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,audio/*" />
+         <IconButton icon={Paperclip} tooltip={t("Attach files", "Επισύναψη αρχείων")} onClick={() => fileInputRef.current?.click()} disabled={pendingFiles.length >= 5} />
+         {!isAIChat && <IconButton icon={Mic} tooltip={t("Record a voice message", "Ηχογράφηση φωνητικού μηνύματος")} onClick={() => void startRecording()} />}
+         <div className="flex-1 relative">
+          <textarea ref={textareaRef} value={inputText}
+           onChange={(e) => { setInputText(e.target.value); autoResizeTextarea(); if (e.target.value.trim()) messaging.typing(); }}
+           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSendMessage(); } }}
+           placeholder={isAIChat ? t("Ask anything… (Shift+Enter for a new line)", "Ρώτα ό,τι θέλεις… (Shift+Enter για νέα γραμμή)") : t("Write a message… (Shift+Enter for a new line)", "Γράψε μήνυμα… (Shift+Enter για νέα γραμμή)")}
+           aria-label={t("Message", "Μήνυμα")}
+           rows={1}
+           className="w-full px-4 py-2.5 pr-11 bg-stone-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 transition-all resize-none min-h-[44px] max-h-[120px]" />
+          <div className="absolute right-1 bottom-1" onClick={(e) => e.stopPropagation()}>
+           <button type="button" aria-label={t("Insert emoji", "Εισαγωγή emoji")} onClick={() => setShowEmojiDropdown(!showEmojiDropdown)} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-200 transition-colors">
+            <Smile className="w-4 h-4" />
+           </button>
+           {showEmojiDropdown && (
+            <div className="absolute bottom-12 right-0 p-2 bg-white rounded-xl shadow-lg border border-stone-200 z-30 w-[min(18rem,calc(100vw-2rem))]">
+             <div className="grid grid-cols-7 gap-0.5">
+              {EMOJI_GRID.map((e) => (
+               <button key={e} type="button" onClick={() => { setInputText((prev) => prev + e); setShowEmojiDropdown(false); textareaRef.current?.focus(); }} className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-stone-100 text-base transition-colors">{e}</button>
+              ))}
+             </div>
+            </div>
+           )}
+          </div>
+         </div>
+         <button type="button" onClick={() => void handleSendMessage()} disabled={(!inputText.trim() && pendingFiles.length === 0) || sending || uploading}
+          aria-label={t("Send", "Αποστολή")} title={t("Send", "Αποστολή")}
+          className="w-11 h-11 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0 self-end">
+          {sending || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+         </button>
+        </div>
+       )}
+      </>
      )}
     </div>
    </div>
@@ -1256,155 +1429,124 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  };
 
  // =============================================================================
- // RENDER: RIGHT SIDEBAR (Chat Details)
+ // RENDER: RIGHT SIDEBAR
  // =============================================================================
-
  const renderRightSidebar = () => {
-  if (!showRightSidebar || !activeConv) return null;
-
+  if (!showRightSidebar || !active) return null;
+  const style = MODE_STYLE[validation.mode];
+  const VIcon = style.icon;
   return (
-   <motion.aside
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="flex flex-col bg-white overflow-hidden max-xl:fixed max-xl:inset-0 max-xl:z-[80] xl:w-80 xl:shrink-0 xl:border-l xl:border-stone-200"
-   >
-    {/* Close button */}
+   <motion.aside initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    className="flex flex-col bg-white overflow-hidden max-xl:fixed max-xl:inset-0 max-xl:z-[80] xl:w-80 xl:shrink-0 xl:border-l xl:border-stone-200">
     <div className="flex items-center justify-between p-3 border-b border-stone-100">
      <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">{t("Details", "Λεπτομέρειες")}</h4>
-     <button type="button" aria-label={t("Close details", "Κλείσιμο λεπτομερειών")} onClick={() => setShowRightSidebar(false)}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
+     <button type="button" aria-label={t("Close details", "Κλείσιμο λεπτομερειών")} onClick={() => setShowRightSidebar(false)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
     </div>
-
     <div className="flex-1 overflow-y-auto">
-     {/* Profile Section */}
      <div className="p-5 text-center border-b border-stone-100">
       <div className="relative inline-block mb-3">
-       <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName}
-        size="xl" isAI={activeConv.otherParticipant.isAI} />
-       {activeConv.otherParticipant.isOnline && (
-        <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white" />
-       )}
+       <Avatar src={active.other.avatar} alt={active.other.fullName} size="xl" isAI={isAIChat} icon={activeAgent?.icon} />
+       {otherOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white" />}
       </div>
-      <h3 className="font-semibold text-stone-900 text-sm mb-0.5">{activeConv.otherParticipant.fullName}</h3>
-      <p className="text-xs text-stone-500 mb-3">
-       {activeConv.otherParticipant.roles?.map((role) => labelOf(role)).join(" \u2022 ") || t("Co-founder", "Συνιδρυτής")}
-      </p>
-      <button type="button" onClick={() => activeConv.otherParticipant.id && navigate(`/profile/${activeConv.otherParticipant.id}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
-       <UserIcon className="w-3 h-3" /> {t("View Profile", "Προφίλ")}
-      </button>
+      <h3 className="font-semibold text-stone-900 text-sm mb-0.5">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h3>
+      <p className="text-xs text-stone-500 mb-3">{activeAgent ? agentRole(activeAgent) : active.other.headline || labelOf(active.other.role) || t("Member", "Μέλος")}</p>
+      {isAIChat && activeAgent ? (
+       <div className="flex flex-wrap justify-center gap-1.5">{agentCapabilities(activeAgent).map((cap) => <span key={cap} className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] rounded-full">{cap}</span>)}</div>
+      ) : (
+       <button type="button" onClick={() => navigate(`/profile/${active.otherId}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
+        <UserIcon className="w-3 h-3" /> {t("View profile", "Προβολή προφίλ")}
+       </button>
+      )}
      </div>
 
-     {/* Shared Media */}
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Media", "Κοινόχρηστα μέσα")}</h4>
-      <div className="grid grid-cols-3 gap-1.5">
-       {(isDemoMode ? SHARED_MEDIA_MOCK : []).length === 0 && (
-        <p className="col-span-3 text-xs text-stone-400">{t("No shared media yet.", "Δεν υπάρχουν κοινόχρηστα μέσα ακόμη.")}</p>
-       )}
-       {(isDemoMode ? SHARED_MEDIA_MOCK : []).map(i => (
-        <div key={i} className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 cursor-pointer transition-opacity">
-         <img src={`https://picsum.photos/seed/media-${i}/100/100`} alt={t("Media", "Μέσο")} className="w-full h-full object-cover" />
-        </div>
-       ))}
-      </div>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared photos", "Κοινοποιημένες φωτογραφίες")}</h4>
+      {sharedMedia.length === 0 ? <p className="text-xs text-stone-400">{t("No photos shared yet.", "Δεν έχουν σταλεί φωτογραφίες ακόμη.")}</p> : (
+       <div className="grid grid-cols-3 gap-1.5">
+        {sharedMedia.slice(-9).reverse().map(({ attachment, message }) => (
+         <a key={`${message.id}-${attachment.name}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+          <img src={attachment.url} alt={attachment.name} className="w-full h-full object-cover" loading="lazy" />
+         </a>
+        ))}
+       </div>
+      )}
      </div>
 
-     {/* Shared Files */}
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Files", "Κοινόχρηστα αρχεία")}</h4>
-      <div className="space-y-1.5">
-       {(isDemoMode ? SHARED_FILES_MOCK : []).length === 0 && (
-        <p className="text-xs text-stone-400">{t("No shared files yet.", "Δεν υπάρχουν κοινόχρηστα αρχεία ακόμη.")}</p>
-       )}
-       {(isDemoMode ? SHARED_FILES_MOCK : []).map(({ name, size, icon: Icon, date }) => (
-        <div key={name} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 cursor-pointer group">
-         <div className="w-9 h-9 bg-stone-100 rounded-lg flex items-center justify-center group-hover:bg-stone-200 transition-colors shrink-0">
-          <Icon className="w-3.5 h-3.5 text-stone-500" />
-         </div>
-         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-stone-900 truncate">{name}</p>
-          <p className="text-[10px] text-stone-500">{size} \u2022 {fileDateOf(date)}</p>
-         </div>
-         <Download className="w-3.5 h-3.5 text-stone-400 opacity-0 group-hover:opacity-100 shrink-0" />
-        </div>
-       ))}
-      </div>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared files", "Κοινοποιημένα αρχεία")}</h4>
+      {sharedFiles.length === 0 ? <p className="text-xs text-stone-400">{t("No files shared yet.", "Δεν έχουν σταλεί αρχεία ακόμη.")}</p> : (
+       <div className="space-y-1.5">
+        {sharedFiles.slice(-8).reverse().map(({ attachment, message }) => (
+         <a key={`${message.id}-${attachment.name}`} href={attachment.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group">
+          <div className="w-9 h-9 bg-stone-100 rounded-lg flex items-center justify-center group-hover:bg-stone-200 transition-colors shrink-0">
+           {isAudio(attachment) ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
+          </div>
+          <div className="flex-1 min-w-0">
+           <p className="text-xs font-medium text-stone-900 truncate">{attachment.name}</p>
+           <p className="text-[10px] text-stone-500">{formatBytes(attachment.size)} · {formatDate(message.createdAt)}</p>
+          </div>
+          <Download className="w-3.5 h-3.5 text-stone-400 opacity-0 group-hover:opacity-100 shrink-0" />
+         </a>
+        ))}
+       </div>
+      )}
      </div>
 
-     {/* Conversation Validation — Full */}
-     <div className="p-3 border-b border-stone-100">
-      <div className="flex items-center justify-between mb-2">
-       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">{t("Conversation Mode", "Λειτουργία συνομιλίας")}</h4>
-       <button onClick={() => setShowValidationDialog(true)}
-        className="text-[10px] text-stone-400 hover:text-stone-900 transition-colors">{t("Change", "Αλλαγή")}</button>
-      </div>
-
-      {/* Current Mode Card */}
-      {(() => { const cfg = MODE_CONFIG[validationState.mode]; const VIcon = cfg.icon; return (
-       <div className={cn("flex items-center gap-2.5 p-2.5 rounded-xl border mb-2", cfg.bgColor,
-        validationState.mode === 'casual' ? "border-stone-200" : validationState.mode === 'one_party' ? "border-amber-200" : "border-emerald-200")}>
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", cfg.bgColor)}>
-         <VIcon className={cn("w-3.5 h-3.5", cfg.color)} />
-        </div>
+     {!isAIChat && (
+      <div className="p-3 border-b border-stone-100">
+       <div className="flex items-center justify-between mb-2">
+        <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">{t("Transcript verification", "Επικύρωση αντιγράφου")}</h4>
+        <button type="button" onClick={() => setShowValidationDialog(true)} className="min-h-9 text-[10px] text-stone-400 hover:text-stone-900 transition-colors">{t("Change", "Αλλαγή")}</button>
+       </div>
+       <div className={cn("flex items-center gap-2.5 p-2.5 rounded-xl border mb-2", style.bgColor, style.border)}>
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", style.bgColor)}><VIcon className={cn("w-3.5 h-3.5", style.color)} /></div>
         <div className="min-w-0 flex-1">
-         <p className="text-xs font-medium text-stone-900">{modeText(validationState.mode).label}</p>
-         <p className="text-[10px] text-stone-500">{modeText(validationState.mode).description}</p>
+         <p className="text-xs font-medium text-stone-900">{modeText(validation.mode).label}</p>
+         <p className="text-[10px] text-stone-500">{twoPartyWaitingOnOther ? t(`Waiting for ${active.other.fullName.split(" ")[0]} to accept.`, `Αναμονή αποδοχής από ${active.other.fullName.split(" ")[0]}.`) : modeText(validation.mode).description}</p>
         </div>
-        <Check className={cn("w-3.5 h-3.5 shrink-0", cfg.color)} />
        </div>
-      ); })()}
+       {validation.hash && (
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-stone-200 bg-stone-50 mb-2">
+         <span className="text-[10px] text-stone-500 font-mono truncate flex-1" title={validation.hash}>sha256:{validation.hash}</span>
+         <button type="button" onClick={() => void copyValidationHash()} aria-label={t("Copy hash", "Αντιγραφή αποτυπώματος")} className="min-h-8 min-w-8 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 rounded shrink-0">
+          {hashCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+         </button>
+        </div>
+       )}
+       {transcriptAvailable && (
+        <div className="flex items-center gap-1.5">
+         <button type="button" onClick={() => handleExportTranscript('txt')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><FileText className="w-3 h-3" /> {t("Export .txt", "Εξαγωγή .txt")}</button>
+         <button type="button" onClick={() => handleExportTranscript('json')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><Download className="w-3 h-3" /> {t("Export .json", "Εξαγωγή .json")}</button>
+         <button type="button" onClick={() => void refreshHash()} title={t("Recompute the fingerprint over the current messages", "Υπολόγισε ξανά το αποτύπωμα για τα τρέχοντα μηνύματα")} className="min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200">{t("Refresh", "Ανανέωση")}</button>
+        </div>
+       )}
+      </div>
+     )}
 
-      {/* Validation Hash Display */}
-      {validationState.validationHash && (
-       <div className="flex items-center gap-2 p-2 rounded-lg border border-stone-200 bg-stone-50 mb-2">
-        <span className="text-[10px] text-stone-400 font-mono truncate flex-1">{validationState.validationHash}</span>
-        <button onClick={copyValidationHash} className="p-1 text-stone-400 hover:text-stone-900 rounded shrink-0">
-         {hashCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-        </button>
-       </div>
-      )}
-
-      {/* Transcript Export */}
-      {validationState.transcriptAvailable && (
-       <div className="flex items-center gap-1.5">
-        <button onClick={() => handleExportTranscript('txt')}
-         className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all">
-         <FileText className="w-3 h-3" /> {t("Export .txt", "Εξαγωγή .txt")}
-        </button>
-        <button onClick={() => handleExportTranscript('json')}
-         className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all">
-         <Download className="w-3 h-3" /> {t("Export .json", "Εξαγωγή .json")}
-        </button>
-       </div>
-      )}
-     </div>
-
-     {/* Chat Settings */}
      <div className="p-3">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Settings", "Ρυθμίσεις")}</h4>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Conversation", "Συνομιλία")}</h4>
       <div className="space-y-0.5">
-       <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
-        <BellOff className="w-3.5 h-3.5" /> {t("Mute Notifications", "Σίγαση ειδοποιήσεων")}
+       <button type="button" onClick={() => messaging.setFlag(active.id, "muted", !active.muted)} className={cn("w-full flex items-center gap-2.5 min-h-11 px-3 text-xs rounded-xl transition-all", active.muted ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
+        {active.muted ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />} {active.muted ? t("Unmute notifications", "Κατάργηση σίγασης") : t("Mute notifications", "Σίγαση ειδοποιήσεων")}
        </button>
-       <button onClick={() => togglePin(activeConv.id)}
-        className={cn("w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl transition-all",
-         pinnedConvIds.has(activeConv.id) ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
-        <Pin className="w-3.5 h-3.5" /> {pinnedConvIds.has(activeConv.id) ? t("Unpin Conversation", "Ξεκαρφίτσωμα συνομιλίας") : t("Pin Conversation", "Καρφίτσωμα συνομιλίας")}
+       <button type="button" onClick={() => messaging.setFlag(active.id, "pinned", !active.pinned)} className={cn("w-full flex items-center gap-2.5 min-h-11 px-3 text-xs rounded-xl transition-all", active.pinned ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
+        <Pin className="w-3.5 h-3.5" /> {active.pinned ? t("Unpin conversation", "Ξεκαρφίτσωμα συνομιλίας") : t("Pin conversation", "Καρφίτσωμα συνομιλίας")}
        </button>
-       <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
-        <Archive className="w-3.5 h-3.5" /> {t("Archive Chat", "Αρχειοθέτηση συνομιλίας")}
+       <button type="button" onClick={() => messaging.setFlag(active.id, "archived", !active.archived)} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
+        <Archive className="w-3.5 h-3.5" /> {active.archived ? t("Unarchive", "Επαναφορά από αρχείο") : t("Archive conversation", "Αρχειοθέτηση συνομιλίας")}
        </button>
-       <button onClick={() => setReportBlockModal({ open: true, mode: 'report' })}
-        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 rounded-xl transition-all">
-        <Flag className="w-3.5 h-3.5" /> {t("Report User", "Αναφορά χρήστη")}
-       </button>
-       <button onClick={() => setReportBlockModal({ open: true, mode: 'block' })}
-        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
-        <Ban className="w-3.5 h-3.5" /> {t("Block User", "Αποκλεισμός χρήστη")}
-       </button>
-       <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
-        <Trash2 className="w-3.5 h-3.5" /> {t("Delete Chat", "Διαγραφή συνομιλίας")}
+       {!isAIChat && (
+        <>
+         <button type="button" onClick={() => setReportBlockModal({ open: true, mode: 'report' })} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-xs text-amber-600 hover:bg-amber-50 rounded-xl transition-all">
+          <Flag className="w-3.5 h-3.5" /> {t("Report member", "Αναφορά μέλους")}
+         </button>
+         <button type="button" onClick={() => setReportBlockModal({ open: true, mode: 'block' })} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
+          <Ban className="w-3.5 h-3.5" /> {isBlockedByMe ? t("Unblock member", "Άρση αποκλεισμού μέλους") : t("Block member", "Αποκλεισμός μέλους")}
+         </button>
+        </>
+       )}
+       <button type="button" onClick={() => messaging.deleteForMe(active.id)} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
+        <Trash2 className="w-3.5 h-3.5" /> {t("Delete conversation for me", "Διαγραφή συνομιλίας για εμένα")}
        </button>
       </div>
      </div>
@@ -1414,86 +1556,67 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  };
 
  // =============================================================================
- // RENDER: AI CENTER VIEW
+ // RENDER: AI SPECIALISTS
  // =============================================================================
+ const aiConversations = conversations.filter((c) => c.kind === "ai");
+ const aiInsights = useMemo(() => {
+  const latest = new Map<string, ChatConversation>();
+  for (const conversation of aiConversations) {
+   if (conversation.lastMessage && conversation.lastSenderId === conversation.otherId) latest.set(conversation.otherId, conversation);
+  }
+  return [...latest.values()].sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+ }, [aiConversations]);
 
  const renderAICenter = () => (
   <div className="flex-1 flex flex-col bg-gradient-to-br from-stone-50 via-white to-white overflow-hidden">
-   {/* AI Center Header */}
    <header className="flex flex-col gap-3 px-4 sm:px-6 py-3 border-b border-stone-100 bg-white/80 shrink-0 sm:flex-row sm:items-center sm:justify-between">
     <div className="flex items-center gap-3">
-     <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center ">
-      <BrainCircuit className="w-5 h-5 text-white" />
-     </div>
+     <button type="button" aria-label={t("Back to conversations", "Πίσω στις συνομιλίες")} onClick={() => setActiveView("chat")} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+     <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center"><BrainCircuit className="w-5 h-5 text-white" /></div>
      <div>
-      <h1 className="font-bold text-stone-900 tracking-tight">{t("AI Center", "Κέντρο AI")}</h1>
-      <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Intelligent startup assistant", "Έξυπνος βοηθός για startup")}</p>
+      <h1 className="font-bold text-stone-900 tracking-tight">{t("AI specialists", "Ειδικοί AI")}</h1>
+      <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Each one keeps its own conversation with you", "Ο καθένας κρατά τη δική του συνομιλία μαζί σου")}</p>
      </div>
     </div>
-    <div className="scroll-tabs p-1 bg-stone-100 rounded-xl">
+    <div className="flex p-1 bg-stone-100 rounded-xl" role="tablist">
      {([
-      { id: "chat", label: t("Chat", "Συνομιλία"), icon: MessageSquare },
-      { id: "agents", label: t("Agents", "Πράκτορες"), icon: Users },
-      { id: "insights", label: t("Insights", "Εικόνα"), icon: Lightbulb },
+      { id: "agents", label: t("Specialists", "Ειδικοί"), icon: Users },
+      { id: "insights", label: t("Latest answers", "Τελευταίες απαντήσεις"), icon: Lightbulb },
       { id: "history", label: t("History", "Ιστορικό"), icon: Clock },
      ] as { id: AIView; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
-      <button
-       key={id}
-       onClick={() => setAiView(id)}
-       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-        aiView === id
-         ? "bg-white text-stone-900 shadow-sm"
-         : "text-stone-500 hover:text-stone-700"
-       )}
-      >
-       <Icon className="w-3.5 h-3.5" />
-       {label}
+      <button key={id} role="tab" aria-selected={aiView === id} onClick={() => setAiView(id)} className={cn("flex items-center gap-1.5 min-h-10 px-3 rounded-lg text-xs font-medium transition-all", aiView === id ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
+       <Icon className="w-3.5 h-3.5" /> {label}
       </button>
      ))}
     </div>
    </header>
 
-   {/* AI View Content */}
-   <div className="flex-1 overflow-y-auto p-6">
+   <div className="flex-1 overflow-y-auto p-4 sm:p-6">
     {aiView === "agents" && (
      <div className="max-w-4xl mx-auto space-y-6">
-      <div className="text-center mb-8">
-       <h2 className="text-lg font-bold text-stone-900 mb-1.5 tracking-tight">{t("AI Agents", "Πράκτορες AI")}</h2>
-       <p className="text-sm text-stone-500">{t("Specialized AI assistants for every aspect of your startup journey", "Εξειδικευμένοι βοηθοί AI για κάθε πτυχή της διαδρομής σου")}</p>
+      <div className="text-center mb-6">
+       <h2 className="text-lg font-bold text-stone-900 mb-1.5 tracking-tight">{t("Pick a specialist", "Διάλεξε ειδικό")}</h2>
+       <p className="text-sm text-stone-500">{t("Focused help for team formation, pitching, strategy, market research and more.", "Στοχευμένη βοήθεια για σύνθεση ομάδας, pitch, στρατηγική, έρευνα αγοράς και άλλα.")}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        {MOCK_AGENTS.map((agent) => (
-        <motion.div
-         key={agent.id}
-         whileHover={{ scale: 1.02 }}
-         className="p-5 bg-white border border-stone-200 rounded-2xl transition-all cursor-pointer group"
-         onClick={() => {
-          window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: agent.id } }));
-          setActiveView("chat");
-         }}
-        >
+        <motion.button key={agent.id} type="button" whileHover={{ scale: 1.01 }} onClick={() => void startWith(agent.id)}
+         className="p-5 bg-white border border-stone-200 rounded-2xl transition-all hover:border-stone-900 text-left">
          <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-stone-100 overflow-hidden shrink-0">
-           <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover" />
-          </div>
+          <div className="w-14 h-14 rounded-2xl bg-stone-900 text-white text-2xl flex items-center justify-center shrink-0" aria-hidden="true">{agent.icon || <Sparkles className="w-5 h-5" />}</div>
           <div className="flex-1 min-w-0">
            <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-stone-900">{agent.name}</h3>
-            <Sparkles className="w-4 h-4 text-stone-500" />
+            <h3 className="font-semibold text-stone-900">{agentName(agent)}</h3>
+            <Sparkles className="w-4 h-4 text-stone-400" />
            </div>
-           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agentRoleOf(agent.role)}</p>
-           <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agentDescOf(agent.description)}</p>
+           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agentRole(agent)}</p>
+           <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agentDescription(agent)}</p>
            <div className="mt-3 flex flex-wrap gap-1.5">
-            {agent.capabilities.map((cap, i) => (
-             <span key={i} className="px-2 py-1 bg-stone-100 text-stone-600 text-xs rounded-full">
-              {capOf(cap)}
-             </span>
-            ))}
+            {agentCapabilities(agent).map((cap) => <span key={cap} className="px-2 py-1 bg-stone-100 text-stone-600 text-xs rounded-full">{cap}</span>)}
            </div>
           </div>
          </div>
-        </motion.div>
+        </motion.button>
        ))}
       </div>
      </div>
@@ -1501,98 +1624,59 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
     {aiView === "insights" && (
      <div className="max-w-2xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("AI Insights & Suggestions", "Στοιχεία και προτάσεις AI")}</h2>
+      <h2 className="text-lg font-bold text-stone-900 mb-1 tracking-tight">{t("Latest answers", "Τελευταίες απαντήσεις")}</h2>
+      <p className="text-sm text-stone-500 mb-4">{t("The most recent reply from each specialist you have talked to.", "Η πιο πρόσφατη απάντηση από κάθε ειδικό με τον οποίο έχεις μιλήσει.")}</p>
       {aiInsights.length === 0 ? (
        <div className="text-center py-12">
         <Lightbulb className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-        <p className="text-sm text-stone-500">{t("Start chatting with AI agents to generate insights", "Ξεκίνα συνομιλία με πράκτορες AI για να δημιουργηθούν στοιχεία")}</p>
+        <p className="text-sm text-stone-500">{t("Ask a specialist and their answers will be collected here.", "Ρώτησε έναν ειδικό και οι απαντήσεις του θα συγκεντρώνονται εδώ.")}</p>
+        <button type="button" onClick={() => setAiView("agents")} className="mt-4 min-h-11 px-4 bg-stone-900 text-white rounded-xl text-sm font-medium">{t("Pick a specialist", "Διάλεξε ειδικό")}</button>
        </div>
-      ) : (
-       aiInsights.map((insight) => (
-        <div key={insight.id} className="p-4 bg-white border border-stone-200 rounded-xl">
+      ) : aiInsights.map((conversation) => {
+       const agent = MOCK_AGENTS.find((item) => item.id === conversation.otherId);
+       return (
+        <button key={conversation.id} type="button" onClick={() => openConversation(conversation.id)} className="w-full p-4 bg-white border border-stone-200 rounded-xl text-left hover:border-stone-900 transition-colors">
          <div className="flex items-start gap-3">
-          <div className={cn(
-           "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-           insight.type === "action" ? "bg-amber-100 text-amber-600" :
-           insight.type === "suggestion" ? "bg-stone-100 text-stone-600" :
-           "bg-emerald-100 text-emerald-600"
-          )}>
-           {insight.type === "action" ? <Zap className="w-4 h-4" /> :
-            insight.type === "suggestion" ? <Lightbulb className="w-4 h-4" /> :
-            <Target className="w-4 h-4" />
-           }
-          </div>
-          <div className="flex-1">
-           <h3 className="font-semibold text-stone-900 text-sm">{insight.title}</h3>
-           <p className="text-xs text-stone-500 mt-1 leading-relaxed">{insight.description}</p>
-           <div className="flex items-center gap-2 mt-3">
-            <span className={cn(
-             "text-xs px-2 py-0.5 rounded-full",
-             insight.priority === "high" ? "bg-red-100 text-red-700" :
-             insight.priority === "medium" ? "bg-amber-100 text-amber-700" :
-             "bg-stone-100 text-stone-600"
-            )}>
-             {insight.priority === "high" ? t("high priority", "υψηλή προτεραιότητα") : insight.priority === "medium" ? t("medium priority", "μεσαία προτεραιότητα") : t("low priority", "χαμηλή προτεραιότητα")}
-            </span>
+          <div className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0 text-base" aria-hidden="true">{agent?.icon || <Sparkles className="w-4 h-4" />}</div>
+          <div className="flex-1 min-w-0">
+           <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-stone-900 text-sm">{agent ? agentName(agent) : conversation.other.fullName}</h3>
+            <span className="text-[10px] text-stone-400 shrink-0"><RelTime iso={new Date(conversation.lastMessageAt).toISOString()} /></span>
            </div>
+           <p className="text-xs text-stone-600 mt-1 leading-relaxed line-clamp-4 whitespace-pre-wrap">{conversation.lastMessage}</p>
           </div>
          </div>
-        </div>
-       ))
-      )}
-     </div>
-    )}
-
-    {aiView === "chat" && (
-     <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-       <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-        <Sparkles className="w-5 h-5 text-stone-500" />
-       </div>
-       <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">{t("Select an AI Agent", "Επίλεξε πράκτορα AI")}</h3>
-       <p className="text-sm text-stone-500 max-w-xs mx-auto mb-6 leading-relaxed">
-        {t("The corner studio assistant is the same chat. Specialists stay in that panel so Messages is not a second composer.", "Ο βοηθός στη γωνία είναι η ίδια συνομιλία. Οι ειδικοί μένουν εκεί, ώστε τα Μηνύματα να μην είναι δεύτερη σύνταξη.")}
-       </p>
-       <button 
-        type="button"
-        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
-        className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
-       >
-        {t("Open studio assistant", "Άνοιγμα βοηθού studio")}
-       </button>
-      </div>
+        </button>
+       );
+      })}
      </div>
     )}
 
     {aiView === "history" && (
      <div className="max-w-2xl mx-auto">
-      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("AI Chat History", "Ιστορικό συνομιλιών AI")}</h2>
-      <div className="space-y-2">
-       {msgState.conversations
-        .filter(c => c.otherParticipant.isAI)
-        .map(conv => (
-         <button
-          key={conv.id}
-          onClick={() => {
-           setSelectedConversation(conv.id);
-           setActiveView("chat");
-          }}
-          className="w-full flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-all text-left"
-         >
-          <Avatar 
-           src={conv.otherParticipant.profile?.profilePhoto}
-           alt={conv.otherParticipant.fullName}
-           size="md"
-           isAI={true}
-          />
-          <div className="flex-1 min-w-0">
-           <h3 className="font-semibold text-stone-900 text-sm">{conv.otherParticipant.fullName}</h3>
-           <p className="text-xs text-stone-500 truncate">{conv.lastMessage}</p>
+      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("Specialist conversations", "Συνομιλίες με ειδικούς")}</h2>
+      {aiConversations.length === 0 ? (
+       <p className="text-sm text-stone-500 text-center py-12">{t("No conversations with specialists yet.", "Δεν υπάρχουν συνομιλίες με ειδικούς ακόμη.")}</p>
+      ) : (
+       <div className="space-y-2">
+        {aiConversations.map((conv) => {
+         const agent = MOCK_AGENTS.find((item) => item.id === conv.otherId);
+         return (
+          <div key={conv.id} className="flex items-center gap-3 p-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-all">
+           <button type="button" onClick={() => openConversation(conv.id)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+            <Avatar alt={conv.other.fullName} size="md" isAI icon={agent?.icon} />
+            <div className="flex-1 min-w-0">
+             <h3 className="font-semibold text-stone-900 text-sm">{agent ? agentName(agent) : conv.other.fullName}</h3>
+             <p className="text-xs text-stone-500 truncate">{conv.lastMessage || t("No messages yet", "Δεν υπάρχουν μηνύματα ακόμη")}</p>
+            </div>
+            {conv.lastMessage && <span className="text-xs text-stone-400 shrink-0"><RelTime iso={new Date(conv.lastMessageAt).toISOString()} /></span>}
+           </button>
+           <IconButton icon={Trash2} tooltip={t("Delete this conversation", "Διαγραφή αυτής της συνομιλίας")} danger onClick={() => messaging.deleteForMe(conv.id)} />
           </div>
-          <span className="text-xs text-stone-400">{conv.lastMessageTime}</span>
-         </button>
-        ))}
-      </div>
+         );
+        })}
+       </div>
+      )}
      </div>
     )}
    </div>
@@ -1602,156 +1686,98 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // =============================================================================
  // MAIN RENDER
  // =============================================================================
-
  return (
   <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
-   {/* Left Sidebar */}
    {renderLeftSidebar()}
-
-   {/* Main Content Area */}
-   <main className="flex-1 flex flex-col min-w-0">
+   <main className={cn("flex-1 flex flex-col min-w-0", !activeId && activeView === "chat" && "hidden md:flex")}>
     <div className="flex-1 flex min-h-0">
      {activeView === "chat" && renderMainChat()}
      {activeView === "ai-center" && renderAICenter()}
-
-     {/* Right Sidebar */}
-     <AnimatePresence>
-      {activeView === "chat" && renderRightSidebar()}
-     </AnimatePresence>
+     <AnimatePresence>{activeView === "chat" && renderRightSidebar()}</AnimatePresence>
     </div>
    </main>
 
-   {/* Validation Mode Dialog */}
-   <AnimatePresence>
-    {showValidationDialog && (
-     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={() => setShowValidationDialog(false)}>
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-2 sm:mx-4 overflow-hidden"
-       onClick={(e) => e.stopPropagation()}>
-       <div className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-         <div className="w-12 h-12 bg-stone-100 rounded-2xl flex items-center justify-center">
-          <Shield className="w-6 h-6 text-stone-600" />
-         </div>
-         <div>
-          <h3 className="text-lg font-semibold text-stone-900">{t("Conversation Validation Mode", "Λειτουργία επαλήθευσης συνομιλίας")}</h3>
-          <p className="text-sm text-stone-500">{t("Choose how this conversation should be validated", "Επίλεξε πώς θα επαληθεύεται αυτή η συνομιλία")}</p>
-         </div>
-        </div>
-        <div className="space-y-2 mb-4">
-         {(Object.entries(MODE_CONFIG) as [ValidationMode, typeof MODE_CONFIG[ValidationMode]][]).map(([mode, cfg]) => {
-          const MIcon = cfg.icon;
-          const isActive = validationState.mode === mode;
-          return (
-           <button key={mode} onClick={() => handleValidationModeChange(mode)}
-            className={cn("w-full flex items-start gap-3 rounded-xl border p-3 text-left transition-all",
-             isActive ? "border-stone-900 bg-stone-50" : "border-stone-200 hover:border-stone-300 hover:bg-stone-50")}>
-            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5", cfg.bgColor)}>
-             <MIcon className={cn("w-5 h-5", cfg.color)} />
-            </div>
-            <div className="flex-1 min-w-0">
-             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-stone-900">{modeText(mode).label}</p>
-              {isActive && (
-               <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-[9px] rounded-full font-medium">{t("Current", "Τρέχουσα")}</span>
-              )}
-             </div>
-             <p className="text-xs text-stone-500 mt-0.5">{modeText(mode).description}</p>
-             {mode === 'two_party' && activeConv && (
-              <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
-               <Flag className="w-3 h-3" /> {t("Requires acceptance from", "Απαιτεί αποδοχή από")} {activeConv.otherParticipant.fullName}
-              </p>
-             )}
-            </div>
-           </button>
-          );
-         })}
-        </div>
-        <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 mb-4">
-         <div className="flex items-start gap-2">
-          <Info className="w-4 h-4 shrink-0 text-stone-400 mt-0.5" />
-          <div className="text-[11px] text-stone-500">
-           <p className="font-medium text-stone-700 mb-1">{t("About validation modes", "Σχετικά με τις λειτουργίες επαλήθευσης")}</p>
-           <ul className="space-y-0.5">
-            <li><strong>{t("Casual", "Απλή")}:</strong> {t("Standard messaging, no records saved", "κανονική συνομιλία, χωρίς αρχείο")}</li>
-            <li><strong>{t("One-Party", "Από μία πλευρά")}:</strong> {t("You can save transcripts; other party is notified", "μπορείς να αποθηκεύσεις αντίγραφα· η άλλη πλευρά ενημερώνεται")}</li>
-            <li><strong>{t("Two-Party", "Από τις δύο πλευρές")}:</strong> {t("Both agree to validated, verifiable transcript", "και οι δύο συμφωνούν σε επαληθευμένο, ελέγξιμο αντίγραφο")}</li>
-           </ul>
-          </div>
-         </div>
-        </div>
-        <button onClick={() => setShowValidationDialog(false)}
-         className="w-full px-4 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">
-         {t("Close", "Κλείσιμο")}
-        </button>
-       </div>
-      </motion.div>
-     </motion.div>
-    )}
-   </AnimatePresence>
+   <PeoplePicker
+    open={picker.open}
+    onClose={() => setPicker({ open: false, mode: 'new' })}
+    title={picker.mode === 'forward' ? t("Forward to…", "Προώθηση σε…") : t("New message", "Νέο μήνυμα")}
+    description={picker.mode === 'forward' ? t("Choose who receives a copy of this message.", "Διάλεξε ποιος θα λάβει αντίγραφο αυτού του μηνύματος.") : t("Choose a member or an AI specialist.", "Διάλεξε ένα μέλος ή έναν ειδικό AI.")}
+    people={people.filter((person) => (real ? connectionRecords().some((record) => record.status === "Accepted" && record.participants.includes(person.id)) || person.messagesFrom !== "none" : true))}
+    conversations={conversations}
+    includeAgents={picker.mode === 'new'}
+    onPick={(id) => (picker.mode === 'forward' ? void forwardTo(id) : void startWith(id))}
+   />
 
-   {/* Report/Block Modal */}
-   <AnimatePresence>
-    {reportBlockModal.open && activeConv && (
-     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}>
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-       className="bg-white rounded-2xl shadow-sm border border-stone-200 w-full max-w-md mx-2 sm:mx-4 overflow-hidden"
-       onClick={(e) => e.stopPropagation()}>
-       <div className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-         <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center",
-          reportBlockModal.mode === 'report' ? "bg-amber-100" : "bg-red-100")}>
-          {reportBlockModal.mode === 'report'
-           ? <Flag className="w-6 h-6 text-amber-600" />
-           : <Ban className="w-6 h-6 text-red-600" />}
+   <Modal open={showValidationDialog} onClose={() => setShowValidationDialog(false)} title={t("Transcript verification", "Επικύρωση αντιγράφου")} description={t("Decide whether this conversation keeps a verifiable record.", "Αποφάσισε αν αυτή η συνομιλία θα κρατά επαληθεύσιμο αρχείο.")}>
+    <div className="space-y-2 mb-4">
+     {(["casual", "one_party", "two_party"] as ValidationMode[]).map((mode) => {
+      const style = MODE_STYLE[mode];
+      const MIcon = style.icon;
+      const isActive = validation.mode === mode;
+      return (
+       <button key={mode} type="button" onClick={() => void setValidationMode(mode)} aria-pressed={isActive}
+        className={cn("w-full flex items-start gap-3 rounded-xl border p-3 text-left transition-all", isActive ? "border-stone-900 bg-stone-50" : "border-stone-200 hover:border-stone-300 hover:bg-stone-50")}>
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5", style.bgColor)}><MIcon className={cn("w-5 h-5", style.color)} /></div>
+        <div className="flex-1 min-w-0">
+         <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-stone-900">{modeText(mode).label}</p>
+          {isActive && <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-[9px] rounded-full font-medium">{t("Current", "Τρέχουσα")}</span>}
          </div>
-         <div>
-          <h3 className="text-lg font-semibold text-stone-900">
-           {reportBlockModal.mode === 'report' ? t("Report User", "Αναφορά χρήστη") : t("Block User", "Αποκλεισμός χρήστη")}
-          </h3>
-          <p className="text-sm text-stone-500">{activeConv.otherParticipant.fullName}</p>
-         </div>
+         <p className="text-xs text-stone-500 mt-0.5">{modeText(mode).description}</p>
+         {mode === 'two_party' && active && (
+          <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1"><Flag className="w-3 h-3" /> {t(`${active.other.fullName} must accept.`, `Απαιτείται αποδοχή από ${active.other.fullName}.`)}</p>
+         )}
         </div>
-        <p className="text-sm text-stone-600 mb-4">
-         {reportBlockModal.mode === 'report'
-          ? t("Report this user for inappropriate behavior. Our team will review the report and take appropriate action.", "Ανέφερε αυτό το άτομο για ακατάλληλη συμπεριφορά. Η ομάδα θα εξετάσει την αναφορά.")
-          : t("Blocking this user will prevent them from sending you messages. You can unblock them later from Settings.", "Ο αποκλεισμός εμποδίζει την αποστολή μηνυμάτων προς εσένα. Μπορείς να άρεις τον αποκλεισμό αργότερα από τις ρυθμίσεις.")}
-        </p>
-        {reportBlockModal.mode === 'report' && (
-         <div className="mb-4 space-y-2">
-          <label className="text-xs font-semibold text-stone-600">{t("Reason", "Αιτία")}</label>
-          <select className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900">
-           <option value="">{t("Select a reason...", "Επίλεξε αιτία...")}</option>
-           <option value="spam">{t("Spam or scam", "Ανεπιθύμητα ή απάτη")}</option>
-           <option value="harassment">{t("Harassment", "Παρενόχληση")}</option>
-           <option value="inappropriate">{t("Inappropriate content", "Ακατάλληλο περιεχόμενο")}</option>
-           <option value="impersonation">{t("Impersonation", "Υποκλοπή ταυτότητας")}</option>
-           <option value="other">{t("Other", "Άλλο")}</option>
-          </select>
-          <textarea placeholder={t("Additional details (optional)...", "Επιπλέον λεπτομέρειες (προαιρετικά)...")} rows={3}
-           className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 resize-none" />
-         </div>
-        )}
-        <div className="flex items-center gap-2">
-         <button onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}
-          className="flex-1 px-4 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">
-          {t("Cancel", "Ακύρωση")}
-         </button>
-         <button onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}
-          className={cn("flex-1 px-4 py-2.5 text-white text-sm font-medium rounded-xl transition-all",
-           reportBlockModal.mode === 'report' ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700")}>
-          {reportBlockModal.mode === 'report' ? t("Submit Report", "Υποβολή αναφοράς") : t("Block User", "Αποκλεισμός χρήστη")}
-         </button>
-        </div>
-       </div>
-      </motion.div>
-     </motion.div>
+       </button>
+      );
+     })}
+    </div>
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 mb-4">
+     <div className="flex items-start gap-2">
+      <Info className="w-4 h-4 shrink-0 text-stone-400 mt-0.5" />
+      <p className="text-[11px] text-stone-500 leading-relaxed">
+       {t("The fingerprint is a SHA-256 hash of the messages at the time of verification. Export the transcript and anyone can recompute the same hash to confirm nothing changed.", "Το αποτύπωμα είναι ένας κωδικός SHA-256 των μηνυμάτων τη στιγμή της επικύρωσης. Εξάγοντας το αντίγραφο, οποιοσδήποτε μπορεί να υπολογίσει ξανά τον ίδιο κωδικό και να επιβεβαιώσει ότι τίποτα δεν άλλαξε.")}
+      </p>
+     </div>
+    </div>
+    <button type="button" onClick={() => setShowValidationDialog(false)} className="w-full min-h-11 px-4 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">{t("Close", "Κλείσιμο")}</button>
+   </Modal>
+
+   <Modal
+    open={reportBlockModal.open && Boolean(active)}
+    onClose={() => setReportBlockModal({ ...reportBlockModal, open: false })}
+    title={reportBlockModal.mode === 'report' ? t("Report member", "Αναφορά μέλους") : isBlockedByMe ? t("Unblock member", "Άρση αποκλεισμού") : t("Block member", "Αποκλεισμός μέλους")}
+    description={active?.other.fullName}
+   >
+    <p className="text-sm text-stone-600 mb-4">
+     {reportBlockModal.mode === 'report'
+      ? t("Tell us what happened. Our team reviews every report and takes action where needed.", "Πες μας τι συνέβη. Η ομάδα μας εξετάζει κάθε αναφορά και παρεμβαίνει όπου χρειάζεται.")
+      : isBlockedByMe ? t("They will be able to message you and see your profile again.", "Θα μπορεί ξανά να σου στέλνει μηνύματα και να βλέπει το προφίλ σου.")
+      : t("They will no longer be able to message you. You can undo this at any time from Settings › Privacy.", "Δεν θα μπορεί πλέον να σου στέλνει μηνύματα. Μπορείς να το αναιρέσεις ανά πάσα στιγμή από Ρυθμίσεις › Απόρρητο.")}
+    </p>
+    {reportBlockModal.mode === 'report' && (
+     <div className="mb-4 space-y-2">
+      <label className="text-xs font-semibold text-stone-600" htmlFor="report-reason">{t("Reason", "Αιτία")}</label>
+      <select id="report-reason" value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full min-h-11 px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 bg-white">
+       <option value="">{t("Select a reason…", "Επίλεξε αιτία…")}</option>
+       <option value="spam">{t("Spam or scam", "Ανεπιθύμητα μηνύματα ή απάτη")}</option>
+       <option value="harassment">{t("Harassment", "Παρενόχληση")}</option>
+       <option value="inappropriate">{t("Inappropriate content", "Ακατάλληλο περιεχόμενο")}</option>
+       <option value="impersonation">{t("Impersonation", "Πλαστοπροσωπία")}</option>
+       <option value="other">{t("Other", "Άλλο")}</option>
+      </select>
+      <textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} placeholder={t("Additional details (optional)…", "Επιπλέον λεπτομέρειες (προαιρετικά)…")} rows={3} aria-label={t("Additional details", "Επιπλέον λεπτομέρειες")}
+       className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 resize-none" />
+     </div>
     )}
-   </AnimatePresence>
+    <div className="flex items-center gap-2">
+     <button type="button" onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })} className="flex-1 min-h-11 px-4 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">{t("Cancel", "Ακύρωση")}</button>
+     <button type="button" onClick={() => void submitReportOrBlock()}
+      className={cn("flex-1 min-h-11 px-4 text-white text-sm font-medium rounded-xl transition-all", reportBlockModal.mode === 'report' ? "bg-amber-600 hover:bg-amber-700" : isBlockedByMe ? "bg-stone-900 hover:bg-stone-800" : "bg-red-600 hover:bg-red-700")}>
+      {reportBlockModal.mode === 'report' ? t("Send report", "Αποστολή αναφοράς") : isBlockedByMe ? t("Unblock", "Άρση αποκλεισμού") : t("Block", "Αποκλεισμός")}
+     </button>
+    </div>
+   </Modal>
   </div>
  );
 }

@@ -19,6 +19,11 @@ import { MessagingProvider } from './context/MessagingContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { setDataScope } from './lib/localLists';
+import { startCloudSync, stopCloudSync } from './lib/cloudSync';
+import { startDirectory, stopDirectory } from './lib/directory';
+import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, stopSocial } from './lib/social';
+import { getLang } from './lib/language';
+import { markEmailVerified } from './lib/account';
 
 // Lazy-loaded pages (code-splitting)
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -172,7 +177,10 @@ const ProtectedRoute = ({ children, requireOnboarding = true }: { children: Reac
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isDemoMode } = useAuth();
-  return <ProtectedRoute>{isDemoMode || isAdmin ? children : <Navigate to="/dashboard" replace />}</ProtectedRoute>;
+  // Demo mode: show admin pages with sample data (read-only preview)
+  // Real mode: require verified admin role from Firebase custom claims
+  if (!isDemoMode && !isAdmin) return <ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>;
+  return <ProtectedRoute>{children}</ProtectedRoute>;
 };
 
 /** Pages written for a `user` prop get the signed-in person, never an empty object. */
@@ -190,8 +198,80 @@ function TenantBillingRoute() {
 
 /** One messaging state for the whole app, so the assistant and every page see the same conversations. */
 function AppMessaging({ children }: { children: React.ReactNode }) {
-  const { user, isDemoMode } = useAuth();
-  return <MessagingProvider userId={user?.uid || (isDemoMode ? 'demo-user' : '')} isDemo={isDemoMode}>{children}</MessagingProvider>;
+  const { user, profile, isDemoMode } = useAuth();
+  const userId = user?.uid || (isDemoMode ? 'demo-user' : '');
+  const me = useMemo(
+    () => ({
+      id: userId,
+      fullName: profile?.fullName || user?.displayName || 'You',
+      avatar: profileAvatar(profile) || user?.photoURL || '',
+      headline: profile?.headline || '',
+      role: profile?.role || profile?.roles?.[0] || 'Founder',
+    }),
+    [userId, profile, user],
+  );
+  return <MessagingProvider userId={userId} isDemo={isDemoMode} me={me}>{children}</MessagingProvider>;
+}
+
+function profileAvatar(profile: UserProfile | null): string {
+  if (!profile) return '';
+  const record = profile as unknown as { avatarUrl?: string; profile?: { profilePhoto?: string } };
+  return record.avatarUrl || record.profile?.profilePhoto || '';
+}
+
+/**
+ * Starts the live services of a signed-in account (member directory,
+ * connections, notifications, blocks, cloud sync of the account's lists and
+ * presence) and stops them on sign-out or when the sample account opens.
+ */
+function useAccountServices(accountId: string | null, isDemo: boolean, profile: UserProfile | null, firebaseUser: FirebaseUser | null) {
+  const real = Boolean(accountId) && !isDemo;
+  const uid = real ? accountId : null;
+
+  useEffect(() => {
+    if (!uid) {
+      setSocialIdentity(null);
+      stopSocial();
+      stopDirectory();
+      stopCloudSync();
+      return undefined;
+    }
+    startCloudSync(uid);
+    startDirectory(uid);
+    startSocial(uid, getLang);
+    return () => {
+      stopSocial();
+      stopDirectory();
+      stopCloudSync();
+      setSocialIdentity(null);
+    };
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const record = profile as unknown as { connectionIds?: unknown; sharePresence?: unknown } | null;
+    setSocialIdentity({
+      uid,
+      name: profile?.fullName || firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Member',
+      headline: profile?.headline || '',
+      avatar: profileAvatar(profile) || firebaseUser?.photoURL || '',
+      role: profile?.role || profile?.roles?.[0] || 'Founder',
+    });
+    setOwnConnectionIds(Array.isArray(record?.connectionIds) ? (record.connectionIds as string[]) : []);
+  }, [uid, profile, firebaseUser]);
+
+  // A confirmed e-mail address becomes the Verified badge on the profile.
+  useEffect(() => {
+    if (!uid || !firebaseUser?.emailVerified || !profile || profile.verificationStatus === VerificationStatus.VERIFIED) return;
+    void markEmailVerified(uid).catch(() => undefined);
+  }, [uid, firebaseUser?.emailVerified, profile]);
+
+  const sharePresence = (profile as unknown as { sharePresence?: boolean } | null)?.sharePresence !== false;
+  useEffect(() => {
+    if (!uid) return undefined;
+    startPresence(uid, sharePresence);
+    return () => startPresence(uid, false);
+  }, [uid, sharePresence]);
 }
 
 export default function App() {
@@ -332,6 +412,8 @@ export default function App() {
     setDataScope(demo ? null : accountId);
   }, [demo, accountId]);
 
+  useAccountServices(accountId, Boolean(demo), activeProfile, activeUser);
+
   const appUser = useMemo(
     () => (accountId ? toAppUser(accountId, activeProfile, activeUser) : null),
     [accountId, activeProfile, activeUser],
@@ -348,7 +430,7 @@ export default function App() {
         profile: activeProfile,
         appUser,
         loading,
-        isAdmin: isDemoMode ? true : isAdmin,
+        isAdmin,
         isDemoMode,
         toggleDemoMode
       }}>

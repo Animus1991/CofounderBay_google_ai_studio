@@ -1,15 +1,13 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
+import {defineConfig} from 'vite';
 
-export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+// SECURITY: no server secret (GEMINI_API_KEY, Stripe keys, …) is injected into the
+// client bundle. AI requests go through the server proxy in server.ts.
+export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -28,6 +26,7 @@ export default defineConfig(({mode}) => {
       // Split large third-party libraries into separate, long-term-cacheable chunks
       // so the main bundle stays small and vendor code is not re-downloaded on every deploy.
       chunkSizeWarningLimit: 900,
+      sourcemap: false,
       rollupOptions: {
         output: {
           manualChunks(id: string) {
@@ -35,6 +34,9 @@ export default defineConfig(({mode}) => {
             if (id.includes('react-router')) return 'react-router';
             if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/'))
               return 'react-vendor';
+            // Loaded only when a file is uploaded or an AI call runs without the proxy.
+            if (id.includes('@firebase/storage') || id.includes('firebase/storage')) return 'firebase-storage';
+            if (id.includes('@google/genai')) return 'genai';
             if (id.includes('firebase') || id.includes('@firebase')) return 'firebase';
             if (id.includes('recharts') || id.includes('/d3-') || id.includes('victory'))
               return 'charts';

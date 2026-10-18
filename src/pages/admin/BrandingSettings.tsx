@@ -247,7 +247,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
          </div>
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">{t('Dashboard Welcome Text', 'Κείμενο καλωσορίσματος στον πίνακα')}</label>
+         <label className="text-micro">{t('Dashboard Welcome Text', 'Κείμενο καλωσορίσματος στον πίνακα ελέγχου')}</label>
          <input
           type="text"
           value={contentForm.dashboardWelcomeText}
@@ -327,7 +327,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
        </div>
        <div className="pt-4 border-t border-stone-100">
         <p className="text-xs text-stone-400 font-medium leading-relaxed italic">
-         {t('Branding changes are applied instantly to the dashboard and internal pages. Landing page changes require a publish action.', 'Οι αλλαγές ταυτότητας εφαρμόζονται αμέσως στον πίνακα και στις εσωτερικές σελίδες. Οι αλλαγές αρχικής σελίδας θέλουν δημοσίευση.')}
+         {t('Branding changes are applied instantly to the dashboard and internal pages. Landing page changes require a publish action.', 'Οι αλλαγές ταυτότητας εφαρμόζονται αμέσως στον πίνακα ελέγχου και στις εσωτερικές σελίδες. Οι αλλαγές αρχικής σελίδας θέλουν δημοσίευση.')}
         </p>
        </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
  Plus,
  ChevronLeft, ChevronRight, MoreVertical,
@@ -10,7 +10,7 @@ import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
-import { keys, readSessions } from "../lib/localLists";
+import { keys, readSessions, removeSession } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { motion } from "framer-motion";
 import { useT } from "../lib/language";
@@ -33,18 +33,43 @@ interface Event {
 export default function Calendar() {
  const t = useT();
  const { isDemoMode } = useAuth();
- const [currentMonth, setCurrentMonth] = useState("March 2026");
+ const [currentDate, setCurrentDate] = useState(new Date());
  const [view, setView] = useState('Month');
  const [searchQuery, setSearchQuery] = useState('');
+ const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+ const [dismissedStarterIds, setDismissedStarterIds] = useState<string[]>([]);
+ const [briefingEnabled, setBriefingEnabled] = useState(() => {
+  try {
+   return localStorage.getItem('cfb.calendarBriefing') === 'true';
+  } catch {
+   return false;
+  }
+ });
+
+ useEffect(() => {
+  if (!openMenuId) return;
+  const handleClickOutside = () => setOpenMenuId(null);
+  window.addEventListener('click', handleClickOutside);
+  return () => window.removeEventListener('click', handleClickOutside);
+ }, [openMenuId]);
+
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
- const monthLabel = (value: string) =>
-  value === "February 2026" ? t("February 2026", "Φεβρουάριος 2026")
-   : value === "April 2026" ? t("April 2026", "Απρίλιος 2026")
-    : t("March 2026", "Μάρτιος 2026");
+
+ const navigateMonth = (delta: number) => {
+  setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+ };
+
+ const monthLabel = useMemo(() => {
+  const locale = t("en-US", "el-GR");
+  const formatted = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(currentDate);
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+ }, [currentDate, t]);
+
  const viewLabel = (value: string) =>
   value === "Week" ? t("Week", "Εβδομάδα")
    : value === "Day" ? t("Day", "Ημέρα")
     : t("Month", "Μήνας");
+
  const clockOf = (time: string) => {
   if (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith("Z")) return formatWhen(time);
   return time;
@@ -52,51 +77,126 @@ export default function Calendar() {
  const durationOf = (duration: string) => duration === "All Day" ? t("All Day", "Όλη την ημέρα") : duration;
  const peopleOf = (people?: string[]) => people?.map((person) => person === "120+ attendees" ? t("120+ attendees", "120+ συμμετέχοντες") : person);
 
- const starterEvents: Event[] = [
-  {
-   id: "1",
-   title: "Co-founder Sync",
-   type: 'Meeting',
-   time: "10:00",
-   duration: "45m",
-   location: "Google Meet",
-   participants: ["Sarah Chen", "Alex Rivera"],
-   priority: 'High'
-  },
-  {
-   id: "2",
-   title: "MVP Beta Deadline",
-   type: 'Deadline',
-   time: "23:59",
-   duration: "All Day",
-   priority: 'High'
-  },
-  {
-   id: "3",
-   title: "Startup Networking Event",
-   type: 'Event',
-   time: "18:00",
-   duration: "2h",
-   location: "Tech Hub, London",
-   participants: ["120+ attendees"],
-   priority: 'Medium'
-  },
-  {
-   id: "4",
-   title: "Mentorship Session",
-   type: 'Mentorship',
-   time: "14:00",
-   duration: "1h",
-   location: "Zoom",
-   participants: ["David Miller"],
-   priority: 'Medium'
+ const today = useMemo(() => new Date(), []);
+ const tomorrow = useMemo(() => new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1), [today]);
+
+ const isSameDay = (d1: Date, d2: Date) =>
+  d1.getFullYear() === d2.getFullYear() &&
+  d1.getMonth() === d2.getMonth() &&
+  d1.getDate() === d2.getDate();
+
+ const parseEventDate = (timeStr: string): Date | null => {
+  if (!timeStr) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(timeStr) || timeStr.endsWith("Z")) {
+   const d = new Date(timeStr);
+   return isNaN(d.getTime()) ? null : d;
   }
- ];
+  return null;
+ };
+
+ const starterEvents: Event[] = useMemo(() => {
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const d = today.getDate();
+  return [
+   {
+    id: "1",
+    title: "Co-founder Sync",
+    type: 'Meeting',
+    time: new Date(y, m, d, 10, 0).toISOString(),
+    duration: "45m",
+    location: "Google Meet",
+    participants: ["Sarah Chen", "Alex Rivera"],
+    priority: 'High'
+   },
+   {
+    id: "2",
+    title: "MVP Beta Deadline",
+    type: 'Deadline',
+    time: new Date(y, m, d, 23, 59).toISOString(),
+    duration: "All Day",
+    priority: 'High'
+   },
+   {
+    id: "3",
+    title: "Startup Networking Event",
+    type: 'Event',
+    time: new Date(y, m, d + 1, 18, 0).toISOString(),
+    duration: "2h",
+    location: "Tech Hub, London",
+    participants: ["120+ attendees"],
+    priority: 'Medium'
+   },
+   {
+    id: "4",
+    title: "Mentorship Session",
+    type: 'Mentorship',
+    time: new Date(y, m, d + 1, 14, 0).toISOString(),
+    duration: "1h",
+    location: "Zoom",
+    participants: ["David Miller"],
+    priority: 'Medium'
+   }
+  ];
+ }, [today]);
+
  const storedSessions = useStored(readSessions, [keys.sessions]);
- const events: Event[] = [...storedSessions, ...(isDemoMode ? starterEvents : [])].filter((event) => {
+ const events: Event[] = [
+  ...storedSessions,
+  ...(isDemoMode ? starterEvents.filter((e) => !dismissedStarterIds.includes(e.id)) : [])
+ ].filter((event) => {
   const q = searchQuery.trim().toLowerCase();
   return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
  });
+
+ const handleDeleteEvent = (id: string) => {
+  removeSession(id);
+  setDismissedStarterIds((prev) => [...prev, id]);
+ };
+
+ const tomorrowEventsCount = useMemo(() => {
+  return events.filter((e) => {
+   const d = parseEventDate(e.time);
+   return d ? isSameDay(d, tomorrow) : false;
+  }).length;
+ }, [events, tomorrow]);
+
+ const toggleBriefing = () => {
+  const next = !briefingEnabled;
+  setBriefingEnabled(next);
+  try {
+   localStorage.setItem('cfb.calendarBriefing', String(next));
+  } catch {
+   /* ignore */
+  }
+ };
+
+ const calendarCells = useMemo(() => {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const totalCells = Math.ceil((firstDayIndex + daysInMonth) / 7) * 7;
+
+  const cells = [];
+  for (let i = 0; i < totalCells; i++) {
+   if (i < firstDayIndex) {
+    const dayNum = daysInPrevMonth - firstDayIndex + i + 1;
+    const date = new Date(year, month - 1, dayNum);
+    cells.push({ dayNum, date, isCurrentMonth: false });
+   } else if (i < firstDayIndex + daysInMonth) {
+    const dayNum = i - firstDayIndex + 1;
+    const date = new Date(year, month, dayNum);
+    cells.push({ dayNum, date, isCurrentMonth: true });
+   } else {
+    const dayNum = i - firstDayIndex - daysInMonth + 1;
+    const date = new Date(year, month + 1, dayNum);
+    cells.push({ dayNum, date, isCurrentMonth: false });
+   }
+  }
+  return cells;
+ }, [currentDate]);
 
  const weekDays = [
   t("Sun", "Κυρ"),
@@ -111,7 +211,7 @@ export default function Calendar() {
  return (
   <PageShell
    title={t("Schedule", "Πρόγραμμα")}
-   description={t("Manage meetings, track deadlines, and stay aligned with your objectives.", "Διαχειρίσου συναντήσεις και προθεσμίες. Μείνε στον ρυθμό των στόχων σου.")}
+   description={t("Manage meetings, track deadlines, and stay aligned with your objectives.", "Διαχειρίσου συναντήσεις και προθεσμίες και μείνε ευθυγραμμισμένος/-η με τους στόχους σου.")}
    actions={
     <div className="flex items-center gap-2">
      <div className="relative">
@@ -136,29 +236,38 @@ export default function Calendar() {
      <Card noPadding className="rounded-2xl border-stone-100 overflow-hidden bg-white">
       <div className="px-3 py-4 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:px-5">
        <div className="flex items-center gap-3">
-        <h3 className="text-base font-semibold text-stone-900">{monthLabel(currentMonth)}</h3>
+        <h3 className="text-base font-semibold text-stone-900">{monthLabel}</h3>
         <div className="flex items-center gap-1">
-         <Button type="button" variant="ghost" size="icon" aria-label={t("Previous month", "Προηγούμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'March 2026' ? 'February 2026' : prev === 'April 2026' ? 'March 2026' : 'February 2026')}>
+         <Button type="button" variant="ghost" size="icon" aria-label={t("Previous month", "Προηγούμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => navigateMonth(-1)}>
           <ChevronLeft className="w-4 h-4" />
          </Button>
-         <Button variant="ghost" size="icon" aria-label={t("Next month", "Επόμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'February 2026' ? 'March 2026' : prev === 'March 2026' ? 'April 2026' : 'April 2026')}>
+         <Button variant="ghost" size="icon" aria-label={t("Next month", "Επόμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => navigateMonth(1)}>
           <ChevronRight className="w-4 h-4" />
          </Button>
         </div>
        </div>
        <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
-        {['Month', 'Week', 'Day'].map((v) => (
-         <button
-          key={v}
-          onClick={() => setView(v)}
-          className={cn(
-           "px-3 py-1.5 text-sm font-medium rounded-lg transition-all",
-           view === v ? "bg-white text-stone-900 shadow-sm border border-stone-200" : "text-stone-400 hover:text-stone-600"
-          )}
-         >
-          {viewLabel(v)}
-         </button>
-        ))}
+        {['Month', 'Week', 'Day'].map((v) => {
+         const isDisabled = v !== 'Month';
+         return (
+          <button
+           key={v}
+           disabled={isDisabled}
+           title={isDisabled ? t("Coming soon", "Σύντομα διαθέσιμο") : undefined}
+           onClick={() => !isDisabled && setView(v)}
+           className={cn(
+            "px-3 py-1.5 text-sm font-medium rounded-lg transition-all",
+            view === v
+             ? "bg-white text-stone-900 shadow-sm border border-stone-200"
+             : isDisabled
+             ? "text-stone-300 cursor-not-allowed"
+             : "text-stone-400 hover:text-stone-600"
+           )}
+          >
+           {viewLabel(v)}
+          </button>
+         );
+        })}
        </div>
       </div>
 
@@ -172,11 +281,18 @@ export default function Calendar() {
         ))}
        </div>
        <div className="grid grid-cols-7 gap-px bg-stone-100 border border-stone-100 rounded-xl overflow-hidden">
-        {Array.from({ length: 35 }).map((_, i) => {
-         const dayNum = i - 3;
-         const isCurrentMonth = dayNum > 0 && dayNum <= 31;
-         const hasEvent = [15, 20, 25].includes(dayNum);
-         const isToday = dayNum === 26;
+        {calendarCells.map((cell, i) => {
+          const isToday = isSameDay(cell.date, today);
+          const cellEvents = events.filter((e) => {
+           const d = parseEventDate(e.time);
+           return d ? isSameDay(d, cell.date) : false;
+          });
+          const dayNum = cell.dayNum;
+          const isCurrentMonth = cell.isCurrentMonth;
+         
+         
+         
+         
 
          return (
           <div
@@ -195,18 +311,37 @@ export default function Calendar() {
             </span>
            )}
 
-           {hasEvent && (
+           {cellEvents.length > 0 && (
             <div className="mt-1 space-y-0.5 relative z-10">
-             <div className="bg-stone-900 text-white text-xs font-medium px-1.5 py-0.5 rounded-md truncate">
-              MVP Launch
-             </div>
-             <div className="bg-white border border-stone-200 text-stone-600 text-xs font-medium px-1.5 py-0.5 rounded-md truncate">
-              Sync Me...
-             </div>
+             {cellEvents.slice(0, 2).map((ev) => (
+              <div
+               key={ev.id}
+               title={ev.title}
+               className={cn(
+                "text-xs font-medium px-1.5 py-0.5 rounded-md truncate",
+                ev.type === 'Meeting' ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                ev.type === 'Deadline' ? "bg-red-50 text-red-700 border border-red-200" :
+                ev.type === 'Mentorship' ? "bg-purple-50 text-purple-700 border border-purple-200" :
+                "bg-stone-900 text-white"
+               )}
+              >
+               {ev.title}
+              </div>
+             ))}
+             {cellEvents.length > 2 && (
+              <div className="text-[10px] text-stone-400 font-medium pl-1">
+               +{cellEvents.length - 2} {t("more", "ακόμη")}
+              </div>
+             )}
+              
+             
+             
+              
+             
             </div>
            )}
 
-           <button type="button" aria-label={t("Schedule", "Προγραμματισμός")} className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={() => ask('Schedule a meeting on my calendar')}>
+           <button type="button" aria-label={t("Schedule", "Προγραμματισμός")} className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={() => ask(`Schedule an event on ${cell.date.toLocaleDateString()}`)}>
             <Plus className="w-3 h-3" />
            </button>
           </div>
@@ -222,8 +357,8 @@ export default function Calendar() {
      <Card className="rounded-2xl border-stone-100 p-4 bg-white">
       <div className="flex items-center justify-between mb-4">
        <div>
-        <h4 className="text-sm font-semibold text-stone-900">{t("Upcoming Today", "Επερχόμενα σήμερα")}</h4>
-        <p className="text-xs text-stone-400 mt-0.5">{formatDate(new Date(2026, 2, 26), { weekday: "long", month: "long", day: "numeric" })}</p>
+        <h4 className="text-sm font-semibold text-stone-900">{t("Upcoming Today", "Σημερινό πρόγραμμα")}</h4>
+        <p className="text-xs text-stone-400 mt-0.5">{formatDate(today, { weekday: "long", month: "long", day: "numeric" })}</p>
        </div>
        <Button type="button" variant="outline" className="h-7 px-3 text-sm rounded-lg border-stone-200" onClick={() => ask('what events are coming')}>
         {t("Full Agenda", "Πλήρες πρόγραμμα")}
@@ -231,7 +366,7 @@ export default function Calendar() {
       </div>
       <div className="space-y-2">
        {events.length === 0 && (
-        <EmptyHint title={t("No events match this search.", "Δεν υπάρχουν εκδηλώσεις για αυτή την αναζήτηση.")} detail={t("Ask the studio assistant to schedule one, or clear the search.", "Ρώτα τον βοηθό του studio να προγραμματίσει μία, ή καθάρισε την αναζήτηση.")}>
+        <EmptyHint title={t("No events match this search.", "Δεν υπάρχουν εκδηλώσεις για αυτή την αναζήτηση.")} detail={t("Ask the studio assistant to schedule one, or clear the search.", "Ρώτα τον βοηθό να προγραμματίσει μία, ή καθάρισε την αναζήτηση.")}>
          <AskLink prompt="Schedule a meeting on my calendar" />
         </EmptyHint>
        )}
@@ -254,9 +389,56 @@ export default function Calendar() {
            )} />
            <span className="text-xs font-semibold text-stone-400 tracking-wider">{labelOf(event.type)}</span>
           </div>
-          <button type="button" aria-label={t("More", "Περισσότερα")} className="text-stone-300 hover:text-stone-600 transition-colors opacity-0 group-hover:opacity-100">
-           <MoreVertical className="w-3.5 h-3.5" />
-          </button>
+          <div className="relative">
+           <button
+            type="button"
+            aria-label={t("More", "Περισσότερα")}
+            onClick={(e) => {
+             e.stopPropagation();
+             setOpenMenuId(openMenuId === event.id ? null : event.id);
+            }}
+            className="text-stone-300 hover:text-stone-600 transition-colors opacity-0 group-hover:opacity-100 p-0.5 rounded"
+           >
+            <MoreVertical className="w-3.5 h-3.5" />
+           </button>
+           {openMenuId === event.id && (
+            <div className="absolute right-0 top-6 z-20 w-44 bg-white rounded-xl shadow-lg border border-stone-100 py-1 text-xs">
+             <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 hover:bg-stone-50 text-stone-700 flex items-center gap-1.5"
+              onClick={(e) => {
+               e.stopPropagation();
+               setOpenMenuId(null);
+               ask(`Reschedule ${event.title}`);
+              }}
+             >
+              {t("Reschedule", "Επαναπρογραμματισμός")}
+             </button>
+             <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 hover:bg-stone-50 text-stone-700 flex items-center gap-1.5"
+              onClick={(e) => {
+               e.stopPropagation();
+               setOpenMenuId(null);
+               ask(`Tell me more about ${event.title}`);
+              }}
+             >
+              {t("Event Details", "Λεπτομέρειες εκδήλωσης")}
+             </button>
+             <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 flex items-center gap-1.5"
+              onClick={(e) => {
+               e.stopPropagation();
+               setOpenMenuId(null);
+               handleDeleteEvent(event.id);
+              }}
+             >
+              {t("Delete Event", "Διαγραφή εκδήλωσης")}
+             </button>
+            </div>
+           )}
+          </div>
          </div>
 
          <h4 className="text-sm font-semibold text-stone-900 mb-2 leading-tight">{event.title}</h4>
@@ -275,10 +457,12 @@ export default function Calendar() {
        <div className="flex-1 min-w-0">
         <h4 className="text-sm font-semibold text-stone-900 mb-1">{t("Event Reminders", "Υπενθυμίσεις εκδηλώσεων")}</h4>
         <p className="text-xs text-stone-500 leading-relaxed mb-3">
-         {t("3 events scheduled for tomorrow. Enable morning briefings?", "3 εκδηλώσεις είναι προγραμματισμένες για αύριο. Να ενεργοποιηθούν οι πρωινές ενημερώσεις;")}
+         {tomorrowEventsCount === 1
+          ? t("1 event scheduled for tomorrow. Enable morning briefings?", "1 εκδήλωση είναι προγραμματισμένη για αύριο. Να ενεργοποιηθούν οι πρωινές ενημερώσεις;")
+          : t(`${tomorrowEventsCount} events scheduled for tomorrow. Enable morning briefings?`, `${tomorrowEventsCount} εκδηλώσεις είναι προγραμματισμένες για αύριο. Να ενεργοποιηθούν οι πρωινές ενημερώσεις;`)}
         </p>
-        <Button type="button" onClick={() => ask('what should I do today')} className="w-full h-7 rounded-lg bg-stone-900 text-white hover:bg-stone-800 text-sm">
-         {t("Enable Briefing", "Ενεργοποίηση ενημέρωσης")}
+        <Button type="button" onClick={toggleBriefing} className="w-full h-7 rounded-lg bg-stone-900 text-white hover:bg-stone-800 text-sm">
+         {briefingEnabled ? t("Briefing Enabled ✓", "Ενημέρωση ενεργή ✓") : t("Enable Briefing", "Ενεργοποίηση ενημέρωσης")}
         </Button>
        </div>
       </div>

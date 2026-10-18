@@ -24,7 +24,7 @@ export default function Layout() {
  // Build a minimal user object for the Sidebar
  const sidebarUser = {
   id: user?.uid || profile?.uid || 'demo-user',
-  fullName: profile?.fullName || user?.displayName || t('Demo User', 'Χρήστης δείγματος'),
+  fullName: profile?.fullName || user?.displayName || t('Demo User', 'Δοκιμαστικός χρήστης'),
   email: user?.email || 'demo@cofounderbay.com',
   roles: profile?.roles || [UserRole.FOUNDER],
   avatarUrl: (profile as any)?.avatarUrl || profile?.profile?.profilePhoto || user?.photoURL || '',
@@ -43,7 +43,7 @@ export default function Layout() {
    <Both en="Exit" el="Έξοδος" />
    {showDemoHint && (
     <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-[min(16rem,calc(100vw-1.5rem))] rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
-     <Both en="Demo — nothing is saved" el="Δείγμα — τίποτα δεν αποθηκεύεται" />
+     <Both en="Demo — nothing is saved" el="Demo — τίποτα δεν αποθηκεύεται" />
     </span>
    )}
   </button>

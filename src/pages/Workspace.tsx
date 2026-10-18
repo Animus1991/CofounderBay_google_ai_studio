@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
  Layout, 
  CheckSquare, 
@@ -72,6 +72,16 @@ export default function Workspace({ user }: WorkspaceProps) {
  const [focusTimer, setFocusTimer] = useState(25 * 60); // 25 minutes in seconds
  const [focusState, setFocusState] = useState<FocusMode>("work");
  const [isTimerRunning, setIsTimerRunning] = useState(false);
+ useEffect(() => {
+  if (!isTimerRunning || focusTimer <= 0) return;
+  const interval = setInterval(() => {
+   setFocusTimer(prev => {
+    if (prev <= 1) { setIsTimerRunning(false); return 0; }
+    return prev - 1;
+   });
+  }, 1000);
+  return () => clearInterval(interval);
+ }, [isTimerRunning, focusTimer]);
  const [activeTask, setActiveTask] = useState<string | null>(null);
  const [roadmapFilter, setRoadmapFilter] = useState<'All' | 'completed' | 'in-progress' | 'pending'>('All');
  const tasks = useStored(readTasks, [keys.tasks]);
@@ -94,9 +104,9 @@ export default function Workspace({ user }: WorkspaceProps) {
 
  const tabs: TabType[] = ["Dashboard", "Builder", "Canvas", "Milestones", "Calendar"];
  const tabLabel = (tab: TabType) => ({
-  Dashboard: t("Dashboard", "Πίνακας"),
-  Builder: t("Builder", "Κατασκευή"),
-  Canvas: t("Canvas", "Canvas"),
+  Dashboard: t("Dashboard", "Πίνακας ελέγχου"),
+  Builder: t("Builder", "Δημιουργός"),
+  Canvas: t("Canvas", "Καμβάς"),
   Milestones: t("Milestones", "Ορόσημα"),
   Calendar: t("Calendar", "Ημερολόγιο"),
  }[tab]);
@@ -115,11 +125,11 @@ export default function Workspace({ user }: WorkspaceProps) {
   Solution: t("Solution", "Λύση"),
   "Key Metrics": t("Key Metrics", "Βασικοί δείκτες"),
   "Unique Value Prop": t("Unique Value Prop", "Μοναδική αξία"),
-  "Unfair Advantage": t("Unfair Advantage", "Άδικο πλεονέκτημα"),
+  "Unfair Advantage": t("Unfair Advantage", "Μοναδικό συγκριτικό πλεονέκτημα"),
  }[title] ?? title);
  const weekLabel = (w: string) => t(w, w.replace("W", "Ε"));
  const focusStateLabel = (mode: FocusMode) =>
-  mode === "work" ? t("Deep Work", "Deep work") : mode === "shortBreak" ? t("Short Break", "Σύντομο διάλειμμα") : t("Long Break", "Μεγάλο διάλειμμα");
+  mode === "work" ? t("Deep Work", "Εστιασμένη εργασία") : mode === "shortBreak" ? t("Short Break", "Σύντομο διάλειμμα") : t("Long Break", "Μεγάλο διάλειμμα");
 
  return (
   <PageShell
@@ -362,7 +372,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-2.5">
          <p className="text-xs font-semibold text-stone-400 tracking-wider">{t("Next Best Action", "Επόμενη καλύτερη ενέργεια")}</p>
          <p className="text-sm text-stone-600 leading-relaxed">
-          {t("Based on your progress, focus on the Pitch Deck to prepare for your upcoming investor meeting.", "Με βάση την πρόοδό σας, εστιάστε στο pitch deck για την επερχόμενη συνάντηση με επενδυτές.")}
+          {t("Based on your progress, focus on the Pitch Deck to prepare for your upcoming investor meeting.", "Με βάση την πρόοδό σου, εστίασε στο pitch deck για την επερχόμενη συνάντηση με επενδυτές.")}
          </p>
          <Button
           className="w-full bg-stone-900 text-white h-7 rounded-lg text-sm hover:bg-stone-800"
@@ -558,7 +568,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       <div className="flex items-center justify-between">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t("Lean Canvas", "Lean canvas")}</h3>
-        <p className="text-xs text-stone-400 mt-0.5">{t("Map out your business model in a single page.", "Χαρτογραφήστε το μοντέλο σας σε μία σελίδα.")}</p>
+        <p className="text-xs text-stone-400 mt-0.5">{t("Map out your business model in a single page.", "Αποτύπωσε το επιχειρηματικό σου μοντέλο σε μία σελίδα.")}</p>
        </div>
        <div className="flex items-center gap-2">
         <Button
@@ -854,9 +864,9 @@ export default function Workspace({ user }: WorkspaceProps) {
        <Layers className="w-8 h-8 text-stone-400" />
       </div>
       <h3 className="text-base font-semibold text-stone-900 mb-2">{t("Builder Mode", "Λειτουργία κατασκευής")}</h3>
-      <p className="text-sm text-stone-400 max-w-xs">{t("Canvas and task tools on this tab stay here. Ask the studio assistant to add a milestone, book time, or open Founder Tools.", "Τα εργαλεία canvas και εργασιών μένουν σε αυτή την καρτέλα. Ζητήστε από τον βοηθό του studio να προσθέσει ορόσημο, να κλείσει ώρα ή να ανοίξει τα εργαλεία ιδρυτή.")}</p>
+      <p className="text-sm text-stone-400 max-w-xs">{t("Canvas and task tools on this tab stay here. Ask the studio assistant to add a milestone, book time, or open Founder Tools.", "Τα εργαλεία canvas και εργασιών μένουν σε αυτή την καρτέλα. Ζήτα από τον βοηθό να προσθέσει ορόσημο, να κλείσει ώρα ή να ανοίξει τα εργαλεία ιδρυτή.")}</p>
       <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone ship the MVP' } }))}>
-       {t("Ask the studio assistant", "Ρωτήστε τον βοηθό του studio")}
+       {t("Ask the studio assistant", "Ρώτα τον βοηθό")}
       </Button>
      </motion.div>
     )}

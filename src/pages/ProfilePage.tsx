@@ -48,14 +48,35 @@ import Button from '../components/ui/Button';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { cn } from '../lib/utils';
-import { useT } from '../lib/language';
+import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
-import { listKeys, readIds, saveRequest, toggleId } from '../lib/localLists';
+import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, writeOpenTo, type OpenToKind } from '../lib/localLists';
+import RelTime from '../components/ui/RelTime';
+import { useStored } from '../lib/useStored';
+import { persistPrivacy } from '../lib/account';
 import { lookupPerson } from '../lib/people';
 import { useAuth } from '../App';
 import { avatarFor, findCast } from '../data/cast';
 import FactLine from '../components/ui/FactLine';
+import Avatar from '../components/ui/Avatar';
+import { useToast } from '../context/ToastContext';
+import { usePeople } from '../lib/directory';
+import { avatarOf, findPerson } from '../lib/peopleSource';
+import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
+import { shareLink } from '../lib/download';
+import {
+ connectionStateWith,
+ endorseSkill,
+ otherSide,
+ profileViews,
+ recordProfileView,
+ respondToConnection,
+ sendConnectionRequest,
+ useConnections,
+ withdrawConnection,
+ type ProfileView,
+} from '../lib/social';
 import { UserProfile, UserSkill, Endorsement, ReadinessScore } from '../types';
 
 enum OperationType {
@@ -170,7 +191,10 @@ const AVAILABILITY_EL: Record<string, string> = {
  '1 month notice': 'Σε 1 μήνα',
 };
 function fallbackProfile(profileId: string, ownName?: string | null): UserProfile {
- const person = lookupPerson(profileId);
+ const live = findPerson(profileId);
+ const person = live
+  ? { fullName: live.fullName, headline: live.headline, bio: live.bio, location: live.location, stage: live.stage, role: live.role, commitment: live.commitment, industry: live.industry, skills: live.skills, lookingFor: live.lookingFor }
+  : lookupPerson(profileId);
  return {
   id: profileId,
   uid: profileId,
@@ -198,9 +222,15 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
 }
 export default function ProfilePage() {
  const t = useT();
+ const { mode: lang } = useLanguage();
  const { id } = useParams();
- const { user: currentUser, isDemoMode } = useAuth();
+ const { user: currentUser, profile: ownProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
+ const toast = useToast();
+ const connections = useConnections();
+ const { people: directory } = usePeople(currentUser?.uid);
+ const [views, setViews] = useState<ProfileView[]>([]);
+ const [connecting, setConnecting] = useState(false);
  const [profile, setProfile] = useState<UserProfile | null>(null);
  const [endorsements, setEndorsements] = useState<Endorsement[]>([]);
  const [readiness, setReadiness] = useState<ReadinessScore | null>(null);
@@ -216,6 +246,76 @@ export default function ProfilePage() {
  const isOwnProfile = !id || id === currentUser?.uid;
  const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
  const profileId = id || currentUser?.uid;
+ const real = !isDemoMode && Boolean(currentUser?.uid);
+ // Live connection state with the person on this page (real accounts only).
+ const connection = !isOwnProfile && id ? connectionStateWith(id) : { state: 'none' as const };
+ void connections.items; // re-render when the connection list changes
+
+ // Count a visit (once per day per viewer) and, on your own page, load who looked.
+ useEffect(() => {
+  if (!real || !profileId) return undefined;
+  if (!isOwnProfile) {
+   void recordProfileView(profileId);
+   return undefined;
+  }
+  let cancelled = false;
+  void profileViews(profileId, 30).then((list) => { if (!cancelled) setViews(list); });
+  return () => { cancelled = true; };
+ }, [real, profileId, isOwnProfile]);
+
+ const handleConnect = async () => {
+  if (!id || !profile) return;
+  if (!real) {
+   saveRequest({ id, fullName: profile.fullName || 'Founder', role: profile.role || 'Founder', industry: profile.industry || '', location: profile.location || '', note: profile.headline || '', status: 'Pending' });
+   toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.'));
+   return;
+  }
+  setConnecting(true);
+  try {
+   if (connection.state === 'incoming' && connection.record) {
+    await respondToConnection(connection.record, true);
+    toast.success(t('Connected', 'Συνδεθήκατε'), t(`You and ${profile.fullName} can message each other now.`, `Εσύ και ο/η ${profile.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+   } else if (connection.state === 'outgoing' && connection.record) {
+    await withdrawConnection(connection.record);
+    toast.info(t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
+   } else {
+    const person = findPerson(id);
+    const result = await sendConnectionRequest({ id, fullName: profile.fullName || person?.fullName || 'Member', headline: profile.headline, avatarUrl: person ? avatarOf(person) : '' }, 'Co-Founder');
+    if (result === 'accepted') toast.success(t('Connected', 'Συνδεθήκατε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.'));
+    else toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), t('You will be notified when they answer.', 'Θα ειδοποιηθείς όταν απαντήσουν.'));
+    logActivity({ kind: 'request', title: `Requested ${profile.fullName}`, titleEl: `Αίτημα προς ${profile.fullName}`, href: `/profile/${id}` });
+   }
+  } catch (error) {
+   const code = error instanceof Error ? error.message : '';
+   toast.error(
+    t('Could not send the request', 'Το αίτημα δεν στάλθηκε'),
+    code === 'declined' ? t('This member declined an earlier request.', 'Αυτό το μέλος απέρριψε προηγούμενο αίτημα.') : t('Please try again.', 'Δοκίμασε ξανά.'),
+   );
+  } finally {
+   setConnecting(false);
+  }
+ };
+
+ const connectLabel =
+  connection.state === 'connected' ? t('Connected', 'Συνδεδεμένοι')
+   : connection.state === 'outgoing' ? t('Request sent · Withdraw', 'Αίτημα σταλμένο · Ανάκληση')
+   : connection.state === 'incoming' ? t('Accept request', 'Αποδοχή αιτήματος')
+   : connection.state === 'declined' ? t('Request declined', 'Το αίτημα απορρίφθηκε')
+   : t('Connect', 'Σύνδεση');
+
+ const openTo = useStored(readOpenTo, [keys.openTo]);
+ const toggleOpenTo = (kind: OpenToKind) => {
+  const next = openTo.includes(kind) ? openTo.filter((item) => item !== kind) : [...openTo, kind];
+  writeOpenTo(next);
+  if (real && currentUser) void persistPrivacy(currentUser.uid, { openTo: next, mentorAvailability: next.includes('mentoring') }).catch(() => undefined);
+ };
+
+ const shareProfile = async () => {
+  const result = await shareLink({ title: profile?.fullName || 'CoFounderBay', url: window.location.href });
+  if (result === 'copied') toast.success(t('Link copied', 'Ο σύνδεσμος αντιγράφηκε'));
+  else if (result === 'failed') toast.error(t('Could not share', 'Η κοινοποίηση απέτυχε'));
+ };
+
  // ── Derived display data (always show sections, fallback to mock) ──
  const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
  const displayReadiness = readiness || (isDemoMode ? MOCK_READINESS : null);
@@ -225,6 +325,77 @@ export default function ProfilePage() {
   (profile?.skills || []).length, (profile?.lookingFor || []).length,
  ].filter(Boolean).length / 10) * 100);
 
+ const localActivity = useStored(readActivity, [keys.activity]);
+ const sessions = useStored(readSessions, [keys.sessions]);
+
+ type ActivityRow = { id: string; text: string; textEl: string; time: string; timeEl: string; at?: string; href?: string; icon: React.ElementType; color: string; bg: string };
+ const activityItems = React.useMemo<ActivityRow[]>(() => {
+  if (isDemoMode) return PROFILE_ACTIVITY;
+  const since = Date.now() - 7 * 86_400_000;
+  const rows: ActivityRow[] = [];
+  const kindStyle = (kind: string): { icon: React.ElementType; color: string; bg: string } => {
+   if (kind === 'request' || kind === 'profile') return { icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' };
+   if (kind === 'milestone') return { icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' };
+   if (kind === 'message') return { icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-50' };
+   if (kind === 'event' || kind === 'community') return { icon: CalendarIcon, color: 'text-amber-500', bg: 'bg-amber-50' };
+   return { icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' };
+  };
+  if (isOwnProfile) {
+   localActivity.filter((item) => Date.parse(item.at) >= since).slice(0, 8).forEach((item) => {
+    rows.push({ id: item.id, text: item.title, textEl: item.titleEl || item.title, time: '', timeEl: '', at: item.at, href: item.href, ...kindStyle(item.kind) });
+   });
+  }
+  endorsements.filter((item) => item.createdAt && Date.parse(item.createdAt) >= since).slice(0, 5).forEach((item) => {
+   const who = findPerson(item.endorserId)?.fullName || (item as Endorsement & { endorserName?: string }).endorserName || t('A member', 'Ένα μέλος');
+   rows.push({ id: `end-${item.id}`, text: `${who} endorsed ${isOwnProfile ? 'you' : 'this profile'} for ${item.skillId}`, textEl: `${who} έκανε σύσταση ${isOwnProfile ? 'σε εσένα' : 'σε αυτό το προφίλ'} για ${labelOf(item.skillId)}`, time: '', timeEl: '', at: item.createdAt, href: `/profile/${item.endorserId}`, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' });
+  });
+  return rows.sort((a, b) => Date.parse(b.at || '') - Date.parse(a.at || '')).slice(0, 8);
+ }, [isDemoMode, isOwnProfile, localActivity, endorsements, t]);
+
+ const achievements = React.useMemo(() => {
+  if (isDemoMode) return ACHIEVEMENTS.map((badge) => ({ ...badge, progress: '' }));
+  const connectedCount = isOwnProfile ? connections.accepted.length : ((profile as unknown as { connectionIds?: string[] } | null)?.connectionIds ?? []).length;
+  const endorsementCount = endorsements.length;
+  const mentoringSessions = sessions.filter((session) => session.type === 'Mentorship').length;
+  const completion = profile?.profileCompletionScore ?? insightScore;
+  const joined = profile?.createdAt ? Date.parse(profile.createdAt) : NaN;
+  const earlyMember = !Number.isNaN(joined) && joined < Date.UTC(2027, 0, 1);
+  const progress = (have: number, need: number) => t(`${Math.min(have, need)}/${need} so far`, `${Math.min(have, need)}/${need} μέχρι τώρα`);
+  return [
+   { ...ACHIEVEMENTS[0]!, name: 'Early member', nameEl: 'Μέλος από νωρίς', desc: 'Joined in the first year', descEl: 'Εγγραφή τον πρώτο χρόνο', earned: earlyMember, progress: '' },
+   { ...ACHIEVEMENTS[1]!, earned: connectedCount >= 25, progress: progress(connectedCount, 25) },
+   { ...ACHIEVEMENTS[2]!, earned: endorsementCount >= 10, progress: progress(endorsementCount, 10) },
+   { ...ACHIEVEMENTS[3]!, earned: mentoringSessions >= 5, progress: isOwnProfile ? progress(mentoringSessions, 5) : '' },
+   { ...ACHIEVEMENTS[4]!, earned: false, progress: t('Awarded by event organisers', 'Απονέμεται από διοργανωτές εκδηλώσεων') },
+   { ...ACHIEVEMENTS[5]!, earned: completion >= 100, progress: t(`${completion}% complete`, `${completion}% ολοκληρωμένο`) },
+  ];
+ }, [isDemoMode, isOwnProfile, connections.accepted.length, profile, endorsements.length, sessions, insightScore, t]);
+
+ // How well this person fits the signed-in viewer (same scorer as Matches).
+ const fitWithViewer = React.useMemo(() => {
+  if (!profile || isOwnProfile) return null;
+  return compatibility(fromProfile(ownProfile), fromProfile(profile as unknown as Parameters<typeof fromProfile>[0]));
+ }, [profile, isOwnProfile, ownProfile]);
+
+ // Members closest to this profile, scored with the same engine Matches uses.
+ const similarPeople = React.useMemo(() => {
+  if (!profile) return [];
+  const base = fromProfile(profile as unknown as Parameters<typeof fromProfile>[0]);
+  return directory
+   .filter((person) => person.id !== profileId)
+   .map((person) => ({ person, score: compatibility(base, fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city, timezone: person.timezone })).score ?? 0 }))
+   .sort((a, b) => b.score - a.score)
+   .slice(0, 3);
+ }, [profile, directory, profileId]);
+
+ // Own page: your accepted connections. Someone else's page: connections you share.
+ const connectionCards = React.useMemo(() => {
+  if (!real || !currentUser) return [];
+  const mine = connections.accepted.map((record) => otherSide(record, currentUser.uid));
+  if (isOwnProfile) return mine.slice(0, 5).map((other) => ({ ...other, mutual: null as number | null }));
+  const theirs = new Set((profile as unknown as { connectionIds?: string[] } | null)?.connectionIds ?? []);
+  return mine.filter((other) => theirs.has(other.id)).slice(0, 5).map((other) => ({ ...other, mutual: null as number | null }));
+ }, [real, currentUser, connections.accepted, isOwnProfile, profile]);
  useEffect(() => {
   if (isEditing && profile) {
    setEditForm(profile);
@@ -294,21 +465,31 @@ export default function ProfilePage() {
   if (!currentUser || !profileId || !selectedSkillForEndorsement) return;
   setIsEndorsing(true);
   try {
-   const newEndorsement = {
-    authorId: currentUser.uid,
-    endorserId: currentUser.uid,
-    recipientId: profileId,
-    skillId: selectedSkillForEndorsement,
-    comment: endorsementComment,
-    createdAt: new Date().toISOString()
-   };
-   const docRef = await addDoc(collection(db, 'endorsements'), newEndorsement);
-   setEndorsements(prev => [{ id: docRef.id, ...newEndorsement }, ...prev]);
+   if (real) {
+    const record = await endorseSkill({ id: profileId, fullName: profile?.fullName || 'Member' }, selectedSkillForEndorsement, endorsementComment);
+    setEndorsements((prev) => [{ id: record.id, endorserId: record.endorserId, recipientId: record.recipientId, skillId: record.skillId, comment: record.comment, createdAt: new Date(record.createdAt).toISOString() } as Endorsement, ...prev.filter((item) => item.id !== record.id)]);
+   } else {
+    const newEndorsement = {
+     authorId: currentUser.uid,
+     endorserId: currentUser.uid,
+     recipientId: profileId,
+     skillId: selectedSkillForEndorsement,
+     comment: endorsementComment,
+     createdAt: new Date().toISOString()
+    };
+    const docRef = await addDoc(collection(db, 'endorsements'), newEndorsement);
+    setEndorsements(prev => [{ id: docRef.id, ...newEndorsement }, ...prev]);
+   }
    setSelectedSkillForEndorsement('');
    setEndorsementComment('');
-   // Trigger a habit loop notification or similar here in the future
+   toast.success(t('Endorsement sent', 'Η σύσταση στάλθηκε'), t(`${profile?.fullName || 'They'} will be notified.`, `Ο/Η ${profile?.fullName || 'παραλήπτης'} θα ειδοποιηθεί.`));
   } catch (err: any) {
-   handleFirestoreError(err, OperationType.CREATE, 'endorsements');
+   if (err instanceof Error && err.message === 'self') {
+    toast.info(t('You cannot endorse yourself', 'Δεν μπορείς να συστήσεις τον εαυτό σου'));
+   } else {
+    toast.error(t('Endorsement failed', 'Η σύσταση απέτυχε'), t('Please try again.', 'Δοκίμασε ξανά.'));
+    console.error('Endorsement failed:', err);
+   }
   } finally {
    setIsEndorsing(false);
   }
@@ -358,7 +539,7 @@ export default function ProfilePage() {
       onClick={() => navigate('/dashboard')}
       className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
      >
-      {t('Back to Dashboard', 'Επιστροφή στον πίνακα')}
+      {t('Back to Dashboard', 'Επιστροφή στον πίνακα ελέγχου')}
      </button>
     </div>
    </div>
@@ -392,15 +573,18 @@ export default function ProfilePage() {
     <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start">
       <div className="relative">
-       <img 
-        src={currentUser?.photoURL || avatarFor(profile.uid, 200)} 
-        alt={isOwnProfile ? (currentUser?.displayName || t('User', 'Μέλος')) : labelOf(profile.fullName || 'Founder')} 
-        className="w-20 h-20 sm:w-28 lg:w-36 rounded-2xl object-cover border-4 border-white shadow-sm"
-        referrerPolicy="no-referrer"
-       />
-       <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full border-4 border-white shadow-lg">
-        <ShieldCheck className="w-5 h-5" />
-       </div>
+       {(() => {
+        const record = profile as unknown as { avatarUrl?: string; profilePhoto?: string; profile?: { profilePhoto?: string } };
+        const person = findPerson(profile.uid);
+        const src = record.avatarUrl || record.profilePhoto || record.profile?.profilePhoto || (isOwnProfile ? currentUser?.photoURL || '' : '') || (person ? avatarOf(person) : '') || (isDemoMode || findCast(profile.uid) ? avatarFor(profile.uid, 200) : '');
+        const name = isOwnProfile ? (profile.fullName || currentUser?.displayName || t('Member', 'Μέλος')) : (profile.fullName || t('Member', 'Μέλος'));
+        return <Avatar src={src || undefined} fallback={name} alt={name} size="xl" className="[&>*]:w-20 [&>*]:h-20 sm:[&>*]:w-28 sm:[&>*]:h-28 lg:[&>*]:w-36 lg:[&>*]:h-36 [&>*]:rounded-2xl [&>*]:border-4 [&>*]:border-white [&>*]:shadow-sm [&>*]:text-2xl" />;
+       })()}
+       {profile.verificationStatus === 'Verified' && (
+        <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full border-4 border-white shadow-lg" title={t('Verified member', 'Επαληθευμένο μέλος')} aria-label={t('Verified member', 'Επαληθευμένο μέλος')}>
+         <ShieldCheck className="w-5 h-5" />
+        </div>
+       )}
       </div>
 
       <div className="flex-1 space-y-4">
@@ -442,19 +626,31 @@ export default function ProfilePage() {
           )
          ) : (
           <>
-           <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all">
-            <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-            {t('Connect', 'Σύνδεση')}
+           <button
+            type="button"
+            onClick={() => void handleConnect()}
+            disabled={connecting || connection.state === 'connected' || connection.state === 'declined'}
+            aria-live="polite"
+            className={cn(
+             'flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:cursor-default',
+             connection.state === 'connected' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+              : connection.state === 'outgoing' ? 'bg-white text-stone-700 border border-stone-200 hover:border-stone-900'
+              : connection.state === 'declined' ? 'bg-stone-100 text-stone-400'
+              : 'bg-stone-900 text-white hover:bg-stone-800',
+            )}
+           >
+            {connection.state === 'connected' ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />}
+            {connectLabel}
            </button>
-           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} aria-label={t('Send a message', 'Αποστολή μηνύματος')} title={t('Send a message', 'Αποστολή μηνύματος')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
             <MessageSquare className="w-5 h-5" />
            </button>
-           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} aria-pressed={following} aria-label={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} title={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
             <Star className={cn('w-5 h-5', following && 'fill-current')} />
            </button>
           </>
          )}
-         <button type="button" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+         <button type="button" onClick={() => void shareProfile()} aria-label={t('Share profile', 'Κοινοποίηση προφίλ')} title={t('Share profile', 'Κοινοποίηση προφίλ')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
           <Share2 className="w-5 h-5" />
          </button>
         </div>
@@ -484,10 +680,12 @@ export default function ProfilePage() {
           label={t('Profile facts', 'Στοιχεία προφίλ')}
          />
         )}
-        <div className="flex items-center gap-1.5">
-         <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-         {t('80% Match Score', 'Σκορ αντιστοίχισης 80%')}
-        </div>
+        {!isOwnProfile && fitWithViewer?.score != null && (
+         <div className="flex items-center gap-1.5" title={fitWithViewer.headline ? (lang === 'el' ? fitWithViewer.headline.el : fitWithViewer.headline.en) : undefined}>
+          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+          {t(`${fitWithViewer.score}% compatibility with you`, `${fitWithViewer.score}% συμβατότητα μαζί σου`)}
+         </div>
+        )}
         {showMatchStatus && (
          <div
           className="relative"
@@ -640,22 +838,31 @@ export default function ProfilePage() {
        <span className="text-xs text-stone-400 font-medium">{t('Last 7 days', 'Τελευταίες 7 ημέρες')}</span>
       </div>
       <div className="space-y-1">
-       {PROFILE_ACTIVITY.map((item, idx) => (
+       {activityItems.length === 0 && (
+        <p className="text-sm text-stone-500 p-3">
+         {isOwnProfile ? t('Nothing in the last 7 days. Save a match, send a request or finish a milestone and it shows up here.', 'Τίποτα τις τελευταίες 7 ημέρες. Αποθήκευσε μια αντιστοίχιση, στείλε αίτημα ή ολοκλήρωσε ένα ορόσημο και θα εμφανιστεί εδώ.') : t('No public activity in the last 7 days.', 'Καμία δημόσια δραστηριότητα τις τελευταίες 7 ημέρες.')}
+        </p>
+       )}
+       {activityItems.map((item, idx) => (
         <motion.div
          key={item.id}
          initial={{ opacity: 0, x: -10 }}
          animate={{ opacity: 1, x: 0 }}
-         transition={{ delay: idx * 0.05 }}
+         transition={{ delay: Math.min(idx, 8) * 0.05 }}
          className="flex items-start gap-3 p-3 rounded-xl hover:bg-stone-50/80 transition-colors group"
         >
          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", item.bg, item.color, item.bg.replace('bg-', 'border-').replace('50', '100'))}>
           <item.icon className="w-4 h-4" />
          </div>
          <div className="flex-1 min-w-0">
-          <p className="text-sm text-stone-700 leading-snug">{t(item.text, item.textEl)}</p>
+          {item.href ? (
+           <button type="button" onClick={() => navigate(item.href!)} className="text-left text-sm text-stone-700 leading-snug hover:underline">{t(item.text, item.textEl)}</button>
+          ) : (
+           <p className="text-sm text-stone-700 leading-snug">{t(item.text, item.textEl)}</p>
+          )}
           <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1">
            <Clock className="w-3 h-3" />
-           {t(item.time, item.timeEl)}
+           {item.at ? <RelTime iso={item.at} /> : t(item.time, item.timeEl)}
           </p>
          </div>
         </motion.div>
@@ -772,13 +979,15 @@ export default function ProfilePage() {
            transition={{ delay: idx * 0.06 }}
            className="flex gap-3 p-3.5 bg-stone-50/50 rounded-xl border border-stone-100 hover:bg-white hover:border-stone-200 hover:shadow-sm transition-all group"
           >
-           <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 overflow-hidden shrink-0 group-hover:border-stone-200 transition-colors">
-            <img src={avatarFor(endorsement.endorserId)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-           </div>
+           {(() => {
+            const endorser = findPerson(endorsement.endorserId);
+            const record = endorsement as Endorsement & { endorserName?: string; endorserAvatar?: string };
+            return <Avatar src={(endorser ? avatarOf(endorser) : '') || record.endorserAvatar || undefined} fallback={endorser?.fullName || record.endorserName || '?'} size="md" className="[&>*]:rounded-xl" />;
+           })()}
            <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center justify-between">
              <p className="text-sm text-stone-900">
-              <span className="font-medium">{findCast(endorsement.endorserId)?.fullName || t('Someone', 'Κάποιο μέλος')}</span> {t('endorsed for', 'έκανε σύσταση για')}{' '}
+              <span className="font-medium">{findPerson(endorsement.endorserId)?.fullName || (endorsement as Endorsement & { endorserName?: string }).endorserName || t('A member', 'Ένα μέλος')}</span> {t('endorsed for', 'έκανε σύσταση για')}{' '}
               <span className="font-semibold text-stone-900 bg-amber-50 px-1.5 py-0.5 rounded-md text-xs border border-amber-100">{endorsement.skillId}</span>
              </p>
             </div>
@@ -808,27 +1017,28 @@ export default function ProfilePage() {
         {t('Achievements', 'Επιτεύγματα')}
        </h3>
        <span className="text-xs text-stone-400 font-medium">
-        {ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length} {t('earned', 'κερδισμένα')}
+        {achievements.filter(a => a.earned).length}/{achievements.length} {t('earned', 'κερδισμένα')}
        </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-       {ACHIEVEMENTS.map(badge => (
+       {achievements.map(badge => (
         <motion.div
          key={badge.id}
          whileHover={{ scale: badge.earned ? 1.05 : 1 }}
+         title={badge.earned ? undefined : badge.progress}
          className={cn(
           "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
           badge.earned
            ? `${badge.bg} ${badge.border} shadow-sm`
-           : "bg-stone-50/50 border-stone-100 opacity-40 grayscale"
+           : "bg-stone-50/50 border-stone-100 opacity-60"
          )}
         >
          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100")}>
           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
          </div>
          <div>
-          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-400")}>{t(badge.name, badge.nameEl)}</p>
-          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{t(badge.desc, badge.descEl)}</p>
+          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-500")}>{t(badge.name, badge.nameEl)}</p>
+          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
          </div>
          {badge.earned && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
@@ -847,26 +1057,33 @@ export default function ProfilePage() {
         {t('Open To', 'Ενδιαφέρομαι για')}
        </h3>
        <div className="space-y-2">
-        {[
-         { label: 'Co-founder matching', labelEl: 'Αντιστοίχιση συνιδρυτών', active: true },
-         { label: 'Mentorship sessions', labelEl: 'Συνεδρίες καθοδήγησης', active: true },
-         { label: 'Advisory roles', labelEl: 'Συμβουλευτικοί ρόλοι', active: false },
-         { label: 'Investment opportunities', labelEl: 'Επενδυτικές ευκαιρίες', active: false },
-         { label: 'Speaking invitations', labelEl: 'Προσκλήσεις για ομιλίες', active: true },
-        ].map(item => (
-         <div key={item.label} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 transition-colors">
-          <span className="text-sm text-stone-700">{t(item.label, item.labelEl)}</span>
-          <div className={cn(
-           "w-8 h-5 rounded-full flex items-center transition-all cursor-pointer",
-           item.active ? "bg-emerald-500 justify-end" : "bg-stone-200 justify-start"
-          )}>
-           <div className="w-3.5 h-3.5 bg-white rounded-full mx-0.5 shadow-sm" />
+        {([
+         { kind: 'cofounder', label: 'Co-founder matching', labelEl: 'Αντιστοίχιση συνιδρυτών' },
+         { kind: 'mentoring', label: 'Mentoring sessions', labelEl: 'Συνεδρίες καθοδήγησης' },
+         { kind: 'advisor', label: 'Advisory roles', labelEl: 'Συμβουλευτικοί ρόλοι' },
+         { kind: 'investor', label: 'Investor conversations', labelEl: 'Συζητήσεις με επενδυτές' },
+         { kind: 'speaking', label: 'Speaking invitations', labelEl: 'Προσκλήσεις για ομιλίες' },
+        ] as { kind: OpenToKind; label: string; labelEl: string }[]).map(item => {
+         const active = openTo.includes(item.kind);
+         return (
+          <div key={item.kind} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 transition-colors">
+           <span className="text-sm text-stone-700">{t(item.label, item.labelEl)}</span>
+           <button
+            type="button"
+            role="switch"
+            aria-checked={active}
+            aria-label={t(item.label, item.labelEl)}
+            onClick={() => toggleOpenTo(item.kind)}
+            className={cn("w-8 h-5 rounded-full flex items-center transition-all", active ? "bg-emerald-500 justify-end" : "bg-stone-200 justify-start")}
+           >
+            <span className="w-3.5 h-3.5 bg-white rounded-full mx-0.5 shadow-sm" />
+           </button>
           </div>
-         </div>
-        ))}
+         );
+        })}
        </div>
        <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">
-        {t('These preferences are visible to other users and affect your match suggestions.', 'Αυτές οι προτιμήσεις φαίνονται σε άλλα μέλη και επηρεάζουν τις προτάσεις αντιστοίχισης.')}
+        {t('Other members see these on your profile; Matches and Mentors use them to place you in the right lists.', 'Τα άλλα μέλη τα βλέπουν στο προφίλ σου· οι Αντιστοιχίσεις και οι Μέντορες τα χρησιμοποιούν για να σε βάλουν στις σωστές λίστες.')}
        </p>
       </div>
      )}
@@ -1025,24 +1242,34 @@ export default function ProfilePage() {
        {t('Profile Analytics', 'Στατιστικά προφίλ')}
       </h3>
       <div className="grid grid-cols-2 gap-3">
-       {[
-        { label: 'Views', labelEl: 'Προβολές', value: isDemoMode ? '1.2k' : '0', delta: isDemoMode ? '+18%' : '—', up: true },
-        { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: isDemoMode ? '48' : '0', delta: isDemoMode ? '+6' : '—', up: true },
-        { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), delta: isDemoMode ? '+3' : '—', up: true },
-        { label: 'Connections', labelEl: 'Συνδέσεις', value: isDemoMode ? '67' : '0', delta: isDemoMode ? '+9' : '—', up: true },
-       ].map(stat => (
-        <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
-         <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-         <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
-         {isDemoMode ? (
-         <div className={cn("text-[10px] font-semibold", stat.up ? "text-emerald-600" : "text-red-500")}>
-          {stat.delta} {t('this week', 'αυτή την εβδομάδα')}
+       {(() => {
+        const weekAgo = Date.now() - 7 * 86_400_000;
+        const viewsWeek = views.filter((view) => view.at >= weekAgo).length;
+        const strongMatches = similarPeople.filter((item) => item.score >= 60).length;
+        const connectedCount = connections.accepted.length;
+        const connectedWeek = connections.accepted.filter((record) => (record.respondedAt || record.updatedAt) >= weekAgo).length;
+        const endorsedWeek = displayEndorsements.filter((item) => item.createdAt && Date.parse(item.createdAt) >= weekAgo).length;
+        const rows = isDemoMode
+         ? [
+          { label: 'Views', labelEl: 'Προβολές', value: '1.2k', sub: `+18% ${t('this week', 'αυτή την εβδομάδα')}` },
+          { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: '48', sub: `+6 ${t('this week', 'αυτή την εβδομάδα')}` },
+          { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: `+3 ${t('this week', 'αυτή την εβδομάδα')}` },
+          { label: 'Connections', labelEl: 'Συνδέσεις', value: '67', sub: `+9 ${t('this week', 'αυτή την εβδομάδα')}` },
+         ]
+         : [
+          { label: 'Views', labelEl: 'Προβολές', value: String(views.length), sub: isOwnProfile ? (viewsWeek ? `+${viewsWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Last 30 days', 'Τελευταίες 30 ημέρες')) : t('Visible to the owner', 'Ορατό μόνο στον κάτοχο') },
+          { label: 'Strong matches', labelEl: 'Δυνατές αντιστοιχίσεις', value: String(strongMatches), sub: t('Members scoring 60%+', 'Μέλη με σκορ 60%+') },
+          { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: endorsedWeek ? `+${endorsedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('All time', 'Συνολικά') },
+          { label: 'Connections', labelEl: 'Συνδέσεις', value: isOwnProfile ? String(connectedCount) : String(((profile as unknown as { connectionIds?: string[] }).connectionIds ?? []).length), sub: isOwnProfile && connectedWeek ? `+${connectedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Accepted requests', 'Αποδεκτά αιτήματα') },
+         ];
+        return rows.map((stat) => (
+         <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
+          <div className="text-lg font-semibold text-stone-900 tabular-nums">{stat.value}</div>
+          <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
+          <div className="text-[10px] font-semibold text-stone-400">{stat.sub}</div>
          </div>
-         ) : (
-          <div className="text-[10px] font-semibold text-stone-400">{t('No traffic yet', 'Δεν υπάρχει κίνηση ακόμη')}</div>
-         )}
-        </div>
-       ))}
+        ));
+       })()}
       </div>
       {isDemoMode && (
       <div className="pt-2 border-t border-stone-200/60">
@@ -1065,54 +1292,60 @@ export default function ProfilePage() {
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Handshake className="w-4 h-4 text-stone-400" />
-        {isOwnProfile ? t('Top Connections', 'Κορυφαίες συνδέσεις') : t('Mutual Connections', 'Κοινές συνδέσεις')}
+        {isOwnProfile ? t('Your connections', 'Οι συνδέσεις σου') : t('Connections you share', 'Κοινές συνδέσεις')}
        </h3>
        <div className="space-y-2">
-         {!isDemoMode && <p className="text-sm text-stone-500">{t('Connections appear here after you accept an intro.', 'Οι συνδέσεις εμφανίζονται εδώ αφού αποδεχτείς μια γνωριμία.')}</p>}
-        {(isDemoMode ? MUTUAL_CONNECTIONS : []).map(conn => (
-         <div key={conn.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
-          <img
-           src={avatarFor(conn.id, 80)}
-           alt={conn.name}
-           className="w-10 h-10 rounded-xl object-cover border border-stone-100"
-           referrerPolicy="no-referrer"
-          />
+        {!isDemoMode && connectionCards.length === 0 && (
+         <p className="text-sm text-stone-500">
+          {isOwnProfile
+           ? t('Accepted connection requests appear here.', 'Τα αποδεκτά αιτήματα σύνδεσης εμφανίζονται εδώ.')
+           : t('You do not share any connections yet.', 'Δεν έχετε κοινές συνδέσεις ακόμη.')}
+         </p>
+        )}
+        {(isDemoMode ? MUTUAL_CONNECTIONS.map((conn) => ({ id: conn.id, name: conn.name, headline: conn.headline, avatar: avatarFor(conn.id, 80), mutual: conn.mutual as number | null })) : connectionCards).map((conn) => (
+         <button type="button" key={conn.id} onClick={() => navigate(`/profile/${conn.id}`)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors group">
+          <Avatar src={(findPerson(conn.id) ? avatarOf(findPerson(conn.id)) : '') || conn.avatar || undefined} fallback={conn.name} size="md" className="[&>*]:rounded-xl" />
           <div className="flex-1 min-w-0">
            <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{conn.name}</p>
            <p className="text-xs text-stone-400 truncate">{conn.headline}</p>
           </div>
-          <span className="text-[10px] text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
-           {conn.mutual} {t('mutual', 'κοινές')}
-          </span>
-         </div>
+          {conn.mutual != null && (
+           <span className="text-[10px] text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
+            {conn.mutual} {t('mutual', 'κοινές')}
+           </span>
+          )}
+         </button>
         ))}
+        {isOwnProfile && !isDemoMode && connectionCards.length > 0 && (
+         <button type="button" onClick={() => navigate('/network')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
+          {t('All connections', 'Όλες οι συνδέσεις')}
+         </button>
+        )}
        </div>
       </div>
 {/* People Also Viewed */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
        <Eye className="w-4 h-4 text-stone-400" />
-       {t('People Also Viewed', 'Τα μέλη είδαν επίσης')}
+       {isOwnProfile ? t('Members who fit you', 'Μέλη που σου ταιριάζουν') : t('Similar members', 'Παρόμοια μέλη')}
       </h3>
       <div className="space-y-2">
-       {!isDemoMode && <p className="text-sm text-stone-500">{t('Suggestions appear as more founders join.', 'Οι προτάσεις εμφανίζονται όσο μπαίνουν περισσότεροι ιδρυτές.')}</p>}
-       {(isDemoMode ? ALSO_VIEWED : []).map(person => (
-        <div key={person.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
-         <img
-          src={avatarFor(person.id, 80)}
-          alt={person.name}
-          className="w-10 h-10 rounded-xl object-cover border border-stone-100"
-          referrerPolicy="no-referrer"
-         />
+       {!isDemoMode && similarPeople.length === 0 && <p className="text-sm text-stone-500">{t('Suggestions appear as more members join.', 'Οι προτάσεις εμφανίζονται όσο εγγράφονται περισσότερα μέλη.')}</p>}
+       {(isDemoMode
+        ? ALSO_VIEWED.map((person) => ({ id: person.id, name: person.name, headline: person.headline, avatar: avatarFor(person.id, 80), score: person.matchScore }))
+        : similarPeople.map(({ person, score }) => ({ id: person.id, name: person.fullName, headline: person.headline || labelOf(person.role), avatar: avatarOf(person), score }))
+       ).map((person) => (
+        <button type="button" key={person.id} onClick={() => navigate(`/profile/${person.id}`)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors group">
+         <Avatar src={person.avatar || undefined} fallback={person.name} size="md" className="[&>*]:rounded-xl" />
          <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.name}</p>
           <p className="text-xs text-stone-400 truncate">{person.headline}</p>
          </div>
-         <div className="flex items-center gap-1 shrink-0">
+         <div className="flex items-center gap-1 shrink-0" title={t('Compatibility', 'Συμβατότητα')}>
           <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-          <span className="text-xs font-semibold text-stone-700">{person.matchScore}%</span>
+          <span className="text-xs font-semibold text-stone-700 tabular-nums">{person.score}%</span>
          </div>
-        </div>
+        </button>
        ))}
       </div>
       <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">

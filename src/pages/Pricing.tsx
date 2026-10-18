@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, X, ArrowRight, Shield, Zap, Building2, Globe, Sparkles, ZapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import Button from "../components/ui/Button";
@@ -8,6 +9,7 @@ import { useT } from "../lib/language";
 
 export default function Pricing() {
  const t = useT();
+ const navigate = useNavigate();
  const [billingCycle, setBillingCycle] = useState<'Monthly' | 'Annual'>('Annual');
 
  const plans = MOCK_PLANS;
@@ -19,7 +21,7 @@ export default function Pricing() {
   { key: 'privateCommunities', label: t('Private Communities', 'Ιδιωτικές κοινότητες') },
   { key: 'advancedAnalytics', label: t('Advanced Analytics', 'Σύνθετα αναλυτικά') },
   { key: 'sso', label: t('Single Sign-On (SSO)', 'Ενιαία σύνδεση (SSO)') },
-  { key: 'whiteLabeling', label: t('White-Labeling', 'Λευκή ετικέτα') },
+  { key: 'whiteLabeling', label: t('White-Labeling', 'Προσαρμοσμένο branding') },
   { key: 'programManagement', label: t('Program Management', 'Διαχείριση προγραμμάτων') },
   { key: 'advancedExports', label: t('Advanced Data Exports', 'Σύνθετες εξαγωγές δεδομένων') },
  ];
@@ -110,7 +112,7 @@ export default function Pricing() {
         <ul className="space-y-3">
          <li className="flex items-start gap-3 text-sm">
           <Check className="w-4 h-4 text-green-500 mt-0.5" />
-          <span>{(plan.limits?.seats === -1 || !plan.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : plan.limits.seats} {plan.customerType === 'Individual' ? t('User', 'θέση') : t('Seats', 'θέσεις')}</span>
+          <span>{(plan.limits?.seats === -1 || !plan.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : plan.limits.seats} {plan.customerType === 'Individual' ? t('User', 'χρήστης') : t('Seats', 'θέσεις')}</span>
          </li>
          {features.map(f => (
           <li key={f.key} className={`flex items-start gap-3 text-sm ${plan.features.includes(f.key) ? 'text-stone-900' : 'text-stone-300'}`}>
@@ -128,6 +130,7 @@ export default function Pricing() {
        <Button 
         variant={plan.id === 'organization-standard' ? 'primary' : 'outline'} 
         className="w-full group"
+        onClick={() => navigate('/signup?plan=' + plan.id)}
        >
         {t('Get Started', 'Ξεκίνα')} <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
        </Button>
@@ -155,7 +158,7 @@ export default function Pricing() {
        <ul className="space-y-3">
         {[
          t('Unlimited Seats & Communities', 'Απεριόριστες θέσεις και κοινότητες'),
-         t('Dedicated Success Manager', 'Αφοσιωμένος success manager'),
+         t('Dedicated Success Manager', 'Αποκλειστικός υπεύθυνος επιτυχίας'),
          t('Custom Security Review', 'Προσαρμοσμένος έλεγχος ασφαλείας'),
          t('SLA & Priority Support', 'SLA και υποστήριξη προτεραιότητας'),
          t('Custom Integration Support', 'Υποστήριξη προσαρμοσμένων ενσωματώσεων'),
@@ -169,7 +172,11 @@ export default function Pricing() {
        </ul>
       </div>
 
-      <Button variant="outline" className="w-full border-stone-700 text-white hover:bg-stone-800">
+      <Button
+       variant="outline"
+       className="w-full border-stone-700 text-white hover:bg-stone-800"
+       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'I want to learn about the Enterprise plan' } }))}
+      >
        {t('Contact Sales', 'Επικοινωνία με πωλήσεις')}
       </Button>
      </Card>

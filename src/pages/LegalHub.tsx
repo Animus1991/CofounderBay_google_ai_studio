@@ -35,7 +35,7 @@ export default function LegalHub() {
   incorporation: [
    { name: t("Articles of Incorporation", "Καταστατικό σύστασης"), promptName: "Articles of Incorporation", description: t("Standard template for Delaware C-Corp.", "Πρότυπο για Delaware C-Corp."), status: "Verified" },
    { name: t("Bylaws Template", "Πρότυπο εσωτερικού κανονισμού"), promptName: "Bylaws Template", description: t("Corporate governance rules and procedures.", "Κανόνες και διαδικασίες εταιρικής διακυβέρνησης."), status: "Verified" },
-   { name: t("Founder Stock Purchase Agreement", "Συμφωνία αγοράς μετοχών ιδρυτών"), promptName: "Founder Stock Purchase Agreement", description: t("Vesting schedules and IP assignment.", "Χρονοδιαγράμματα vesting και ανάθεση IP."), status: "Critical" },
+   { name: t("Founder Stock Purchase Agreement", "Συμφωνία αγοράς μετοχών ιδρυτών"), promptName: "Founder Stock Purchase Agreement", description: t("Vesting schedules and IP assignment.", "Χρονοδιαγράμματα vesting και εκχώρηση IP."), status: "Critical" },
   ],
   ip: [
    { name: t("Proprietary Information & Inventions Agreement", "Συμφωνία εμπιστευτικών πληροφοριών και εφευρέσεων"), promptName: "Proprietary Information & Inventions Agreement", description: t("Ensure the company owns all IP.", "Η εταιρεία να κατέχει όλη την IP."), status: "Critical" },
@@ -139,7 +139,7 @@ export default function LegalHub() {
         <Gavel className="w-5 h-5 text-white" />
        </div>
        <div>
-        <h4 className="font-medium text-base">{t('Legal Office Hours', 'Νομικές ώρες γραφείου')}</h4>
+        <h4 className="font-medium text-base">{t('Legal Office Hours', 'Νομικές συμβουλευτικές συνεδρίες')}</h4>
         <p className="text-sm text-white/60 mt-1">{t('Get 15 minutes of free legal advice from our partner firms.', '15 λεπτά δωρεάν νομικής συμβουλής από τις συνεργαζόμενες δικηγορικές.')}</p>
        </div>
        <Button type="button" variant="secondary" size="sm" className="w-full text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I book legal office hours?' } }))}>
@@ -149,7 +149,7 @@ export default function LegalHub() {
      </Card>
 
      <section>
-      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">{t('Partner Law Firms', 'Συνεργαζόμενες δικηγορικές')}</h3>
+      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">{t('Partner Law Firms', 'Συνεργαζόμενα δικηγορικά γραφεία')}</h3>
       <div className="space-y-4">
        {[
         { name: "Wilson Sonsini", specialty: t("Tech & Venture", "Τεχνολογία και venture"), location: "Palo Alto" },

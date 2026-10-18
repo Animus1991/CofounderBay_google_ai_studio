@@ -79,7 +79,18 @@ function ProgressRing({ progress, size = 40, stroke = 3.5 }: { progress: number;
  );
 }
 
-function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?: boolean }) {
+function MilestoneCard({ 
+ milestone, 
+ compact, 
+ onEdit, 
+ onDelete 
+}: { 
+ milestone: Milestone; 
+ compact?: boolean; 
+ onEdit?: (m: Milestone) => void; 
+ onDelete?: (m: Milestone) => void; 
+}) {
+ const m = milestone;
  const t = useT();
  const cfg = STATUS_CONFIG[milestone.status] || STATUS_CONFIG.Planned!;
  const tasksDone = milestone.tasks?.filter(t => t.completed).length || 0;
@@ -162,10 +173,20 @@ function MilestoneCard({ milestone, compact }: { milestone: Milestone; compact?:
      {formatDate(milestone.targetDate, { month: 'short', day: 'numeric' })}
     </div>
     <div className="flex items-center gap-1">
-     <button className="p-1 text-stone-300 hover:text-stone-600 hover:bg-stone-50 rounded transition-all">
+     <button
+      type="button"
+      title={t("Edit", "Επεξεργασία")}
+      onClick={() => onEdit?.(m)}
+      className="p-1 text-stone-300 hover:text-stone-600 hover:bg-stone-50 rounded transition-all"
+     >
       <Edit3 className="w-3 h-3" />
      </button>
-     <button className="p-1 text-stone-300 hover:text-red-400 hover:bg-red-50 rounded transition-all">
+     <button
+      type="button"
+      title={t("Delete", "Διαγραφή")}
+      onClick={() => onDelete?.(m)}
+      className="p-1 text-stone-300 hover:text-red-400 hover:bg-red-50 rounded transition-all"
+     >
       <Trash2 className="w-3 h-3" />
      </button>
     </div>
@@ -186,6 +207,9 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const [statusFilter, setStatusFilter] = useState('All');
  const [adding, setAdding] = useState(false);
  const [draftTitle, setDraftTitle] = useState('');
+ const [editingId, setEditingId] = useState<string | null>(null);
+ const showCreate = adding;
+ const setShowCreate = setAdding;
 
  useEffect(() => { fetchMilestones(); }, []);
 
@@ -205,10 +229,27 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const saveMilestone = async () => {
   const title = draftTitle.trim();
   if (!title) return;
-  const created = await milestoneService.createMilestone({ title, ownerId: user?.id || '1' });
-  setMilestones((prev) => [created, ...prev]);
+  if (editingId) {
+   const updated = await milestoneService.updateMilestone(editingId, { title });
+   setMilestones((prev) => prev.map((m) => (m.id === editingId ? updated : m)));
+   setEditingId(null);
+  } else {
+   const created = await milestoneService.createMilestone({ title, ownerId: user?.id || '1' });
+   setMilestones((prev) => [created, ...prev]);
+  }
   setDraftTitle('');
   setAdding(false);
+ };
+ const handleEdit = (m: Milestone) => {
+  setDraftTitle(m.title);
+  setEditingId(m.id);
+  setShowCreate(true);
+ };
+ const handleDelete = async (id: string) => {
+  if (window.confirm(t('Delete this milestone?', 'Διαγραφή αυτού του ορόσημου;'))) {
+   await milestoneService.deleteMilestone(id);
+   setMilestones((prev) => prev.filter((m) => m.id !== id));
+  }
  };
 
  const categories = useMemo(() => ['All', ...Array.from(new Set(milestones.map(m => m.category)))], [milestones]);
@@ -294,13 +335,13 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
        type="text"
        value={draftTitle}
        onChange={(e) => setDraftTitle(e.target.value)}
-       placeholder={t('Name the milestone', 'Όνομα οροσήμου')}
+       placeholder={editingId ? t('Edit milestone title', 'Επεξεργασία οροσήμου') : t('Name the milestone', 'Όνομα οροσήμου')}
        className="w-full sm:w-56 min-h-11 pl-3 pr-3 py-2 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 transition-all"
        autoFocus
       />
       <div className="flex items-center gap-2">
-       <button type="submit" className="min-h-11 px-3 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all">{t('Save', 'Αποθήκευση')}</button>
-       <button type="button" onClick={() => { setAdding(false); setDraftTitle(''); }} className="min-h-11 px-3 text-sm font-medium text-stone-500 hover:text-stone-900">{t('Cancel', 'Ακύρωση')}</button>
+       <button type="submit" className="min-h-11 px-3 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all">{editingId ? t('Update', 'Ενημέρωση') : t('Save', 'Αποθήκευση')}</button>
+       <button type="button" onClick={() => { setAdding(false); setDraftTitle(''); setEditingId(null); }} className="min-h-11 px-3 text-sm font-medium text-stone-500 hover:text-stone-900">{t('Cancel', 'Ακύρωση')}</button>
       </div>
      </form>
     )}
@@ -366,7 +407,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
           <div className="space-y-3">
            {colItems.map((m, idx) => (
             <motion.div key={m.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-             <MilestoneCard milestone={m} compact />
+             <MilestoneCard milestone={m} compact onEdit={handleEdit} onDelete={(item) => handleDelete(item.id)} />
             </motion.div>
            ))}
            {colItems.length === 0 && (
@@ -396,7 +437,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
             {(milestone.status === 'Planned' || milestone.status === 'Delayed') && <Flag className="w-2.5 h-2.5 text-white" />}
            </div>
           </div>
-          <MilestoneCard milestone={milestone} />
+          <MilestoneCard milestone={milestone} onEdit={handleEdit} onDelete={(item) => handleDelete(item.id)} />
          </motion.div>
         );
        })}
@@ -443,8 +484,8 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
           <div className="col-span-2 flex items-center justify-between">
            <span className="text-[10px] text-stone-400">{formatDate(m.targetDate)}</span>
            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-            <button className="p-1 text-stone-300 hover:text-stone-600 rounded"><Edit3 className="w-3 h-3" /></button>
-            <button className="p-1 text-stone-300 hover:text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
+            <button className="p-1 text-stone-300 hover:text-stone-600 rounded" onClick={() => { setDraftTitle(m.title); setEditingId(m.id); setShowCreate(true); }}><Edit3 className="w-3 h-3" /></button>
+            <button className="p-1 text-stone-300 hover:text-red-400 rounded" onClick={() => { if (window.confirm(t('Delete this milestone?', 'Διαγραφή αυτού του ορόσημου;'))) { void milestoneService.deleteMilestone(m.id).then(() => { setMilestones((prev) => prev.filter((item) => item.id !== m.id)); }); } }}><Trash2 className="w-3 h-3" /></button>
            </div>
           </div>
          </motion.div>

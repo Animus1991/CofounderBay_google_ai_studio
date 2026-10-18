@@ -3,7 +3,7 @@
  * page, list and score the assistant mentions is the same data the rest of
  * the app already shows. Gemini only rewrites the wording.
  */
-import { CAST, castByRole, findCast, placeOf, type CastMember } from '../data/cast';
+import { cofounderPool, directoryPeople, findPerson, mentorPool, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
 import {
   addSession,
@@ -237,21 +237,22 @@ function hasStem(hay: string, ...stems: string[]): boolean {
   });
 }
 
-function namedPerson(text: string): CastMember | undefined {
+function namedPerson(text: string): Person | undefined {
   const folded = fold(text);
-  return CAST.find((person) => folded.includes(fold(person.fullName)))
-    ?? CAST.find((person) => folded.includes(fold(person.fullName.split(' ')[0] || '')));
+  const people = directoryPeople();
+  return people.find((person) => folded.includes(fold(person.fullName)))
+    ?? people.find((person) => folded.includes(fold(person.fullName.split(' ')[0] || '')));
 }
 
-function candidates(): CastMember[] {
-  return CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate');
+function candidates(): Person[] {
+  return cofounderPool();
 }
 
 function meInput(profile: AssistantProfile | null): CompatibilityInput {
   return fromProfile(profile);
 }
 
-function linkFor(person: CastMember): AssistantLink {
+function linkFor(person: Person): AssistantLink {
   return { href: `/profile/${person.id}`, en: person.fullName, el: person.fullName };
 }
 
@@ -303,7 +304,7 @@ function matchesResult(profile: AssistantProfile | null, query: string): Assista
   const folded = fold(parsed.text || query);
   let pool = applyQualifiers(candidates(), parsed.filters, (person) => ({
     role: person.role,
-    location: placeOf(person),
+    location: person.location,
     skills: person.skills,
     industry: person.industry,
     stage: person.stage,
@@ -346,7 +347,7 @@ function matchesResult(profile: AssistantProfile | null, query: string): Assista
   };
 }
 
-function matchDetailResult(profile: AssistantProfile | null, person: CastMember): AssistantResult {
+function matchDetailResult(profile: AssistantProfile | null, person: Person): AssistantResult {
   const fit = compatibility(meInput(profile), fromCast(person));
   const known = fit.dimensions.filter((d) => d.score != null && d.reason);
   const strongest = [...known].sort((a, b) => (b.score as number) - (a.score as number))[0];
@@ -689,13 +690,13 @@ function attachFollowUps(result: AssistantResult): AssistantResult {
   return out.length ? { ...result, followUps: out.slice(0, 2) } : result;
 }
 
-function saveOrConnect(kind: 'save' | 'connect', person: CastMember): AssistantResult {
+function saveOrConnect(kind: 'save' | 'connect', person: Person): AssistantResult {
   const card = {
     id: person.id,
     fullName: person.fullName,
     role: person.role,
     industry: person.industry,
-    location: placeOf(person),
+    location: person.location,
     note: person.headline,
   };
   if (kind === 'save') {
@@ -722,7 +723,7 @@ function saveOrConnect(kind: 'save' | 'connect', person: CastMember): AssistantR
 
 function mentorsResult(query: string): AssistantResult {
   const folded = fold(query);
-  let mentors = castByRole('Mentor');
+  let mentors = mentorPool();
   if (/\bfund|pitch|raise|χρηματοδ|pitch/.test(folded)) {
     mentors = mentors.filter((person) => (person.expertise ?? []).some((item) => /fund|pitch|strategy/i.test(item)));
   } else if (/\bproduct|προϊον/.test(folded)) {
@@ -732,7 +733,7 @@ function mentorsResult(query: string): AssistantResult {
   } else if (/\bengine|tech|τεχνικ/.test(folded)) {
     mentors = mentors.filter((person) => (person.expertise ?? []).some((item) => /engineering|security|team/i.test(item)));
   }
-  if (mentors.length === 0) mentors = castByRole('Mentor');
+  if (mentors.length === 0) mentors = mentorPool();
   const linesEn = mentors.map((person) => `${person.fullName} · ${person.headline}`);
   const linesEl = linesEn;
   return {
@@ -825,7 +826,7 @@ function navigateResult(query: string): AssistantResult | null {
   };
 }
 
-function bookMentor(person: CastMember): AssistantResult {
+function bookMentor(person: Person): AssistantResult {
   const when = new Date();
   when.setDate(when.getDate() + 3);
   when.setHours(10, 0, 0, 0);
@@ -1175,7 +1176,7 @@ function inviteResult(): AssistantResult {
 }
 
 function weekMeetResult(profile: AssistantProfile | null): AssistantResult {
-  const ranked = rankPeople(fromProfile(profile ?? {}), CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate')).slice(0, 2);
+  const ranked = rankPeople(fromProfile(profile ?? {}), cofounderPool()).slice(0, 2);
   const who = ranked[0]?.person;
   return {
     tool: 'week-meet',

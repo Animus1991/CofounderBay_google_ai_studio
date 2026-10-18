@@ -48,10 +48,11 @@ import { explainMatch } from "../lib/matchReason";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, useT } from "../lib/language";
 import { rememberPerson } from "../lib/people";
+import { usePeople } from "../lib/directory";
+import { avatarOf, isOnline } from "../lib/peopleSource";
 import PersonHovercard from "../components/ui/PersonHovercard";
+import Avatar from "../components/ui/Avatar";
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from "../lib/searchQualifiers";
-import { collection, getDocs, limit, query } from "firebase/firestore";
-import { db } from "../firebase";
 
 interface DiscoveryProps {
  user: User;
@@ -80,8 +81,6 @@ export default function Discovery({ user }: DiscoveryProps) {
  useEffect(() => {
   writeDiscoveryFilters({ q: searchQuery, skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations });
  }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
- const [users, setUsers] = useState<any[]>([]);
- const [loading, setLoading] = useState(true);
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const categories: CategoryType[] = ["All", "Matches", "Communities", "Opportunities", "Events"];
@@ -102,54 +101,26 @@ export default function Discovery({ user }: DiscoveryProps) {
   }
  }, [searchQuery]);
 
- useEffect(() => {
-  const fetchData = async () => {
-   try {
-    if (!isDemoMode) {
-     const snap = await getDocs(query(collection(db, "profiles"), limit(40)));
-     const live = snap.docs
-      .filter((docSnap) => docSnap.id !== authUser?.uid)
-      .map((docSnap) => {
-       const data = docSnap.data() as Record<string, any>;
-       const skills = Array.isArray(data.skills)
-        ? data.skills.map((skill: any) => (typeof skill === "string" ? { name: skill } : skill))
-        : [];
-       const industry = Array.isArray(data.industry) ? data.industry : data.industry ? [data.industry] : [];
-       return {
-        id: docSnap.id,
-        name: data.fullName || data.displayName || "Founder",
-        role: data.role,
-        skills,
-        profile: {
-         headline: data.headline,
-         bio: data.bio,
-         industry,
-         location: data.location,
-         stage: data.stage,
-         profilePhoto: data.avatarUrl || data.profilePhoto,
-        },
-       };
-      });
-     setUsers(live);
-     return;
-    }
-    const res = await fetch("/api/users");
-    const data = await res.json();
-    const usersWithProfiles = await Promise.all(data.map(async (u: any) => {
-     const profileRes = await fetch(`/api/users/${u.id}`);
-     const profileData = await profileRes.json();
-     return { ...profileData, id: u.id };
-    }));
-    setUsers(usersWithProfiles);
-   } catch (err) {
-    console.error("Error fetching data", err);
-    if (!isDemoMode) setUsers([]);
-   } finally {
-    setLoading(false);
-   }
-  };
-  fetchData();
- }, [isDemoMode, authUser?.uid]);
+ // People come from the live member directory (the sample cast in the demo), already filtered for
+ // visibility, blocks and hidden members, and kept in the shape the cards below expect.
+ const { people, loading: peopleLoading } = usePeople(authUser?.uid);
+ const users = useMemo(() => people.map((person) => ({
+  id: person.id,
+  name: person.fullName,
+  role: person.role,
+  skills: person.skills.map((skill) => ({ name: skill })),
+  lastActiveAt: person.lastActiveAt,
+  verified: person.verified,
+  profile: {
+   headline: person.headline,
+   bio: person.bio,
+   industry: person.industry ? [person.industry] : [],
+   location: person.location,
+   stage: person.stage,
+   profilePhoto: avatarOf(person),
+  },
+ })), [people]);
+ const loading = peopleLoading;
 
  const toggleSkill = (skill: string) => {
   setSelectedSkills(prev => 
@@ -510,14 +481,12 @@ export default function Discovery({ user }: DiscoveryProps) {
            transition={{ delay: idx * 0.07 }}
            className="group bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all"
           >
-           <Link to={`/profile/${user.id}`} onClick={() => rememberPerson({ id: user.id, fullName: user.name || 'Founder', headline: user.profile?.headline || '', role: user.role || 'Founder', industry: user.profile?.industry || '', location: user.profile?.location || '' })} className="block space-y-3">
+           <Link to={`/profile/${user.id}`} onClick={() => rememberPerson({ id: user.id, fullName: user.name || 'Founder', headline: user.profile?.headline || '', role: user.role || 'Founder', industry: user.profile?.industry?.[0] || '', location: user.profile?.location || '' })} className="block space-y-3">
             <div className="flex items-start justify-between">
-             <div className="w-12 h-12 rounded-xl overflow-hidden border border-stone-100">
-              <img src={user.profile?.profilePhoto || `https://picsum.photos/seed/${user.id}/200/200`} alt="" className="w-full h-full object-cover" />
-             </div>
+             <Avatar src={user.profile?.profilePhoto || undefined} fallback={user.name} size="lg" status={isOnline({ lastActiveAt: user.lastActiveAt }) ? 'online' : undefined} className="[&>*]:rounded-xl" />
              <div className="flex items-center gap-1 px-2 py-1 bg-stone-50 rounded-lg border border-stone-100">
-              <ShieldCheck className={`w-3 h-3 ${user.profileCompletionScore > 90 && user.emailVerified ? 'text-emerald-500' : 'text-stone-300'}`} />
-              <span className="text-xs text-stone-500">{user.profileCompletionScore > 90 && user.emailVerified ? t('Verified', 'Επαληθευμένο') : t('Pending', 'Σε αναμονή')}</span>
+              <ShieldCheck className={`w-3 h-3 ${user.verified ? 'text-emerald-500' : 'text-stone-300'}`} />
+              <span className="text-xs text-stone-500">{user.verified ? t('Verified', 'Επαληθευμένο') : t('Not verified yet', 'Χωρίς επαλήθευση ακόμη')}</span>
              </div>
             </div>
             <div>
@@ -562,7 +531,8 @@ export default function Discovery({ user }: DiscoveryProps) {
      )}
 
      {/* Featured Section */}
-     <section className="space-y-4">
+     {(activeCategory === 'All' || activeCategory === 'Opportunities') && (
+      <section className="space-y-4">
        <div>
         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Featured', 'Προτεινόμενα')}</p>
         <h3 className="text-base font-semibold text-stone-900">{t('Curated opportunities', 'Επιλεγμένες ευκαιρίες')}</h3>
@@ -622,8 +592,10 @@ export default function Discovery({ user }: DiscoveryProps) {
        ))}
       </div>
      </section>
+    )}
 
-     {/* Communities Section */}
+    {/* Communities Section */}
+    {(activeCategory === 'All' || activeCategory === 'Communities') && (
      <section className="space-y-4">
       <div className="flex items-center justify-between">
        <div>
@@ -675,6 +647,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        ))}
       </div>
      </section>
+     )}
     </div>
 
     {/* Right Column - Sidebar Info */}

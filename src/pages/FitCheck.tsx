@@ -1,17 +1,16 @@
 import { useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sparkles, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles, Users, Zap } from 'lucide-react';
 import { Both } from '../lib/both';
 import { bothText } from '../lib/labels';
 import { LanguageToggle, useLanguage } from '../lib/language';
 import { FIT_QUESTIONS, scoreFit, writeFitCheck, type FitAnswer } from '../lib/fitCheck';
 import { useAuth } from '../App';
-import { avatarFor } from '../data/cast';
 
 export default function FitCheck() {
   useLanguage();
   const navigate = useNavigate();
-  const { toggleDemoMode } = useAuth();
+  const { user, toggleDemoMode } = useAuth();
   const [step, setStep] = useState(0);
   const [lookingKey, setLookingKey] = useState('gtm');
   const [answers, setAnswers] = useState<Partial<FitAnswer>>({});
@@ -54,7 +53,7 @@ export default function FitCheck() {
   };
 
   const openMatches = () => {
-    toggleDemoMode(true);
+    if (!user) toggleDemoMode(true);
     navigate('/matches');
   };
 
@@ -62,7 +61,7 @@ export default function FitCheck() {
     const prompt = result
       ? `I am a ${result.archetype.en}. Who is my best match?`
       : 'Who is my best match?';
-    toggleDemoMode(true);
+    if (!user) toggleDemoMode(true);
     navigate('/dashboard');
     window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
@@ -132,7 +131,7 @@ export default function FitCheck() {
             <Both en={result.why.en} el={result.why.el} />
           </p>
           <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-stone-100">
-            <img src={avatarFor('sarah-chen', 80)} alt="" className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+            <span className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center shrink-0" aria-hidden="true"><Users className="w-5 h-5 text-stone-500" /></span>
             <p className="text-xs text-stone-500">
               <Both en="Next: see who covers what you still lack — photos stay, scores stay explainable." el="Επόμενο: δες ποιος καλύπτει αυτό που λείπει — οι φωτογραφίες μένουν, τα σκορ εξηγούνται." />
             </p>

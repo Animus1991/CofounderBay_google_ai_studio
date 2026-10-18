@@ -390,13 +390,18 @@ export enum CommitmentLevel {
 export interface AIAgent {
   id: string;
   name: string;
+  nameEl?: string;
   role: string;
+  roleEl?: string;
   description: string;
+  descriptionEl?: string;
   capabilities: string[];
+  capabilitiesEl?: string[];
   status: 'Active' | 'Inactive';
   avatar?: string;
   icon?: string;
   suggestedPrompts?: string[];
+  suggestedPromptsEl?: string[];
 }
 
 export interface TenantConfig {

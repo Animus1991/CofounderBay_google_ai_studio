@@ -29,6 +29,10 @@ import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestActio
 import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
 import { CAST, avatarFor } from '../data/cast';
+import { usePeople } from '../lib/directory';
+import { avatarOf, cofounderPool, type Person } from '../lib/peopleSource';
+import { profileViews as loadProfileViews, sendConnectionRequest } from '../lib/social';
+import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { useT } from '../lib/language';
@@ -46,6 +50,13 @@ const ACTIVITY_DATA = [
   { name: 'Sat', views: 23, matches: 38 },
   { name: 'Sun', views: 34, matches: 43 },
 ];
+
+function circlesFromPeople(profile: Parameters<typeof fromProfile>[0], people: Person[]) {
+  const pool = new Set(cofounderPool().map((person) => person.id));
+  return rankPeople(fromProfile(profile), people.filter((person) => pool.has(person.id)))
+    .slice(0, 5)
+    .map(({ person, fit }) => ({ id: person.id, name: person.fullName, role: person.headline || person.role, match: fit.score ?? 0, avatar: avatarOf(person) }));
+}
 
 function circlesFromCast(profile: Parameters<typeof fromProfile>[0]) {
   return rankPeople(
@@ -97,12 +108,12 @@ const DEMO_POSTS = [
 ];
 
 const ACTION_EL: Record<string, string> = {
-  'complete-profile': 'Συμπληρώστε το προφίλ σας, για να βελτιωθούν οι αντιστοιχίσεις.',
-  'send-connection': 'Στείλτε αίτημα σύνδεσης σε πιθανό συνιδρυτή.',
-  'request-review': 'Ζητήστε έλεγχο της παρουσίασης από ειδικό.',
-  'apply-feedback': 'Εφαρμόστε την ανατροφοδότηση του μέντορα.',
-  'resume-research': 'Συνεχίστε την έρευνα για την υπόθεση αγοράς.',
-  'daily-discovery': 'Δείτε 5 νέα προφίλ ιδρυτών σήμερα.',
+  'complete-profile': 'Συμπλήρωσε το προφίλ σου για καλύτερες αντιστοιχίσεις.',
+  'send-connection': 'Στείλε αίτημα σύνδεσης σε πιθανό συνιδρυτή.',
+  'request-review': 'Ζήτα έλεγχο του pitch deck από ειδικό.',
+  'apply-feedback': 'Εφάρμοσε τα σχόλια του μέντορα.',
+  'resume-research': 'Συνέχισε την έρευνα για την υπόθεση αγοράς.',
+  'daily-discovery': 'Δες 5 νέα προφίλ ιδρυτών σήμερα.',
 };
 
 const MISSING_EL: Record<string, string> = {
@@ -269,6 +280,17 @@ export default function DashboardPage() {
   const [events, setEvents] = useState<DashEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const activity = useStored(readActivity, ['cfb.activity']);
+  const { people } = usePeople(user?.uid);
+  const messaging = useOptionalMessaging();
+  const [viewCount, setViewCount] = useState<number | null>(null);
+
+  // Who opened your profile in the last 30 days (real accounts).
+  useEffect(() => {
+    if (!user || isDemoMode) { setViewCount(null); return undefined; }
+    let cancelled = false;
+    void loadProfileViews(user.uid, 30).then((list) => { if (!cancelled) setViewCount(list.length); });
+    return () => { cancelled = true; };
+  }, [user, isDemoMode]);
 
   const getProfileCompletion = () => {
     if (!profile) return { score: 0, missing: ['Basic Info'] };
@@ -392,14 +414,15 @@ export default function DashboardPage() {
     navigate(href);
   };
 
-  const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
-  const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? []);
+  // Ranked with the same scorer as Matches: the sample cast in the demo, live members for a real account.
+  const rankedCircles = useMemo(() => (isDemoMode ? circlesFromCast(profile) : circlesFromPeople(profile, people)), [isDemoMode, profile, people]);
+  const circles = isDemoMode ? rankedCircles : (rankedCircles.length ? rankedCircles : (live.recentMatches ?? []));
   const leadMatch = circles[0];
   const firstName = user?.displayName?.split(' ')[0] || 'Founder';
   const activityPosts: FeedPost[] = activity.slice(0, 8).map((item) => ({
     id: item.id,
     authorId: item.byAssistant ? 'assistant' : user?.uid || 'you',
-    name: item.byAssistant ? 'Studio' : firstName,
+    name: item.byAssistant ? t('Assistant', 'Βοηθός') : firstName,
     avatar: '',
     text: t(item.title, item.titleEl || item.title),
     time: item.at,
@@ -413,11 +436,11 @@ export default function DashboardPage() {
   const communities = isDemoMode ? ACTIVE_COMMUNITIES : (live.communities ?? []);
   const prospect = isDemoMode
     ? rankedCircles[0] ?? null
-    : live.prospect;
+    : (rankedCircles[0] ?? live.prospect);
   const streakDays = isDemoMode ? (streak?.currentStreak ?? 12) : (streak?.currentStreak ?? 0);
-  const profileViews = isDemoMode ? 124 : live.profileViews;
-  const matchScore = isDemoMode ? rankedCircles[0]?.match : live.topMatchScore;
-  const unread = isDemoMode ? 3 : live.unreadMessages;
+  const profileViews = isDemoMode ? 124 : (viewCount ?? live.profileViews);
+  const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
+  const unread = isDemoMode ? 3 : (messaging?.totalUnread ?? live.unreadMessages);
 
   const toggleLike = async (post: FeedPost) => {
     if (isDemoMode) {
@@ -458,7 +481,7 @@ export default function DashboardPage() {
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
       actions={isDemoMode ? (
         <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
-          <Both en="Demo — sample data" el="Δείγμα — ενδεικτικά δεδομένα" />
+          <Both en="Demo — sample data" el="Demo — δοκιμαστικά δεδομένα" />
         </span>
       ) : undefined}
     >
@@ -477,10 +500,10 @@ export default function DashboardPage() {
               placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
             />
           </div>
-          <button title={bothText('Ask the studio assistant', 'Ρωτήστε τον βοηθό του στούντιο')} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: searchQuery.trim() } }))} className="flex items-center justify-center w-11 h-11 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-all shrink-0">
+          <button title={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: searchQuery.trim() } }))} className="flex items-center justify-center w-11 h-11 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-all shrink-0">
             <Sparkles className="w-4 h-4" />
           </button>
-          <button title={bothText('Open Discovery to narrow this search', 'Ανοίξτε την Εξερεύνηση για να στενέψετε την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-11 h-11 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
+          <button title={bothText('Open Discovery to narrow this search', 'Άνοιξε την Εξερεύνηση για να φιλτράρεις την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-11 h-11 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
             <Filter className="w-4 h-4" />
           </button>
         </div>
@@ -556,7 +579,7 @@ export default function DashboardPage() {
                     <Plus className="w-2.5 h-2.5 text-white" />
                   </div>
                 </div>
-                <span className="text-[10px] font-medium text-stone-400"><Both en="You" el="Εσείς" /></span>
+                <span className="text-[10px] font-medium text-stone-400"><Both en="You" el="Εσύ" /></span>
               </div>
               {circles.map((match) => (
                 <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
@@ -580,7 +603,7 @@ export default function DashboardPage() {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <button onClick={() => navigate('/milestones')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors">
-                <TrendingUp className="w-3 h-3" /> <Both en="Log Update" el="Καταγραφή" />
+                <TrendingUp className="w-3 h-3" /> <Both en="Log Update" el="Ενημέρωση προόδου" />
               </button>
               <button onClick={() => navigate('/communities')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-900 rounded-xl text-sm font-medium text-white hover:bg-stone-800 transition-colors">
                 <Plus className="w-3 h-3" /> <Both en="Post" el="Δημοσίευση" />
@@ -592,7 +615,7 @@ export default function DashboardPage() {
             <div className="text-sm text-stone-400 bg-white border border-stone-100 rounded-2xl p-4 space-y-2">
               <p><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
               <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'what should I do today' } }))}>
-                <Both en="Ask assistant" el="Ρωτήστε τον βοηθό" />
+                <Both en="Ask assistant" el="Ρώτα τον βοηθό" />
               </button>
             </div>
           ) : posts.map((item) => {
@@ -601,7 +624,7 @@ export default function DashboardPage() {
             return (
               <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
                 <div className="flex items-start gap-3">
-                  <button type="button" className="shrink-0" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
+                  <button type="button" className="shrink-0 block" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
                     <Avatar src={item.avatar} fallback={item.name} size="sm" />
                   </button>
                   <div className="flex-1 min-w-0">
@@ -642,7 +665,7 @@ export default function DashboardPage() {
               hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
             },
             {
-              label: t('Streak', 'Σειρά'),
+              label: t('Streak', 'Σερί'),
               value: `${streakDays}d`,
               sub: null,
               href: '/milestones',
@@ -684,7 +707,7 @@ export default function DashboardPage() {
               </p>
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
-                  <Avatar src={prospect.avatar || avatarFor(prospect.id)} fallback={prospect.name} size="md" />
+                  <Avatar src={prospect.avatar || undefined} fallback={prospect.name} size="md" />
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -696,13 +719,30 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="flex gap-2 mt-3">
-                <button onClick={() => { saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' }); navigate(`/messages?user=${prospect.id}`); }} className="flex-1 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"><Both en="Connect" el="Σύνδεση" /></button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (isDemoMode) {
+                      saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' });
+                    } else {
+                      try {
+                        await sendConnectionRequest({ id: prospect.id, fullName: prospect.name, headline: prospect.role, avatarUrl: prospect.avatar }, 'Co-Founder');
+                      } catch {
+                        /* already requested or declined: the profile page explains the state */
+                      }
+                    }
+                    navigate(`/messages?user=${prospect.id}`);
+                  }}
+                  className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"
+                >
+                  <Both en="Connect" el="Σύνδεση" />
+                </button>
                 <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
               </div>
             </div>
           )}
           <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχουσα σειρά')}</p>
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχον σερί')}</p>
             <div>
               <p className="text-[13px] sm:text-[14px] font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-[11px] font-medium text-stone-400">d</span></p>
               <div className="flex items-center gap-1.5 mt-2">

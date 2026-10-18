@@ -1,5 +1,6 @@
 /** People the studio shows on cards. Opening a profile uses the cast, then anything remembered from a click. */
 import { CAST, castId, findCast, placeOf, type CastMember } from '../data/cast';
+import { dataScope } from './localLists';
 
 export type PersonCard = {
   id: string;
@@ -16,6 +17,12 @@ export type PersonCard = {
 };
 
 const KEY = 'cfb.openedPeople';
+
+/** One remembered-people map per account, so a signed-in account never sees the demo's or another account's names. */
+function storeKey(): string {
+  const scope = dataScope();
+  return scope ? `${KEY}@${scope}` : KEY;
+}
 
 export function cardFromCast(person: CastMember): PersonCard {
   return {
@@ -47,10 +54,10 @@ export function rememberPerson(person: Partial<PersonCard> & { id: string; fullN
     bio: person.bio || '',
   };
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(storeKey());
     const all = raw ? JSON.parse(raw) as Record<string, PersonCard> : {};
     all[card.id] = card;
-    localStorage.setItem(KEY, JSON.stringify(all));
+    localStorage.setItem(storeKey(), JSON.stringify(all));
   } catch {
     /* the profile still opens from the directory */
   }
@@ -60,7 +67,7 @@ export function lookupPerson(id: string): PersonCard | undefined {
   const cast = CAST.find((person) => person.id === castId(id));
   if (cast) return cardFromCast(cast);
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(storeKey());
     const all = raw ? JSON.parse(raw) as Record<string, PersonCard> : {};
     if (all[id]?.fullName) return all[id];
   } catch {

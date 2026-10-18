@@ -283,6 +283,27 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow write: if isOwner(userId) || isAdmin();
       }
+
+      // The account's own lists (saved people, tasks, round, …) mirrored from the browser.
+      match /lists/{listKey} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Inbox: any signed-in member may leave a notification that names them as the sender;
+      // only the owner reads, marks read or deletes.
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAuthenticated() && request.resource.data.fromId == request.auth.uid &&
+          request.resource.data.title is string && request.resource.data.title.size() <= 200 &&
+          (!('body' in request.resource.data) || request.resource.data.body.size() <= 600);
+        allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      // People this account has blocked. Private to the owner.
+      match /blocks/{blockedId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /profiles/{userId} {
@@ -290,6 +311,22 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
       allow update: if (isOwner(userId) || isAdmin()) && isValidProfile(request.resource.data);
       allow delete: if isOwner(userId) || isAdmin();
+
+      // Who looked at this profile: one document per viewer per day, readable by the owner only.
+      match /views/{viewId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAuthenticated() && request.auth.uid != userId &&
+          request.resource.data.viewerId == request.auth.uid && viewId.matches('^' + request.auth.uid + '_.*');
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Moderation reports. Anyone signed in can file one about themselves as reporter; only admins read.
+    match /reports/{reportId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.reporterId == request.auth.uid &&
+        request.resource.data.reason is string && request.resource.data.reason.size() <= 60 &&
+        request.resource.data.status == 'open';
     }
 
     match /skills/{skillId} {
@@ -313,7 +350,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
       allow update: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
+      // Either side may remove an accepted connection.
+      allow delete: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
     }
 
     match /conversations/{conversationId} {
@@ -325,8 +363,14 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
         allow create: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants) && isValidMessage(request.resource.data);
-        allow update: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants) && 
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus']) || isAdmin());
+        // Any participant may mark read or react; only the sender may edit or delete the body.
+        allow update: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants) && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus', 'reactions']) ||
+          (resource.data.senderId == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'edited', 'editedAt', 'deleted', 'attachments']) &&
+            request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 5000) ||
+          isAdmin()
+        );
       }
     }
 
@@ -388,7 +432,9 @@ service cloud.firestore {
         request.resource.data.authorId == request.auth.uid ||
         request.resource.data.endorserId == request.auth.uid
       );
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      // The person who gave the endorsement may withdraw it.
+      allow delete: if isAuthenticated() && (resource.data.endorserId == request.auth.uid || resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     match /events/{eventId} {

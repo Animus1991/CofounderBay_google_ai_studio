@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -54,11 +54,28 @@ import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { formatDate } from "../lib/dates";
-import { addRoomFile, addSession, listKeys, readIds, readRoomFiles, toggleId, trackApplication, type RoomFile } from "../lib/localLists";
+import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type RoundInvestor } from "../lib/localLists";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import { usePeople } from "../lib/directory";
+import { useStored } from "../lib/useStored";
+import type { Person } from "../lib/peopleSource";
+import { useAuth } from "../App";
 
 interface FundraisingProps {
  user: User;
 }
+
+type InvestorCard = {
+ id: string;
+ name: string;
+ type: string;
+ focus: string[];
+ stage: string[];
+ location: string;
+ checkSize: string;
+ portfolio: string | number;
+ person?: Person;
+};
 
 const STAGE_META: Record<string, { color: string; dot: string }> = {
  "Identified":    { color: "text-stone-500",   dot: "bg-stone-400" },
@@ -72,7 +89,10 @@ const STAGE_META: Record<string, { color: string; dot: string }> = {
 
 export default function Fundraising({ user }: FundraisingProps) {
  const t = useT();
+ const { isDemoMode, profile } = useAuth();
  const navigate = useNavigate();
+ const round = useStored(() => readRound(), [keys.round]);
+ const { people: directoryMembers } = usePeople(user.id);
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
  const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(() => new Set(readIds(listKeys.watch)));
@@ -91,6 +111,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  ];
  const [roomFiles, setRoomFiles] = useState<RoomFile[]>(() => {
   const extra = readRoomFiles();
+  if (!isDemoMode) return extra;
   const names = new Set(extra.map((file) => file.name));
   return [...extra, ...seedRoomFiles.filter((file) => !names.has(file.name))];
  });
@@ -102,52 +123,101 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [showSAFECalc, setShowSAFECalc] = useState(false);
  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
+ // The pipeline lives on the account's round — one source for the table, the funnel and the CRM.
+ // The demo account seeds it once below; a real account starts empty and fills it from the Investors tab.
+ useEffect(() => {
+  if (!isDemoMode) return;
+  const current = readRound();
+  if (current.pipeline && current.pipeline.length > 0) return;
+  writeRound({
+   pipeline: [
+    { investorId: "inv_1", name: "Sequoia Capital",       stage: "Due Diligence", notes: "Requested financial projections for 2027.",   updatedAt: new Date().toISOString() },
+    { investorId: "inv_2", name: "Naval Ravikant",         stage: "Meeting",       notes: "Second meeting scheduled for next Tuesday.",  updatedAt: new Date().toISOString() },
+    { investorId: "inv_3", name: "Andreessen Horowitz",    stage: "Contacted",     notes: "Intro sent via Alex.",                        updatedAt: new Date().toISOString() },
+    { investorId: "inv_4", name: "First Round Capital",    stage: "Identified",    notes: "Fits our thesis perfectly.",                  updatedAt: new Date().toISOString() },
+    { investorId: "inv_5", name: "Bessemer Venture",       stage: "Passed",        notes: "Too early for their current fund.",           updatedAt: new Date().toISOString() },
+   ],
+  });
+ }, [isDemoMode]);
+
+ const pipeline: RoundInvestor[] = round.pipeline ?? [];
+ const stageIndex = (stage: string) => Math.max(0, PIPELINE_STAGES.indexOf(stage as (typeof PIPELINE_STAGES)[number]));
+
  const mockTracker: FundraisingTracker = {
-  id: "tracker_1",
-  startupId: "startup_1",
-  targetAmount: 1500000,
-  raisedAmount: 450000,
+  id: isDemoMode ? "tracker_1" : `tracker-${user.id}`,
+  startupId: isDemoMode ? "startup_1" : user.id,
+  targetAmount: isDemoMode ? 1500000 : round.targetAmount,
+  raisedAmount: isDemoMode ? 450000 : round.committedAmount,
   currency: "USD",
-  stage: "Seed",
-  investors: ["inv_1", "inv_2"],
+  stage: isDemoMode ? "Seed" : (round.name || "Pre-seed"),
+  investors: pipeline.map((item) => item.investorId),
   status: "Active",
-  investorPipeline: [
-   { investorId: "inv_1", stage: "Due Diligence", notes: "Requested financial projections for 2027." },
-   { investorId: "inv_2", stage: "Meeting",       notes: "Second meeting scheduled for next Tuesday." },
-   { investorId: "inv_3", stage: "Contacted",     notes: "Intro sent via Alex." },
-   { investorId: "inv_4", stage: "Identified",    notes: "Fits our thesis perfectly." },
-   { investorId: "inv_5", stage: "Passed",        notes: "Too early for their current fund." },
-  ],
+  investorPipeline: pipeline.map((item) => ({ investorId: item.investorId, name: item.name, stage: item.stage, notes: item.notes, updatedAt: item.updatedAt })),
  };
 
- const pct = Math.round((mockTracker.raisedAmount / mockTracker.targetAmount) * 100);
- const runway = Math.round((mockTracker.targetAmount - mockTracker.raisedAmount) / 12000); // months at $12k/mo burn
+ const pct = mockTracker.targetAmount ? Math.round((mockTracker.raisedAmount / mockTracker.targetAmount) * 100) : 0;
+ const burn = round.monthlyBurn || 12000;
+ const runway = burn > 0 ? Math.round(((round.cashOnHand || (mockTracker.targetAmount - mockTracker.raisedAmount)) / burn)) : 0;
 
- const investorNames = ["Sequoia Capital", "Naval Ravikant", "Andreessen Horowitz", "First Round Capital",
-                        "Bessemer Venture", "Index Ventures", "Lightspeed", "Accel Partners"];
-
- const mockInvestors: any[] = [
-  { id: "inv_1", name: "Sequoia Capital",       type: "VC",    focus: ["SaaS", "FinTech", "AI"],              stage: ["Seed", "Series A"],              location: "Menlo Park, CA",   checkSize: "$500k–$5M",   portfolio: 312 },
-  { id: "inv_2", name: "Naval Ravikant",         type: "Angel", focus: ["Crypto", "Marketplaces", "DeepTech"], stage: ["Pre-Seed", "Seed"],               location: "San Francisco, CA", checkSize: "$25k–$250k",  portfolio: 84 },
-  { id: "inv_3", name: "Andreessen Horowitz",    type: "VC",    focus: ["Consumer", "Enterprise", "Bio"],       stage: ["Seed", "Series A", "Series B"],  location: "Menlo Park, CA",   checkSize: "$1M–$50M",    portfolio: 510 },
+ // The investors directory: sample funds in the demo, the platform's real investor members otherwise.
+ const mockInvestors: InvestorCard[] = [
+  { id: "inv_1", name: "Sequoia Capital",       type: "VC",    focus: ["SaaS", "FinTech", "AI"],              stage: ["Seed", "Series A"],              location: "Menlo Park, CA",   checkSize: "$500k–$5M",   portfolio: "312" },
+  { id: "inv_2", name: "Naval Ravikant",         type: "Angel", focus: ["Crypto", "Marketplaces", "DeepTech"], stage: ["Pre-Seed", "Seed"],               location: "San Francisco, CA", checkSize: "$25k–$250k",  portfolio: "84" },
+  { id: "inv_3", name: "Andreessen Horowitz",    type: "VC",    focus: ["Consumer", "Enterprise", "Bio"],       stage: ["Seed", "Series A", "Series B"],  location: "Menlo Park, CA",   checkSize: "$1M–$50M",    portfolio: "510" },
   { id: "inv_4", name: "First Round Capital",    type: "VC",    focus: ["Early Stage", "Generalist"],           stage: ["Seed"],                          location: "Philadelphia, PA",  checkSize: "$250k–$3M",   portfolio: 195 },
   { id: "inv_5", name: "Bessemer Venture",       type: "VC",    focus: ["Cloud", "Cybersecurity", "HealthTech"],stage: ["Series A", "Series B"],          location: "Redwood City, CA",  checkSize: "$5M–$25M",    portfolio: 240 },
   { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
  ];
 
- const filteredInvestors = mockInvestors.filter(inv => {
+ const investorDirectory = useMemo<InvestorCard[]>(() => {
+  if (isDemoMode) return mockInvestors;
+  return directoryMembers
+   .filter((person) => person.roles.concat(person.role).some((role) => /investor/i.test(role)))
+   .map((person) => ({
+    id: person.id,
+    name: person.company ? `${person.fullName} · ${person.company}` : person.fullName,
+    type: /angel/i.test(person.headline) ? 'Angel' : /venture|capital|\bvc\b|fund/i.test(`${person.headline} ${person.company}`) ? 'VC' : 'Investor',
+    focus: Array.from(new Set([...person.interests, ...person.skills, person.industry].filter(Boolean))).slice(0, 5),
+    stage: person.lookingFor.filter((item) => /seed|series|growth|pre/i.test(item)),
+    location: person.location,
+    checkSize: person.checkSize,
+    portfolio: '',
+    person,
+   }));
+ }, [isDemoMode, directoryMembers]);
+
+ const filteredInvestors = investorDirectory.filter(inv => {
   const q = investorSearch.toLowerCase();
   const matchesQuery = !q || inv.name.toLowerCase().includes(q) || inv.focus.some((f: string) => f.toLowerCase().includes(q));
   const matchesType = investorType === 'All' || inv.type === investorType;
   return matchesQuery && matchesType;
  });
 
+ // Real-world programs every founder can apply to; the demo keeps its seeded match
+ // scores, a real account gets a score computed from its own profile's tags.
  const mockPrograms = [
   { id: "prog_1", title: "Y Combinator S26",       deadline: "2026-04-19", type: "Accelerator", grant: "$500k",  location: "Remote / SF",  match: 96, tags: ["AI", "B2B", "Global"],     status: "open" },
   { id: "prog_2", title: "Techstars Sustainability", deadline: "2026-05-01", type: "Accelerator", grant: "$120k",  location: "NYC",          match: 88, tags: ["CleanTech", "Impact"],    status: "open" },
   { id: "prog_3", title: "NSF SBIR Phase I",         deadline: "2026-06-18", type: "Grant",       grant: "$275k",  location: "US Only",      match: 72, tags: ["R&D", "DeepTech"],        status: "open" },
   { id: "prog_4", title: "Founders Factory EU",      deadline: "2026-07-10", type: "Studio",      grant: "€150k",  location: "London / Paris", match: 81, tags: ["B2B SaaS", "Series A"], status: "upcoming" },
  ];
+
+ const myTags = useMemo(() => new Set(
+  [...(profile?.interests ?? []), ...(profile?.skills ?? []), ...(profile?.lookingFor ?? []), ...(profile?.industry ? [profile.industry] : [])]
+   .map((item) => String(item).toLowerCase()),
+ ), [profile]);
+ const programMatch = (tags: string[]): number | null => {
+  if (isDemoMode) return null;
+  if (myTags.size === 0) return null;
+  const overlap = tags.filter((tag) => myTags.has(tag.toLowerCase())).length;
+  return Math.min(96, 55 + overlap * 14);
+ };
+
+ const pipelineName = (item: { investorId: string; name?: string }, index: number) =>
+  item.name || investorDirectory.find((v) => v.id === item.investorId)?.name || `${t("Investor", "Επενδυτής")} ${index + 1}`;
+
+ const startupName = (profile as { company?: string } | null)?.company || (isDemoMode ? 'EcoFlow Systems' : '');
+ const roomStartup = startupName || t('your startup', 'το startup σου');
 
  const mockOpportunities = [
   { id: "opp_1", title: "Series A Scout Network",     org: "Sequoia Capital",       type: "Intro Request",    amount: "$5M+",    deadline: "Rolling",     tags: ["AI", "SaaS"],      status: "active" },
@@ -156,29 +226,40 @@ export default function Fundraising({ user }: FundraisingProps) {
   { id: "opp_4", title: "EU Horizon Innovation Fund", org: "European Commission",   type: "Grant",            amount: "€250k",   deadline: "2026-06-01",  tags: ["DeepTech", "EU"],  status: "active" },
   { id: "opp_5", title: "Debt Facility — Revenue-Based",org: "Clearco",             type: "Revenue-Based",    amount: "up to $2M",deadline: "Rolling",   tags: ["SaaS", "MRR>$30k"],status: "active" },
  ];
+ const opportunities = isDemoMode ? mockOpportunities : [];
 
- const stageOrder = ["Identified", "Contacted", "Meeting", "Due Diligence", "Term Sheet", "Closed", "Passed"];
+ const stageOrder = [...PIPELINE_STAGES];
  const stageCounts = stageOrder.map(s => ({
   stage: s,
-  count: (mockTracker.investorPipeline ?? []).filter(p => p.stage === s).length,
+  count: pipeline.filter(p => p.stage === s).length,
  }));
 
- const barData = [40, 60, 45, 80, 55, 90, 70];
- const barMax = Math.max(...barData);
+ // Demo keeps its sample interest curve; a real account sees its own pipeline by stage.
+ const barData = isDemoMode ? [40, 60, 45, 80, 55, 90, 70] : stageCounts.map((item) => item.count);
+ const barLabels = isDemoMode ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : stageOrder.map((s) => s === 'Due Diligence' ? 'DD' : s.slice(0, 2));
+ const barMax = Math.max(1, ...barData);
 
- const mockCapTable = [
+ const mockCapTable = isDemoMode ? [
   { name: "Founders", shares: 8000000, pct: 80, color: "bg-stone-900" },
   { name: "Seed SAFEs", shares: 1000000, pct: 10, color: "bg-stone-400" },
   { name: "ESOP Pool", shares: 1000000, pct: 10, color: "bg-stone-200" },
+ ] : [
+  { name: "Founders", shares: 10000000, pct: 100, color: "bg-stone-900" },
  ];
 
- const dueDiligenceItems = [
-  { id: "dd1", label: "Incorporation docs", status: "complete" },
-  { id: "dd2", label: "IP assignments", status: "complete" },
-  { id: "dd3", label: "Financial projections", status: "pending" },
-  { id: "dd4", label: "Cap table audit", status: "pending" },
-  { id: "dd5", label: "Key contracts", status: "pending" },
+ // A real account's checklist fills from the documents it actually uploaded; the demo keeps its seeded state.
+ const DD_RULES: { id: string; label: string; match: RegExp; demoStatus: string }[] = [
+  { id: "dd1", label: "Incorporation docs",      match: /incorp|articles|certificate|bylaws/i,        demoStatus: "complete" },
+  { id: "dd2", label: "IP assignments",          match: /\bip\b|assign|invention/i,                    demoStatus: "complete" },
+  { id: "dd3", label: "Financial projections",   match: /financ|projection|model|forecast|p&l/i,       demoStatus: "pending" },
+  { id: "dd4", label: "Cap table audit",         match: /cap.?table|safe|equity/i,                     demoStatus: "pending" },
+  { id: "dd5", label: "Key contracts",           match: /contract|agreement|msa|nda|offer/i,           demoStatus: "pending" },
  ];
+ const dueDiligenceItems = DD_RULES.map((rule) => ({
+  id: rule.id,
+  label: rule.label,
+  status: isDemoMode ? rule.demoStatus : roomFiles.some((file) => rule.match.test(file.name)) ? 'complete' : 'pending',
+ }));
 
  const emailTemplates = [
   { id: "et1", name: "Cold Intro", subject: "Introduction: {{startup}} — {{sector}}" },
@@ -187,26 +268,54 @@ export default function Fundraising({ user }: FundraisingProps) {
  ];
 
  // Meeting Scheduler Data
- const upcomingMeetings = [
+ const upcomingMeetings = isDemoMode ? [
   { id: "m1", investor: "Sequoia Capital", type: "Video Call", date: "2026-04-28", time: "10:00", duration: "45 min", status: "confirmed", notes: "Partnership discussion" },
   { id: "m2", investor: "Naval Ravikant", type: "Coffee Chat", date: "2026-04-30", time: "14:00", duration: "30 min", status: "pending", notes: "Advisory role" },
   { id: "m3", investor: "First Round", type: "Pitch", date: "2026-05-02", time: "11:00", duration: "60 min", status: "confirmed", notes: "Seed round pitch" },
- ];
+ ] : [];
 
- // Document Room Data
+ // Folder counts come from the documents that are actually in the room — a file joins a
+ // folder by the folder it was uploaded under, or by its name when none was chosen.
+ const FOLDER_RULES: Record<string, RegExp> = {
+  f1: /legal|incorp|articles|bylaws|\bip\b|assign|contract|nda|agreement/i,
+  f2: /financ|cap.?table|model|projection|forecast|p&l|safe/i,
+  f3: /product|roadmap|demo|deck|pitch|metrics/i,
+  f4: /team|cv|resume|org|hiring|founder/i,
+ };
+ const folderOfFile = (file: RoomFile): string | null =>
+  file.folder ?? (Object.keys(FOLDER_RULES).find((id) => FOLDER_RULES[id]?.test(file.name)) ?? null);
  const documentFolders = [
-  { id: "f1", name: "Legal", count: 8, access: "investors", lastUpdated: "2026-04-20" },
-  { id: "f2", name: "Financials", count: 12, access: "investors", lastUpdated: "2026-04-18" },
-  { id: "f3", name: "Product", count: 5, access: "public", lastUpdated: "2026-04-15" },
-  { id: "f4", name: "Team", count: 6, access: "investors", lastUpdated: "2026-04-22" },
- ];
+  { id: "f1", name: "Legal", access: "investors" },
+  { id: "f2", name: "Financials", access: "investors" },
+  { id: "f3", name: "Product", access: "public" },
+  { id: "f4", name: "Team", access: "investors" },
+ ].map((folder) => {
+  const files = roomFiles.filter((file) => folderOfFile(file) === folder.id);
+  const lastUpdated = files.map((file) => file.updated).sort().pop() || '';
+  return { ...folder, count: files.length, lastUpdated };
+ });
+ const visibleRoomFiles = selectedFolder ? roomFiles.filter((file) => folderOfFile(file) === selectedFolder) : roomFiles;
+ const roomViews = roomFiles.reduce((sum, file) => sum + (file.views || 0), 0);
 
- // Enhanced Investor CRM with tags and relationship data
- const investorCRM = [
-  { id: "crm1", investorId: "inv_1", tags: ["Hot Lead", "Strategic"], lastContact: "2026-04-20", relationshipScore: 85, nextAction: "Send updated projections", priority: "high" },
-  { id: "crm2", investorId: "inv_2", tags: ["Advisor", "Angel"], lastContact: "2026-04-15", relationshipScore: 72, nextAction: "Schedule follow-up", priority: "medium" },
-  { id: "crm3", investorId: "inv_3", tags: ["Competition"], lastContact: "2026-04-10", relationshipScore: 45, nextAction: "Re-engage with milestone", priority: "low" },
- ];
+ // The CRM sits on top of the pipeline: stage becomes tags, score and the suggested next move.
+ const CRM_NEXT: Record<string, [string, string]> = {
+  Identified: ["Send an intro", "Στείλε ένα πρώτο μήνυμα"],
+  Contacted: ["Follow up", "Κάνε follow-up"],
+  Meeting: ["Prepare the deck", "Ετοίμασε το deck"],
+  "Due Diligence": ["Share the data room", "Μοίρασε το data room"],
+  "Term Sheet": ["Review the terms", "Έλεγξε τους όρους"],
+  Closed: ["Confirm the wire", "Επιβεβαίωσε το κλείσιμο"],
+  Passed: ["Re-engage later", "Ξαναεπικοινώνησε αργότερα"],
+ };
+ const investorCRM = pipeline.map((item) => ({
+  id: `crm-${item.investorId}`,
+  investorId: item.investorId,
+  tags: [stageIndex(item.stage) >= 3 && item.stage !== 'Passed' ? 'Hot Lead' : item.stage],
+  lastContact: item.updatedAt.slice(0, 10),
+  relationshipScore: item.stage === 'Passed' ? 15 : Math.round(((stageIndex(item.stage) + 1) / 6) * 100),
+  nextAction: CRM_NEXT[item.stage] ? t(CRM_NEXT[item.stage]![0], CRM_NEXT[item.stage]![1]) : '',
+  priority: stageIndex(item.stage) >= 3 && item.stage !== 'Passed' ? 'high' : 'medium',
+ }));
 
  // SAFE Calculator State (mock)
  const safeCalcData = {
@@ -229,7 +338,7 @@ export default function Fundraising({ user }: FundraisingProps) {
    Contacted: t("Contacted", "Έγινε επαφή"),
    Meeting: t("Meeting", "Συνάντηση"),
    "Due Diligence": t("Due Diligence", "Δέουσα επιμέλεια"),
-   "Term Sheet": t("Term Sheet", "Term sheet"),
+   "Term Sheet": t("Term Sheet", "Βασικοί όροι συμφωνίας"),
    Closed: t("Closed", "Κλειστό"),
    Passed: t("Passed", "Απορρίφθηκε"),
   };
@@ -249,7 +358,7 @@ export default function Fundraising({ user }: FundraisingProps) {
   const names: Record<string, string> = {
    "Cold Intro": t("Cold Intro", "Πρώτη επαφή"),
    "Follow-up": t("Follow-up", "Υπενθύμιση"),
-   "Data Room": t("Data Room", "Data room"),
+   "Data Room": t("Data Room", "Αίθουσα δεδομένων"),
   };
   return names[name] ?? name;
  };
@@ -272,7 +381,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  };
  const tagLabel = (tag: string) => {
   const names: Record<string, string> = {
-   "Hot Lead": t("Hot Lead", "Θερμό lead"),
+   "Hot Lead": t("Hot Lead", "Πολύ θερμή προοπτική"),
    Strategic: t("Strategic", "Στρατηγικό"),
    Advisor: t("Advisor", "Σύμβουλος"),
    Angel: t("Angel", "Angel"),
@@ -283,7 +392,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  const typeLabel = (value: string) => {
   if (value === "All") return t("All", "Όλα");
   const names: Record<string, string> = {
-   "Intro Request": t("Intro Request", "Αίτημα γνωριμίας"),
+   "Intro Request": t("Intro Request", "Αίτημα σύνδεσης"),
    "Pitch Event": t("Pitch Event", "Εκδήλωση pitch"),
    "Non-dilutive Grant": t("Non-dilutive Grant", "Μη αραιωτική επιχορήγηση"),
    "Revenue-Based": t("Revenue-Based", "Με βάση τα έσοδα"),
@@ -300,7 +409,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  return (
   <>
-  <PageShell title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολουθήστε τον γύρο, βρείτε επενδυτές και κάντε αίτηση σε προγράμματα.")} maxWidth="full">
+  <PageShell title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")} maxWidth="full">
    <div className="space-y-5">
 
     {/* Tab Bar */}
@@ -355,8 +464,8 @@ export default function Fundraising({ user }: FundraisingProps) {
           { label: t("Active Leads", "Ενεργά leads"),  value: "3",        color: "" },
           { label: t("Days in Round", "Ημέρες στον γύρο"), value: "42",       color: "" },
           { label: t("Meetings", "Συναντήσεις"),      value: "18",       color: "" },
-          { label: t("Burn Rate", "Burn rate"),     value: "$12k/mo",  color: "text-red-500" },
-          { label: t("Runway Left", "Υπόλοιπο runway"),   value: `${runway}mo`, color: runway < 6 ? "text-amber-600" : "" },
+          { label: t("Burn Rate", "Ρυθμός καύσης"),     value: "$12k/mo",  color: "text-red-500" },
+          { label: t("Runway Left", "Υπόλοιπο περιθώριο"),   value: `${runway}mo`, color: runway < 6 ? "text-amber-600" : "" },
           { label: t("Close Rate", "Ρυθμός κλεισίματος"),    value: "38%",      color: "" },
          ].map(({ label, value, color }) => (
           <div key={label} className="space-y-0.5 py-1.5">
@@ -432,7 +541,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Email Templates", "Πρότυπα email")}</p>
          <div className="flex flex-wrap gap-1">
           {emailTemplates.map((et) => (
-           <button key={et.id} onClick={() => { navigator.clipboard.writeText(et.subject.replace('{{startup}}', 'EcoFlow Systems').replace('{{sector}}', 'CleanTech')); showToast(`"${emailName(et.name)}" ${t("subject copied", "το θέμα αντιγράφηκε")}`); }} className="px-2 py-1 bg-stone-50 hover:bg-stone-100 border border-stone-100 rounded-md text-xs text-stone-600 transition-colors">
+           <button key={et.id} onClick={() => { navigator.clipboard.writeText(et.subject.replace('{{startup}}', roomStartup).replace('{{sector}}', (profile?.industry && String(profile.industry)) || 'your sector')); showToast(`"${emailName(et.name)}" ${t("subject copied", "το θέμα αντιγράφηκε")}`); }} className="px-2 py-1 bg-stone-50 hover:bg-stone-100 border border-stone-100 rounded-md text-xs text-stone-600 transition-colors">
             {emailName(et.name)}
            </button>
           ))}
@@ -478,7 +587,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        {/* Stage Funnel */}
        <Card className="p-4 space-y-3">
-        <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Pipeline Funnel", "Χωνί pipeline")}</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Pipeline Funnel", "Απεικόνιση ροής επενδυτών")}</p>
         <div className="space-y-1.5">
          {stageCounts.filter(s => s.stage !== "Passed").concat(stageCounts.filter(s => s.stage === "Passed")).map(({ stage, count }) => {
           const meta = STAGE_META[stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
@@ -527,13 +636,15 @@ export default function Fundraising({ user }: FundraisingProps) {
           </div>
          ))}
         </div>
+        {(isDemoMode || roomViews > 0) && (
         <div className="flex items-center justify-between p-2 bg-amber-50 rounded-lg border border-amber-100">
          <div className="flex items-center gap-1.5">
           <BarChart2 className="w-3.5 h-3.5 text-amber-600" />
-          <span className="text-xs text-stone-600">{t("12 investors viewed this week", "12 επενδυτές το είδαν αυτή την εβδομάδα")}</span>
+          <span className="text-xs text-stone-600">{isDemoMode ? t("12 investors viewed this week", "12 επενδυτές το είδαν αυτή την εβδομάδα") : `${roomViews} ${t("views on your documents", "προβολές στα έγγραφά σου")}`}</span>
          </div>
          <button className="text-xs text-amber-700 font-semibold hover:underline" onClick={() => navigate('/insights')}>{t("Analytics", "Αναλυτικά")}</button>
         </div>
+        )}
        </Card>
       </div>
 
@@ -541,7 +652,7 @@ export default function Fundraising({ user }: FundraisingProps) {
       <div className="lg:col-span-2 space-y-4">
 
        {/* Investor Pipeline Table */}
-       <Card title={t("Investor Pipeline", "Pipeline επενδυτών")} subtitle={t("Manage your investor relationships and deal stages", "Διαχείριση σχέσεων με επενδυτές και σταδίων συμφωνίας")}>
+       <Card title={t("Investor Pipeline", "Ροή επενδυτών")} subtitle={t("Manage your investor relationships and deal stages", "Διαχείριση σχέσεων με επενδυτές και σταδίων συμφωνίας")}>
         <ul className="divide-y divide-stone-100 sm:hidden">
          {(mockTracker.investorPipeline ?? []).map((item, i) => {
           const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
@@ -551,15 +662,38 @@ export default function Fundraising({ user }: FundraisingProps) {
              <Briefcase className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-             <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `${t("Investor", "Επενδυτής")} ${i + 1}`}</p>
-             <p className="text-xs text-stone-400">{t("Lead investor", "Κύριος επενδυτής")}</p>
+             <p className="text-sm font-semibold text-stone-900">{pipelineName(item, i)}</p>
+             <p className="text-xs text-stone-400">{investorDirectory.find((v) => v.id === item.investorId) ? typeLabel(investorDirectory.find((v) => v.id === item.investorId)!.type) : t("Tracked", "Σε παρακολούθηση")}</p>
              <p className={cn("mt-1 text-sm font-semibold", meta.color)}>{stageLabel(item.stage)}</p>
              <p className="mt-1 text-sm text-stone-600">{item.notes}</p>
             </div>
-            <ChevronRight className="mt-1 w-4 h-4 shrink-0 text-stone-300" />
+            <div className="flex flex-col gap-1 shrink-0">
+             {item.stage !== 'Closed' && item.stage !== 'Passed' && (
+              <button type="button" aria-label={t("Move to next stage", "Επόμενο στάδιο")} title={t("Move to next stage", "Επόμενο στάδιο")}
+               onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed' ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
+               className="min-h-8 min-w-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
+               <ArrowRight className="w-3.5 h-3.5 text-stone-500" />
+              </button>
+             )}
+             <button type="button" aria-label={t("Remove from pipeline", "Αφαίρεση από τη ροή")} title={t("Remove from pipeline", "Αφαίρεση από τη ροή")}
+              onClick={() => { removePipelineInvestor(item.investorId); showToast(t("Removed from pipeline", "Αφαιρέθηκε από τη ροή")); }}
+              className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors">
+              <X className="w-3.5 h-3.5" />
+             </button>
+            </div>
            </li>
           );
          })}
+         {(mockTracker.investorPipeline ?? []).length === 0 && (
+          <li className="px-3 py-4">
+           <EmptyHint
+            title={t("No investors tracked yet.", "Δεν παρακολουθείς ακόμη επενδυτές.")}
+            detail={t("Add investors from the Investors tab to build your pipeline here.", "Πρόσθεσε επενδυτές από την καρτέλα «Επενδυτές» για να χτίσεις τη ροή σου εδώ.")}
+           >
+            <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => setActiveTab('investors')}>{t("Open the investor directory", "Άνοιξε τον κατάλογο επενδυτών")}</button>
+           </EmptyHint>
+          </li>
+         )}
         </ul>
         <div className="hidden overflow-x-auto sm:block">
          <table className="w-full min-w-[640px] text-left border-collapse">
@@ -582,8 +716,8 @@ export default function Fundraising({ user }: FundraisingProps) {
                  <Briefcase className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                 <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `${t("Investor", "Επενδυτής")} ${i + 1}`}</p>
-                 <p className="text-xs text-stone-400">{t("Lead investor", "Κύριος επενδυτής")}</p>
+                 <p className="text-sm font-semibold text-stone-900">{pipelineName(item, i)}</p>
+                 <p className="text-xs text-stone-400">{investorDirectory.find((v) => v.id === item.investorId) ? typeLabel(investorDirectory.find((v) => v.id === item.investorId)!.type) : t("Tracked", "Σε παρακολούθηση")}</p>
                 </div>
                </div>
               </td>
@@ -596,11 +730,34 @@ export default function Fundraising({ user }: FundraisingProps) {
                <p className="text-sm text-stone-500 max-w-[180px] truncate">{item.notes}</p>
               </td>
               <td className="px-3 py-2.5">
-               <ChevronRight className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-600 transition-colors" />
+               <div className="flex items-center justify-end gap-1">
+                {item.stage !== 'Closed' && item.stage !== 'Passed' && (
+                 <button type="button" aria-label={t("Move to next stage", "Επόμενο στάδιο")} title={t("Move to next stage", "Επόμενο στάδιο")}
+                  onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed' ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
+                  className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center transition-colors">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                 </button>
+                )}
+                <button type="button" aria-label={t("Remove from pipeline", "Αφαίρεση από τη ροή")} title={t("Remove from pipeline", "Αφαίρεση από τη ροή")}
+                 onClick={() => { removePipelineInvestor(item.investorId); showToast(t("Removed from pipeline", "Αφαιρέθηκε από τη ροή")); }}
+                 className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors">
+                 <X className="w-3.5 h-3.5" />
+                </button>
+               </div>
               </td>
              </tr>
             );
            })}
+           {(mockTracker.investorPipeline ?? []).length === 0 && (
+            <tr>
+             <td colSpan={4} className="px-3 py-3">
+              <EmptyHint
+               title={t("No investors tracked yet.", "Δεν παρακολουθείς ακόμη επενδυτές.")}
+               detail={t("Add investors from the Investors tab to build your pipeline here.", "Πρόσθεσε επενδυτές από την καρτέλα «Επενδυτές» για να χτίσεις τη ροή σου εδώ.")}
+              />
+             </td>
+            </tr>
+           )}
           </tbody>
          </table>
         </div>
@@ -614,13 +771,21 @@ export default function Fundraising({ user }: FundraisingProps) {
        {/* Bottom: Insights + Deadlines */}
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <Card title={t("Fundraising Insights", "Εικόνα χρηματοδότησης")} subtitle={t("Round analytics and benchmarks", "Αναλυτικά γύρου και σημεία αναφοράς")} className="p-4">
+        <Card title={t("Fundraising Insights", "Εικόνα χρηματοδότησης")} subtitle={isDemoMode ? t("Round analytics and benchmarks", "Αναλυτικά γύρου και σημεία αναφοράς") : t("Your pipeline at a glance", "Η ροή σου με μια ματιά")} className="p-4">
+         {!isDemoMode && pipeline.length === 0 ? (
+          <EmptyHint
+           title={t("Nothing to chart yet.", "Δεν υπάρχει κάτι να δειχθεί ακόμη.")}
+           detail={t("Track investors and this card shows where your round actually stands.", "Παρακολούθησε επενδυτές και αυτή η κάρτα δείχνει πού βρίσκεται ο γύρος σου.")}
+          >
+           <AskLink prompt="Which investors should I track for my round?" />
+          </EmptyHint>
+         ) : (
          <div className="space-y-4">
           {/* Bar chart */}
           <div className="space-y-1.5">
            <div className="flex justify-between text-xs tracking-wide">
-            <span className="text-stone-400 font-semibold">{t("Investor Interest", "Ενδιαφέρον επενδυτών")}</span>
-            <span className="text-emerald-600 font-semibold">{t("+15% vs last week", "+15% έναντι προηγούμενης εβδομάδας")}</span>
+            <span className="text-stone-400 font-semibold">{isDemoMode ? t("Investor Interest", "Ενδιαφέρον επενδυτών") : t("Pipeline by stage", "Επενδυτές ανά στάδιο")}</span>
+            <span className="text-emerald-600 font-semibold">{isDemoMode ? t("+15% vs last week", "+15% έναντι προηγούμενης εβδομάδας") : `${pipeline.length} ${t("tracked", "σε ροή")}`}</span>
            </div>
            <div className="h-24 flex items-end gap-1 group/bar">
             {barData.map((h, i) => (
@@ -631,25 +796,29 @@ export default function Fundraising({ user }: FundraisingProps) {
              >
               {/* Tooltip on hover */}
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover/bar:opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-               {h} {t("views", "προβολές")}
+               {h} {isDemoMode ? t("views", "προβολές") : t("investors", "επενδυτές")}
               </div>
              </div>
             ))}
            </div>
            <div className="flex justify-between text-xs text-stone-400">
-            {(["Mo","Tu","We","Th","Fr","Sa","Su"] as const).map(d => (
-             <span key={d} className="flex-1 text-center">{t(d, { Mo: "Δε", Tu: "Τρ", We: "Τε", Th: "Πε", Fr: "Πα", Sa: "Σα", Su: "Κυ" }[d] ?? d)}</span>
+            {barLabels.map((d, i) => (
+             <span key={i} className="flex-1 text-center">{isDemoMode ? t(d, { Mo: "Δε", Tu: "Τρ", We: "Τε", Th: "Πε", Fr: "Πα", Sa: "Σα", Su: "Κυ" }[d] ?? d) : (stageLabel(stageOrder[i] ?? "") || d).slice(0, 2)}</span>
             ))}
            </div>
           </div>
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
-           {[
+           {(isDemoMode ? [
             { label: t("Avg Response", "Μέσος χρόνος απάντησης"), value: "3.2d" },
             { label: t("Open Rate", "Ποσοστό ανοίγματος"),    value: "68%" },
             { label: t("Reply Rate", "Ποσοστό απαντήσεων"),   value: "41%" },
-           ].map(({ label, value }) => (
+           ] : [
+            { label: t("In pipeline", "Στη ροή"), value: String(pipeline.length) },
+            { label: t("In diligence", "Σε επιμέλεια"), value: String(pipeline.filter((item) => item.stage === 'Due Diligence').length) },
+            { label: t("Closed", "Κλειστοί"), value: String(pipeline.filter((item) => item.stage === 'Closed').length) },
+           ]).map(({ label, value }) => (
             <div key={label} className="text-center py-1.5 bg-stone-50 rounded-xl border border-stone-100">
              <p className="text-base font-bold text-stone-900">{value}</p>
              <p className="text-xs text-stone-400">{label}</p>
@@ -658,13 +827,16 @@ export default function Fundraising({ user }: FundraisingProps) {
           </div>
 
           {/* Hot take */}
+          {isDemoMode && (
           <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2">
            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
            <p className="text-sm text-stone-600 leading-relaxed">
             {t("Your", "Το στάδιο")} <span className="font-semibold text-stone-900">{t("Due Diligence", "δέουσα επιμέλεια")}</span> {t("stage moves 20% faster than the industry average for Seed rounds.", "κινείται 20% πιο γρήγορα από τον μέσο όρο του κλάδου για γύρους Seed.")}
            </p>
           </div>
+          )}
          </div>
+         )}
         </Card>
 
         <Card title={t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")} subtitle={t("Don't miss these opportunities", "Μην χάσετε αυτές τις ευκαιρίες")} className="p-4">
@@ -761,7 +933,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          className="w-full bg-white border border-stone-200 rounded-xl py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
         />
        </div>
-       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockInvestors.map((item) => item.type)))]; const index = types.indexOf(investorType); setInvestorType(types[(index + 1) % types.length] ?? 'All'); }}>
+       <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(investorDirectory.map((item) => item.type)))]; const index = types.indexOf(investorType); setInvestorType(types[(index + 1) % types.length] ?? 'All'); }}>
         <SlidersHorizontal className="w-3.5 h-3.5" /> {investorType === 'All' ? t("Filters", "Φίλτρα") : typeLabel(investorType)}
        </Button>
       </div>
@@ -831,10 +1003,20 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          {/* Actions */}
          <div className="flex gap-1.5 pt-1">
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => navigate('/messages')}>
+          <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => navigate(inv.person ? `/messages?user=${inv.id}` : '/messages')}>
            <Mail className="w-3 h-3 mr-1" /> {t("Contact", "Επικοινωνία")}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${inv.name}` } }))}>
+          <Button
+           variant="outline" size="sm"
+           className={cn("flex-1 h-7 text-sm rounded-lg", pipeline.some((item) => item.investorId === inv.id) && "border-emerald-200 text-emerald-700")}
+           onClick={() => {
+            if (pipeline.some((item) => item.investorId === inv.id)) { removePipelineInvestor(inv.id); showToast(t("Removed from pipeline", "Αφαιρέθηκε από τη ροή")); }
+            else { upsertPipelineInvestor({ investorId: inv.id, name: inv.name }); setActiveTab('tracker'); showToast(t("Added to your pipeline", "Μπήκε στη ροή σου")); }
+           }}
+          >
+           {pipeline.some((item) => item.investorId === inv.id) ? t("In pipeline", "Στη ροή") : t("Track", "Παρακολούθηση")}
+          </Button>
+          <Button variant="ghost" size="icon" aria-label={t("Details", "Λεπτομέρειες")} className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${inv.name}` } }))}>
            <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
           </Button>
          </div>
@@ -874,10 +1056,12 @@ export default function Fundraising({ user }: FundraisingProps) {
            <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
              <h4 className="text-sm font-bold text-stone-900">{p.title}</h4>
+             {(() => { const score = programMatch(p.tags) ?? (isDemoMode ? p.match : null); return score === null ? null : (
              <div className="flex items-center gap-1 shrink-0">
-              <div className={cn("w-1.5 h-1.5 rounded-full", p.match >= 90 ? "bg-emerald-500" : p.match >= 75 ? "bg-amber-500" : "bg-stone-300")} />
-              <span className="text-xs font-bold text-stone-600">{p.match}% {t("match", "ταίριασμα")}</span>
+              <div className={cn("w-1.5 h-1.5 rounded-full", score >= 90 ? "bg-emerald-500" : score >= 75 ? "bg-amber-500" : "bg-stone-300")} />
+              <span className="text-xs font-bold text-stone-600">{score}% {t("match", "ταίριασμα")}</span>
              </div>
+             ); })()}
             </div>
 
             <FactLine
@@ -921,12 +1105,13 @@ export default function Fundraising({ user }: FundraisingProps) {
         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Opportunities", "Ευκαιρίες")}</p>
         <h3 className="text-base font-semibold text-stone-900">{t("Funding & Non-Dilutive Sources", "Πηγές χρηματοδότησης και μη αραιωτικές")}</h3>
        </div>
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockOpportunities.map((item) => item.type)))]; const index = types.indexOf(opportunityType); setOpportunityType(types[(index + 1) % types.length] ?? 'All'); }}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(opportunities.map((item) => item.type)))]; const index = types.indexOf(opportunityType); setOpportunityType(types[(index + 1) % types.length] ?? 'All'); }}>
         <SlidersHorizontal className="w-3.5 h-3.5" /> {opportunityType === 'All' ? t("Filter", "Φίλτρο") : typeLabel(opportunityType)}
        </Button>
       </div>
 
       {/* Summary stats */}
+      {isDemoMode && (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
        {[
         { label: t("Open Opps", "Ανοιχτές ευκαιρίες"),   value: "5",      icon: Target,   color: "text-stone-900" },
@@ -944,10 +1129,19 @@ export default function Fundraising({ user }: FundraisingProps) {
         </div>
        ))}
       </div>
+      )}
 
       {/* Opportunities list */}
       <div className="space-y-2">
-       {mockOpportunities.filter((opp) => opportunityType === 'All' || opp.type === opportunityType).map((opp) => (
+       {opportunities.length === 0 && (
+        <EmptyHint
+         title={t("No live opportunities right now.", "Δεν υπάρχουν ενεργές ευκαιρίες αυτή τη στιγμή.")}
+         detail={t("The assistant can scan programs and grants that fit your startup — or track an opportunity yourself.", "Ο βοηθός μπορεί να ψάξει προγράμματα και επιχορηγήσεις που ταιριάζουν στο startup σου — ή να καταγράψεις μια ευκαιρία μόνος σου.")}
+        >
+         <AskLink prompt="Find funding opportunities that fit my startup" />
+        </EmptyHint>
+       )}
+       {opportunities.filter((opp) => opportunityType === 'All' || opp.type === opportunityType).map((opp) => (
         <div key={opp.id} className="group bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all">
          <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 shrink-0">
@@ -995,7 +1189,7 @@ export default function Fundraising({ user }: FundraisingProps) {
        <div className="flex items-center justify-between">
         <div>
          <h3 className="text-base font-semibold text-stone-900">{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</h3>
-         <p className="text-xs text-stone-400">{t("Book time with investors", "Κλείστε ώρα με επενδυτές")}</p>
+         <p className="text-xs text-stone-400">{t("Book time with investors", "Κλείσε ραντεβού με επενδυτές")}</p>
         </div>
         <button 
          onClick={() => setShowMeetingScheduler(false)}
@@ -1009,7 +1203,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         <div className="space-y-1.5">
          <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Investor", "Επενδυτής")}</label>
          <select value={meetingInvestor} onChange={(e) => setMeetingInvestor(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
-          {mockInvestors.map(inv => <option key={inv.id} value={inv.id}>{inv.name}</option>)}
+          {investorDirectory.map(inv => <option key={inv.id} value={inv.id}>{inv.name}</option>)}{investorDirectory.length === 0 && <option value="">—</option>}
          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -1040,7 +1234,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <div className="flex gap-2 pt-2">
         <Button variant="outline" className="flex-1 h-8 text-sm" onClick={() => setShowMeetingScheduler(false)}>{t("Cancel", "Ακύρωση")}</Button>
-        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = mockInvestors.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast(t("Meeting scheduled!", "Η συνάντηση προγραμματίστηκε!")); }}>{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</Button>
+        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = investorDirectory.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast(t("Meeting scheduled!", "Η συνάντηση προγραμματίστηκε!")); }}>{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</Button>
        </div>
       </div>
      </div>
@@ -1094,10 +1288,10 @@ export default function Fundraising({ user }: FundraisingProps) {
          <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
           <Plus className="w-3 h-3 mr-1" /> {t("Upload", "Μεταφόρτωση")}
          </Button>
-         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10) }); const names = new Set(next.map((item) => item.name)); setRoomFiles([...next, ...seedRoomFiles.filter((item) => !names.has(item.name))]); e.target.value = ''; }} />
+         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined }); const names = new Set(next.map((item) => item.name)); setRoomFiles(isDemoMode ? [...next, ...seedRoomFiles.filter((item) => !names.has(item.name))] : next); e.target.value = ''; }} />
         </div>
         <div className="space-y-1">
-         {roomFiles.map(file => (
+         {visibleRoomFiles.map(file => (
           <div key={file.name} className="flex items-center justify-between p-2 hover:bg-stone-50 rounded-lg transition-colors">
            <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center">
@@ -1112,12 +1306,17 @@ export default function Fundraising({ user }: FundraisingProps) {
             <span className="text-xs text-stone-400 flex items-center gap-1">
              <Eye className="w-3 h-3" /> {file.views}
             </span>
-            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about workspace assets and ${file.name}` } }))}>
+            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t("Download", "Λήψη")} title={t("Download", "Λήψη")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about workspace assets and ${file.name}` } }))}>
              <Download className="w-3.5 h-3.5 text-stone-400" />
             </button>
            </div>
           </div>
          ))}
+         {visibleRoomFiles.length === 0 && (
+          <p className="text-xs text-stone-400 py-3 text-center">
+           {selectedFolder ? t("No files in this folder yet — upload one above.", "Δεν υπάρχουν αρχεία σε αυτόν τον φάκελο ακόμη — ανέβασε ένα παραπάνω.") : t("No documents yet — upload your first file above.", "Δεν υπάρχουν έγγραφα ακόμη — ανέβασε το πρώτο σου αρχείο παραπάνω.")}
+          </p>
+         )}
         </div>
        </div>
 

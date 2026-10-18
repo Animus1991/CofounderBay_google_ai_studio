@@ -5,7 +5,6 @@ import {
   Zap,
   Users,
   GraduationCap,
-  ShieldCheck,
   ArrowRight,
   CheckCircle2,
   Globe,
@@ -18,7 +17,8 @@ import { useAuth } from "../App";
 import { cn } from "../lib/utils";
 import { LanguageToggle, useT } from "../lib/language";
 import { Both } from "../lib/both";
-import { CAST, avatarFor } from "../data/cast";
+import { MOCK_AGENTS } from "../services/aiService";
+import { appEnv } from "../config/env";
 
 export default function LandingPage() {
   const t = useT();
@@ -27,10 +27,10 @@ export default function LandingPage() {
 
   const features = [
     {
-      title: t("Structured Matching", "Αντιστοίχιση"),
+      title: t("Explainable matching", "Αντιστοίχιση με εξήγηση"),
       description: t(
-        "People with your skills and stage.",
-        "Άνθρωποι με τις δεξιότητες και το στάδιό σου.",
+        "People whose skills complement yours, at your stage and commitment — with the reason behind every score.",
+        "Άνθρωποι που συμπληρώνουν τις δεξιότητές σου, στο ίδιο στάδιο και με την ίδια δέσμευση — με τον λόγο πίσω από κάθε σκορ.",
       ),
       icon: Users,
       color: "bg-blue-50 text-blue-600",
@@ -64,11 +64,12 @@ export default function LandingPage() {
     },
   ];
 
+  // Product facts a visitor can verify in the app itself — no invented traction numbers.
   const stats = [
-    { label: t("Active Founders", "Ενεργοί ιδρυτές"), value: "12,000+" },
-    { label: t("Successful Matches", "Επιτυχημένες αντιστοιχίσεις"), value: "4,500+" },
-    { label: t("Verified Mentors", "Επαληθευμένοι μέντορες"), value: "800+" },
-    { label: t("Startup Hubs", "Κόμβοι startup"), value: "150+" },
+    { label: t("Questions in the fit check", "Ερωτήσεις στο fit check"), value: "5" },
+    { label: t("Compatibility dimensions, each explained", "Διαστάσεις συμβατότητας, καθεμία με εξήγηση"), value: "5" },
+    { label: t("AI specialists for founders", "Ειδικοί AI για ιδρυτές"), value: String(MOCK_AGENTS.length) },
+    { label: t("Languages, switch any time", "Γλώσσες, αλλάζεις όποτε θέλεις"), value: "2" },
   ];
 
   return (
@@ -111,12 +112,12 @@ export default function LandingPage() {
               >
                 {t("Communities", "Κοινότητες")}
               </a>
-              <a
-                href="#pricing"
+              <NavLink
+                to="/pricing"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                {t("Pricing", "Τιμές")}
-              </a>
+                {t("Pricing", "Πλάνα")}
+              </NavLink>
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 shrink min-w-0">
@@ -127,14 +128,14 @@ export default function LandingPage() {
                     onClick={() => toggleDemoMode(false)}
                     className="min-h-11 px-3 whitespace-nowrap text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
                   >
-                    {t("Exit", "Έξοδος")}
+                    {t("Exit demo", "Έξοδος από τη δοκιμαστική λειτουργία")}
                   </button>
                   <NavLink
                     to="/dashboard"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    <span className="sm:hidden">{t("Dashboard", "Πίνακας")}</span>
-                    <span className="hidden sm:inline">{t("Go to Dashboard", "Στον πίνακα")}</span>
+                    <span className="sm:hidden">{t("Dashboard", "Πίνακας ελέγχου")}</span>
+                    <span className="hidden sm:inline">{t("Go to dashboard", "Πίνακας ελέγχου")}</span>
                   </NavLink>
                 </div>
               ) : user ? (
@@ -146,13 +147,13 @@ export default function LandingPage() {
                     }}
                     className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    {t("Demo", "Δείγμα")}
+                    {t("Demo", "Demo")}
                   </button>
                   <NavLink
                     to="/dashboard"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    {t("Go to Dashboard", "Στον πίνακα")}
+                    {t("Go to dashboard", "Πίνακας ελέγχου")}
                   </NavLink>
                 </div>
               ) : (
@@ -164,7 +165,7 @@ export default function LandingPage() {
                     }}
                     className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    {t("Demo", "Δείγμα")}
+                    {t("Demo", "Demo")}
                   </button>
                   <NavLink
                     to="/login"
@@ -196,7 +197,7 @@ export default function LandingPage() {
             >
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
                 <Sparkles className="w-3 h-3" />
-                {t("60 seconds · same fields Matches scores", "60 δευτερόλεπτα · τα ίδια πεδία που βαθμολογεί το Matches")}
+                {t("60 seconds · no account needed", "60 δευτερόλεπτα · χωρίς λογαριασμό")}
               </span>
               <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
                 {t("Build your startup team with", "Φτιάξε την ομάδα της startup σου με")}{" "}
@@ -204,8 +205,8 @@ export default function LandingPage() {
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-stone-500 leading-relaxed mb-10 max-w-2xl mx-auto">
                 {t(
-                  "Five questions write skills, looking-for, stage, commitment and hours. The studio assistant then ranks people, explains the score, and books the next step — the same lists every page already uses.",
-                  "Πέντε ερωτήσεις γράφουν δεξιότητες, αναζήτηση, στάδιο, δέσμευση και ώρες. Ο βοηθός του στούντιο μετά βαθμολογεί ανθρώπους, εξηγεί το σκορ και κλείνει το επόμενο βήμα — οι ίδιες λίστες που ήδη χρησιμοποιεί κάθε σελίδα.",
+                  "Five questions capture your skills, what you are looking for, stage, commitment and working hours. Matches then ranks people, explains every score, and the assistant helps you take the next step.",
+                  "Πέντε ερωτήσεις καταγράφουν τις δεξιότητές σου, τι αναζητάς, το στάδιο, τη δέσμευση και τις ώρες εργασίας. Οι Αντιστοιχίσεις κατατάσσουν ανθρώπους, εξηγούν κάθε σκορ και ο βοηθός σε οδηγεί στο επόμενο βήμα.",
                 )}
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-4 w-full max-w-xl mx-auto">
@@ -223,13 +224,13 @@ export default function LandingPage() {
                   }}
                   className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 border border-stone-200 bg-white transition-all"
                 >
-                  {t("Demo", "Δείγμα")}
+                  {t("Try the demo", "Δοκίμασε το demo")}
                 </button>
                 <a
                   href="#features"
                   className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 inline-flex items-center justify-center transition-all"
                 >
-                  {t("Explore Features", "Εξερεύνηση λειτουργιών")}
+                  {t("See the features", "Δες τις λειτουργίες")}
                 </a>
               </div>
             </motion.div>
@@ -267,52 +268,63 @@ export default function LandingPage() {
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <p className="text-xs font-medium text-stone-400 tracking-wide mb-4">
-            <Both en="What you will actually use" el="Τι θα χρησιμοποιήσεις πραγματικά" />
+            <Both en="How it works, in three steps" el="Πώς λειτουργεί, σε τρία βήματα" />
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <NavLink to="/quiz" className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 transition-all">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
-                <Both en="Featured founder" el="Προτεινόμενος ιδρυτής" />
-              </p>
-              <div className="flex items-center gap-3">
-                <img src={avatarFor('sarah-chen', 80)} alt="Sarah Chen" className="w-12 h-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-stone-900 truncate">Sarah Chen</p>
-                  <p className="text-xs text-stone-500 truncate">{CAST.find((p) => p.id === 'sarah-chen')?.headline}</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">{t("New York · FinTech", "Νέα Υόρκη · FinTech")}</p>
-                </div>
-              </div>
-            </NavLink>
-            <NavLink to="/events" className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 transition-all">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
-                <Both en="Next session" el="Επόμενη συνάντηση" />
-              </p>
-              <p className="text-sm font-medium text-stone-900">Startup Founders Networking Night</p>
-              <p className="text-xs text-stone-500 mt-1">{t("London · 28 Mar 2026 · 6–9 PM", "Λονδίνο · 28 Μαρ 2026 · 6–9 μ.μ.")}</p>
-              <p className="text-[11px] text-stone-400 mt-2">
-                <Both en="Same card the Events page lists. Register puts it on Calendar." el="Η ίδια κάρτα με τις Εκδηλώσεις. Η εγγραφή τη βάζει στο Ημερολόγιο." />
-              </p>
-            </NavLink>
-            <NavLink to="/quiz" className="bg-stone-900 rounded-2xl p-5 text-white hover:bg-stone-800 transition-all">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
-                <Both en="Studio operator" el="Τελεστής στούντιο" />
-              </p>
-              <p className="text-sm font-medium">{t("Fit check, then ask the assistant", "Fit check, μετά ρώτα τον βοηθό")}</p>
-              <p className="text-xs text-stone-400 mt-1">
-                <Both en="No login. 5 questions. Then “who should I meet this week” runs on the same people Matches ranks." el="Χωρίς είσοδο. 5 ερωτήσεις. Μετά το «ποιον να γνωρίσω» τρέχει στα ίδια άτομα με το Matches." />
-              </p>
-            </NavLink>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-stone-600">
             {[
-              { n: '1', en: 'Fit check writes the matching fields.', el: 'Το fit check γράφει τα πεδία αντιστοίχισης.' },
-              { n: '2', en: 'Matches ranks people with reasons.', el: 'Το Matches βαθμολογεί ανθρώπους με αιτίες.' },
-              { n: '3', en: 'The assistant saves, connects and books.', el: 'Ο βοηθός αποθηκεύει, συνδέει και κλείνει.' },
+              {
+                n: "1",
+                to: "/quiz",
+                icon: Sparkles,
+                title: t("Take the fit check", "Κάνε το fit check"),
+                body: t(
+                  "Five questions, no account needed. They capture skills, what you look for, stage, commitment and working hours — the exact fields matching scores.",
+                  "Πέντε ερωτήσεις, χωρίς λογαριασμό. Καταγράφουν δεξιότητες, τι αναζητάς, στάδιο, δέσμευση και ώρες εργασίας — ακριβώς τα πεδία που βαθμολογεί η αντιστοίχιση.",
+                ),
+                dark: false,
+              },
+              {
+                n: "2",
+                to: "/signup",
+                icon: Users,
+                title: t("See who fits, and why", "Δες ποιοι ταιριάζουν, και γιατί"),
+                body: t(
+                  "Matches ranks members across five dimensions and explains every score in plain words. Save people, send a connection request, start a conversation.",
+                  "Οι Αντιστοιχίσεις κατατάσσουν μέλη σε πέντε διαστάσεις και εξηγούν κάθε σκορ με απλά λόγια. Αποθήκευσε άτομα, στείλε αίτημα σύνδεσης, ξεκίνα συνομιλία.",
+                ),
+                dark: false,
+              },
+              {
+                n: "3",
+                to: "/signup",
+                icon: MessageSquare,
+                title: t("Build with your team", "Χτίσε με την ομάδα σου"),
+                body: t(
+                  "Private messages, milestones, a shared workspace, fundraising tools and AI specialists — everything in one place, in English or Greek.",
+                  "Ιδιωτικά μηνύματα, ορόσημα, κοινός χώρος εργασίας, εργαλεία χρηματοδότησης και ειδικοί AI — όλα σε ένα μέρος, στα ελληνικά ή στα αγγλικά.",
+                ),
+                dark: true,
+              },
             ].map((step) => (
-              <div key={step.n} className="flex gap-3">
-                <span className="text-stone-900 font-semibold">{step.n}</span>
-                <Both en={step.en} el={step.el} />
-              </div>
+              <NavLink
+                key={step.n}
+                to={step.to}
+                className={cn(
+                  "block text-left rounded-2xl border p-5 transition-all",
+                  step.dark ? "bg-stone-900 border-stone-900 text-white hover:bg-stone-800" : "bg-white border-stone-100 hover:border-stone-300",
+                )}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <span className={cn("text-[10px] font-semibold tracking-wider", step.dark ? "text-stone-400" : "text-stone-400")}>
+                    {t(`Step ${step.n}`, `Βήμα ${step.n}`)}
+                  </span>
+                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", step.dark ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-700")}>
+                    <step.icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <p className={cn("text-sm font-semibold", step.dark ? "text-white" : "text-stone-900")}>{step.title}</p>
+                <p className={cn("text-xs mt-1.5 leading-relaxed", step.dark ? "text-stone-400" : "text-stone-500")}>{step.body}</p>
+              </NavLink>
             ))}
           </div>
         </div>
@@ -400,63 +412,21 @@ export default function LandingPage() {
                 <ArrowRight className="w-5 h-5" />
               </NavLink>
             </div>
-            <div className="lg:w-1/2 grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="h-48 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
-                  <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-                    <TrendingUp className="w-7 h-7" />
+            <div className="lg:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              {[
+                { icon: TrendingUp, color: "bg-blue-50 text-blue-600", title: t("Growth Hub", "Κόμβος ανάπτυξης"), body: t("Acquisition, retention and pricing experiments, discussed with numbers.", "Απόκτηση πελατών, διατήρηση και πειράματα τιμολόγησης, με αριθμούς.") },
+                { icon: MessageSquare, color: "bg-purple-50 text-purple-600", title: t("Founder Lounge", "Στέκι ιδρυτών"), body: t("Ask anything about the first year of a company — honest answers from people living it.", "Ρώτα οτιδήποτε για τον πρώτο χρόνο μιας εταιρείας — ειλικρινείς απαντήσεις από ανθρώπους που το ζουν.") },
+                { icon: Zap, color: "bg-amber-50 text-amber-600", title: t("AI Builders", "Δημιουργοί AI"), body: t("Models, evaluation, costs and what actually ships to customers.", "Μοντέλα, αξιολόγηση, κόστη και τι φτάνει πραγματικά στους πελάτες.") },
+                { icon: Globe, color: "bg-emerald-50 text-emerald-600", title: t("Global Scale", "Διεθνής επέκταση"), body: t("Entering new markets, remote teams and working across time zones.", "Είσοδος σε νέες αγορές, απομακρυσμένες ομάδες και δουλειά σε διαφορετικές ζώνες ώρας.") },
+              ].map((hub) => (
+                <NavLink key={hub.title} to="/communities" className="block text-left bg-white rounded-2xl border border-stone-100 p-6 shadow-sm hover:border-stone-300 transition-all">
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4", hub.color)}>
+                    <hub.icon className="w-6 h-6" />
                   </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">
-                      {t("Growth Hub", "Κόμβος ανάπτυξης")}
-                    </div>
-                    <div className="text-xs font-medium text-stone-400 mt-1">
-                      {t("1.2k members", "1.2k μέλη")}
-                    </div>
-                  </div>
-                </div>
-                <div className="h-64 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
-                  <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4">
-                    <MessageSquare className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">
-                      {t("Founder Lounge", "Σαλόνι ιδρυτών")}
-                    </div>
-                    <div className="text-xs font-medium text-stone-400 mt-1">
-                      {t("3.4k members", "3.4k μέλη")}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4 pt-12">
-                <div className="h-64 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
-                  <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
-                    <Zap className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">
-                      {t("AI Builders", "Δημιουργοί AI")}
-                    </div>
-                    <div className="text-xs font-medium text-stone-400 mt-1">
-                      {t("2.1k members", "2.1k μέλη")}
-                    </div>
-                  </div>
-                </div>
-                <div className="h-48 bg-white rounded-xl border border-stone-100 p-8 shadow-sm flex flex-col justify-between">
-                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
-                    <Globe className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">
-                      {t("Global Scale", "Παγκόσμια κλίμακα")}
-                    </div>
-                    <div className="text-xs font-medium text-stone-400 mt-1">
-                      {t("850 members", "850 μέλη")}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <div className="font-semibold text-stone-900 text-sm">{hub.title}</div>
+                  <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">{hub.body}</p>
+                </NavLink>
+              ))}
             </div>
           </div>
         </div>
@@ -536,8 +506,8 @@ export default function LandingPage() {
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-stone-500 mb-12 max-w-2xl mx-auto">
                 {t(
-                  "Join thousands of founders building the next generation of world-changing companies.",
-                  "Μπες μαζί με χιλιάδες ιδρυτές που χτίζουν την επόμενη γενιά εταιρειών που αλλάζουν τον κόσμο.",
+                  "Create your profile in two minutes. The fit check, matches and messaging are free; paid plans add more when you need it.",
+                  "Δημιούργησε το προφίλ σου σε δύο λεπτά. Το fit check, οι αντιστοιχίσεις και τα μηνύματα είναι δωρεάν· τα πλάνα επί πληρωμή προσθέτουν περισσότερα όταν τα χρειαστείς.",
                 )}
               </p>
               <NavLink
@@ -652,8 +622,16 @@ export default function LandingPage() {
                   </NavLink>
                 </li>
                 <li>
+                  <NavLink
+                    to="/pricing"
+                    className="hover:text-stone-900 transition-colors"
+                  >
+                    {t("Pricing", "Πλάνα")}
+                  </NavLink>
+                </li>
+                <li>
                   <a
-                    href="mailto:support@cofounderbay.com"
+                    href={`mailto:${appEnv.legal.supportEmail}`}
                     className="hover:text-stone-900 transition-colors"
                   >
                     {t("Contact", "Επικοινωνία")}
@@ -664,21 +642,11 @@ export default function LandingPage() {
           </div>
           <div className="pt-8 border-t border-stone-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-stone-400">
-              © {new Date().getFullYear()} CoFounderBay. {t("All rights reserved.", "Με επιφύλαξη παντός δικαιώματος.")}
+              © {new Date().getFullYear()} {appEnv.legal.entity}. {t("All rights reserved.", "Με την επιφύλαξη παντός δικαιώματος.")}
             </p>
-            <div className="flex gap-6">
-              <a
-                href="#"
-                className="text-stone-400 hover:text-stone-900 transition-colors"
-              >
-                <Globe className="w-5 h-5" />
-              </a>
-              <a
-                href="#"
-                className="text-stone-400 hover:text-stone-900 transition-colors"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </a>
+            <div className="flex items-center gap-4 text-xs text-stone-400">
+              <LanguageToggle className="min-h-9" />
+              <a href={`mailto:${appEnv.legal.supportEmail}`} className="hover:text-stone-900 transition-colors">{appEnv.legal.supportEmail}</a>
             </div>
           </div>
         </div>

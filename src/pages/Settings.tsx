@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bell,
   CreditCard,
@@ -18,12 +18,15 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { readNotificationPrefs, readPlan, readSaved, resetAllLists, writeNotificationPrefs, writeOpenTo, writePlan, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
+import { readNotificationPrefs, readOpenTo, readPlan, readSaved, resetAllLists, writeNotificationPrefs, writeOpenTo, writePlan, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
+import { useBlocks, unblockPerson } from "../lib/social";
+import { useSyncStatus } from "../lib/cloudSync";
+import Avatar from "../components/ui/Avatar";
+import { findPerson, avatarOf } from "../lib/peopleSource";
 import { AskLink } from "../components/ui/EmptyHint";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
-import { auth } from "../firebase";
-import { changeAccountPassword, deleteAccount, persistAccount } from "../lib/account";
+import { changeAccountPassword, deleteAccount, persistAccount, persistPrivacy, signOutAccount } from "../lib/account";
 
 const FORM_KEY = "cfb.accountForm";
 const SWITCH_KEY = "cfb.accountSwitches";
@@ -59,6 +62,7 @@ type Switches = {
   showLocation: boolean;
   showStartup: boolean;
   discoverable: boolean;
+  sharePresence: boolean;
   twoFactor: boolean;
   pushMatches: boolean;
   pushMessages: boolean;
@@ -105,6 +109,7 @@ const defaultSwitches = (): Switches => ({
   showLocation: true,
   showStartup: true,
   discoverable: true,
+  sharePresence: true,
   twoFactor: false,
   pushMatches: true,
   pushMessages: true,
@@ -197,9 +202,37 @@ export default function Settings() {
     photo: (profile as { avatarUrl?: string } | null)?.avatarUrl || profile?.profile?.profilePhoto || user?.photoURL || "",
   });
 
-  const [activeTab, setActiveTab] = useState<"account" | "notifications" | "privacy" | "billing">("account");
+  type SettingsTab = "account" | "notifications" | "privacy" | "billing";
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get("tab");
+  const activeTab: SettingsTab = tabParam === "notifications" || tabParam === "privacy" || tabParam === "billing" ? tabParam : "account";
+  const setActiveTab = (id: SettingsTab) => {
+    const next = new URLSearchParams(params);
+    if (id === "account") next.delete("tab");
+    else next.set("tab", id);
+    setParams(next, { replace: true });
+  };
   const [form, setForm] = useState<AccountForm>(() => readStored(FORM_KEY, seedForm()));
-  const [switches, setSwitches] = useState<Switches>(() => readStored(SWITCH_KEY, defaultSwitches()));
+  const blocks = useBlocks();
+  const syncStatus = useSyncStatus();
+  const [switches, setSwitches] = useState<Switches>(() => {
+    const stored = readStored(SWITCH_KEY, defaultSwitches());
+    // A real account seeds from what is already saved on the profile, so two devices agree.
+    const remote = profile as unknown as { discoverable?: boolean; messagesFrom?: Switches["messagesFrom"]; showEmail?: boolean; sharePresence?: boolean; openTo?: string[]; mentorAvailability?: boolean; profileVisibility?: string } | null;
+    if (isDemoMode || !remote) return stored;
+    return {
+      ...stored,
+      discoverable: remote.discoverable ?? stored.discoverable,
+      messagesFrom: remote.messagesFrom ?? stored.messagesFrom,
+      showEmail: remote.showEmail ?? stored.showEmail,
+      sharePresence: remote.sharePresence ?? stored.sharePresence,
+      publicProfile: remote.profileVisibility ? remote.profileVisibility === "Public" : stored.publicProfile,
+      mentorAvailability: remote.mentorAvailability ?? (Array.isArray(remote.openTo) ? remote.openTo.includes("mentoring") : stored.mentorAvailability),
+      openToCofounder: Array.isArray(remote.openTo) ? remote.openTo.includes("cofounder") : stored.openToCofounder,
+      openToInvestors: Array.isArray(remote.openTo) ? remote.openTo.includes("investor") : stored.openToInvestors,
+      openToAdvisors: Array.isArray(remote.openTo) ? remote.openTo.includes("advisor") : stored.openToAdvisors,
+    };
+  });
   const [notifications, setNotifications] = useState<NotificationPrefs>(readNotificationPrefs);
   const [cards, setCards] = useState<PayCard[]>(() => {
     const stored = readStored<PayCard[]>(CARDS_KEY, []);
@@ -236,11 +269,24 @@ export default function Settings() {
     setSwitches((prev) => {
       const next = { ...prev, ...patch };
       localStorage.setItem(SWITCH_KEY, JSON.stringify(next));
-      const kinds: OpenToKind[] = [];
+      const kinds: OpenToKind[] = readOpenTo().filter((kind) => kind === "speaking");
       if (next.openToCofounder) kinds.push("cofounder");
       if (next.openToInvestors) kinds.push("investor");
       if (next.openToAdvisors) kinds.push("advisor");
+      if (next.mentorAvailability) kinds.push("mentoring");
       writeOpenTo(kinds);
+      // Privacy choices other members must respect live on the profile document.
+      if (!isDemoMode && user) {
+        void persistPrivacy(user.uid, {
+          discoverable: next.discoverable && next.publicProfile,
+          messagesFrom: next.messagesFrom,
+          showEmail: next.showEmail,
+          visibility: next.publicProfile ? "Public" : "Connections Only",
+          sharePresence: next.sharePresence,
+          openTo: kinds,
+          mentorAvailability: next.mentorAvailability,
+        }).catch(() => undefined);
+      }
       return next;
     });
   };
@@ -285,7 +331,7 @@ export default function Settings() {
       return;
     }
     try {
-      await auth.signOut();
+      await signOutAccount();
     } catch {
       /* still return to the start */
     }
@@ -334,13 +380,14 @@ export default function Settings() {
 
   const visibility: { key: keyof Switches; title: string; desc: string }[] = [
     { key: "publicProfile", title: t("Public profile", "Δημόσιο προφίλ"), desc: t("People can open your profile from discovery.", "Το προφίλ ανοίγει από την εξερεύνηση.") },
-    { key: "discoverable", title: t("Appear in discovery", "Εμφάνιση στην εξερεύνηση"), desc: t("Your card is included in search results.", "Η κάρτα σου μπαίνει στα αποτελέσματα.") },
+    { key: "discoverable", title: t("Appear in Matches and Explore", "Εμφάνιση σε Αντιστοιχίσεις και Εξερεύνηση"), desc: t("Your card is included in lists and search results.", "Η κάρτα σου περιλαμβάνεται στις λίστες και στα αποτελέσματα αναζήτησης.") },
+    { key: "sharePresence", title: t("Show when you are online", "Εμφάνιση όταν είσαι σε σύνδεση"), desc: t("Members see “online now” and “last seen” on your profile and in Messages.", "Τα μέλη βλέπουν «σε σύνδεση» και «τελευταία φορά» στο προφίλ σου και στα Μηνύματα.") },
     { key: "showEmail", title: t("Show email", "Εμφάνιση email"), desc: t("Visible on your profile to signed-in members.", "Φαίνεται σε συνδεδεμένα μέλη.") },
     { key: "showLocation", title: t("Show location", "Εμφάνιση τοποθεσίας"), desc: t("City and country on your card.", "Πόλη και χώρα στην κάρτα.") },
     { key: "showStartup", title: t("Show startup", "Εμφάνιση startup"), desc: t("Company, stage, and industry stay visible.", "Εταιρεία, στάδιο και κλάδος μένουν ορατά.") },
     { key: "mentorAvailability", title: t("Open to mentor", "Διαθέσιμος ως μέντορας"), desc: t("A badge that you can take mentor requests.", "Σήμα ότι δέχεσαι αιτήματα.") },
     { key: "openToCofounder", title: t("Looking for a co-founder", "Ψάχνω συνιδρυτή"), desc: t("Shown on your card and in matches.", "Φαίνεται στην κάρτα και στις αντιστοιχίσεις.") },
-    { key: "openToInvestors", title: t("Open to investors", "Ανοιχτός σε επενδυτές"), desc: t("Investors can request an intro.", "Οι επενδυτές μπορούν να ζητήσουν γνωριμία.") },
+    { key: "openToInvestors", title: t("Open to investors", "Ανοιχτός σε επενδυτές"), desc: t("Investors can request an intro.", "Οι επενδυτές μπορούν να σου στείλουν αίτημα σύνδεσης.") },
     { key: "openToAdvisors", title: t("Open to advisors", "Ανοιχτός σε συμβούλους"), desc: t("Advisors can offer a session.", "Οι σύμβουλοι μπορούν να προτείνουν συνεδρία.") },
   ];
 
@@ -350,9 +397,14 @@ export default function Settings() {
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t("Settings", "Ρυθμίσεις")}</h1>
           <p className="mt-1 max-w-3xl text-sm text-stone-500">
-            {t(
-              "Account, alerts, privacy, and billing for this workspace. Changes stay in this browser.",
-              "Λογαριασμός, ειδοποιήσεις, απόρρητο και χρέωση. Οι αλλαγές μένουν σε αυτόν τον browser.",
+            {isDemoMode
+              ? t("Account, notifications, privacy and plan. In the demo, changes stay in this browser.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Στη δοκιμαστική λειτουργία, οι αλλαγές μένουν σε αυτόν τον browser.")
+              : t("Account, notifications, privacy and plan. Changes are saved to your account and follow you to every device.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Οι αλλαγές αποθηκεύονται στον λογαριασμό σου και σε ακολουθούν σε κάθε συσκευή.")}
+            {!isDemoMode && (
+              <span className={cn("ml-2 inline-flex items-center gap-1.5 text-xs font-medium", syncStatus === "error" || syncStatus === "offline" ? "text-amber-600" : "text-stone-400")}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", syncStatus === "synced" ? "bg-emerald-500" : syncStatus === "syncing" ? "bg-stone-400 animate-pulse" : syncStatus === "idle" ? "bg-stone-300" : "bg-amber-500")} />
+                {syncStatus === "synced" ? t("Saved", "Αποθηκεύτηκε") : syncStatus === "syncing" ? t("Saving…", "Αποθήκευση…") : syncStatus === "offline" ? t("Offline — will save when back online", "Εκτός σύνδεσης — θα αποθηκευτεί μόλις επανέλθεις") : syncStatus === "error" ? t("Could not save", "Η αποθήκευση απέτυχε") : ""}
+              </span>
             )}
           </p>
           <p className="mt-2">
@@ -360,7 +412,7 @@ export default function Settings() {
           </p>
         </div>
         <p className="text-sm text-stone-500 truncate">
-          {form.email || user?.email || t("Demo account", "Λογαριασμός δείγματος")}
+          {form.email || user?.email || t("Demo account", "Δοκιμαστικός λογαριασμός")}
         </p>
       </div>
 
@@ -593,7 +645,7 @@ export default function Settings() {
                       switches.digest === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700",
                     )}
                   >
-                    {id === "instant" ? t("Instant", "Άμεσα") : id === "daily" ? t("Daily", "Ημερήσια") : id === "weekly" ? t("Weekly", "Εβδομαδιαία") : t("Off", "Κλειστή")}
+                    {id === "instant" ? t("Instant", "Άμεσα") : id === "daily" ? t("Daily", "Ημερήσια") : id === "weekly" ? t("Weekly", "Εβδομαδιαία") : t("Off", "Ανενεργή")}
                   </button>
                 ))}
               </div>
@@ -641,7 +693,7 @@ export default function Settings() {
               />
               <SwitchRow
                 title={t("Weekly founder digest", "Εβδομαδιαία σύνοψη ιδρυτή")}
-                desc={t("One email with programs, events, and unread intros.", "Ένα email με προγράμματα, εκδηλώσεις και αδιάβαστες γνωριμίες.")}
+                desc={t("One email with programs, events, and unread intros.", "Ένα email με προγράμματα, εκδηλώσεις και αναπάντητα αιτήματα σύνδεσης.")}
                 on={switches.weeklyDigest}
                 onClick={() => patchSwitches({ weeklyDigest: !switches.weeklyDigest })}
               />
@@ -731,7 +783,7 @@ export default function Settings() {
             )}
           </Card>
 
-          <Card title={t("Who can message you", "Ποιοι σου στέλνουν μήνυμα")} subtitle={t("Intros still appear in your requests.", "Οι γνωριμίες μένουν στα αιτήματα.")}>
+          <Card title={t("Who can message you", "Ποιοι σου στέλνουν μήνυμα")} subtitle={t("Intros still appear in your requests.", "Τα αιτήματα σύνδεσης εμφανίζονται πάντα στα Αιτήματα.")}>
             <div className="space-y-2">
               {([
                 ["anyone", t("Anyone", "Οποιοσδήποτε"), t("Members can start a chat.", "Τα μέλη ξεκινούν συνομιλία.")],
@@ -816,11 +868,11 @@ export default function Settings() {
             {deleteOpen && (
               <div className="mt-4 space-y-3 rounded-xl border border-red-100 bg-red-50 p-4">
                 <p className="text-sm text-red-800">
-                  {t('Type DELETE to leave this account.', "Γράψε DELETE για να φύγεις από τον λογαριασμό.")}
+                  {t('Type DELETE to leave this account.', "Γράψε DELETE για να διαγράψεις τον λογαριασμό.")}
                 </p>
                 <input className={inputClass} value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="DELETE" />
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="ghost" onClick={() => { setDeleteOpen(false); setDeleteText(""); }}>{t("Cancel", "Άκυρο")}</Button>
+                  <Button type="button" variant="ghost" onClick={() => { setDeleteOpen(false); setDeleteText(""); }}>{t("Cancel", "Ακύρωση")}</Button>
                   <Button
                     type="button"
                     className="bg-red-700 hover:bg-red-800"
@@ -844,20 +896,42 @@ export default function Settings() {
                       }
                     }}
                   >
-                    {t("Delete and sign out", "Διαγραφή και έξοδος")}
+                    {t("Delete and sign out", "Διαγραφή και αποσύνδεση")}
                   </Button>
                 </div>
               </div>
             )}
           </Card>
 
-          <Card title={t("Blocked", "Αποκλεισμένοι")} subtitle={t("People who cannot message you.", "Άτομα που δεν μπορούν να σου στείλουν μήνυμα.")}>
-            <p className="text-sm text-stone-500">
-              {t("No one is blocked. Block from a conversation’s more menu, then they appear here.", "Κανείς δεν είναι αποκλεισμένος. Ο αποκλεισμός γίνεται από το μενού μιας συνομιλίας.")}
-            </p>
-            <NavLink to="/messages" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-stone-900 underline-offset-4 hover:underline">
-              {t("Open messages", "Άνοιγμα μηνυμάτων")}
-            </NavLink>
+          <Card title={t("Blocked members", "Αποκλεισμένα μέλη")} subtitle={t("They cannot message you or see you in their lists.", "Δεν μπορούν να σου στείλουν μήνυμα ούτε να σε δουν στις λίστες τους.")}>
+            {blocks.length === 0 ? (
+              <>
+                <p className="text-sm text-stone-500">
+                  {t("No one is blocked. You can block a member from the “more” menu of a conversation; they will appear here.", "Δεν έχεις αποκλείσει κανέναν. Μπορείς να αποκλείσεις ένα μέλος από το μενού «περισσότερα» μιας συνομιλίας· θα εμφανιστεί εδώ.")}
+                </p>
+                <NavLink to="/messages" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-stone-900 underline-offset-4 hover:underline">
+                  {t("Open messages", "Άνοιγμα μηνυμάτων")}
+                </NavLink>
+              </>
+            ) : (
+              <ul className="divide-y divide-stone-100">
+                {blocks.map((item) => {
+                  const person = findPerson(item.id);
+                  return (
+                    <li key={item.id} className="flex items-center gap-3 py-3">
+                      <Avatar src={person ? avatarOf(person) : undefined} fallback={person?.fullName || item.name} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-stone-900">{person?.fullName || item.name || t("Member", "Μέλος")}</p>
+                        <p className="text-xs text-stone-400">{t("Blocked", "Αποκλεισμένο μέλος")}</p>
+                      </div>
+                      <Button type="button" variant="outline" className="min-h-10 px-3 text-xs" onClick={() => void unblockPerson(item.id).then(() => success(t("Member unblocked", "Ο αποκλεισμός αφαιρέθηκε")))}>
+                        {t("Unblock", "Άρση αποκλεισμού")}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Card>
         </div>
       )}
@@ -905,13 +979,13 @@ export default function Settings() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {(isDemoMode
                 ? [
-                    [t("Intro requests", "Αιτήματα γνωριμίας"), "12", "40"],
+                    [t("Intro requests", "Αιτήματα σύνδεσης"), "12", "40"],
                     [t("Mentor sessions", "Συνεδρίες μεντόρων"), "2", "5"],
                     [t("Data room files", "Αρχεία data room"), "8", "50"],
                     [t("Tracked applications", "Αιτήσεις"), "4", "20"],
                   ]
                 : [
-                    [t("Intro requests", "Αιτήματα γνωριμίας"), "0", "10"],
+                    [t("Intro requests", "Αιτήματα σύνδεσης"), "0", "10"],
                     [t("Mentor sessions", "Συνεδρίες μεντόρων"), "0", "1"],
                     [t("Data room files", "Αρχεία data room"), "0", "5"],
                     [t("Tracked applications", "Αιτήσεις"), "0", "5"],
@@ -1072,7 +1146,7 @@ export default function Settings() {
                       t("Plan selected", "Επιλέχθηκε πλάνο"),
                       id === "starter"
                         ? t("Starter is live. Checkout is not required.", "Το Starter είναι ενεργό. Δεν χρειάζεται πληρωμή.")
-                        : t("Saved on this account. Paid checkout is not live yet, so Starter stays until billing is connected.", "Αποθηκεύτηκε σε αυτόν τον λογαριασμό. Η πληρωμή δεν είναι ζωντανή ακόμη, οπότε μένεις στο Starter μέχρι να συνδεθεί χρέωση."),
+                        : t("Saved on this account. Paid checkout is not live yet, so Starter stays until billing is connected.", "Αποθηκεύτηκε σε αυτόν τον λογαριασμό. Η διαδικασία πληρωμής δεν είναι ακόμη διαθέσιμη, οπότε μένεις στο Starter μέχρι να συνδεθεί χρέωση."),
                     );
                   }}
                   className={cn("flex flex-col rounded-xl border p-4 text-left", current ? "border-stone-900" : "border-stone-200")}

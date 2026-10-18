@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
@@ -14,6 +14,7 @@ export default function LoginPage() {
  const t = useT();
  const [email, setEmail] = useState('');
  const [password, setPassword] = useState('');
+ const [rememberMe, setRememberMe] = useState(true);
  const [error, setError] = useState('');
  const [loading, setLoading] = useState(false);
  const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function LoginPage() {
 
  const friendlyError = (code: string): string => {
   const map: Record<string, string> = {
-   'auth/operation-not-allowed': t('Email/password sign-in is not enabled. Please use Demo Mode or Google sign-in.', 'Η είσοδος με email/κωδικό δεν είναι ενεργή. Χρησιμοποίησε τη δοκιμή με δείγμα ή την είσοδο με Google.'),
+   'auth/operation-not-allowed': t('Email/password sign-in is not enabled. Please use Demo Mode or Google sign-in.', 'Η είσοδος με email/κωδικό δεν είναι ενεργή. Χρησιμοποίησε τη δοκιμαστική λειτουργία (Demo) ή την είσοδο με Google.'),
    'auth/user-not-found': t('No account found with this email. Did you mean to sign up?', 'Δεν βρέθηκε λογαριασμός με αυτό το email. Ήθελες εγγραφή;'),
    'auth/wrong-password': t('Incorrect password. Please try again.', 'Λάθος κωδικός. Δοκίμασε ξανά.'),
    'auth/invalid-credential': t('Invalid email or password.', 'Λάθος email ή κωδικός.'),
@@ -44,6 +45,7 @@ export default function LoginPage() {
   setError('');
   try {
    toggleDemoMode(false);
+   await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
    await signInWithEmailAndPassword(auth, email, password);
    navigate(from, { replace: true });
   } catch (err: any) {
@@ -107,7 +109,7 @@ export default function LoginPage() {
      </NavLink>
      {' · '}
      <NavLink to="/quiz" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
-      <Both en="60s fit check" el="Fit check 60″" />
+      <Both en="60s fit check" el="Fit check 60 δευτ." />
      </NavLink>
     </p>
    </div>
@@ -165,6 +167,8 @@ export default function LoginPage() {
          id="remember-me"
          name="remember-me"
          type="checkbox"
+         checked={rememberMe}
+         onChange={(e) => setRememberMe(e.target.checked)}
          className="h-5 w-5 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
         />
         <Both en="Remember me" el="Να με θυμάσαι" />
@@ -223,7 +227,8 @@ export default function LoginPage() {
       <div className="mt-6">
        <button
         onClick={handleGoogleLogin}
-        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+         disabled={loading}
+        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
@@ -234,18 +239,16 @@ export default function LoginPage() {
       <div className="mt-6 pt-6 border-t border-stone-200">
        <button
         onClick={() => {
-         // Set demo mode flag
-         localStorage.setItem('demo_mode', 'true');
+         toggleDemoMode(true);
          navigate('/dashboard', { replace: true });
-         window.location.reload();
         }}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
        >
         <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
-        <Both en="Try Demo Mode" el="Δοκιμή με δείγμα" />
+        <Both en="Try Demo Mode" el="Δοκιμαστική λειτουργία" />
        </button>
        <p className="mt-2 text-center text-xs text-stone-400">
-        <Both en="Skip login and explore with sample data" el="Χωρίς είσοδο, με δεδομένα δείγματος" />
+        <Both en="Skip login and explore with sample data" el="Χωρίς είσοδο, με δοκιμαστικά δεδομένα" />
        </p>
       </div>
      </div>

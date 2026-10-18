@@ -506,13 +506,13 @@ a[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]) {
   height: var(--studio-dash-h);
   box-sizing: border-box;
 }
-/* Icon chrome (p-3/p-4/p-5). Leave row/tile buttons (text-left, stacked, full-width). */
-button.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]),
-a.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]),
-button.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
-a.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
-button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)),
-a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(:has(> img)) {
+/* Icon chrome (p-3/p-4/p-5). Leave row/tile buttons (text-left, stacked, full-width, block cards). */
+button.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
+a.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
+button.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+a.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
   height: var(--studio-dash-h);

@@ -1,42 +1,51 @@
-import { GoogleGenAI } from "@google/genai";
 import { appEnv } from "../config/env";
 import { createLogger } from "../lib/logger";
+import { auth } from "../firebase";
+import { getLang } from "../lib/language";
 const aiLog = createLogger("ai-service");
-let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (!_ai) {
-    _ai = new GoogleGenAI({ apiKey: appEnv.geminiApiKey });
-  }
-  return _ai;
-}
+
 interface GenerateParams {
   model: string;
   contents: unknown;
   config?: Record<string, unknown>;
 }
+
+/** The model the server uses unless GEMINI_MODEL overrides it there. */
+export const DEFAULT_AI_MODEL = appEnv.geminiModel || "gemini-flash-latest";
+
 /**
  * Single Gemini entry point.
  *
  * SECURITY: when `appEnv.aiUseProxy` is true (the production default), the
- * request is routed through the server-side proxy (`POST /api/ai/generate`)
- * so the API key never ships in the client bundle. The direct SDK path is
- * kept for local development convenience.
+ * request goes through the server-side proxy (`POST /api/ai/generate`) with the
+ * member's Firebase ID token, so the API key never ships in the client bundle
+ * and the server can rate-limit per member. The direct SDK path (dynamically
+ * imported) is kept for local development only.
  */
 async function generateContent(params: GenerateParams): Promise<{ text: string }> {
-  if (appEnv.aiUseProxy) {
+  if (appEnv.aiUseProxy || !appEnv.geminiApiKey) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch {
+      /* anonymous requests are rate-limited harder by the server */
+    }
     const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers,
       body: JSON.stringify(params),
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      throw new Error(`AI proxy error (${response.status}): ${body?.error ?? 'unknown'}`);
+      throw new Error(`AI proxy error (${response.status}): ${body?.error ?? "unknown"}`);
     }
     return (await response.json()) as { text: string };
   }
-  const response = await getAI().models.generateContent(params as never);
-  return { text: response.text ?? '' };
+  const { GoogleGenAI } = await import("@google/genai");
+  const client = new GoogleGenAI({ apiKey: appEnv.geminiApiKey });
+  const response = await client.models.generateContent(params as never);
+  return { text: response.text ?? "" };
 }
 
 export interface ChatMessage {
@@ -47,156 +56,243 @@ export interface ChatMessage {
 export const MOCK_AGENTS: AIAgent[] = [
   {
     id: 'a1',
-    name: 'Cofounder Matcher',
-    role: 'Matchmaking Expert',
-    description: 'I analyze profiles to find your perfect co-founder match.',
-    avatar: 'https://picsum.photos/seed/matcher/100/100',
+    name: 'Co-founder Coach',
+    nameEl: 'Σύμβουλος συνιδρυτών',
+    role: 'Team formation',
+    roleEl: 'Σύνθεση ομάδας',
+    description: 'Helps you describe the co-founder you need, prepare first conversations and agree on roles.',
+    descriptionEl: 'Σε βοηθά να περιγράψεις τον συνιδρυτή που χρειάζεσαι, να προετοιμάσεις τις πρώτες συζητήσεις και να συμφωνήσετε ρόλους.',
+    avatar: '',
     icon: '🤝',
     status: 'Active',
-    capabilities: ['Profile Analysis', 'Compatibility Scoring', 'Skill Gap Identification'],
+    capabilities: ['Profile review', 'Skill gaps', 'First-meeting questions'],
+    capabilitiesEl: ['Έλεγχος προφίλ', 'Κενά δεξιοτήτων', 'Ερωτήσεις πρώτης γνωριμίας'],
     suggestedPrompts: [
-      'Who is my best match based on my profile?',
-      'What skills am I missing for my startup?',
-      'Find technical co-founders in my area',
-      'How can I make my profile more attractive?'
-    ]
+      'What should I look for in a technical co-founder?',
+      'Which questions should we discuss before teaming up?',
+      'How do we split roles between two founders?',
+    ],
+    suggestedPromptsEl: [
+      'Τι να προσέξω σε έναν τεχνικό συνιδρυτή;',
+      'Ποιες ερωτήσεις να συζητήσουμε πριν συνεργαστούμε;',
+      'Πώς μοιράζουμε ρόλους ανάμεσα σε δύο ιδρυτές;',
+    ],
   },
   {
     id: 'a2',
     name: 'Pitch Deck Reviewer',
-    role: 'Investment Advisor',
-    description: 'Upload your pitch deck (PDF/Image) for AI-driven feedback on clarity, completeness, and market appeal.',
-    avatar: 'https://picsum.photos/seed/pitch/100/100',
+    nameEl: 'Αξιολογητής pitch deck',
+    role: 'Investor readiness',
+    roleEl: 'Ετοιμότητα για επενδυτές',
+    description: 'Attach a slide image or paste your deck text for feedback on clarity, story and what investors will ask.',
+    descriptionEl: 'Επισύναψε εικόνα διαφάνειας ή επικόλλησε το κείμενο του deck για σχόλια σε σαφήνεια, αφήγηση και ερωτήσεις επενδυτών.',
+    avatar: '',
     icon: '🎯',
     status: 'Active',
-    capabilities: ['Deck Review', 'Financial Analysis', 'Storytelling Feedback', 'Visual Analysis'],
+    capabilities: ['Deck review', 'Storytelling', 'Investor questions'],
+    capabilitiesEl: ['Έλεγχος deck', 'Αφήγηση', 'Ερωτήσεις επενδυτών'],
     suggestedPrompts: [
-      'Review my pitch deck clarity',
-      'Is my market sizing realistic?',
-      'Analyze my value proposition',
-      'Feedback on my team slide'
-    ]
+      'Review the structure of my pitch deck',
+      'Is my market sizing approach sound?',
+      'What will investors ask about my team slide?',
+    ],
+    suggestedPromptsEl: [
+      'Έλεγξε τη δομή του pitch deck μου',
+      'Είναι σωστή η προσέγγισή μου για το μέγεθος αγοράς;',
+      'Τι θα ρωτήσουν οι επενδυτές για τη διαφάνεια της ομάδας;',
+    ],
   },
   {
     id: 'a3',
-    name: 'AI Startup Advisor',
-    role: 'Strategy Consultant',
-    description: 'I help you refine your startup ideas, business model, and provide market insights.',
-    avatar: 'https://picsum.photos/seed/advisor/100/100',
-    icon: '🤖',
+    name: 'Startup Advisor',
+    nameEl: 'Σύμβουλος startup',
+    role: 'Strategy',
+    roleEl: 'Στρατηγική',
+    description: 'Helps you sharpen the idea, the business model and the plan for your first customers.',
+    descriptionEl: 'Σε βοηθά να ξεκαθαρίσεις την ιδέα, το επιχειρηματικό μοντέλο και το σχέδιο για τους πρώτους πελάτες.',
+    avatar: '',
+    icon: '🧭',
     status: 'Active',
-    capabilities: ['Idea Refinement', 'Business Model Feedback', 'Market Insights'],
+    capabilities: ['Idea refinement', 'Business model', 'First customers'],
+    capabilitiesEl: ['Δούλεμα ιδέας', 'Επιχειρηματικό μοντέλο', 'Πρώτοι πελάτες'],
     suggestedPrompts: [
-      'Refine my startup idea',
+      'Help me sharpen my startup idea',
       'Critique my business model',
-      'Current market trends in AI',
-      'How to get my first 10 customers?'
-    ]
+      'How do I get my first 10 customers?',
+    ],
+    suggestedPromptsEl: [
+      'Βοήθησέ με να ξεκαθαρίσω την ιδέα μου',
+      'Κάνε κριτική στο επιχειρηματικό μου μοντέλο',
+      'Πώς βρίσκω τους πρώτους 10 πελάτες;',
+    ],
   },
   {
     id: 'a4',
     name: 'Market Analyst',
-    role: 'Market Intelligence',
-    description: 'I provide deep market research, competitor analysis, and industry trends.',
-    avatar: 'https://picsum.photos/seed/market/100/100',
+    nameEl: 'Αναλυτής αγοράς',
+    role: 'Market research',
+    roleEl: 'Έρευνα αγοράς',
+    description: 'Walks you through market sizing, competitor mapping and how to validate demand with real data.',
+    descriptionEl: 'Σε καθοδηγεί στο μέγεθος αγοράς, στη χαρτογράφηση ανταγωνισμού και στην επικύρωση ζήτησης με πραγματικά δεδομένα.',
+    avatar: '',
     icon: '📈',
     status: 'Active',
-    capabilities: ['Market Sizing', 'Competitor Research', 'Trend Analysis'],
+    capabilities: ['Market sizing', 'Competitor map', 'Demand validation'],
+    capabilitiesEl: ['Μέγεθος αγοράς', 'Χάρτης ανταγωνισμού', 'Επικύρωση ζήτησης'],
     suggestedPrompts: [
-      'Analyze the fintech market in Europe',
-      'Who are the main competitors for a SaaS CRM?',
-      'What is the TAM for AI-driven healthcare?'
-    ]
+      'How do I estimate TAM, SAM and SOM?',
+      'How should I map my competitors?',
+      'How do I validate demand before building?',
+    ],
+    suggestedPromptsEl: [
+      'Πώς εκτιμώ TAM, SAM και SOM;',
+      'Πώς χαρτογραφώ τους ανταγωνιστές μου;',
+      'Πώς επικυρώνω τη ζήτηση πριν χτίσω;',
+    ],
   },
   {
     id: 'a5',
-    name: 'Fundraising Expert',
-    role: 'Venture Consultant',
-    description: 'I help you prepare for fundraising, from valuation to investor targeting.',
-    avatar: 'https://picsum.photos/seed/fund/100/100',
-    icon: '💰',
+    name: 'Fundraising Coach',
+    nameEl: 'Σύμβουλος χρηματοδότησης',
+    role: 'Fundraising',
+    roleEl: 'Άντληση κεφαλαίων',
+    description: 'Helps you plan a round: how much to raise, instruments, investor lists and outreach.',
+    descriptionEl: 'Σε βοηθά να σχεδιάσεις έναν γύρο: πόσα να αντλήσεις, εργαλεία χρηματοδότησης, λίστα επενδυτών και προσέγγιση.',
+    avatar: '',
+    icon: '💶',
     status: 'Active',
-    capabilities: ['Valuation Modeling', 'Investor Targeting', 'Term Sheet Review'],
+    capabilities: ['Round planning', 'SAFE and equity', 'Investor outreach'],
+    capabilitiesEl: ['Σχεδιασμός γύρου', 'SAFE και μετοχές', 'Προσέγγιση επενδυτών'],
     suggestedPrompts: [
-      'How much should I raise for my pre-seed?',
-      'What is a realistic valuation for my SaaS?',
-      'List active VCs in the CleanTech space'
-    ]
+      'How much should I raise at pre-seed?',
+      'SAFE or priced round: what are the trade-offs?',
+      'How do I build a target investor list?',
+    ],
+    suggestedPromptsEl: [
+      'Πόσα να αντλήσω στο pre-seed;',
+      'SAFE ή γύρος με αποτίμηση: τι κερδίζω και τι χάνω;',
+      'Πώς φτιάχνω λίστα επενδυτών-στόχων;',
+    ],
   },
   {
     id: 'a6',
-    name: 'Legal Advisor',
-    role: 'Compliance Expert',
-    description: 'I provide guidance on startup legal structures, IP protection, and compliance.',
-    avatar: 'https://picsum.photos/seed/legal/100/100',
+    name: 'Legal Guide',
+    nameEl: 'Νομικός οδηγός',
+    role: 'Legal basics (not legal advice)',
+    roleEl: 'Νομικά βασικά (όχι νομική συμβουλή)',
+    description: 'Explains company forms, founder agreements, IP and GDPR basics, and what to ask a lawyer.',
+    descriptionEl: 'Εξηγεί εταιρικές μορφές, συμφωνίες ιδρυτών, πνευματική ιδιοκτησία και GDPR, και τι να ρωτήσεις έναν δικηγόρο.',
+    avatar: '',
     icon: '⚖️',
     status: 'Active',
-    capabilities: ['Entity Formation', 'IP Protection', 'Contract Review'],
+    capabilities: ['Company formation', 'Founder agreements', 'IP and GDPR'],
+    capabilitiesEl: ['Σύσταση εταιρείας', 'Συμφωνίες ιδρυτών', 'IP και GDPR'],
     suggestedPrompts: [
-      'What is the best legal structure for a US startup?',
-      'How do I protect my IP?',
-      'Review my non-disclosure agreement'
-    ]
+      'Which company form fits an early startup in Greece?',
+      'What belongs in a founder agreement?',
+      'How do I make sure the company owns the IP?',
+    ],
+    suggestedPromptsEl: [
+      'Ποια εταιρική μορφή ταιριάζει σε μια startup στην Ελλάδα;',
+      'Τι πρέπει να περιέχει μια συμφωνία ιδρυτών;',
+      'Πώς εξασφαλίζω ότι η εταιρεία κατέχει την πνευματική ιδιοκτησία;',
+    ],
   },
   {
     id: 'a7',
     name: 'Technical Advisor',
-    role: 'CTO Consultant',
-    description: 'I help with tech stack selection, architecture, and engineering management.',
-    avatar: 'https://picsum.photos/seed/tech/100/100',
+    nameEl: 'Τεχνικός σύμβουλος',
+    role: 'Product engineering',
+    roleEl: 'Τεχνολογία προϊόντος',
+    description: 'Helps with stack choices, architecture, MVP scope and hiring the first engineers.',
+    descriptionEl: 'Βοηθά σε επιλογή τεχνολογιών, αρχιτεκτονική, εύρος MVP και πρόσληψη των πρώτων μηχανικών.',
+    avatar: '',
     icon: '💻',
     status: 'Active',
-    capabilities: ['Stack Selection', 'Architecture Review', 'Team Scaling'],
+    capabilities: ['Stack choice', 'Architecture', 'MVP scope'],
+    capabilitiesEl: ['Επιλογή τεχνολογιών', 'Αρχιτεκτονική', 'Εύρος MVP'],
     suggestedPrompts: [
-      'What is the best tech stack for a real-time app?',
-      'Review my cloud architecture',
-      'How to hire my first engineer?'
-    ]
+      'Which stack fits a real-time web app?',
+      'How do I scope an MVP in six weeks?',
+      'How do I hire my first engineer?',
+    ],
+    suggestedPromptsEl: [
+      'Ποιες τεχνολογίες ταιριάζουν σε web εφαρμογή πραγματικού χρόνου;',
+      'Πώς οριοθετώ ένα MVP σε έξι εβδομάδες;',
+      'Πώς προσλαμβάνω τον πρώτο μηχανικό;',
+    ],
   },
   {
     id: 'a8',
     name: 'Growth Strategist',
-    role: 'Marketing Expert',
-    description: 'I help you scale your user base through GTM strategy and growth hacking.',
-    avatar: 'https://picsum.photos/seed/growth/100/100',
+    nameEl: 'Σύμβουλος ανάπτυξης',
+    role: 'Go-to-market',
+    roleEl: 'Είσοδος στην αγορά',
+    description: 'Helps you choose channels, run growth experiments and keep the users you win.',
+    descriptionEl: 'Σε βοηθά να διαλέξεις κανάλια, να τρέξεις πειράματα ανάπτυξης και να κρατήσεις τους χρήστες που κερδίζεις.',
+    avatar: '',
     icon: '🚀',
     status: 'Active',
-    capabilities: ['GTM Strategy', 'Growth Hacking', 'User Acquisition'],
+    capabilities: ['Channel choice', 'Growth experiments', 'Retention'],
+    capabilitiesEl: ['Επιλογή καναλιών', 'Πειράματα ανάπτυξης', 'Διατήρηση χρηστών'],
     suggestedPrompts: [
-      'Create a GTM strategy for my app',
-      'What are some low-cost growth hacks?',
-      'How to reduce churn?'
-    ]
+      'Draft a go-to-market plan for my product',
+      'Which low-cost growth experiments should I run first?',
+      'How do I reduce churn?',
+    ],
+    suggestedPromptsEl: [
+      'Γράψε ένα σχέδιο εισόδου στην αγορά για το προϊόν μου',
+      'Ποια φθηνά πειράματα ανάπτυξης να τρέξω πρώτα;',
+      'Πώς μειώνω την εγκατάλειψη χρηστών;',
+    ],
   },
   {
     id: 'a9',
     name: 'Research Assistant',
-    role: 'Academic Researcher',
-    description: 'I help you find academic papers, patents, and technical documentation.',
-    avatar: 'https://picsum.photos/seed/research/100/100',
+    nameEl: 'Βοηθός έρευνας',
+    role: 'Research and writing',
+    roleEl: 'Έρευνα και συγγραφή',
+    description: 'Summarizes documents you paste, structures research and helps you write clearly. It does not browse the web.',
+    descriptionEl: 'Συνοψίζει κείμενα που επικολλάς, οργανώνει έρευνα και βοηθά στη σαφή γραφή. Δεν αναζητά στο διαδίκτυο.',
+    avatar: '',
     icon: '🔬',
     status: 'Active',
-    capabilities: ['Paper Search', 'Patent Analysis', 'Technical Writing'],
+    capabilities: ['Summaries', 'Research plans', 'Clear writing'],
+    capabilitiesEl: ['Συνόψεις', 'Σχέδια έρευνας', 'Σαφής γραφή'],
     suggestedPrompts: [
-      'Find recent papers on LLM optimization',
-      'Are there any patents for AI-driven energy?',
-      'Summarize this technical document'
-    ]
+      'Summarize this text in five bullet points',
+      'Plan customer interviews for my idea',
+      'Rewrite this paragraph to be clearer',
+    ],
+    suggestedPromptsEl: [
+      'Σύνοψε αυτό το κείμενο σε πέντε σημεία',
+      'Σχεδίασε συνεντεύξεις πελατών για την ιδέα μου',
+      'Ξαναγράψε αυτή την παράγραφο πιο καθαρά',
+    ],
   },
   {
     id: 'a10',
     name: 'Mentor Finder',
-    role: 'Networking Expert',
-    description: 'I help you find the right mentors based on your specific needs.',
-    avatar: 'https://picsum.photos/seed/mentor/100/100',
-    icon: '👨‍🏫',
+    nameEl: 'Οδηγός μεντόρων',
+    role: 'Mentorship',
+    roleEl: 'Καθοδήγηση',
+    description: 'Helps you decide what kind of mentor you need and how to approach them.',
+    descriptionEl: 'Σε βοηθά να καταλάβεις τι μέντορα χρειάζεσαι και πώς να τον προσεγγίσεις.',
+    avatar: '',
+    icon: '🧑‍🏫',
     status: 'Active',
-    capabilities: ['Mentor Matching', 'Networking Advice', 'Relationship Management'],
+    capabilities: ['Mentor fit', 'First message', 'Working together'],
+    capabilitiesEl: ['Σωστός μέντορας', 'Πρώτο μήνυμα', 'Συνεργασία'],
     suggestedPrompts: [
-      'Who can mentor me on B2B sales?',
-      'Find mentors with experience in exits',
-      'How to approach a potential mentor?'
-    ]
+      'What kind of mentor do I need right now?',
+      'Write a short first message to a mentor',
+      'How do I make mentoring sessions useful?',
+    ],
+    suggestedPromptsEl: [
+      'Τι μέντορα χρειάζομαι αυτή τη στιγμή;',
+      'Γράψε ένα σύντομο πρώτο μήνυμα σε μέντορα',
+      'Πώς κάνω τις συναντήσεις καθοδήγησης χρήσιμες;',
+    ],
   }
 ];
 
@@ -257,45 +353,47 @@ export class AIService {
   }
 
   /**
-   * Main entry point for AI chat. 
-   * Tries Local first, then falls back to Gemini (Elite Reasoning).
+   * Main entry point for AI chat.
+   * A local Ollama model is tried first only when VITE_OLLAMA_BASE_URL is set
+   * explicitly (developer machines); everyone else goes straight to Gemini.
    */
   static async chat(prompt: string, context: string = "", preferredModel: string = 'llama3.2', imageData?: string) {
     this.checkCircuitBreaker();
 
     try {
-      // 1. Try Local Ollama first (Free for user, 0 server cost)
-      if (!imageData) {
+      if (!imageData && appEnv.ollamaEnabled) {
         const localResult = await this.queryLocalOllama(preferredModel, prompt);
         if (localResult) return localResult;
       }
 
-      // 2. Fallback to Gemini (Elite Reasoning)
-      const contents: any[] = [{ text: prompt }];
+      const contents: Record<string, unknown>[] = [{ text: prompt }];
       if (imageData) {
+        const mime = /^data:([^;]+);/.exec(imageData)?.[1] || "image/png";
         contents.push({
           inlineData: {
-            mimeType: "image/png", // Default to png for now
+            mimeType: mime,
             data: imageData.split(',')[1] || imageData
           }
         });
       }
 
+      const language = getLang() === 'el' ? 'Greek' : 'English';
       const response = await generateContent({
-        model: "gemini-3-flash-preview",
+        model: DEFAULT_AI_MODEL,
         contents: { parts: contents },
         config: {
-          systemInstruction: `You are an expert AI Agent on Cofounderbay. 
-          Context: ${context}. 
-          Be concise, professional, and helpful for startup founders.
-          If a pitch deck or slide is provided, analyze it for clarity, completeness, and market appeal.`
+          systemInstruction: `You are an expert advisor inside CoFounderBay, a platform where founders find co-founders, mentors and investors.
+Context: ${context}
+Answer in ${language}. Be concise, concrete and practical for early-stage founders. Use short paragraphs or bullet points.
+Never invent people, companies, numbers, deadlines or partnerships. If you are not sure about a fact, say so and suggest how to check it.
+If a pitch deck or slide image is provided, review it for clarity, completeness and investor appeal.`
         }
       });
 
       return {
         text: response.text,
         source: 'Cloud (Gemini)',
-        model: 'gemini-3-flash-preview'
+        model: DEFAULT_AI_MODEL
       };
     } catch (error) {
       this.recordFailure();
@@ -323,24 +421,20 @@ export class AIService {
       Return ONLY the JSON array.`;
 
       const response = await generateContent({
-        model: "gemini-3-flash-preview",
+        model: DEFAULT_AI_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          systemInstruction: "You are an elite startup advisor AI. Provide data-driven, strategic insights for founders."
+          systemInstruction: "You are a startup advisor. Base every insight only on the profile and status you are given; never invent metrics."
         }
       });
 
       return JSON.parse(response.text);
     } catch (error) {
       this.recordFailure();
-      aiLog.warn('failed to fetch dashboard insights, using fallback', { error: String(error) });
-      // Fallback insights
-      return [
-        { title: "Market Expansion", description: "Your current product metrics suggest a strong fit for the European market.", type: "opportunity", icon: "Globe" },
-        { title: "Team Scaling", description: "Consider hiring a dedicated growth lead to maintain your current momentum.", type: "tip", icon: "Users" },
-        { title: "Funding Readiness", description: "Your financial projections need refinement before the next seed round pitch.", type: "warning", icon: "ShieldAlert" }
-      ];
+      // No invented insights: the dashboard simply shows nothing from AI when it is unavailable.
+      aiLog.warn('failed to fetch dashboard insights', { error: String(error) });
+      return [];
     }
   }
 }

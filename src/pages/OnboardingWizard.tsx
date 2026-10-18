@@ -235,7 +235,10 @@ export default function OnboardingWizard() {
  };
 
  const handleSubmit = async () => {
-  if (!user) return;
+  if (isDemoMode || !user) {
+    navigate('/dashboard');
+    return;
+   }
   setLoading(true);
   try {
    const userRef = doc(db, 'users', user.uid);
@@ -656,7 +659,7 @@ export default function OnboardingWizard() {
        onClick={() => navigate('/dashboard')}
        className="absolute top-6 right-8 text-sm font-medium text-stone-400 hover:text-stone-900 transition-colors"
       >
-       {t('Skip Onboarding (Demo)', 'Παράλειψη εισαγωγής (δείγμα)')}
+       {t('Skip Onboarding (Demo)', 'Παράλειψη εισαγωγής (Demo)')}
       </button>
      )}
      <AnimatePresence mode="wait">

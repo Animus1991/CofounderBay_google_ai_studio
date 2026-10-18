@@ -10,7 +10,7 @@ import { appendAssistant, clearAssistant, readAssistant, type AssistantTurn } fr
 import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantResult } from '../services/assistantOps';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
-import { CAST } from '../data/cast';
+import { directoryPeople } from '../lib/peopleSource';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
 
@@ -113,7 +113,7 @@ export default function ChatWidget() {
   const atQuery = inputText.startsWith('@') && !inputText.includes(' ') ? inputText.slice(1).toLowerCase() : null;
   const atHits = atQuery === null
     ? []
-    : CAST.filter((person) => !atQuery || person.fullName.toLowerCase().includes(atQuery)).slice(0, 6);
+    : directoryPeople().filter((person) => !atQuery || person.fullName.toLowerCase().includes(atQuery)).slice(0, 6);
 
   useEffect(() => {
     const open = (event: Event) => {
@@ -291,7 +291,7 @@ export default function ChatWidget() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xs font-medium truncate">
-                    {agent ? agent.name : <Both en="Studio assistant" el="Βοηθός του στούντιο" />}
+                    {agent ? agent.name : <Both en="Assistant" el="Βοηθός" />}
                   </h3>
                   <p className="text-xs text-white/50 truncate">
                     {agent ? agent.role : <Both en="Reads and changes the same lists as every page" el="Διαβάζει και αλλάζει τις ίδιες λίστες με κάθε σελίδα" />}
@@ -323,7 +323,7 @@ export default function ChatWidget() {
                       tab === item ? 'text-stone-900 border-b-2 border-stone-900' : 'text-stone-400 hover:text-stone-600',
                     )}
                   >
-                    {item === 'studio' ? <Both en="Studio" el="Στούντιο" /> : <Both en="Specialists" el="Ειδικοί" />}
+                    {item === 'studio' ? <Both en="Assistant" el="Βοηθός" /> : <Both en="Specialists" el="Ειδικοί" />}
                   </button>
                 ))}
               </div>
@@ -428,7 +428,7 @@ export default function ChatWidget() {
                           </div>
                         )}
                         {lastAssistant && msg.followUps && msg.followUps.length > 0 && (
-                          <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρωτήστε μετά')}>
+                          <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρώτα μετά')}>
                             {msg.followUps.map((prompt) => (
                               <button
                                 key={prompt.en}
@@ -450,7 +450,7 @@ export default function ChatWidget() {
                           <Bot className="w-3 h-3" />
                         </div>
                         <p className="text-[10px] font-medium">
-                          <Both en="Studio is answering…" el="Το στούντιο απαντά…" />
+                          <Both en="Studio is answering…" el="Ο βοηθός απαντά…" />
                         </p>
                         <div className="flex gap-1">
                           <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1 h-1 bg-stone-400 rounded-full" />
@@ -539,7 +539,7 @@ export default function ChatWidget() {
                       <input
                         type="text"
                         placeholder={isTyping
-                          ? bothText('Studio is answering…', 'Το στούντιο απαντά…')
+                          ? bothText('Studio is answering…', 'Ο βοηθός απαντά…')
                           : bothText('Ask, or type / or @ …', 'Ρώτα, ή πληκτρολόγησε / ή @ …')}
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
@@ -636,7 +636,7 @@ export default function ChatWidget() {
             'w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center',
             isOpen && !isMinimized ? 'bg-stone-100 text-stone-900' : 'bg-stone-900 text-white',
           )}
-          aria-label={bothText('Open studio assistant', 'Άνοιγμα βοηθού στούντιο')}
+          aria-label={bothText('Open studio assistant', 'Άνοιγμα βοηθού')}
         >
           {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
         </motion.button>

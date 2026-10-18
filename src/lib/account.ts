@@ -6,6 +6,17 @@ import { deleteUser, updatePassword, updateProfile, type User as FirebaseUser } 
 import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { AccountStatus, ProfileStatus, VerificationStatus } from '../types';
+import { flushCloudSync } from './cloudSync';
+
+/** Sends any unsaved list changes to the cloud, then signs out. */
+export async function signOutAccount() {
+  try {
+    await Promise.race([flushCloudSync(), new Promise((resolve) => setTimeout(resolve, 2500))]);
+  } catch {
+    /* sign out anyway */
+  }
+  await auth.signOut();
+}
 
 function withProtocol(url?: string) {
   const trimmed = url?.trim();
@@ -108,6 +119,42 @@ export async function persistAccount(uid: string, fields: AccountFields) {
   if (fields.fullName && auth.currentUser) {
     await updateProfile(auth.currentUser, { displayName: fields.fullName, photoURL: fields.photo || auth.currentUser.photoURL });
   }
+}
+
+export type PrivacyFields = {
+  /** Listed in Matches, Explore and search. */
+  discoverable?: boolean;
+  /** Who may start a conversation. */
+  messagesFrom?: 'anyone' | 'connections' | 'none';
+  showEmail?: boolean;
+  visibility?: 'Public' | 'Connections Only' | 'Private';
+  /** Show "online now" and "last seen" to other members. */
+  sharePresence?: boolean;
+  openTo?: string[];
+  /** Available for mentoring sessions. */
+  mentorAvailability?: boolean;
+};
+
+/**
+ * Privacy choices live on the profile document so other members' pages
+ * (directory, messaging rules, presence) can respect them.
+ */
+export async function persistPrivacy(uid: string, fields: PrivacyFields) {
+  const patch: Record<string, unknown> = { userId: uid, updatedAt: serverTimestamp() };
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined) patch[key] = value;
+  }
+  if (fields.visibility) patch.profileVisibility = fields.visibility;
+  await setDoc(doc(db, 'profiles', uid), patch, { merge: true });
+}
+
+/** Once Firebase confirms the e-mail address, the profile carries the Verified badge other members see. */
+export async function markEmailVerified(uid: string) {
+  const patch = { verificationStatus: VerificationStatus.VERIFIED, updatedAt: serverTimestamp() };
+  await Promise.all([
+    setDoc(doc(db, 'users', uid), patch, { merge: true }),
+    setDoc(doc(db, 'profiles', uid), { userId: uid, ...patch }, { merge: true }),
+  ]);
 }
 
 export async function changeAccountPassword(next: string) {

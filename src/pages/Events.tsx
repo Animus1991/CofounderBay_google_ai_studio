@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
  Calendar as CalendarIcon, MapPin, Users, Video, 
- Plus, Search, Filter, ChevronRight, Star, 
- Clock, Share2, Bookmark, ExternalLink, Rocket, Zap, Globe
+ Plus, Filter, ChevronRight, 
+ Clock, Share2, Bookmark, Rocket, Zap, Globe
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -21,7 +21,7 @@ const TAB_EL: Record<string, string> = {
 };
 
 interface EventsProps {
- user: User;
+ user?: User;
 }
 
 interface Event {
@@ -40,7 +40,7 @@ interface Event {
  organizer: string;
 }
 
-export default function Events({ user }: EventsProps) {
+export default function Events(_props: EventsProps = {}) {
  const t = useT();
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
@@ -127,7 +127,12 @@ export default function Events({ user }: EventsProps) {
    organizer: "Finly Ventures"
   }
  ];
- const visibleEvents = typeFilter === 'All' ? mockEvents : mockEvents.filter((event) => event.type === typeFilter);
+ const visibleEvents = useMemo(() => {
+   let filtered = typeFilter === 'All' ? mockEvents : mockEvents.filter((e) => e.type === typeFilter);
+   if (activeTab === 'My Events') filtered = filtered.filter((e) => registeredEvents.includes(e.id));
+   // For Past vs Upcoming, compare dates when real date parsing is available
+   return filtered;
+  }, [typeFilter, activeTab, registeredEvents]);
 
  return (
   <PageShell
@@ -193,7 +198,7 @@ export default function Events({ user }: EventsProps) {
 
      <div id="event-list" className="space-y-4">
       {(visibleEvents.length === 0) && (
-       <EmptyHint title={t("No events in this category yet.", "Δεν υπάρχουν ακόμη εκδηλώσεις σε αυτή την κατηγορία.")} detail={t("Ask the studio assistant to host one.", "Ζήτα από τον βοηθό του στούντιο να διοργανώσει μία.")}>
+       <EmptyHint title={t("No events in this category yet.", "Δεν υπάρχουν ακόμη εκδηλώσεις σε αυτή την κατηγορία.")} detail={t("Ask the studio assistant to host one.", "Ζήτα από τον βοηθό να διοργανώσει μία.")}>
         <AskLink prompt="Schedule a new event on my calendar">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
        </EmptyHint>
       )}
@@ -269,7 +274,7 @@ export default function Events({ user }: EventsProps) {
               : "bg-stone-900 text-white hover:bg-stone-800"
             )}
            >
-            {registeredEvents.includes(event.id) ? t("✓ Registered", "✓ Εγγράφηκες") : t("Register Now", "Εγγραφή")}
+            {registeredEvents.includes(event.id) ? t("✓ Registered", "✓ Εγγεγραμμένος/-η") : t("Register Now", "Εγγραφή")}
            </button>
           </div>
          </div>
@@ -298,7 +303,7 @@ export default function Events({ user }: EventsProps) {
        </div>
       </div>
       <p className="text-sm text-stone-500 leading-relaxed mb-3">
-       The biggest gathering of founders and investors in the ecosystem.
+       {t('The biggest gathering of founders and investors in the ecosystem.', 'Η μεγαλύτερη συγκέντρωση ιδρυτών και επενδυτών στο οικοσύστημα.')}
       </p>
       <button 
        type="button"

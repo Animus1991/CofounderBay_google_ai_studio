@@ -137,7 +137,7 @@ export default function Programs({ user }: ProgramsProps) {
 
      <div className="space-y-3">
       {visiblePrograms.length === 0 && (
-       <EmptyHint title={t(`No programs in the ${activeTab} filter.`, `Δεν υπάρχουν προγράμματα στο φίλτρο «${TAB_EL[activeTab] ?? activeTab}».`)} detail={t("Ask the studio assistant which programs you can apply to, or switch the tab.", "Ρώτα τον βοηθό του στούντιο σε ποια προγράμματα μπορείς να κάνεις αίτηση, ή άλλαξε καρτέλα.")}>
+       <EmptyHint title={t(`No programs in the ${activeTab} filter.`, `Δεν υπάρχουν προγράμματα στο φίλτρο «${TAB_EL[activeTab] ?? activeTab}».`)} detail={t("Ask the studio assistant which programs you can apply to, or switch the tab.", "Ρώτα τον βοηθό σε ποια προγράμματα μπορείς να κάνεις αίτηση, ή άλλαξε καρτέλα.")}>
         <AskLink prompt="What programs can I apply to?" />
        </EmptyHint>
       )}

@@ -146,7 +146,7 @@ export default function Resources({ user }: ResourcesProps) {
       if (visibleCourses.length === 0) {
         return (
          <EmptyHint title={t("No courses match this filter.", "Δεν υπάρχουν μαθήματα με αυτό το φίλτρο.")} detail={t("Clear the search, or ask the assistant which program to start.", "Καθάρισε την αναζήτηση, ή ρώτα τον βοηθό ποιο πρόγραμμα να ξεκινήσεις.")}>
-          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => { setCourseQuery(''); setCourseLevel('All'); }}>{t('Clear filters', 'Καθαρισμός φίτρων')}</button>
+          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => { setCourseQuery(''); setCourseLevel('All'); }}>{t('Clear filters', 'Καθαρισμός φίλτρων')}</button>
           <AskLink prompt="What programs can I apply to?" />
          </EmptyHint>
         );
@@ -363,7 +363,7 @@ export default function Resources({ user }: ResourcesProps) {
 
           <div className="flex items-center gap-6">
            <div className="w-16 h-16 rounded-xl bg-stone-800 border border-stone-700 overflow-hidden shadow-xl">
-            <img src="https://picsum.photos/seed/coach/150/150" alt={t('Coach', 'Coach')} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src="https://picsum.photos/seed/coach/150/150" alt={t('Coach', 'Σύμβουλος')} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
            </div>
            <div className="space-y-1">
             <p className="text-base font-medium">Sarah Chen</p>
@@ -384,7 +384,7 @@ export default function Resources({ user }: ResourcesProps) {
           </div>
          </div>
          <Button type="button" variant="ghost" className="w-full h-11 rounded-2xl text-sm font-medium tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all" onClick={() => ask('Find a fundraising mentor')}>
-          {t('View All Coaches', 'Όλοι οι coaches')}
+          {t('View All Coaches', 'Όλοι οι σύμβουλοι')}
          </Button>
         </div>
        </div>

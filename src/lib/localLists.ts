@@ -62,6 +62,67 @@ export function onDataChange(listener: (key: string) => void): () => void {
   };
 }
 
+/** True while the sample account is open (no real account in scope). */
+export function isDemoData(): boolean {
+  return isDemo();
+}
+
+type WriteObserver = (key: string, serialized: string | null) => void;
+let writeObserver: WriteObserver | null = null;
+
+/** Cloud sync listens here: every local write of the signed-in account is mirrored to Firestore. */
+export function setWriteObserver(observer: WriteObserver | null) {
+  writeObserver = observer;
+}
+
+/** The stored JSON for `key` in the current scope, or null. */
+export function readRawValue(key: string): string | null {
+  const storageKey = keyFor(key);
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null;
+    if (raw != null) return raw;
+  } catch {
+    /* fall through to memory */
+  }
+  return memory.get(storageKey) ?? null;
+}
+
+/** Applies a value that came from the cloud. It updates every page but is not sent back. */
+export function applyRemoteValue(key: string, serialized: string | null) {
+  const storageKey = keyFor(key);
+  if (serialized == null) {
+    memory.delete(storageKey);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      /* ignore */
+    }
+  } else {
+    memory.set(storageKey, serialized);
+    try {
+      localStorage.setItem(storageKey, serialized);
+    } catch {
+      /* storage full or blocked: the in-memory view still updates */
+    }
+  }
+  emit(key);
+}
+
+/** Generic read for lists that have no dedicated helper. */
+export function readValue<T>(key: string, fallback: T): T {
+  const value = readJson<T | null>(key, null);
+  if (value == null) return fallback;
+  if (Array.isArray(fallback) && !Array.isArray(value)) return fallback;
+  if (fallback && typeof fallback === 'object' && !Array.isArray(fallback) && (typeof value !== 'object' || Array.isArray(value))) return fallback;
+  return value;
+}
+
+/** Generic write for lists that have no dedicated helper. */
+export function writeValue<T>(key: string, value: T): T {
+  writeJson(key, value);
+  return value;
+}
+
 function readJson<T>(key: string, fallback: T): T {
   const storageKey = keyFor(key);
   try {
@@ -89,6 +150,7 @@ function writeJson(key: string, value: unknown) {
     /* storage full or blocked: the in-memory view still updates */
   }
   emit(key);
+  if (scope && writeObserver) writeObserver(key, serialized);
 }
 
 /** Captures the current value of `keys` and returns a function that puts it back. */
@@ -142,18 +204,49 @@ export const keys = {
   openTo: 'cfb.openTo',
   inbox: 'cfb.inbox',
   plan: 'cfb.plan',
+  aiChats: 'cfb.aiChats',
+  bookmarks: 'cfb.bookmarks',
+  hiddenPeople: 'cfb.hiddenPeople',
+  pinnedTools: 'cfb.pinnedTools',
+  recentTools: 'cfb.recentTools',
+  startup: 'cfb.startup',
+  builder: 'cfb.builderAnswers',
+  pitch: 'cfb.pitchDeck',
+  diagnostic: 'cfb.diagnostic',
+  canvas: 'cfb.leanCanvas',
+  focus: 'cfb.focusStats',
+  investors: 'cfb.investorCrm',
+  dueDiligence: 'cfb.dueDiligence',
+  capTable: 'cfb.capTable',
+  compliance: 'cfb.compliance',
+  savedPrograms: 'cfb.savedPrograms',
+  savedPerks: 'cfb.savedPerks',
+  readiness: 'cfb.readinessHistory',
+  prefs: 'cfb.prefs',
+  venture: 'cfb.ventureChecklist',
+  assets: 'cfb.projectAssets',
+  fitCheck: 'cfb.fitCheckResult',
+  pinnedChats: 'cfb.pinnedChats',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
 export function resetAllLists() {
   for (const key of Object.values(keys)) {
     const storageKey = keyFor(key);
+    const had = memory.has(storageKey) || (() => {
+      try {
+        return localStorage.getItem(storageKey) != null;
+      } catch {
+        return false;
+      }
+    })();
     memory.delete(storageKey);
     try {
       localStorage.removeItem(storageKey);
     } catch {
       /* ignore */
     }
+    if (had && scope && writeObserver) writeObserver(key, null);
   }
   emit(ALL);
 }
@@ -468,7 +561,7 @@ export function removeSession(id: string): StudioSession[] {
 
 // ── Data room files ────────────────────────────────────────────────────────
 
-export type RoomFile = { name: string; size: string; views: number; updated: string };
+export type RoomFile = { name: string; size: string; views: number; updated: string; folder?: string };
 
 export function readRoomFiles(): RoomFile[] {
   const stored = readJson<RoomFile[] | null>(keys.room, null);
@@ -573,7 +666,19 @@ export type Round = {
   monthlyBurn: number;
   closeDate: string;
   updatedAt: string;
+  /** The investor pipeline the account is actually working — persisted, never seeded for real accounts. */
+  pipeline?: RoundInvestor[];
 };
+
+export type RoundInvestor = {
+  investorId: string;
+  name: string;
+  stage: string;
+  notes: string;
+  updatedAt: string;
+};
+
+export const PIPELINE_STAGES = ['Identified', 'Contacted', 'Meeting', 'Due Diligence', 'Term Sheet', 'Closed', 'Passed'] as const;
 
 export function defaultRound(): Round {
   const close = new Date();
@@ -604,6 +709,37 @@ export function writeRound(patch: Partial<Round>): Round {
   return next;
 }
 
+/** Adds an investor to the round pipeline, or updates the entry when the id is already tracked. */
+export function upsertPipelineInvestor(entry: { investorId: string; name: string; stage?: string; notes?: string }): Round {
+  const round = readRound();
+  const rest = (round.pipeline ?? []).filter((item) => item.investorId !== entry.investorId);
+  const existing = round.pipeline?.find((item) => item.investorId === entry.investorId);
+  const next: RoundInvestor[] = [
+    {
+      investorId: entry.investorId,
+      name: entry.name,
+      stage: entry.stage || existing?.stage || 'Identified',
+      notes: entry.notes ?? existing?.notes ?? '',
+      updatedAt: new Date().toISOString(),
+    },
+    ...rest,
+  ];
+  return writeRound({ pipeline: next });
+}
+
+export function setPipelineStage(investorId: string, stage: string, notes?: string): Round {
+  const round = readRound();
+  const next = (round.pipeline ?? []).map((item) =>
+    item.investorId === investorId ? { ...item, stage, notes: notes ?? item.notes, updatedAt: new Date().toISOString() } : item,
+  );
+  return writeRound({ pipeline: next });
+}
+
+export function removePipelineInvestor(investorId: string): Round {
+  const round = readRound();
+  return writeRound({ pipeline: (round.pipeline ?? []).filter((item) => item.investorId !== investorId) });
+}
+
 // ── Activity: what changed, by you or by the assistant ─────────────────────
 
 export type ActivityKind =
@@ -617,7 +753,12 @@ export type ActivityKind =
   | 'round'
   | 'application'
   | 'profile'
-  | 'settings';
+  | 'settings'
+  | 'connection'
+  | 'post'
+  | 'tool'
+  | 'task'
+  | 'file';
 
 export type ActivityItem = {
   id: string;
@@ -849,12 +990,18 @@ export function setNeedStatus(id: string, status: NeedCard['status']): NeedCard[
   return writeNeeds(readNeeds().map((item) => (item.id === id ? { ...item, status, at: now } : item)));
 }
 
-export type OpenToKind = 'cofounder' | 'investor' | 'advisor';
+export type OpenToKind = 'cofounder' | 'investor' | 'advisor' | 'mentoring' | 'speaking';
+
+export const OPEN_TO_KINDS: OpenToKind[] = ['cofounder', 'mentoring', 'advisor', 'investor', 'speaking'];
+
+function isOpenToKind(item: unknown): item is OpenToKind {
+  return typeof item === 'string' && (OPEN_TO_KINDS as string[]).includes(item);
+}
 
 export function readOpenTo(): OpenToKind[] {
   const stored = readJson<OpenToKind[] | null>(keys.openTo, null);
   if (Array.isArray(stored) && stored.length) {
-    return stored.filter((item): item is OpenToKind => item === 'cofounder' || item === 'investor' || item === 'advisor');
+    return stored.filter(isOpenToKind);
   }
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('cfb.accountSwitches') : null;
@@ -871,7 +1018,7 @@ export function readOpenTo(): OpenToKind[] {
 }
 
 export function writeOpenTo(kinds: OpenToKind[]): OpenToKind[] {
-  const next = [...new Set(kinds.filter((item): item is OpenToKind => item === 'cofounder' || item === 'investor' || item === 'advisor'))];
+  const next = [...new Set(kinds.filter(isOpenToKind))];
   writeJson(keys.openTo, next);
   return next;
 }

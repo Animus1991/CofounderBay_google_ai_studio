@@ -1,28 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
- Search, 
- Filter, 
- MapPin, 
- Briefcase, 
- Target, 
- Star, 
- UserPlus, 
- MessageSquare, 
+import {
+ Search,
+ Star,
+ UserPlus,
+ MessageSquare,
  ChevronDown,
- Zap,
- CheckCircle2,
- X,
+ Check,
+ Clock,
  SlidersHorizontal,
- ArrowRight
+ EyeOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, getDocs, limit, startAfter, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
-import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
-import { logActivity, readMatchFilters, readSaved, removeSaved, saveProfile, saveRequest, writeMatchFilters } from '../lib/localLists';
-import { CAST, avatarFor, placeOf } from '../data/cast';
+import { keys, logActivity, readIds, readMatchFilters, readSaved, removeSaved, saveProfile, saveRequest, toggleId, writeMatchFilters } from '../lib/localLists';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { useStored } from '../lib/useStored';
 import { useAuth } from '../App';
@@ -36,52 +27,42 @@ import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import { useToast } from '../context/ToastContext';
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from '../lib/searchQualifiers';
-
-function directoryProfiles(): UserProfile[] {
- return CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate').map((person) => ({
-  uid: person.id,
-  fullName: person.fullName,
-  headline: person.headline,
-  bio: person.bio,
-  location: placeOf(person),
-  stage: person.stage,
-  role: person.role,
-  commitment: person.commitment,
-  industry: person.industry,
-  skills: person.skills,
-  lookingFor: person.lookingFor,
-  interests: person.interests,
-  timezone: person.timezone,
- } as unknown as UserProfile));
-}
-
-const DIRECTORY = directoryProfiles();
+import { usePeople } from '../lib/directory';
+import { avatarOf, cofounderPool, isOnline, type Person } from '../lib/peopleSource';
+import { connectionStateWith, respondToConnection, sendConnectionRequest, useConnections, withdrawConnection } from '../lib/social';
 
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
 const ROLES = ['Founder', 'Co-Founder Candidate', 'Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
 const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
+const PAGE = 24;
 
 export default function MatchDiscovery() {
  useLanguage();
  const t = useT();
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
- const { success: toastSuccess, error: toastError } = useToast();
- const [profiles, setProfiles] = useState<UserProfile[]>(isDemoMode ? DIRECTORY : []);
- const [loading, setLoading] = useState(true);
- const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
- const [hasMore, setHasMore] = useState(false);
+ const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+ const real = !isDemoMode && Boolean(currentUser?.uid);
+ const { people, loading, error } = usePeople(currentUser?.uid);
+ const connections = useConnections();
  const [connecting, setConnecting] = useState<string | null>(null);
+ const [visibleCount, setVisibleCount] = useState(PAGE);
  const storedFilters = useStored(readMatchFilters, ['cfb.matchFilters']);
  const [searchQuery, setSearchQuery] = useState(() => storedFilters.q);
  const [showFilters, setShowFilters] = useState(false);
  const savedIds = useStored(() => readSaved().map((item) => item.id), ['cfb.savedProfiles']);
+ const hiddenIds = useStored(() => readIds(keys.hiddenPeople), [keys.hiddenPeople]);
  const [filters, setFilters] = useState({
   stage: storedFilters.stage,
   role: storedFilters.role,
   commitment: storedFilters.commitment,
   location: storedFilters.location
  });
+ void connections.items; // re-render when connection states change
+
+ // The same pool Matches has always ranked: founders and co-founder candidates, from the live directory.
+ const poolIds = new Set(cofounderPool().map((person) => person.id));
+ const profiles = people.filter((person) => poolIds.has(person.id));
 
  const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string; skill?: string; industry?: string }) => {
   const parsed = parseQualifiers(next.q ?? searchQuery);
@@ -96,41 +77,51 @@ export default function MatchDiscovery() {
   });
  };
 
- const handleConnect = async (e: React.MouseEvent, profile: UserProfile) => {
+ const handleConnect = async (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
   if (!currentUser) return;
-  setConnecting(profile.uid);
+  setConnecting(person.id);
   try {
-   saveRequest({
-    id: profile.uid,
-    fullName: profile.fullName,
-    role: profile.role,
-    industry: profile.industry || '',
-    location: profile.location || '',
-    note: profile.headline || '',
-    status: 'pending',
-   });
-   logActivity({ kind: 'request', title: `Requested ${profile.fullName}`, titleEl: `Αίτημα προς ${profile.fullName}`, href: `/profile/${profile.uid}` });
-   toastSuccess(t('Request sent!', 'Το αίτημα στάλθηκε.'), t('Your connection request has been sent.', 'Το αίτημα σύνδεσης στάλθηκε.'));
-  } catch (error) {
-   toastError(t('Failed to send request', 'Αποτυχία αποστολής'), t('Please try again.', 'Δοκίμασε ξανά.'));
+   if (!real) {
+    saveRequest({ id: person.id, fullName: person.fullName, role: person.role, industry: person.industry || '', location: person.location || '', note: person.headline || '', status: 'pending' });
+    logActivity({ kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}` });
+    toastSuccess(t('Request sent', 'Το αίτημα στάλθηκε'), t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.'));
+    return;
+   }
+   const state = connectionStateWith(person.id);
+   if (state.state === 'outgoing' && state.record) {
+    await withdrawConnection(state.record);
+    toastInfo(t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
+    return;
+   }
+   if (state.state === 'incoming' && state.record) {
+    await respondToConnection(state.record, true);
+    toastSuccess(t('Connected', 'Συνδεθήκατε'), t(`You and ${person.fullName} can message each other now.`, `Εσύ και ο/η ${person.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+    return;
+   }
+   const result = await sendConnectionRequest({ id: person.id, fullName: person.fullName, headline: person.headline, avatarUrl: avatarOf(person) }, 'Co-Founder');
+   logActivity({ kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}` });
+   if (result === 'accepted') toastSuccess(t('Connected', 'Συνδεθήκατε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.'));
+   else if (result === 'exists') toastInfo(t('Already requested', 'Έχει ήδη σταλεί αίτημα'));
+   else toastSuccess(t('Request sent', 'Το αίτημα στάλθηκε'), t('You will be notified when they answer.', 'Θα ειδοποιηθείς όταν απαντήσουν.'));
+  } catch (err) {
+   const code = err instanceof Error ? err.message : '';
+   toastError(t('Could not send the request', 'Το αίτημα δεν στάλθηκε'), code === 'declined' ? t('This member declined an earlier request.', 'Αυτό το μέλος απέρριψε προηγούμενο αίτημα.') : t('Please try again.', 'Δοκίμασε ξανά.'));
   } finally {
    setConnecting(null);
   }
  };
 
- const handleSave = (e: React.MouseEvent, profile: UserProfile) => {
+ const handleSave = (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
-  const id = profile.uid;
-  if (savedIds.includes(id)) removeSaved(id);
-  else saveProfile({
-   id,
-   fullName: profile.fullName,
-   role: profile.role,
-   industry: profile.industry || '',
-   location: profile.location || '',
-   note: profile.headline || '',
-  });
+  if (savedIds.includes(person.id)) removeSaved(person.id);
+  else saveProfile({ id: person.id, fullName: person.fullName, role: person.role, industry: person.industry || '', location: person.location || '', note: person.headline || '' });
+ };
+
+ const handleHide = (e: React.MouseEvent, person: Person) => {
+  e.stopPropagation();
+  toggleId(keys.hiddenPeople, person.id);
+  toastInfo(t(`${person.fullName.split(' ')[0]} hidden`, `Ο/Η ${person.fullName.split(' ')[0]} κρύφτηκε`), t('Hidden members stay out of Matches and Explore. Undo from Settings › Privacy.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης. Αναίρεση από Ρυθμίσεις › Απόρρητο.'));
  };
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
@@ -138,134 +129,94 @@ export default function MatchDiscovery() {
   navigate(`/messages?user=${targetUid}`);
  };
 
- const PAGE = 20;
- const mapProfiles = (docs: QueryDocumentSnapshot<DocumentData>[]) =>
-  docs.map((item) => ({ ...item.data(), uid: item.id } as UserProfile)).filter((p) => p.uid !== currentUser?.uid);
-
- const loadMore = async () => {
-  if (isDemoMode || !cursor || !hasMore) return;
-  try {
-   const snap = await getDocs(query(collection(db, 'profiles'), startAfter(cursor), limit(PAGE)));
-   setProfiles((prev) => [...prev, ...mapProfiles(snap.docs)]);
-   setCursor(snap.docs[snap.docs.length - 1] ?? null);
-   setHasMore(snap.docs.length === PAGE);
-  } catch (error) {
-   console.error('Error fetching profiles:', error);
-   toastError(t('Could not load more founders', 'Δεν φόρτωσαν περισσότεροι ιδρυτές'));
-  }
- };
-
- useEffect(() => {
-  const fetchProfiles = async () => {
-   setProfiles(isDemoMode ? DIRECTORY : []);
-   setCursor(null);
-   setHasMore(false);
-   setLoading(!isDemoMode);
-   if (isDemoMode) {
-    setLoading(false);
-    return;
-   }
-   try {
-    const querySnapshot = await getDocs(query(collection(db, 'profiles'), limit(PAGE)));
-    setProfiles(mapProfiles(querySnapshot.docs));
-    setCursor(querySnapshot.docs[querySnapshot.docs.length - 1] ?? null);
-    setHasMore(querySnapshot.docs.length === PAGE);
-   } catch (error) {
-    console.error('Error fetching profiles:', error);
-    setProfiles([]);
-   } finally {
-    setLoading(false);
-   }
-  };
-
-  fetchProfiles();
- }, [currentUser, isDemoMode]);
-
  const viewer = fromProfile(viewerProfile);
  const parsedSearch = parseQualifiers(searchQuery);
- const filteredProfiles = profiles.filter(profile => {
-  const haystack = `${profile.fullName} ${profile.headline} ${profile.bio} ${(profile.skills || []).join(' ')} ${profile.industry || ''}`.toLowerCase();
-  const freeText = parsedSearch.text.toLowerCase();
-  const matchesSearch = !freeText || haystack.includes(freeText);
-  const matchesStage = !(parsedSearch.filters.stage || filters.stage) || (profile.stage || '').toLowerCase().includes((parsedSearch.filters.stage || filters.stage).toLowerCase());
-  const matchesRole = !(parsedSearch.filters.role || filters.role) || (profile.role || '').toLowerCase().includes((parsedSearch.filters.role || filters.role).toLowerCase()) || (profile.headline || '').toLowerCase().includes((parsedSearch.filters.role || filters.role).toLowerCase());
-  const matchesCommitment = !filters.commitment || profile.commitment === filters.commitment;
-  const matchesLocation = !(parsedSearch.filters.location || filters.location) || (profile.location || '').toLowerCase().includes((parsedSearch.filters.location || filters.location).toLowerCase());
-  const matchesSkill = !parsedSearch.filters.skill || (profile.skills || []).some((skill) => skill.toLowerCase().includes(parsedSearch.filters.skill!.toLowerCase()));
-  const matchesIndustry = !parsedSearch.filters.industry || (profile.industry || '').toLowerCase().includes(parsedSearch.filters.industry.toLowerCase());
+ const scored = profiles
+  .filter((person) => !hiddenIds.includes(person.id))
+  .filter((person) => {
+   const haystack = `${person.fullName} ${person.headline} ${person.bio} ${person.skills.join(' ')} ${person.industry}`.toLowerCase();
+   const freeText = parsedSearch.text.toLowerCase();
+   const stage = parsedSearch.filters.stage || filters.stage;
+   const role = parsedSearch.filters.role || filters.role;
+   const location = parsedSearch.filters.location || filters.location;
+   const matchesSearch = !freeText || haystack.includes(freeText);
+   const matchesStage = !stage || person.stage.toLowerCase().includes(stage.toLowerCase());
+   const matchesRole = !role || person.role.toLowerCase().includes(role.toLowerCase()) || person.headline.toLowerCase().includes(role.toLowerCase());
+   const matchesCommitment = !filters.commitment || person.commitment === filters.commitment;
+   const matchesLocation = !location || person.location.toLowerCase().includes(location.toLowerCase());
+   const matchesSkill = !parsedSearch.filters.skill || person.skills.some((skill) => skill.toLowerCase().includes(parsedSearch.filters.skill!.toLowerCase()));
+   const matchesIndustry = !parsedSearch.filters.industry || person.industry.toLowerCase().includes(parsedSearch.filters.industry.toLowerCase());
+   return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation && matchesSkill && matchesIndustry;
+  })
+  .map((person) => ({
+   person,
+   fit: compatibility(viewer, fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })),
+  }))
+  .sort((a, b) => (b.fit.score ?? -1) - (a.fit.score ?? -1));
+ const filteredProfiles = scored.slice(0, visibleCount);
+ const hasMore = scored.length > visibleCount;
 
-  return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation && matchesSkill && matchesIndustry;
- }).slice().sort((a, b) => {
-  const sa = compatibility(viewer, fromCast({ skills: a.skills, lookingFor: a.lookingFor, interests: a.interests, industry: a.industry, stage: a.stage, commitment: a.commitment, city: a.location?.split(',')[0], timezone: a.timezone })).score ?? -1;
-  const sb = compatibility(viewer, fromCast({ skills: b.skills, lookingFor: b.lookingFor, interests: b.interests, industry: b.industry, stage: b.stage, commitment: b.commitment, city: b.location?.split(',')[0], timezone: b.timezone })).score ?? -1;
-  return sb - sa;
- });
  const filterCause = [
   parsedSearch.text && t(`search “${parsedSearch.text}”`, `αναζήτηση «${parsedSearch.text}»`),
   (parsedSearch.filters.stage || filters.stage) && `${t('stage', 'στάδιο')} ${labelOf(parsedSearch.filters.stage || filters.stage)}`,
   (parsedSearch.filters.role || filters.role) && `${t('role', 'ρόλος')} ${labelOf(parsedSearch.filters.role || filters.role)}`,
   filters.commitment && `${t('commitment', 'δέσμευση')} ${labelOf(filters.commitment)}`,
-  (parsedSearch.filters.location || filters.location) && `${t('location', 'τόπος')} ${parsedSearch.filters.location || filters.location}`,
+  (parsedSearch.filters.location || filters.location) && `${t('location', 'τοποθεσία')} ${parsedSearch.filters.location || filters.location}`,
   parsedSearch.filters.skill && `${t('skill', 'δεξιότητα')} ${parsedSearch.filters.skill}`,
   parsedSearch.filters.industry && `${t('industry', 'κλάδος')} ${parsedSearch.filters.industry}`,
  ].filter(Boolean).join(', ');
 
+ const connectState = (id: string) => (real ? connectionStateWith(id).state : 'none');
+
  return (
   <PageShell
-   title={t('Discover Co-Founders', 'Ανακάλυψε συνιδρυτές')}
-   description={t('Find entrepreneurs and builders who complement your skills.', 'Βρες ιδρυτές και builders που συμπληρώνουν τις δεξιότητές σου.')}
+   title={t('Find co-founders', 'Βρες συνιδρυτές')}
+   description={t('Members ranked by how well they complement your skills, stage, commitment and working hours — every score explained.', 'Μέλη ταξινομημένα κατά το πόσο συμπληρώνουν τις δεξιότητες, το στάδιο, τη δέσμευση και τις ώρες εργασίας σου — κάθε σκορ με εξήγηση.')}
   >
    <div className="space-y-5">
-    {/* Search & Filters */}
     <div className="space-y-3">
-
     <div className="flex gap-2">
      <div className="flex-1 relative">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-      <input 
-       type="text"
-       placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, headline, ή ${QUALIFIER_HINT_EL}`)}
+      <input
+       type="search"
+       aria-label={t('Search members', 'Αναζήτηση μελών')}
+       placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, τίτλος ή ${QUALIFIER_HINT_EL}`)}
        value={searchQuery}
-       onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); }}
-       className="w-full pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+       onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); setVisibleCount(PAGE); }}
+       className="w-full min-h-11 pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
       />
      </div>
-     <button 
+     <button
+      type="button"
       onClick={() => setShowFilters(!showFilters)}
+      aria-expanded={showFilters}
       className={cn(
-       "flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all border",
-       showFilters 
-        ? "bg-stone-900 text-white border-stone-900" 
-        : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
+       "flex items-center gap-2 min-h-11 px-3 rounded-xl text-xs font-medium transition-all border",
+       showFilters ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
       )}
      >
       <SlidersHorizontal className="w-3.5 h-3.5" />
       {t('Filters', 'Φίλτρα')}
       {Object.values(filters).filter(Boolean).length > 0 && (
-       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-[10px] font-semibold">
-        {Object.values(filters).filter(Boolean).length}
-       </span>
+       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-[10px] font-semibold">{Object.values(filters).filter(Boolean).length}</span>
       )}
      </button>
     </div>
     {searchQuery.trim().length > 1 && (
-     <p className="text-xs text-stone-400">{t(`Names, headlines, and skills for “${searchQuery.trim()}”. Keys: ${QUALIFIER_HINT_EN}.`, `Ονόματα, headlines και δεξιότητες για «${searchQuery.trim()}». Κλειδιά: ${QUALIFIER_HINT_EL}.`)}</p>
+     <p className="text-xs text-stone-400">{t(`Searching names, headlines and skills for “${searchQuery.trim()}”. Shortcuts: ${QUALIFIER_HINT_EN}.`, `Αναζήτηση σε ονόματα, τίτλους και δεξιότητες για «${searchQuery.trim()}». Συντομεύσεις: ${QUALIFIER_HINT_EL}.`)}</p>
     )}
 
     <AnimatePresence>
      {showFilters && (
-      <motion.div 
-       initial={{ opacity: 0, y: -8 }}
-       animate={{ opacity: 1, y: 0 }}
-       exit={{ opacity: 0, y: -8 }}
-       className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3"
-      >
-       {[{ label: t('Stage', 'Στάδιο'), key: 'stage', opts: STAGES }, { label: t('Role', 'Ρόλος'), key: 'role', opts: ROLES }, { label: t('Commitment', 'Δέσμευση'), key: 'commitment', opts: COMMITMENTS }].map(({ label, key, opts }) => (
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3">
+       {[{ label: t('Stage', 'Στάδιο'), key: 'stage' as const, opts: STAGES }, { label: t('Role', 'Ρόλος'), key: 'role' as const, opts: ROLES }, { label: t('Commitment', 'Δέσμευση'), key: 'commitment' as const, opts: COMMITMENTS }].map(({ label, key, opts }) => (
         <div key={key} className="space-y-1.5">
-         <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{label}</label>
-         <select 
-          value={(filters as any)[key]}
-          onChange={(e) => { const next = {...filters, [key]: e.target.value}; setFilters(next); persistFilters(next); }}
+         <label className="text-[10px] font-semibold text-stone-400 tracking-wider" htmlFor={`filter-${key}`}>{label}</label>
+         <select
+          id={`filter-${key}`}
+          value={filters[key]}
+          onChange={(e) => { const next = { ...filters, [key]: e.target.value }; setFilters(next); persistFilters(next); setVisibleCount(PAGE); }}
           className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900"
          >
           <option value="">{t('All', 'Όλα')}</option>
@@ -274,21 +225,23 @@ export default function MatchDiscovery() {
         </div>
        ))}
        <div className="space-y-1.5">
-        <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Location', 'Τόπος')}</label>
+        <label className="text-[10px] font-semibold text-stone-400 tracking-wider" htmlFor="filter-location">{t('Location', 'Τοποθεσία')}</label>
         <input
+         id="filter-location"
          type="text"
          value={filters.location}
-         onChange={(e) => { const next = { ...filters, location: e.target.value }; setFilters(next); persistFilters(next); }}
+         onChange={(e) => { const next = { ...filters, location: e.target.value }; setFilters(next); persistFilters(next); setVisibleCount(PAGE); }}
          placeholder={t('City or country', 'Πόλη ή χώρα')}
          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900 placeholder:text-stone-400"
         />
        </div>
        <div className="col-span-2 lg:col-span-4 flex items-end">
-        <button 
+        <button
+         type="button"
          onClick={() => { const next = { stage: '', role: '', commitment: '', location: '' }; setFilters(next); persistFilters({ ...next, q: searchQuery, skill: '', industry: '' }); }}
-         className="w-full py-2 text-xs font-medium text-stone-400 hover:text-stone-900 border border-stone-200 rounded-lg transition-colors bg-white"
+         className="w-full min-h-10 text-xs font-medium text-stone-400 hover:text-stone-900 border border-stone-200 rounded-lg transition-colors bg-white"
         >
-         {t('Reset', 'Επαναφορά')}
+         {t('Reset filters', 'Επαναφορά φίλτρων')}
         </button>
        </div>
       </motion.div>
@@ -296,7 +249,10 @@ export default function MatchDiscovery() {
     </AnimatePresence>
    </div>
 
-   {/* Results */}
+   {error && real && (
+    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">{t('The member list could not be refreshed. Showing what was last loaded.', 'Η λίστα μελών δεν ανανεώθηκε. Εμφανίζεται ό,τι φορτώθηκε τελευταία.')}</p>
+   )}
+
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {loading ? (
      Array.from({ length: 6 }).map((_, i) => (
@@ -316,110 +272,113 @@ export default function MatchDiscovery() {
       </div>
      ))
     ) : filteredProfiles.length > 0 ? (
-     filteredProfiles.map((profile, idx) => {
-      const explained = compatibility(viewer, fromCast({
-       skills: profile.skills,
-       lookingFor: profile.lookingFor,
-       interests: profile.interests,
-       industry: profile.industry,
-       stage: profile.stage,
-       commitment: profile.commitment,
-       city: profile.location?.split(',')[0],
-       timezone: profile.timezone,
-      }));
+     filteredProfiles.map(({ person, fit }, idx) => {
+      const state = connectState(person.id);
+      const busy = connecting === person.id;
       return (
-      <motion.div 
-       key={`${profile.uid}-${idx}`}
+      <motion.div
+       key={person.id}
        initial={{ opacity: 0, y: 12 }}
        animate={{ opacity: 1, y: 0 }}
-       transition={{ delay: idx * 0.04 }}
-       onClick={() => { rememberPerson({ id: profile.uid, fullName: profile.fullName, headline: profile.headline, location: profile.location, role: profile.role, industry: profile.industry || '', bio: profile.bio }); navigate(`/profile/${profile.uid}`); }}
-       className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 hover:shadow-md transition-all group cursor-pointer"
+       transition={{ delay: Math.min(idx, 12) * 0.03 }}
+       role="link"
+       tabIndex={0}
+       onKeyDown={(e) => { if (e.key === 'Enter') { rememberPerson({ id: person.id, fullName: person.fullName, headline: person.headline, location: person.location, role: person.role, industry: person.industry, bio: person.bio }); navigate(`/profile/${person.id}`); } }}
+       onClick={() => { rememberPerson({ id: person.id, fullName: person.fullName, headline: person.headline, location: person.location, role: person.role, industry: person.industry, bio: person.bio }); navigate(`/profile/${person.id}`); }}
+       className="bg-white rounded-2xl border border-stone-100 p-5 hover:border-stone-300 hover:shadow-md transition-all group cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-900/20"
       >
        <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-         <Avatar
-          src={avatarFor(profile.uid)}
-          fallback={profile.fullName || 'Founder'}
-          size="lg"
-          className="w-11 h-11"
-         />
-         <div>
-          <PersonHovercard person={profile.uid || profile.fullName}>
-           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
-            {profile.fullName || profile.headline?.split(' at ')[0] || t('Founder', 'Ιδρυτής')}
-           </p>
+        <div className="flex items-center gap-3 min-w-0">
+         <Avatar src={avatarOf(person) || undefined} fallback={person.fullName || 'Founder'} size="lg" status={isOnline(person) ? 'online' : undefined} className="w-11 h-11" />
+         <div className="min-w-0">
+          <PersonHovercard person={person.id}>
+           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.fullName || t('Founder', 'Ιδρυτής')}</p>
           </PersonHovercard>
-          <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
-          {explained.headline && <p className="text-xs text-stone-500">{bothText(explained.headline.en, explained.headline.el)}</p>}
+          <p className="text-xs text-stone-400 line-clamp-1">{person.headline || labelOf(person.role)}</p>
+          {fit.headline && <p className="text-xs text-stone-500">{bothText(fit.headline.en, fit.headline.el)}</p>}
          </div>
         </div>
-        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0">{explained.score == null ? '—' : `${explained.score}%`}</span>
+        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0 tabular-nums" title={t('Compatibility with your profile', 'Συμβατότητα με το προφίλ σου')}>{fit.score == null ? '—' : `${fit.score}%`}</span>
        </div>
 
        <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">
-        {profile.bio || 'Passionate founder looking for the right partner.'}
+        {person.bio || t('No bio yet.', 'Δεν υπάρχει περιγραφή ακόμη.')}
        </p>
 
-       <FactLine className="mb-4" items={[labelOf(profile.stage), labelOf(profile.commitment), profile.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />
+       <FactLine className="mb-4" items={[labelOf(person.stage), labelOf(person.commitment), person.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />
 
        <div className="flex items-center gap-2">
         <button
          type="button"
-         onClick={(e) => {
-          e.stopPropagation();
-          window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${profile.fullName}?`, context: profile.fullName } }));
-         }}
-         className="px-2 py-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100 text-xs font-medium"
+         onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${person.fullName}?`, context: person.fullName } })); }}
+         className="min-h-10 px-2.5 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100 text-xs font-medium"
+         title={t('Ask the assistant why this is a match', 'Ρώτα τον βοηθό γιατί ταιριάζετε')}
         >
-         {t('Ask', 'Ρώτα')}
-        </button>
-        <button 
-         onClick={(e) => handleConnect(e, profile)}
-         disabled={connecting === profile.uid}
-         className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all disabled:opacity-50"
-        >
-         <UserPlus className="w-3.5 h-3.5" />
-         {connecting === profile.uid ? t('Sending...', 'Αποστολή…') : t('Connect', 'Σύνδεση')}
-        </button>
-        <button 
-         onClick={(e) => handleMessage(e, profile.uid)}
-         className="p-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
-        >
-         <MessageSquare className="w-3.5 h-3.5" />
+         {t('Why?', 'Γιατί;')}
         </button>
         <button
          type="button"
-         onClick={(e) => handleSave(e, profile)}
-         className="p-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100"
+         onClick={(e) => void handleConnect(e, person)}
+         disabled={busy || state === 'connected' || state === 'declined'}
+         className={cn(
+          'flex-1 flex items-center justify-center gap-1.5 min-h-10 rounded-xl text-xs font-medium transition-all disabled:opacity-60',
+          state === 'connected' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+           : state === 'outgoing' ? 'bg-white text-stone-700 border border-stone-200 hover:border-stone-900'
+           : state === 'incoming' ? 'bg-stone-900 text-white hover:bg-stone-800'
+           : 'bg-stone-900 text-white hover:bg-stone-800',
+         )}
         >
-         <Star className={cn('w-3.5 h-3.5', savedIds.includes(profile.uid) && 'fill-current text-amber-500')} />
+         {state === 'connected' ? <Check className="w-3.5 h-3.5" /> : state === 'outgoing' ? <Clock className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+         {busy ? t('Sending…', 'Αποστολή…')
+          : state === 'connected' ? t('Connected', 'Συνδεδεμένοι')
+          : state === 'outgoing' ? t('Requested', 'Αίτημα σταλμένο')
+          : state === 'incoming' ? t('Accept', 'Αποδοχή')
+          : state === 'declined' ? t('Declined', 'Απορρίφθηκε')
+          : t('Connect', 'Σύνδεση')}
+        </button>
+        <button type="button" onClick={(e) => handleMessage(e, person.id)} aria-label={t('Message', 'Μήνυμα')} title={t('Message', 'Μήνυμα')} className="min-h-10 min-w-10 inline-flex items-center justify-center bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+         <MessageSquare className="w-3.5 h-3.5" />
+        </button>
+        <button type="button" onClick={(e) => handleSave(e, person)} aria-pressed={savedIds.includes(person.id)} aria-label={savedIds.includes(person.id) ? t('Remove from saved', 'Αφαίρεση από τα αποθηκευμένα') : t('Save', 'Αποθήκευση')} title={savedIds.includes(person.id) ? t('Remove from saved', 'Αφαίρεση από τα αποθηκευμένα') : t('Save', 'Αποθήκευση')} className="min-h-10 min-w-10 inline-flex items-center justify-center bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+         <Star className={cn('w-3.5 h-3.5', savedIds.includes(person.id) && 'fill-current text-amber-500')} />
+        </button>
+        <button type="button" onClick={(e) => handleHide(e, person)} aria-label={t('Hide this member', 'Απόκρυψη μέλους')} title={t('Hide this member', 'Απόκρυψη μέλους')} className="min-h-10 min-w-10 inline-flex items-center justify-center bg-stone-50 text-stone-400 rounded-xl hover:bg-stone-100 hover:text-stone-700 transition-all border border-stone-100">
+         <EyeOff className="w-3.5 h-3.5" />
         </button>
        </div>
       </motion.div>
       );
      })
     ) : (
-     <EmptyHint className="col-span-full" title={filterCause ? t(`No founders match ${filterCause}.`, `Κανείς ιδρυτής δεν ταιριάζει σε ${filterCause}.`) : t('No founders found', 'Δεν βρέθηκαν ιδρυτές')} detail={t('Clear that filter, or ask the studio assistant who still ranks on this profile.', 'Καθάρισε το φίλτρο, ή ρώτα τον βοηθό που βαθμολογεί στο ίδιο προφίλ.')}>
-       <button 
+     <EmptyHint
+      className="col-span-full"
+      title={filterCause ? t(`No members match ${filterCause}.`, `Κανένα μέλος δεν ταιριάζει σε ${filterCause}.`) : profiles.length === 0 && real ? t('No other founders have joined yet.', 'Δεν έχουν εγγραφεί άλλοι ιδρυτές ακόμη.') : t('No members found', 'Δεν βρέθηκαν μέλη')}
+      detail={filterCause ? t('Clear the filter, or ask the assistant who ranks highest for your profile.', 'Καθάρισε το φίλτρο ή ρώτα τον βοηθό ποιοι ταιριάζουν περισσότερο στο προφίλ σου.') : t('Invite the founders you already know — the fit check link takes a minute.', 'Προσκάλεσε τους ιδρυτές που ήδη γνωρίζεις — ο σύνδεσμος fit check παίρνει ένα λεπτό.')}
+     >
+      {filterCause ? (
+       <button
         type="button"
         onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); }}
-        className="text-xs font-medium text-stone-900 hover:underline"
+        className="text-xs font-medium text-stone-900 hover:underline min-h-11"
        >
         {t('Clear filters', 'Καθαρισμός φίλτρων')}
        </button>
-       <AskLink prompt="who is my best match" />
+      ) : (
+       <AskLink prompt="Invite 3 founders">{t('Invite founders', 'Πρόσκληση ιδρυτών')}</AskLink>
+      )}
+      <AskLink prompt="who is my best match" />
      </EmptyHint>
     )}
    </div>
 
-   {!loading && !isDemoMode && hasMore && filteredProfiles.length > 0 && (
+   {!loading && hasMore && (
     <div className="flex justify-center">
-     <button 
-      onClick={loadMore}
-      className="px-4 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-300 transition-all flex items-center gap-2"
+     <button
+      type="button"
+      onClick={() => setVisibleCount((count) => count + PAGE)}
+      className="min-h-11 px-4 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-300 transition-all flex items-center gap-2"
      >
-      {t('Load more founders', 'Περισσότεροι ιδρυτές')} <ChevronDown className="w-3.5 h-3.5" />
+      {t(`Show more (${scored.length - visibleCount} left)`, `Περισσότερα (${scored.length - visibleCount} ακόμη)`)} <ChevronDown className="w-3.5 h-3.5" />
      </button>
     </div>
    )}

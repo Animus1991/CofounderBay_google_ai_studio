@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Chrome, User, FlaskConical } from 'lucide-react';
 import { auth } from '../firebase';
@@ -25,7 +25,7 @@ export default function SignUpPage() {
 
  const friendlyError = (code: string): string => {
   const map: Record<string, string> = {
-   'auth/operation-not-allowed': t('Email/password sign-up is not enabled yet. Please use Demo Mode or try Google sign-in.', 'Η εγγραφή με email/κωδικό δεν είναι ενεργή ακόμα. Χρησιμοποίησε τη δοκιμή με δείγμα ή την είσοδο με Google.'),
+   'auth/operation-not-allowed': t('Email/password sign-up is not enabled yet. Please use Demo Mode or try Google sign-in.', 'Η εγγραφή με email/κωδικό δεν είναι ενεργή ακόμα. Χρησιμοποίησε τη δοκιμαστική λειτουργία (Demo) ή την είσοδο με Google.'),
    'auth/email-already-in-use': t('An account with this email already exists. Try signing in.', 'Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκίμασε είσοδο.'),
    'auth/weak-password': t('Password must be at least 6 characters.', 'Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'),
    'auth/invalid-email': t('Please enter a valid email address.', 'Βάλε μια έγκυρη διεύθυνση email.'),
@@ -39,12 +39,18 @@ export default function SignUpPage() {
 
  const handleEmailSignUp = async (e: React.FormEvent) => {
   e.preventDefault();
+   if (password.length < 8) {
+    setError(t('Password must be at least 8 characters.', 'Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες.'));
+    return;
+   }
   setLoading(true);
   setError('');
   try {
    toggleDemoMode(false);
    const created = await createUserWithEmailAndPassword(auth, email, password);
    await bootstrapAccount(created.user, fullName);
+   // Verification mail is best effort: the account works right away, the badge appears once confirmed.
+   void sendEmailVerification(created.user, { url: `${window.location.origin}/dashboard` }).catch(() => undefined);
    navigate('/onboarding');
   } catch (err: any) {
    setError(friendlyError(err.code));
@@ -205,7 +211,8 @@ export default function SignUpPage() {
       <div className="mt-6">
        <button
         onClick={handleGoogleSignUp}
-        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
+        disabled={loading}
+        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
@@ -219,14 +226,14 @@ export default function SignUpPage() {
        className="w-full min-h-11 flex items-center justify-center gap-2 px-4 border border-dashed border-stone-300 rounded-xl text-sm font-medium text-stone-500 hover:bg-stone-50 hover:border-stone-400 transition-all"
       >
        <FlaskConical className="h-4 w-4 text-amber-500" />
-       {t('Try Demo Mode — no account needed', 'Δοκιμή με δείγμα — χωρίς λογαριασμό')}
+       {t('Try Demo Mode — no account needed', 'Δοκιμαστική λειτουργία — χωρίς λογαριασμό')}
       </button>
      </div>
      <div className="mt-4">
       <p className="text-xs text-stone-400 text-center leading-relaxed">
        {t('By creating an account, you agree to our', 'Με τη δημιουργία λογαριασμού αποδέχεσαι τους')}{' '}
-       <a href="#" className="underline hover:text-stone-600">{t('Terms of Service', 'Όρους χρήσης')}</a> {t('and', 'και την')}{' '}
-       <a href="#" className="underline hover:text-stone-600">{t('Privacy Policy', 'Πολιτική απορρήτου')}</a>.
+       <NavLink to="/legal#terms" className="underline hover:text-stone-600">{t('Terms of Service', 'Όρους χρήσης')}</NavLink> {t('and', 'και την')}{' '}
+       <NavLink to="/legal#privacy" className="underline hover:text-stone-600">{t('Privacy Policy', 'Πολιτική απορρήτου')}</NavLink>.
       </p>
      </div>
     </div>

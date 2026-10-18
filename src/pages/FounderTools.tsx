@@ -67,9 +67,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
  const t = useT();
  const navigate = useNavigate();
  const tabLabel = (tab: string) => ({
-  dashboard: t('Dashboard', 'Πίνακας'),
-  builder: t('Builder', 'Κατασκευή'),
-  pitch: t('Pitch', 'Pitch'),
+  dashboard: t('Dashboard', 'Πίνακας ελέγχου'),
+  builder: t('Builder', 'Δημιουργός'),
+  pitch: t('Pitch', 'Παρουσίαση'),
   applications: t('Applications', 'Αιτήσεις'),
   tools: t('Tools', 'Εργαλεία'),
   templates: t('Templates', 'Πρότυπα'),
@@ -89,7 +89,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   'Pitch Readiness': 'Ετοιμότητα pitch',
  } as Record<string, string>)[en] ?? en);
  const slideTitle = (en: string) => t(en, ({
-  'Cover & Hook': 'Εξώφυλλο και hook',
+  'Cover & Hook': 'Εξώφυλλο και εισαγωγή',
   Problem: 'Πρόβλημα',
   Solution: 'Λύση',
   'Market Size': 'Μέγεθος αγοράς',
@@ -99,7 +99,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   'Ask & Use of Funds': 'Αίτημα και χρήση κεφαλαίων',
  } as Record<string, string>)[en] ?? en);
  const typeLabel = (type: string) => {
-  if (type === 'VC Intro') return t('VC Intro', 'Γνωριμία με VC');
+  if (type === 'VC Intro') return t('VC Intro', 'Σύσταση σε VC');
   if (type === 'Program') return t('Program', 'Πρόγραμμα');
   return labelOf(type);
  };
@@ -417,7 +417,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
           <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
-           {t("Venture Diagnostic", "Διάγνωση venture")} <span className="text-stone-300 font-mono text-xs">v4.2.0</span>
+           {t("Venture Diagnostic", "Διάγνωση εγχειρήματος")} <span className="text-stone-300 font-mono text-xs">v4.2.0</span>
           </h3>
          </div>
          <div className="flex items-center gap-3">

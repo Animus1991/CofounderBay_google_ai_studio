@@ -7,19 +7,14 @@ import {
  TrendingUp, 
  Plus, 
  Search, 
- Filter, 
- Zap, 
- CheckCircle2, 
  ArrowRight,
- ShieldCheck,
- Globe,
- Bell,
  MoreVertical,
  Share2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
+import { useAuth } from '../App';
 import { listKeys, logActivity, readIds, setId } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 
@@ -79,17 +74,18 @@ const COMMUNITIES = [
 
 export default function CommunitiesPage() {
  const t = useT();
+ const { isDemoMode } = useAuth();
  const [searchQuery, setSearchQuery] = useState('');
  const [activeTab, setActiveTab] = useState('all');
  const joinedList = useStored(() => readIds(listKeys.communities), ['cfb.joinedCommunities']);
- const joinedIds = new Set(joinedList.length ? joinedList : COMMUNITIES.filter((c) => c.joined).map((c) => c.id));
+ const joinedIds = new Set(joinedList.length ? joinedList : (isDemoMode ? COMMUNITIES.filter((c) => c.joined).map((c) => c.id) : []));
  const navigate = useNavigate();
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
  useEffect(() => {
-  if (readIds(listKeys.communities).length === 0) {
+  if (isDemoMode && readIds(listKeys.communities).length === 0) {
    COMMUNITIES.filter((c) => c.joined).forEach((c) => setId(listKeys.communities, c.id, true));
   }
- }, []);
+ }, [isDemoMode]);
  const visibleCommunities = COMMUNITIES.filter((community) => {
   const q = searchQuery.trim().toLowerCase();
   const matchesQuery = !q || community.name.toLowerCase().includes(q) || community.description.toLowerCase().includes(q) || community.category.toLowerCase().includes(q);
@@ -152,7 +148,7 @@ export default function CommunitiesPage() {
      title={searchQuery.trim()
       ? t(`No communities match search “${searchQuery.trim()}”${activeTab !== 'all' ? ` and the ${activeTab} tab` : ''}.`, `Δεν βρέθηκαν κοινότητες για «${searchQuery.trim()}»${activeTab !== 'all' ? ` στην καρτέλα «${TAB_EL[activeTab]}»` : ''}.`)
       : t(`No communities on the ${activeTab} tab.`, `Δεν υπάρχουν κοινότητες στην καρτέλα «${TAB_EL[activeTab]}».`)}
-     detail={t('Ask the studio assistant to find one, or create a new space.', 'Ζήτα από τον βοηθό του στούντιο να βρει μία ή φτιάξε νέο χώρο.')}
+     detail={t('Ask the studio assistant to find one, or create a new space.', 'Ζήτα από τον βοηθό να βρει μία ή φτιάξε νέο χώρο.')}
     >
      <AskLink prompt="How do I create a community?">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
     </EmptyHint>
@@ -221,7 +217,7 @@ export default function CommunitiesPage() {
         type="button"
         onClick={() => {
          setId(listKeys.communities, community.id, true);
-         logActivity({ kind: 'community', title: `Joined ${community.name}`, titleEl: `Έγινε join: ${community.name}`, href: '/communities' });
+         logActivity({ kind: 'community', title: `Joined ${community.name}`, titleEl: `Συμμετοχή στην κοινότητα: ${community.name}`, href: '/communities' });
         }}
         className="w-full py-2 bg-stone-900 text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
        >

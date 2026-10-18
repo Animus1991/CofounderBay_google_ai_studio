@@ -129,7 +129,7 @@ export default function Perks() {
    </div>
 
    {filteredPerks.length === 0 && (
-    <EmptyHint title={t("No perks match this search.", "Καμία παροχή δεν ταιριάζει σε αυτή την αναζήτηση.")} detail={t("Ask the studio assistant which credits you can claim.", "Ρώτα τον βοηθό του στούντιο ποιες πιστώσεις μπορείς να διεκδικήσεις.")}>
+    <EmptyHint title={t("No perks match this search.", "Καμία παροχή δεν ταιριάζει σε αυτή την αναζήτηση.")} detail={t("Ask the studio assistant which credits you can claim.", "Ρώτα τον βοηθό ποιες πιστώσεις μπορείς να διεκδικήσεις.")}>
      <AskLink prompt="What perks can I claim?" />
     </EmptyHint>
    )}
@@ -155,7 +155,7 @@ export default function Perks() {
       </div>
       <div className="mt-6 pt-4 border-t border-stone-100">
        <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
-        {claimed.includes(perkClaimId(perk.name)) ? t('Claimed', 'Διεκδικήθηκε') : t('Claim Perk', 'Διεκδίκηση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
+        {claimed.includes(perkClaimId(perk.name)) ? t('Claimed', 'Εξαργυρώθηκε') : t('Claim Perk', 'Εξαργύρωση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
        </Button>
       </div>
      </Card>

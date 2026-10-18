@@ -11,7 +11,7 @@ import { useAuth } from '../App';
 import { pageHelp } from '../lib/navHelp';
 import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
-import { CAST } from '../data/cast';
+import { directoryPeople, onPeopleChange } from '../lib/peopleSource';
 
 const COMMAND_PATH: Record<string, string> = {
   dashboard: '/dashboard',
@@ -68,6 +68,8 @@ export default function CommandPalette() {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [peopleTick, setPeopleTick] = useState(0);
+  useEffect(() => onPeopleChange(() => setPeopleTick((value) => value + 1)), []);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -86,24 +88,24 @@ export default function CommandPalette() {
 
   const commands: CommandItem[] = useMemo(() => {
     const items: CommandItem[] = [
-      { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό του στούντιο', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Studio', sectionEl: 'Στούντιο', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },
-      { id: 'ask-match', label: 'Who is my best match?', labelEl: 'Ποια είναι η καλύτερη αντιστοίχιση;', icon: Users, action: () => ask('who is my best match'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['match', 'cofounder', 'αντιστοιχ'], kind: 'command' },
-      { id: 'ask-overdue', label: 'What is overdue?', labelEl: 'Τι είναι εκπρόθεσμο;', icon: Trophy, action: () => ask('What is overdue?'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['milestone', 'overdue', 'εκπρόθεσμ'], kind: 'command' },
-      { id: 'ask-round', label: 'How is my round?', labelEl: 'Πώς πάει ο γύρος;', icon: DollarSign, action: () => ask('How is my round?'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['raise', 'fundraising', 'γύρ'], kind: 'command' },
-      { id: 'ask-invest', label: 'Record a $50k investment', labelEl: 'Καταγραφή επένδυσης $50k', icon: DollarSign, action: () => ask('Record a $50k investment in my round'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['record', 'investment'], kind: 'command' },
-      { id: 'ask-programs', label: 'What programs can I apply to?', labelEl: 'Σε ποια προγράμματα κάνω αίτηση;', icon: Rocket, action: () => ask('What programs can I apply to?'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['accelerator', 'grant'], kind: 'command' },
-      { id: 'ask-events', label: 'What events are coming?', labelEl: 'Ποιες εκδηλώσεις έρχονται;', icon: Calendar, action: () => ask('what events are coming'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['meetup', 'calendar'], kind: 'command' },
-      { id: 'ask-readiness', label: 'What is my readiness score?', labelEl: 'Ποιο είναι το readiness score;', icon: Activity, action: () => ask('Tell me about readiness score'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['insights', 'score', 'ετοιμότητα'], kind: 'command' },
-      { id: 'ask-mentor', label: 'Find a fundraising mentor', labelEl: 'Βρες μέντορα χρηματοδότησης', icon: GraduationCap, action: () => ask('Find a fundraising mentor'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['advisor', 'coach'], kind: 'command' },
-      { id: 'ask-perk', label: 'Claim the AWS perk', labelEl: 'Διεκδίκηση παροχής AWS', icon: Gift, action: () => ask('Claim the Amazon Web Services perk'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['credits', 'aws'], kind: 'command' },
-      { id: 'ask-playbook', label: '7-day match plan', labelEl: 'Πλάνο 7 ημερών', icon: Trophy, action: () => ask('Give me a 7-day match plan'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['playbook', 'plan', 'πλάνο'], kind: 'command' },
-      { id: 'ask-week', label: 'Who should I meet this week?', labelEl: 'Ποιον να γνωρίσω αυτή την εβδομάδα;', icon: Users, action: () => ask('Who should I meet this week?'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['week', 'meet', 'εβδομάδ'], kind: 'command' },
-      { id: 'ask-invite', label: 'Invite 3 founders', labelEl: 'Προσκάλεσε 3 ιδρυτές', icon: Share2, action: () => ask('Invite 3 founders'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['invite', 'referral', '1+3'], kind: 'command' },
-      { id: 'ask-scout', label: 'Propose three people (do not send)', labelEl: 'Πρότεινε τρία πρόσωπα (χωρίς αποστολή)', icon: Users, action: () => ask('Propose three people — do not send'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['scout', 'propose', '/scout'], kind: 'command' },
-      { id: 'ask-need', label: 'Draft a need card', labelEl: 'Πρόχειρο κάρτας ανάγκης', icon: Target, action: () => ask('Draft a need card for a co-founder'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['need', 'card', 'κάρτα'], kind: 'command' },
-      { id: 'ask-next', label: 'What should I do first?', labelEl: 'Τι να κάνω πρώτα;', icon: Sparkles, action: () => ask('What should I do first?'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['next', 'πρώτα', '/next'], kind: 'command' },
-      { id: 'ask-inbox', label: 'Search my messages', labelEl: 'Αναζήτηση στα μηνύματα', icon: MessageSquare, action: () => ask('search my messages for intro'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['inbox', '/inbox'], kind: 'command' },
-      { id: 'quiz', label: 'Fit check', labelEl: 'Fit check', icon: Sparkles, action: () => go('/quiz'), section: 'Studio', sectionEl: 'Στούντιο', keywords: ['quiz', 'archetype'], kind: 'command' },
+      { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Studio', sectionEl: 'Βοηθός', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },
+      { id: 'ask-match', label: 'Who is my best match?', labelEl: 'Ποια είναι η καλύτερη αντιστοίχιση;', icon: Users, action: () => ask('who is my best match'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['match', 'cofounder', 'αντιστοιχ'], kind: 'command' },
+      { id: 'ask-overdue', label: 'What is overdue?', labelEl: 'Τι είναι εκπρόθεσμο;', icon: Trophy, action: () => ask('What is overdue?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['milestone', 'overdue', 'εκπρόθεσμ'], kind: 'command' },
+      { id: 'ask-round', label: 'How is my round?', labelEl: 'Πώς πάει ο γύρος;', icon: DollarSign, action: () => ask('How is my round?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['raise', 'fundraising', 'γύρ'], kind: 'command' },
+      { id: 'ask-invest', label: 'Record a $50k investment', labelEl: 'Καταγραφή επένδυσης $50k', icon: DollarSign, action: () => ask('Record a $50k investment in my round'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['record', 'investment'], kind: 'command' },
+      { id: 'ask-programs', label: 'What programs can I apply to?', labelEl: 'Σε ποια προγράμματα κάνω αίτηση;', icon: Rocket, action: () => ask('What programs can I apply to?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['accelerator', 'grant'], kind: 'command' },
+      { id: 'ask-events', label: 'What events are coming?', labelEl: 'Ποιες εκδηλώσεις έρχονται;', icon: Calendar, action: () => ask('what events are coming'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['meetup', 'calendar'], kind: 'command' },
+      { id: 'ask-readiness', label: 'What is my readiness score?', labelEl: 'Ποιο είναι το readiness score;', icon: Activity, action: () => ask('Tell me about readiness score'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['insights', 'score', 'ετοιμότητα'], kind: 'command' },
+      { id: 'ask-mentor', label: 'Find a fundraising mentor', labelEl: 'Βρες μέντορα χρηματοδότησης', icon: GraduationCap, action: () => ask('Find a fundraising mentor'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['advisor', 'coach'], kind: 'command' },
+      { id: 'ask-perk', label: 'Claim the AWS perk', labelEl: 'Διεκδίκηση παροχής AWS', icon: Gift, action: () => ask('Claim the Amazon Web Services perk'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['credits', 'aws'], kind: 'command' },
+      { id: 'ask-playbook', label: '7-day match plan', labelEl: 'Πλάνο 7 ημερών', icon: Trophy, action: () => ask('Give me a 7-day match plan'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['playbook', 'plan', 'πλάνο'], kind: 'command' },
+      { id: 'ask-week', label: 'Who should I meet this week?', labelEl: 'Ποιον να γνωρίσω αυτή την εβδομάδα;', icon: Users, action: () => ask('Who should I meet this week?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['week', 'meet', 'εβδομάδ'], kind: 'command' },
+      { id: 'ask-invite', label: 'Invite 3 founders', labelEl: 'Προσκάλεσε 3 ιδρυτές', icon: Share2, action: () => ask('Invite 3 founders'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['invite', 'referral', '1+3'], kind: 'command' },
+      { id: 'ask-scout', label: 'Propose three people (do not send)', labelEl: 'Πρότεινε τρία πρόσωπα (χωρίς αποστολή)', icon: Users, action: () => ask('Propose three people — do not send'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['scout', 'propose', '/scout'], kind: 'command' },
+      { id: 'ask-need', label: 'Draft a need card', labelEl: 'Πρόχειρο κάρτας ανάγκης', icon: Target, action: () => ask('Draft a need card for a co-founder'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['need', 'card', 'κάρτα'], kind: 'command' },
+      { id: 'ask-next', label: 'What should I do first?', labelEl: 'Τι να κάνω πρώτα;', icon: Sparkles, action: () => ask('What should I do first?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['next', 'πρώτα', '/next'], kind: 'command' },
+      { id: 'ask-inbox', label: 'Search my messages', labelEl: 'Αναζήτηση στα μηνύματα', icon: MessageSquare, action: () => ask('search my messages for intro'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['inbox', '/inbox'], kind: 'command' },
+      { id: 'quiz', label: 'Fit check', labelEl: 'Fit check', icon: Sparkles, action: () => go('/quiz'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['quiz', 'archetype'], kind: 'command' },
       { id: 'dashboard', label: 'Dashboard', labelEl: 'Πίνακας', icon: LayoutDashboard, action: () => go('/dashboard'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['home', 'main'], kind: 'page' },
       { id: 'profile', label: 'My Profile', labelEl: 'Το προφίλ μου', icon: User, action: () => go('/profile'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['account', 'me'], kind: 'page' },
       { id: 'discovery', label: 'Explore', labelEl: 'Εξερεύνηση', icon: Compass, action: () => go('/discovery'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['explore', 'browse', 'find', 'discovery'], kind: 'page' },
@@ -161,14 +163,15 @@ export default function CommandPalette() {
   const people = useMemo(() => {
     if (prefix !== 'people' && !(prefix === 'all' && q.startsWith('@'))) return [];
     const n = q.replace(/^@/, '');
-    return CAST.filter((person) => {
+    return directoryPeople().filter((person) => {
       if (!n) return true;
       return person.fullName.toLowerCase().includes(n)
         || person.skills.some((skill) => skill.toLowerCase().includes(n))
         || person.role.toLowerCase().includes(n)
         || person.headline.toLowerCase().includes(n);
     }).slice(0, 8);
-  }, [prefix, q]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefix, q, peopleTick]);
 
   const discoveryRow = prefix === 'people' && needle
     ? { id: 'discovery-search', name: needle }

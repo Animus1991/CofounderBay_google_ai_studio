@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addSession, listKeys, logActivity, readIds, toggleId } from '../lib/localLists';
 import { 
@@ -25,8 +25,10 @@ import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { avatarFor, castByRole } from '../data/cast';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
-import { db } from '../firebase';
+import { usePeople } from '../lib/directory';
+import { avatarOf, mentorPool, type Person } from '../lib/peopleSource';
+import { sendConnectionRequest } from '../lib/social';
+import { useToast } from '../context/ToastContext';
 import { useAuth } from '../App';
 
 type MentorCard = {
@@ -59,9 +61,21 @@ const SAMPLE_MENTORS: MentorCard[] = castByRole('Mentor').map((person) => ({
   achievements: person.achievements || [],
 }));
 
-function isMentorRole(value: unknown) {
-  const text = Array.isArray(value) ? value.join(' ') : String(value || '');
-  return text.toLowerCase().includes('mentor');
+function mentorFromPerson(person: Person): MentorCard {
+  return {
+    id: person.id,
+    name: person.fullName,
+    role: person.headline || person.role,
+    company: person.company,
+    expertise: person.expertise.length ? person.expertise : person.skills,
+    rating: person.rating,
+    reviews: person.reviews,
+    availability: person.availability || 'Flexible',
+    avatar: avatarOf(person),
+    verified: person.verified,
+    detailedBio: person.bio,
+    achievements: person.achievements,
+  };
 }
 
 const AVAILABILITY_EL: Record<string, string> = {
@@ -72,8 +86,16 @@ const AVAILABILITY_EL: Record<string, string> = {
 
 export default function MentorsPage() {
  const t = useT();
- const { isDemoMode } = useAuth();
- const [mentors, setMentors] = useState<MentorCard[]>(isDemoMode ? SAMPLE_MENTORS : []);
+ const { isDemoMode, user: authUser } = useAuth();
+ const toast = useToast();
+ const { people, loading: peopleLoading } = usePeople(authUser?.uid);
+ // Demo: the sample mentors. Real account: every member who is a mentor/advisor or open to mentoring.
+ const mentors = useMemo<MentorCard[]>(() => {
+  if (isDemoMode) return SAMPLE_MENTORS;
+  const ids = new Set(mentorPool().map((person) => person.id));
+  return people.filter((person) => ids.has(person.id)).map(mentorFromPerson);
+ }, [isDemoMode, people]);
+ const [sending, setSending] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
  const [availabilityFilter, setAvailabilityFilter] = useState('All');
  const [expertiseFilter, setExpertiseFilter] = useState('All');
@@ -88,43 +110,6 @@ export default function MentorsPage() {
  const availableFilters = ['All', 'Immediate', 'Flexible', '1 month notice'];
  const expertiseFilters = ['All', 'Product', 'Growth', 'Fundraising', 'Engineering', 'Marketing'];
 
- useEffect(() => {
-  if (isDemoMode) {
-   setMentors(SAMPLE_MENTORS);
-   return;
-  }
-  let cancelled = false;
-  (async () => {
-   try {
-    const snap = await getDocs(query(collection(db, 'profiles'), limit(50)));
-    if (cancelled) return;
-    const live = snap.docs.flatMap((docSnap) => {
-     const data = docSnap.data() as Record<string, unknown>;
-     if (!isMentorRole(data.role) && !isMentorRole(data.roles)) return [];
-     const skills = Array.isArray(data.skills) ? data.skills.filter((item): item is string => typeof item === 'string') : [];
-     return [{
-      id: docSnap.id,
-      name: String(data.fullName || data.displayName || 'Mentor'),
-      role: String(data.headline || data.role || 'Mentor'),
-      company: String(data.company || ''),
-      expertise: skills,
-      rating: Number(data.rating || 0),
-      reviews: Number(data.reviews || 0),
-      availability: String(data.availability || 'Flexible'),
-      avatar: String(data.avatarUrl || data.profilePhoto || avatarFor(docSnap.id, 200)),
-      verified: data.verificationStatus === 'Verified',
-      detailedBio: String(data.bio || ''),
-      achievements: Array.isArray(data.achievements) ? data.achievements.map(String) : [],
-     } satisfies MentorCard];
-    });
-    setMentors(live);
-   } catch {
-    if (!cancelled) setMentors([]);
-   }
-  })();
-  return () => { cancelled = true; };
- }, [isDemoMode]);
-
  const filteredMentors = mentors.filter(mentor => {
   const matchesSearch = mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
              mentor.expertise.some(e => e.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -132,7 +117,7 @@ export default function MentorsPage() {
              mentor.company.toLowerCase().includes(searchQuery.toLowerCase());
 
   const matchesAvailability = availabilityFilter === 'All' || mentor.availability === availabilityFilter;
-  const matchesExpertise = expertiseFilter === 'All' || mentor.expertise.includes(expertiseFilter);
+  const matchesExpertise = expertiseFilter === 'All' || mentor.expertise.some((item) => item.toLowerCase().includes(expertiseFilter.toLowerCase()));
 
   return matchesSearch && matchesAvailability && matchesExpertise;
  });
@@ -310,9 +295,17 @@ export default function MentorsPage() {
       </motion.div>
      ))}
     </div>
-    {filteredMentors.length === 0 && (
-     <EmptyHint title={t('No mentors match these filters.', 'Δεν υπάρχουν μέντορες για αυτά τα φίλτρα.')} detail={t('Ask the studio assistant to find a fundraising, product, or growth mentor.', 'Ζήτα από τον βοηθό του στούντιο να βρει μέντορα για χρηματοδότηση, προϊόν ή ανάπτυξη.')}>
-      <AskLink prompt="Find a fundraising mentor">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
+    {!isDemoMode && peopleLoading && mentors.length === 0 && (
+     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {[0, 1, 2].map((i) => <div key={i} className="h-64 rounded-2xl bg-stone-100 animate-pulse" />)}
+     </div>
+    )}
+    {filteredMentors.length === 0 && !(peopleLoading && !isDemoMode) && (
+     <EmptyHint
+      title={mentors.length === 0 ? t('No mentors have joined yet.', 'Δεν έχουν εγγραφεί μέντορες ακόμη.') : t('No mentors match these filters.', 'Δεν υπάρχουν μέντορες για αυτά τα φίλτρα.')}
+      detail={mentors.length === 0 ? t('Members who mark “Open to mentoring” on their profile appear here. Know someone? Invite them.', 'Εδώ εμφανίζονται τα μέλη που δηλώνουν «Διαθέσιμος/η για καθοδήγηση» στο προφίλ τους. Γνωρίζεις κάποιον; Προσκάλεσέ τον.') : t('Try another expertise or availability, or ask the assistant.', 'Δοκίμασε άλλη εξειδίκευση ή διαθεσιμότητα, ή ρώτα τον βοηθό.')}
+     >
+      <AskLink prompt={mentors.length === 0 ? 'Invite 3 founders' : 'Find a fundraising mentor'}>{mentors.length === 0 ? t('Invite someone', 'Πρόσκληση') : t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
      </EmptyHint>
     )}
    </div>
@@ -531,32 +524,49 @@ export default function MentorsPage() {
          {t('Cancel', 'Ακύρωση')}
         </button>
         <button 
-         onClick={() => {
+         type="button"
+         disabled={sending}
+         onClick={async () => {
           if (!focusAreas.trim() || !yourAvailability.trim()) {
            setRequestError(t('Please fill in all fields before sending the request.', 'Συμπλήρωσε όλα τα πεδία πριν στείλεις το αίτημα.'));
            return;
           }
-          addSession({
-           id: String(Date.now()),
-           title: `Mentorship · ${selectedMentor?.name || 'Mentor'}`,
-           type: 'Mentorship',
-           time: yourAvailability.trim(),
-           duration: '45m',
-           location: 'Messages',
-           participants: [selectedMentor?.name || 'Mentor'],
-           priority: 'Medium',
-          });
-          logActivity({ kind: 'session', title: `Requested ${selectedMentor?.name || 'mentor'}`, titleEl: `Αίτημα καθοδήγησης: ${selectedMentor?.name || 'μέντορας'}`, href: '/calendar', byAssistant: false });
-          window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${selectedMentor?.name || 'this mentor'}` } }));
-          setIsMentorshipModalOpen(false);
-          setSelectedMentor(null);
-          setFocusAreas('');
-          setYourAvailability('');
-          setRequestError('');
+          const mentor = selectedMentor as MentorCard | null;
+          if (!mentor) return;
+          setSending(true);
+          try {
+           const note = `${t('Focus areas', 'Θέματα')}: ${focusAreas.trim()}\n${t('Availability', 'Διαθεσιμότητα')}: ${yourAvailability.trim()}`;
+           if (!isDemoMode) {
+            // A mentorship request is a connection request of type Mentor: the mentor is notified and answers from Requests.
+            await sendConnectionRequest({ id: mentor.id, fullName: mentor.name, headline: mentor.role, avatarUrl: mentor.avatar }, 'Mentor', note);
+           }
+           addSession({
+            id: String(Date.now()),
+            title: `${t('Mentoring', 'Καθοδήγηση')} · ${mentor.name}`,
+            type: 'Mentorship',
+            time: yourAvailability.trim(),
+            duration: '45m',
+            location: t('Messages', 'Μηνύματα'),
+            participants: [mentor.name],
+            priority: 'Medium',
+           });
+           logActivity({ kind: 'session', title: `Requested mentoring from ${mentor.name}`, titleEl: `Αίτημα καθοδήγησης προς ${mentor.name}`, href: `/profile/${mentor.id}`, byAssistant: false });
+           toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), isDemoMode ? t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.') : t(`${mentor.name} will see your focus areas and availability and can reply in Messages.`, `Ο/Η ${mentor.name} θα δει τα θέματα και τη διαθεσιμότητά σου και μπορεί να απαντήσει στα Μηνύματα.`));
+           setIsMentorshipModalOpen(false);
+           setSelectedMentor(null);
+           setFocusAreas('');
+           setYourAvailability('');
+           setRequestError('');
+          } catch (error) {
+           const code = error instanceof Error ? error.message : '';
+           setRequestError(code === 'declined' ? t('This mentor declined an earlier request.', 'Αυτός ο μέντορας απέρριψε προηγούμενο αίτημα.') : t('The request could not be sent. Please try again.', 'Το αίτημα δεν στάλθηκε. Δοκίμασε ξανά.'));
+          } finally {
+           setSending(false);
+          }
          }}
-         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-800 transition-all shadow-md"
+         className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-800 transition-all shadow-md disabled:opacity-60"
         >
-         {t('Send Request', 'Αποστολή αιτήματος')}
+         {sending ? t('Sending…', 'Αποστολή…') : t('Send request', 'Αποστολή αιτήματος')}
         </button>
        </div>
       </div>

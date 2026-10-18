@@ -33,11 +33,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { NavLink, useNavigate } from "react-router-dom";
 import { User, UserRole } from "../../types";
 import { cn } from "../../lib/utils";
-import { bothText, withEl } from "../../lib/labels";
+import { bothText, labelOf, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
 import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
-import { auth } from "../../firebase";
+import { signOutAccount } from "../../lib/account";
+import { useNotifications } from "../../lib/social";
+import { useOptionalMessaging } from "../../context/MessagingContext";
 
 interface SidebarProps {
  user: User & { avatarUrl?: string };
@@ -56,7 +58,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
 
  const handleLogout = async () => {
   try {
-   await auth.signOut();
+   await signOutAccount();
    navigate('/');
   } catch (e) {
    console.error('Logout error', e);
@@ -111,7 +113,11 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
  ];
 
  const activity = useStored(readActivity, [keys.activity]);
- const unread = activity.filter((item) => !item.read).length;
+ const cloudNotes = useNotifications();
+ const messaging = useOptionalMessaging();
+ const unread = activity.filter((item) => !item.read).length + cloudNotes.items.filter((item) => !item.read).length;
+ const unreadMessages = messaging?.totalUnread ?? 0;
+ const badgeFor = (path: string) => (path === '/messages' ? unreadMessages : 0);
 
  return (
   <>
@@ -232,14 +238,23 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
           )
          }
         >
-         <div className="flex items-center gap-3">
+         <div className="relative flex items-center gap-3">
           <item.icon className={cn(
            "w-5 h-5 transition-colors shrink-0",
            "group-hover:text-stone-900"
           )} />
           {!collapsed && <span>{withEl(item.label)}</span>}
+          {collapsed && badgeFor(item.path) > 0 && (
+           <span className="absolute -top-1.5 -right-2 min-w-3.5 h-3.5 px-0.5 rounded-full bg-stone-900 text-white text-[8px] font-medium tabular-nums leading-[14px] text-center">
+            {badgeFor(item.path) > 99 ? '99+' : badgeFor(item.path)}
+           </span>
+          )}
          </div>
-         {!collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
+         {!collapsed && badgeFor(item.path) > 0 ? (
+          <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-[9px] font-medium tabular-nums leading-4 text-center">
+           {badgeFor(item.path) > 99 ? '99+' : badgeFor(item.path)}
+          </span>
+         ) : !collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
         </NavLink>
        ))}
       </div>
@@ -310,7 +325,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
      {!collapsed && (
       <div className="flex-1 min-w-0">
        <p className="text-xs font-semibold text-stone-900 truncate">{user.fullName}</p>
-       <p className="text-xs text-stone-400 font-medium truncate">{withEl("Founder")}</p>
+       <p className="text-xs text-stone-400 font-medium truncate">{labelOf(user.roles.find((role) => role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) || user.roles[0] || UserRole.FOUNDER)}</p>
       </div>
      )}
      {!collapsed && (

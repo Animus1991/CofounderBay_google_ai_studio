@@ -85,7 +85,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
  const feed = [
   ...studioActivity.slice(0, 4).map((item) => ({
-   user: item.byAssistant ? t('Studio', 'Στούντιο') : (user.fullName?.split(' ')[0] || you),
+   user: item.byAssistant ? t('Assistant', 'Βοηθός') : (user.fullName?.split(' ')[0] || you),
    action: t(item.title, item.titleEl ?? item.title),
    time: item.at.slice(11, 16) || '',
    icon: Zap,
@@ -100,7 +100,7 @@ export default function Insights({ user }: InsightsProps) {
  ].slice(0, 4);
 
  return (
-  <PageShell title={t("Insights", "Εικόνα")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
+  <PageShell title={t("Insights", "Αναλυτικά στοιχεία")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}

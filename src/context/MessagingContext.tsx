@@ -1,537 +1,720 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+/**
+ * One inbox for the whole app.
+ *
+ *  - Real accounts: conversations with members live in Firestore (lib/chat.ts).
+ *  - Everyone: conversations with the AI specialists are kept on the account
+ *    (`cfb.aiChats`, synced to the cloud for real accounts).
+ *  - The sample account keeps its in-memory sample threads.
+ */
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { avatarFor, findCast } from '../data/cast';
-import { MOCK_AGENTS } from '../services/aiService';
-import { readInbox, writeInbox } from '../lib/localLists';
-import { useT } from '../lib/language';
+import { keys, readValue, writeValue } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
+import { avatarOf, findPerson, onPeopleChange, type Person } from '../lib/peopleSource';
+import { fetchPerson } from '../lib/directory';
+import { connectionStateWith, conversationIdWith } from '../lib/social';
+import {
+  deleteConversationForMe,
+  deleteRemoteMessage,
+  editRemoteMessage,
+  listenConversations,
+  listenMessages,
+  markConversationRead,
+  reactToMessage,
+  sendRemoteMessage,
+  setConversationFlag,
+  setConversationValidation,
+  signalTyping,
+  type ChatAttachment,
+  type ChatMessage,
+  type ChatMessageKind,
+  type ChatReply,
+  type ConversationValidation,
+  type RemoteConversation,
+} from '../lib/chat';
+import { createLogger } from '../lib/logger';
+import { getLang } from '../lib/language';
 
-export interface Reaction {
- emoji: string;
- userIds: string[];
-}
+export type { ChatAttachment, ChatMessage, ChatReply, ConversationValidation } from '../lib/chat';
 
-export interface Thread {
- id: string;
- messageId: string;
- replies: Message[];
- replyCount: number;
-}
+const log = createLogger('messaging');
 
-export interface Message {
- id: string;
- conversationId: string;
- senderId: string;
- senderName?: string;
- body: string;
- createdAt: string;
- readStatus: boolean;
- isAI?: boolean;
- reactions?: Reaction[];
- threadCount?: number;
- replyTo?: {
-  messageId: string;
-  senderName: string;
-  body: string;
- };
- attachments?: {
-  name: string;
-  type: string;
-  size: number;
-  url?: string;
- }[];
-}
-
-export interface Conversation {
- id: string;
- participants: string[];
- status: string;
- createdAt: string;
- otherParticipant: {
+export type ChatParticipant = {
   id: string;
   fullName: string;
-  roles?: string[];
-  isAI?: boolean;
-  isOnline?: boolean;
-  profile?: {
-   profilePhoto?: string;
-   headline?: string;
-  };
- };
- lastMessage: string;
- lastMessageTime: string;
- unreadCount: number;
- isGroup?: boolean;
- groupName?: string;
- groupAvatar?: string;
-}
-
-interface MessagingState {
-  conversations: Conversation[];
-  activeConversationId: string | null;
-  messages: Message[];
-  loading: boolean;
-  error: string | null;
-}
-
-type MessagingAction =
-  | { type: 'SET_CONVERSATIONS'; payload: Conversation[] }
-  | { type: 'SET_ACTIVE_CONVERSATION'; payload: string | null }
-  | { type: 'SET_MESSAGES'; payload: Message[] }
-  | { type: 'ADD_MESSAGE'; payload: Message }
-  | { type: 'UPDATE_UNREAD_COUNT'; payload: { conversationId: string; count: number } }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null };
-
-function conversationFromCast(
-  convId: string,
-  id: string,
-  lastMessage: string,
-  lastMessageTime: string,
-  unreadCount: number,
-  extras: { isOnline?: boolean; isAI?: boolean; roles?: string[] } = {},
-  ownerId = 'demo-user',
-): Conversation {
-  const person = findCast(id);
-  const agent = MOCK_AGENTS.find((item) => item.id === id);
-  return {
-    id: convId,
-    participants: [ownerId, id],
-    status: 'Active',
-    createdAt: new Date().toISOString(),
-    otherParticipant: {
-      id,
-      fullName: person?.fullName || agent?.name || id,
-      roles: extras.roles || (person ? [person.role] : agent ? [agent.role] : []),
-      isAI: extras.isAI ?? !!agent,
-      isOnline: extras.isOnline ?? false,
-      profile: {
-        profilePhoto: person ? avatarFor(id) : agent?.avatar,
-        headline: person?.headline || agent?.description,
-      },
-    },
-    lastMessage,
-    lastMessageTime,
-    unreadCount,
-  };
-}
-
-const MOCK_CONVERSATIONS: Conversation[] = [
- conversationFromCast('conv-1', 'alex-rivera', 'Hey, are we still on for the pitch practice tomorrow?', '2m ago', 2, { isOnline: true, roles: ['Founder'] }),
- conversationFromCast('conv-2', 'sarah-chen', 'The mockups look great! Just a few tweaks needed.', '1h ago', 0, { roles: ['Founder'] }),
- conversationFromCast('conv-3', 'a1', 'I\'ve analyzed your pitch deck. Here are my recommendations...', '5m ago', 1, { isAI: true, isOnline: true }),
- conversationFromCast('conv-4', 'a2', 'Your valuation model needs some adjustments.', '1d ago', 0, { isAI: true, isOnline: true }),
- conversationFromCast('conv-5', 'jordan-taylor', 'Let me share the growth playbook I mentioned.', '3h ago', 1, { isOnline: true }),
- conversationFromCast('conv-6', 'elena-rossi', 'Great progress! Let\'s schedule our next mentoring session.', '5h ago', 0),
- conversationFromCast('conv-7', 'daniel-weiss', 'Interesting deck. Can we set up a 30-min call next week?', '1d ago', 0),
- conversationFromCast('conv-8', 'priya-sharma', 'The integration tests are passing now.', '2d ago', 0, { isOnline: true }),
-];
-
-const MOCK_MESSAGES: Message[] = [
- {
-  id: 'msg-1',
-  conversationId: 'conv-1',
-  senderId: 'alex-rivera',
-  senderName: 'Alex Rivera',
-  body: 'Hey, are we still on for the pitch practice tomorrow?',
-  createdAt: new Date(Date.now() - 120000).toISOString(),
-  readStatus: false
- },
- {
-  id: 'msg-2',
-  conversationId: 'conv-1',
-  senderId: 'alex-rivera',
-  senderName: 'Alex Rivera',
-  body: 'I\'ve prepared some notes on the competitor analysis section.',
-  createdAt: new Date(Date.now() - 60000).toISOString(),
-  readStatus: false,
-  reactions: [{ emoji: '👍', userIds: ['u1'] }]
- },
- {
-  id: 'msg-3',
-  conversationId: 'conv-2',
-  senderId: 'sarah-chen',
-  senderName: 'Sarah Chen',
-  body: 'The mockups look great! Just a few tweaks needed on the onboarding flow.',
-  createdAt: new Date(Date.now() - 3600000).toISOString(),
-  readStatus: true
- },
- {
-  id: 'msg-4',
-  conversationId: 'conv-3',
-  senderId: 'a1',
-  senderName: 'Venture Architect',
-  body: 'I\'ve analyzed your pitch deck. Here are my recommendations:\n\n1. Strengthen the problem statement\n2. Add more traction metrics\n3. Clarify your go-to-market strategy',
-  createdAt: new Date(Date.now() - 300000).toISOString(),
-  readStatus: false,
-  isAI: true
- },
- {
-  id: 'msg-5',
-  conversationId: 'conv-4',
-  senderId: 'a2',
-  senderName: 'Fundraising Coach',
-  body: 'Your valuation model needs some adjustments. The multiples seem high for your current traction.',
-  createdAt: new Date(Date.now() - 86400000).toISOString(),
-  readStatus: true,
-  isAI: true
- },
- // conv-1: more depth
- {
-  id: 'msg-6',
-  conversationId: 'conv-1',
-  senderId: 'u1',
-  senderName: 'You',
-  body: 'Yes absolutely! I\'ve been working on the financial model section. Can you review it before we present?',
-  createdAt: new Date(Date.now() - 90000).toISOString(),
-  readStatus: true
- },
- {
-  id: 'msg-7',
-  conversationId: 'conv-1',
-  senderId: 'alex-rivera',
-  senderName: 'Alex Rivera',
-  body: 'Sure thing. Send it over and I\'ll take a look tonight. Also, I think we should add a competitive landscape slide.',
-  createdAt: new Date(Date.now() - 60000).toISOString(),
-  readStatus: false
- },
- // conv-5: Jordan
- {
-  id: 'msg-8',
-  conversationId: 'conv-5',
-  senderId: 'u5',
-  senderName: 'Jordan Taylor',
-  body: 'Hey! I loved your product demo at the last community event.',
-  createdAt: new Date(Date.now() - 10800000).toISOString(),
-  readStatus: true
- },
- {
-  id: 'msg-9',
-  conversationId: 'conv-5',
-  senderId: 'u1',
-  senderName: 'You',
-  body: 'Thanks Jordan! We\'ve been iterating on the onboarding flow. Would love your growth perspective on it.',
-  createdAt: new Date(Date.now() - 9000000).toISOString(),
-  readStatus: true
- },
- {
-  id: 'msg-10',
-  conversationId: 'conv-5',
-  senderId: 'u5',
-  senderName: 'Jordan Taylor',
-  body: 'Let me share the growth playbook I mentioned 📊',
-  createdAt: new Date(Date.now() - 7200000).toISOString(),
-  readStatus: false,
-  attachments: [{ name: 'Growth_Playbook_2024.pdf', type: 'application/pdf', size: 3200000 }]
- },
- // conv-7: Marcus (Investor)
- {
-  id: 'msg-11',
-  conversationId: 'conv-7',
-  senderId: 'u1',
-  senderName: 'You',
-  body: 'Hi Marcus, thanks for connecting! Here\'s our latest pitch deck as discussed.',
-  createdAt: new Date(Date.now() - 172800000).toISOString(),
-  readStatus: true,
-  attachments: [{ name: 'PitchDeck_v3.pdf', type: 'application/pdf', size: 5400000 }]
- },
- {
-  id: 'msg-12',
-  conversationId: 'conv-7',
-  senderId: 'u7',
-  senderName: 'Marcus Lee',
-  body: 'Interesting deck. Can we set up a 30-min call next week? I\'d like to discuss your unit economics in more detail.',
-  createdAt: new Date(Date.now() - 86400000).toISOString(),
-  readStatus: true,
-  reactions: [{ emoji: '🙏', userIds: ['u1'] }]
- }
-];
-
-const initialState: MessagingState = {
-  conversations: MOCK_CONVERSATIONS,
-  activeConversationId: null,
-  messages: MOCK_MESSAGES,
-  loading: false,
-  error: null,
+  avatar: string;
+  headline: string;
+  role: string;
+  isAI: boolean;
+  lastActiveAt: number | null;
+  sample: boolean;
 };
 
-function messagingReducer(state: MessagingState, action: MessagingAction): MessagingState {
-  switch (action.type) {
-    case 'SET_CONVERSATIONS':
-      return { ...state, conversations: action.payload };
-    case 'SET_ACTIVE_CONVERSATION':
-      return { ...state, activeConversationId: action.payload };
-    case 'SET_MESSAGES':
-      return { ...state, messages: action.payload };
-    case 'ADD_MESSAGE':
-      // Avoid duplicates
-      if (state.messages.find(m => m.id === action.payload.id)) return state;
-      return { ...state, messages: [...state.messages, action.payload] };
-    case 'UPDATE_UNREAD_COUNT':
-      return {
-        ...state,
-        conversations: state.conversations.map(c =>
-          c.id === action.payload.conversationId ? { ...c, unreadCount: action.payload.count } : c
-        ),
-      };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    default:
-      return state;
+export type ChatConversation = {
+  id: string;
+  kind: 'dm' | 'ai' | 'demo';
+  otherId: string;
+  other: ChatParticipant;
+  lastMessage: string;
+  lastMessageAt: number;
+  lastSenderId: string;
+  unread: number;
+  pinned: boolean;
+  archived: boolean;
+  muted: boolean;
+  blockedByMe: boolean;
+  blockedByOther: boolean;
+  otherTypingAt: number;
+  otherLastReadAt: number;
+  validation: ConversationValidation;
+  /** False for a conversation you opened but have not written in yet. */
+  exists: boolean;
+  lastNotifiedAt: number;
+  createdAt: number;
+};
+
+export type CanMessage = { ok: true } | { ok: false; reason: 'self' | 'blocked' | 'blockedByMe' | 'closed' | 'connections-only' };
+
+export type SendOptions = { attachments?: ChatAttachment[]; replyTo?: ChatReply; kind?: ChatMessageKind; callUrl?: string };
+
+type MessagingValue = {
+  ready: boolean;
+  userId: string;
+  conversations: ChatConversation[];
+  totalUnread: number;
+  activeId: string | null;
+  setActiveId: (id: string | null) => void;
+  active: ChatConversation | null;
+  messages: ChatMessage[];
+  hasOlder: boolean;
+  loadOlder: () => void;
+  aiTyping: boolean;
+  openConversationWith: (personId: string) => Promise<string | null>;
+  send: (text: string, options?: SendOptions) => Promise<void>;
+  sendTo: (conversationId: string, text: string, options?: SendOptions) => Promise<void>;
+  react: (messageId: string, reaction: string) => void;
+  editMessage: (messageId: string, body: string) => void;
+  removeMessage: (messageId: string) => void;
+  markRead: (conversationId: string) => void;
+  typing: () => void;
+  setFlag: (conversationId: string, flag: 'pinned' | 'archived' | 'muted', on: boolean) => void;
+  deleteForMe: (conversationId: string) => void;
+  setValidation: (conversationId: string, validation: ConversationValidation) => void;
+  canMessage: (conversation: ChatConversation | null) => CanMessage;
+};
+
+const MessagingContext = createContext<MessagingValue | null>(null);
+
+// ── AI specialists (stored on the account) ────────────────────────────────
+
+type AiConversation = { id: string; agentId: string; createdAt: number; pinned?: boolean; archived?: boolean; muted?: boolean; lastReadAt?: number };
+type AiStore = { conversations: AiConversation[]; messages: ChatMessage[] };
+
+const emptyAi = (): AiStore => ({ conversations: [], messages: [] });
+
+function readAi(): AiStore {
+  const stored = readValue<AiStore>(keys.aiChats, emptyAi());
+  return {
+    conversations: Array.isArray(stored.conversations) ? stored.conversations : [],
+    messages: Array.isArray(stored.messages) ? stored.messages.slice(-400) : [],
+  };
+}
+
+function agentParticipant(agentId: string): ChatParticipant {
+  const agent = MOCK_AGENTS.find((item) => item.id === agentId);
+  return {
+    id: agentId,
+    fullName: agent?.name || 'AI',
+    avatar: '',
+    headline: agent?.description || '',
+    role: 'AI Assistant',
+    isAI: true,
+    lastActiveAt: null,
+    sample: false,
+  };
+}
+
+// ── Sample threads for the demo ───────────────────────────────────────────
+
+const HOUR = 3_600_000;
+
+function sampleParticipant(id: string): ChatParticipant {
+  const person = findCast(id);
+  return {
+    id,
+    fullName: person?.fullName || id,
+    avatar: person ? avatarFor(person.id, 100) : '',
+    headline: person?.headline || '',
+    role: person?.role || '',
+    isAI: false,
+    lastActiveAt: null,
+    sample: true,
+  };
+}
+
+function sampleThreads(userId: string): { conversations: ChatConversation[]; messages: ChatMessage[] } {
+  const now = Date.now();
+  const threads: { id: string; with: string; unread: number; lines: [string, string, number][] }[] = [
+    { id: 'demo-alex', with: 'alex-rivera', unread: 2, lines: [
+      ['alex-rivera', 'Hey, are we still on for the pitch practice tomorrow?', 0.05],
+      ['me', 'Yes! I have been working on the financial model section. Can you review it before we present?', 0.04],
+      ['alex-rivera', 'Sure. Send it over and I will look tonight. I think we should add a competitive landscape slide.', 0.02],
+    ] },
+    { id: 'demo-sarah', with: 'sarah-chen', unread: 0, lines: [
+      ['sarah-chen', 'The mockups look great! Just a few tweaks needed on the onboarding flow.', 1],
+    ] },
+    { id: 'demo-jordan', with: 'jordan-taylor', unread: 1, lines: [
+      ['jordan-taylor', 'I loved your product demo at the last community event.', 3.2],
+      ['me', 'Thanks Jordan! We have been iterating on onboarding. Would love your growth perspective.', 2.6],
+      ['jordan-taylor', 'Let me share the growth playbook I mentioned.', 2],
+    ] },
+    { id: 'demo-elena', with: 'elena-rossi', unread: 0, lines: [
+      ['elena-rossi', 'Great progress! Let us schedule our next mentoring session.', 5],
+    ] },
+    { id: 'demo-daniel', with: 'daniel-weiss', unread: 0, lines: [
+      ['me', 'Thanks for connecting! Here is our latest deck as discussed.', 48],
+      ['daniel-weiss', 'Interesting deck. Can we set up a 30-minute call next week to go through unit economics?', 24],
+    ] },
+  ];
+  const conversations: ChatConversation[] = [];
+  const messages: ChatMessage[] = [];
+  for (const thread of threads) {
+    const other = sampleParticipant(thread.with);
+    thread.lines.forEach(([from, body, hoursAgo], index) => {
+      messages.push({
+        id: `${thread.id}-${index}`,
+        conversationId: thread.id,
+        senderId: from === 'me' ? userId : thread.with,
+        senderName: from === 'me' ? 'You' : other.fullName,
+        body,
+        createdAt: now - hoursAgo * HOUR,
+      });
+    });
+    const last = thread.lines[thread.lines.length - 1]!;
+    conversations.push({
+      id: thread.id,
+      kind: 'demo',
+      otherId: thread.with,
+      other,
+      lastMessage: last[1],
+      lastMessageAt: now - last[2] * HOUR,
+      lastSenderId: last[0] === 'me' ? userId : thread.with,
+      unread: thread.unread,
+      pinned: thread.id === 'demo-alex',
+      archived: false,
+      muted: false,
+      blockedByMe: false,
+      blockedByOther: false,
+      otherTypingAt: 0,
+      otherLastReadAt: now,
+      validation: { mode: 'casual' },
+      exists: true,
+      lastNotifiedAt: 0,
+      createdAt: now - 72 * HOUR,
+    });
   }
+  return { conversations, messages };
 }
 
-const MessagingContext = createContext<{
-  state: MessagingState;
-  dispatch: React.Dispatch<MessagingAction>;
-  sendMessage: (body: string, file?: any, customSenderId?: string) => void;
-  markAsRead: (conversationId: string) => void;
-  createConversation: (participants: string[]) => Promise<any>;
-} | null>(null);
+// ── Provider ──────────────────────────────────────────────────────────────
 
-function emptyMessaging(): MessagingState {
-  return { conversations: [], activeConversationId: null, messages: [], loading: false, error: null };
-}
+type Me = { id: string; fullName: string; avatar: string; headline: string; role: string };
 
-export function MessagingProvider({ children, userId, isDemo = false }: { children: React.ReactNode; userId: string; isDemo?: boolean }) {
-  const t = useT();
-  const [state, dispatch] = useReducer(messagingReducer, isDemo ? initialState : emptyMessaging());
-  const socketRef = useRef<Socket | null>(null);
-  const activeConversationIdRef = useRef<string | null>(null);
-  const [inboxReady, setInboxReady] = useState(isDemo);
-  const relDemo = (value: string) => {
-    if (value === '2m ago') return t('2m ago', 'πριν από 2 λ.');
-    if (value === '1h ago') return t('1h ago', 'πριν από 1 ώ.');
-    if (value === '5m ago') return t('5m ago', 'πριν από 5 λ.');
-    if (value === '1d ago') return t('1d ago', 'πριν από 1 ημ.');
-    if (value === '3h ago') return t('3h ago', 'πριν από 3 ώ.');
-    if (value === '5h ago') return t('5h ago', 'πριν από 5 ώ.');
-    if (value === '2d ago') return t('2d ago', 'πριν από 2 ημ.');
-    if (value === 'now') return t('now', 'τώρα');
-    return value;
-  };
-  const viewState: MessagingState = {
-    ...state,
-    conversations: state.conversations.map((conversation) => ({
-      ...conversation,
-      lastMessageTime: relDemo(conversation.lastMessageTime),
-    })),
-    messages: state.messages.map((message) => ({
-      ...message,
-      senderName: message.senderName === 'You' ? t('You', 'Εσείς') : message.senderName,
-      replyTo: message.replyTo
-        ? { ...message.replyTo, senderName: message.replyTo.senderName === 'You' ? t('You', 'Εσείς') : message.replyTo.senderName }
-        : message.replyTo,
-    })),
-  };
+const PAGE = 40;
 
-  // Keep ref in sync with state to avoid stale closures in socket listeners
-  useEffect(() => {
-    activeConversationIdRef.current = state.activeConversationId;
-  }, [state.activeConversationId]);
+export function MessagingProvider({ children, userId, isDemo = false, me }: { children: React.ReactNode; userId: string; isDemo?: boolean; me?: Me }) {
+  const real = Boolean(userId) && !isDemo && userId !== 'demo-user';
+  const self: Me = me ?? { id: userId, fullName: 'You', avatar: '', headline: '', role: '' };
+
+  const [remote, setRemote] = useState<RemoteConversation[]>([]);
+  const [remoteReady, setRemoteReady] = useState(!real);
+  const [drafts, setDrafts] = useState<Record<string, ChatParticipant>>({});
+  const [demo, setDemo] = useState(() => (isDemo ? sampleThreads(userId || 'demo-user') : { conversations: [], messages: [] }));
+  const [activeId, setActiveIdState] = useState<string | null>(null);
+  const [remoteMessages, setRemoteMessages] = useState<ChatMessage[]>([]);
+  const [count, setCount] = useState(PAGE);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [aiTyping, setAiTyping] = useState(false);
+  const [localValidation, setLocalValidation] = useState<Record<string, ConversationValidation>>({});
+  const [, setPeopleTick] = useState(0);
+  const ai = useStored(readAi, [keys.aiChats]);
+  const selfRef = useRef(self);
+  selfRef.current = self;
+
+  useEffect(() => onPeopleChange(() => setPeopleTick((value) => value + 1)), []);
 
   useEffect(() => {
-    if (isDemo) {
-      setInboxReady(true);
+    setDemo(isDemo ? sampleThreads(userId || 'demo-user') : { conversations: [], messages: [] });
+    setActiveIdState(null);
+    setDrafts({});
+  }, [isDemo, userId]);
+
+  // Inbox listener (real accounts).
+  useEffect(() => {
+    if (!real) {
+      setRemote([]);
+      setRemoteReady(true);
+      return undefined;
+    }
+    setRemoteReady(false);
+    return listenConversations(
+      userId,
+      (list) => {
+        setRemote(list);
+        setRemoteReady(true);
+      },
+      (error) => {
+        log.warn('inbox listener failed', { error: String(error) });
+        setRemoteReady(true);
+      },
+    );
+  }, [real, userId]);
+
+  // Messages of the open conversation (real accounts).
+  useEffect(() => {
+    if (!real || !activeId || !activeId.startsWith('dm_')) {
+      setRemoteMessages([]);
+      setHasOlder(false);
+      return undefined;
+    }
+    const known = remote.some((item) => item.id === activeId);
+    if (!known) {
+      setRemoteMessages([]);
+      setHasOlder(false);
+      return undefined;
+    }
+    return listenMessages(
+      activeId,
+      count,
+      (list, full) => {
+        setRemoteMessages(list);
+        setHasOlder(full);
+      },
+      (error) => log.warn('messages listener failed', { error: String(error) }),
+    );
+    // `remote.length` re-subscribes once a brand-new conversation document appears.
+  }, [real, activeId, count, remote.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const participantFor = useCallback((id: string, info?: RemoteConversation['info'][string]): ChatParticipant => {
+    const person: Person | undefined = findPerson(id);
+    return {
+      id,
+      fullName: person?.fullName || info?.name || 'Member',
+      avatar: (person ? avatarOf(person) : '') || info?.avatar || '',
+      headline: person?.headline || info?.headline || '',
+      role: person?.role || info?.role || '',
+      isAI: false,
+      lastActiveAt: person?.lastActiveAt ?? null,
+      sample: Boolean(person?.sample),
+    };
+  }, []);
+
+  const conversations = useMemo<ChatConversation[]>(() => {
+    const list: ChatConversation[] = [];
+    if (real) {
+      for (const item of remote) {
+        const otherId = item.participants.find((id) => id !== userId) || '';
+        if (!otherId) continue;
+        const deletedAt = item.deletedAt[userId] || 0;
+        const lastAt = item.lastMessage?.at || item.updatedAt || item.createdAt;
+        if (deletedAt && lastAt <= deletedAt && !drafts[otherId] && activeId !== item.id) continue;
+        list.push({
+          id: item.id,
+          kind: 'dm',
+          otherId,
+          other: participantFor(otherId, item.info[otherId]),
+          lastMessage: deletedAt && lastAt <= deletedAt ? '' : item.lastMessage?.body || '',
+          lastMessageAt: lastAt,
+          lastSenderId: item.lastMessage?.senderId || '',
+          unread: item.unread[userId] || 0,
+          pinned: item.pinnedBy.includes(userId),
+          archived: item.archivedBy.includes(userId),
+          muted: item.mutedBy.includes(userId),
+          blockedByMe: item.blockedBy.includes(userId),
+          blockedByOther: item.blockedBy.includes(otherId),
+          otherTypingAt: item.typingAt[otherId] || 0,
+          otherLastReadAt: item.lastReadAt[otherId] || 0,
+          validation: item.validation,
+          exists: true,
+          lastNotifiedAt: item.notifiedAt[otherId] || 0,
+          createdAt: item.createdAt,
+        });
+      }
+      for (const [otherId, participant] of Object.entries(drafts)) {
+        const id = conversationIdWith(userId, otherId);
+        if (list.some((item) => item.id === id)) continue;
+        list.push({
+          id,
+          kind: 'dm',
+          otherId,
+          other: participant,
+          lastMessage: '',
+          lastMessageAt: Date.now(),
+          lastSenderId: '',
+          unread: 0,
+          pinned: false,
+          archived: false,
+          muted: false,
+          blockedByMe: false,
+          blockedByOther: false,
+          otherTypingAt: 0,
+          otherLastReadAt: 0,
+          validation: { mode: 'casual' },
+          exists: false,
+          lastNotifiedAt: 0,
+          createdAt: Date.now(),
+        });
+      }
+    } else {
+      list.push(...demo.conversations.map((item) => ({ ...item, validation: localValidation[item.id] ?? item.validation })));
+    }
+    for (const conversation of ai.conversations) {
+      const messages = ai.messages.filter((message) => message.conversationId === conversation.id);
+      const last = messages[messages.length - 1];
+      const unread = messages.filter((message) => message.senderId === conversation.agentId && message.createdAt > (conversation.lastReadAt || 0)).length;
+      list.push({
+        id: conversation.id,
+        kind: 'ai',
+        otherId: conversation.agentId,
+        other: agentParticipant(conversation.agentId),
+        lastMessage: last?.body || '',
+        lastMessageAt: last?.createdAt || conversation.createdAt,
+        lastSenderId: last?.senderId || '',
+        unread,
+        pinned: Boolean(conversation.pinned),
+        archived: Boolean(conversation.archived),
+        muted: Boolean(conversation.muted),
+        blockedByMe: false,
+        blockedByOther: false,
+        otherTypingAt: 0,
+        otherLastReadAt: Date.now(),
+        validation: localValidation[conversation.id] ?? { mode: 'casual' },
+        exists: true,
+        lastNotifiedAt: 0,
+        createdAt: conversation.createdAt,
+      });
+    }
+    return list.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.lastMessageAt - a.lastMessageAt);
+  }, [real, remote, drafts, demo, ai, userId, activeId, localValidation, participantFor]);
+
+  const active = conversations.find((item) => item.id === activeId) ?? null;
+
+  const messages = useMemo<ChatMessage[]>(() => {
+    if (!activeId) return [];
+    if (activeId.startsWith('ai_')) return ai.messages.filter((message) => message.conversationId === activeId);
+    if (!real) return demo.messages.filter((message) => message.conversationId === activeId);
+    const deletedAt = remote.find((item) => item.id === activeId)?.deletedAt[userId] || 0;
+    return remoteMessages.filter((message) => message.createdAt > deletedAt);
+  }, [activeId, ai.messages, real, demo.messages, remote, remoteMessages, userId]);
+
+  const totalUnread = conversations.reduce((sum, item) => sum + (item.muted ? 0 : item.unread), 0);
+
+  const setActiveId = useCallback((id: string | null) => {
+    setActiveIdState(id);
+    setCount(PAGE);
+  }, []);
+
+  const writeAi = (update: (store: AiStore) => AiStore) => {
+    writeValue(keys.aiChats, update(readAi()));
+  };
+
+  const markRead = useCallback((conversationId: string) => {
+    if (conversationId.startsWith('ai_')) {
+      writeAi((store) => ({
+        ...store,
+        conversations: store.conversations.map((item) => (item.id === conversationId ? { ...item, lastReadAt: Date.now() } : item)),
+      }));
       return;
     }
-    const stored = readInbox();
-    dispatch({ type: 'SET_CONVERSATIONS', payload: Array.isArray(stored.conversations) ? stored.conversations as Conversation[] : [] });
-    dispatch({ type: 'SET_MESSAGES', payload: Array.isArray(stored.messages) ? stored.messages as Message[] : [] });
-    setInboxReady(true);
-  }, [userId, isDemo]);
-
-  useEffect(() => {
-    if (isDemo || !userId || !inboxReady) return;
-    writeInbox({ conversations: state.conversations, messages: state.messages });
-  }, [isDemo, userId, inboxReady, state.conversations, state.messages]);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    // Try to initialize socket — gracefully handle missing backend
-    let socket: Socket | null = null;
-    try {
-      socket = io(window.location.origin, { timeout: 3000, reconnectionAttempts: 2 });
-      socketRef.current = socket;
-
-      socket.on('connect', () => {
-        console.log('Connected to messaging socket');
-      });
-
-      socket.on('connect_error', () => {
-        // Backend not available — keep using mock data, no error
-        console.info('Messaging socket unavailable — using local data');
-      });
-
-      socket.on('receive_message', (message: Message) => {
-        if (activeConversationIdRef.current === message.conversationId) {
-          dispatch({ type: 'ADD_MESSAGE', payload: message });
-          fetch('/api/messages/mark-read', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ conversationId: message.conversationId, userId }),
-          }).catch(() => {});
-        } else {
-          const conv = state.conversations.find(c => c.id === message.conversationId);
-          if (conv) {
-            dispatch({ 
-              type: 'UPDATE_UNREAD_COUNT', 
-              payload: { conversationId: message.conversationId, count: conv.unreadCount + 1 } 
-            });
-          }
-        }
-      });
-    } catch {
-      console.info('Socket init failed — using local data');
+    if (!real) {
+      setDemo((prev) => ({ ...prev, conversations: prev.conversations.map((item) => (item.id === conversationId ? { ...item, unread: 0 } : item)) }));
+      return;
     }
+    const item = remote.find((entry) => entry.id === conversationId);
+    if (item && (item.unread[userId] || 0) > 0) void markConversationRead(conversationId, userId);
+  }, [real, remote, userId]);
 
-    // Try to fetch real conversations; if API unavailable, keep mock data
-    const fetchConversations = async () => {
-      try {
-        const res = await fetch(`/api/conversations/${userId}`);
-        if (!res.ok) throw new Error('API unavailable');
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          dispatch({ type: 'SET_CONVERSATIONS', payload: data });
-        }
-      } catch {
-        // API not available — demo keeps sample threads, a signed-in account keeps its inbox
+  const openConversationWith = useCallback(async (personId: string): Promise<string | null> => {
+    if (!personId) return null;
+    if (MOCK_AGENTS.some((agent) => agent.id === personId)) {
+      const id = `ai_${personId}`;
+      const store = readAi();
+      if (!store.conversations.some((item) => item.id === id)) {
+        writeValue(keys.aiChats, { ...store, conversations: [...store.conversations, { id, agentId: personId, createdAt: Date.now() }] });
       }
-    };
+      setActiveId(id);
+      return id;
+    }
+    if (!real) {
+      const existing = demo.conversations.find((item) => item.otherId === personId);
+      if (existing) {
+        setActiveId(existing.id);
+        return existing.id;
+      }
+      const person = findCast(personId);
+      if (!person) return null;
+      const id = `demo-${person.id}`;
+      const other = sampleParticipant(person.id);
+      setDemo((prev) => ({
+        ...prev,
+        conversations: [
+          ...prev.conversations,
+          {
+            id, kind: 'demo', otherId: person.id, other, lastMessage: '', lastMessageAt: Date.now(), lastSenderId: '', unread: 0,
+            pinned: false, archived: false, muted: false, blockedByMe: false, blockedByOther: false, otherTypingAt: 0,
+            otherLastReadAt: Date.now(), validation: { mode: 'casual' }, exists: true, lastNotifiedAt: 0, createdAt: Date.now(),
+          },
+        ],
+      }));
+      setActiveId(id);
+      return id;
+    }
+    if (personId === userId) return null;
+    const id = conversationIdWith(userId, personId);
+    if (!remote.some((item) => item.id === id)) {
+      const person = await fetchPerson(personId);
+      if (!person) return null;
+      setDrafts((prev) => ({ ...prev, [personId]: participantFor(personId) }));
+    } else {
+      const item = remote.find((entry) => entry.id === id);
+      if (item?.deletedAt[userId]) setDrafts((prev) => ({ ...prev, [personId]: participantFor(personId, item.info[personId]) }));
+    }
+    setActiveId(id);
+    return id;
+  }, [real, demo.conversations, remote, userId, participantFor, setActiveId]);
 
-    fetchConversations();
+  const askAgent = useCallback(async (conversationId: string, agentId: string, text: string) => {
+    const agent = MOCK_AGENTS.find((item) => item.id === agentId);
+    setAiTyping(true);
+    try {
+      const history = readAi().messages
+        .filter((message) => message.conversationId === conversationId)
+        .slice(-8)
+        .map((message) => `${message.isAI ? 'Assistant' : 'Founder'}: ${message.body}`)
+        .join('\n');
+      const response = await AIService.chat(text, `${agent?.role || 'Advisor'}. ${agent?.description || ''}\nRecent conversation:\n${history}`);
+      writeAi((store) => ({
+        ...store,
+        messages: [
+          ...store.messages,
+          { id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', body: response.text || '…', createdAt: Date.now(), isAI: true },
+        ].slice(-400),
+      }));
+    } catch {
+      const failure: ChatMessage = {
+        id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', createdAt: Date.now(), isAI: true, kind: 'system',
+        body: getLang() === 'el' ? 'Η υπηρεσία AI δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' : 'The AI service is not reachable right now. Please try again in a minute.',
+      };
+      writeAi((store) => ({ ...store, messages: [...store.messages, failure].slice(-400) }));
+    } finally {
+      setAiTyping(false);
+    }
+  }, []);
 
-    return () => {
-      socket?.disconnect();
+  const sendTo = useCallback(async (conversationId: string, text: string, options: SendOptions = {}) => {
+    const body = text.trim();
+    if (!body && !options.attachments?.length && !options.callUrl) return;
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation) return;
+    const me = selfRef.current;
+    const local: ChatMessage = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      conversationId,
+      senderId: userId,
+      senderName: me.fullName,
+      body: body || options.attachments?.[0]?.name || '',
+      createdAt: Date.now(),
+      attachments: options.attachments,
+      replyTo: options.replyTo,
+      kind: options.kind,
+      callUrl: options.callUrl,
     };
+    if (conversation.kind === 'ai') {
+      writeAi((store) => ({ ...store, messages: [...store.messages, local].slice(-400) }));
+      await askAgent(conversationId, conversation.otherId, body);
+      return;
+    }
+    if (conversation.kind === 'demo') {
+      setDemo((prev) => ({
+        messages: [...prev.messages, local],
+        conversations: prev.conversations.map((item) => (item.id === conversationId ? { ...item, lastMessage: local.body, lastMessageAt: local.createdAt, lastSenderId: userId } : item)),
+      }));
+      return;
+    }
+    if (conversation.blockedByMe || conversation.blockedByOther) throw new Error('blocked');
+    await sendRemoteMessage({
+      conversationId,
+      me: { id: userId, name: me.fullName, avatar: me.avatar, headline: me.headline, role: me.role },
+      other: { id: conversation.otherId, name: conversation.other.fullName, avatar: conversation.other.avatar, headline: conversation.other.headline, role: conversation.other.role },
+      body,
+      attachments: options.attachments,
+      replyTo: options.replyTo,
+      kind: options.kind,
+      callUrl: options.callUrl,
+      conversationExists: remote.some((item) => item.id === conversationId),
+      lastNotifiedAt: conversation.lastNotifiedAt,
+    });
+    setDrafts((prev) => {
+      if (!prev[conversation.otherId]) return prev;
+      const next = { ...prev };
+      delete next[conversation.otherId];
+      return next;
+    });
+  }, [conversations, userId, remote, askAgent]);
+
+  const send = useCallback(async (text: string, options?: SendOptions) => {
+    if (!activeId) return;
+    await sendTo(activeId, text, options);
+  }, [activeId, sendTo]);
+
+  const updateLocalMessage = (messageId: string, update: (message: ChatMessage) => ChatMessage) => {
+    if (activeId?.startsWith('ai_')) {
+      writeAi((store) => ({ ...store, messages: store.messages.map((message) => (message.id === messageId ? update(message) : message)) }));
+      return;
+    }
+    setDemo((prev) => ({ ...prev, messages: prev.messages.map((message) => (message.id === messageId ? update(message) : message)) }));
+  };
+
+  const react = useCallback((messageId: string, reaction: string) => {
+    const message = messages.find((item) => item.id === messageId);
+    if (!message || !activeId) return;
+    const current = message.reactions?.[reaction] ?? [];
+    const on = !current.includes(userId);
+    if (real && activeId.startsWith('dm_')) {
+      void reactToMessage(activeId, messageId, userId, reaction, on).catch((error) => log.warn('reaction failed', { error: String(error) }));
+      return;
+    }
+    updateLocalMessage(messageId, (item) => ({
+      ...item,
+      reactions: { ...(item.reactions ?? {}), [reaction]: on ? [...current, userId] : current.filter((id) => id !== userId) },
+    }));
+  }, [messages, activeId, userId, real]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const editMessage = useCallback((messageId: string, body: string) => {
+    if (!activeId || !body.trim()) return;
+    if (real && activeId.startsWith('dm_')) {
+      void editRemoteMessage(activeId, messageId, body);
+      return;
+    }
+    updateLocalMessage(messageId, (item) => ({ ...item, body: body.trim(), edited: true }));
+  }, [activeId, real]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const removeMessage = useCallback((messageId: string) => {
+    if (!activeId) return;
+    if (real && activeId.startsWith('dm_')) {
+      void deleteRemoteMessage(activeId, messageId);
+      return;
+    }
+    updateLocalMessage(messageId, (item) => ({ ...item, body: '—', deleted: true, attachments: [] }));
+  }, [activeId, real]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const typing = useCallback(() => {
+    if (real && activeId?.startsWith('dm_') && remote.some((item) => item.id === activeId)) void signalTyping(activeId, userId);
+  }, [real, activeId, remote, userId]);
+
+  const setFlag = useCallback((conversationId: string, flag: 'pinned' | 'archived' | 'muted', on: boolean) => {
+    if (conversationId.startsWith('ai_')) {
+      writeAi((store) => ({ ...store, conversations: store.conversations.map((item) => (item.id === conversationId ? { ...item, [flag]: on } : item)) }));
+      return;
+    }
+    if (!real) {
+      setDemo((prev) => ({ ...prev, conversations: prev.conversations.map((item) => (item.id === conversationId ? { ...item, [flag]: on } : item)) }));
+      return;
+    }
+    if (!remote.some((item) => item.id === conversationId)) return;
+    const field = flag === 'pinned' ? 'pinnedBy' : flag === 'archived' ? 'archivedBy' : 'mutedBy';
+    void setConversationFlag(conversationId, userId, field, on).catch((error) => log.warn('flag failed', { error: String(error) }));
+  }, [real, remote, userId]);
+
+  const deleteForMe = useCallback((conversationId: string) => {
+    if (activeId === conversationId) setActiveId(null);
+    if (conversationId.startsWith('ai_')) {
+      writeAi((store) => ({
+        conversations: store.conversations.filter((item) => item.id !== conversationId),
+        messages: store.messages.filter((message) => message.conversationId !== conversationId),
+      }));
+      return;
+    }
+    if (!real) {
+      setDemo((prev) => ({
+        conversations: prev.conversations.filter((item) => item.id !== conversationId),
+        messages: prev.messages.filter((message) => message.conversationId !== conversationId),
+      }));
+      return;
+    }
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (conversation) {
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[conversation.otherId];
+        return next;
+      });
+    }
+    if (remote.some((item) => item.id === conversationId)) void deleteConversationForMe(conversationId, userId);
+  }, [activeId, real, remote, userId, conversations, setActiveId]);
+
+  const setValidation = useCallback((conversationId: string, validation: ConversationValidation) => {
+    if (real && conversationId.startsWith('dm_') && remote.some((item) => item.id === conversationId)) {
+      void setConversationValidation(conversationId, validation);
+      return;
+    }
+    setLocalValidation((prev) => ({ ...prev, [conversationId]: validation }));
+  }, [real, remote]);
+
+  const canMessage = useCallback((conversation: ChatConversation | null): CanMessage => {
+    if (!conversation) return { ok: false, reason: 'closed' };
+    if (conversation.kind !== 'dm') return { ok: true };
+    if (conversation.otherId === userId) return { ok: false, reason: 'self' };
+    if (conversation.blockedByOther) return { ok: false, reason: 'blocked' };
+    if (conversation.blockedByMe) return { ok: false, reason: 'blockedByMe' };
+    if (conversation.exists && conversation.lastMessage) return { ok: true };
+    const person = findPerson(conversation.otherId);
+    const rule = person?.messagesFrom || 'anyone';
+    const connected = connectionStateWith(conversation.otherId).state === 'connected';
+    if (rule === 'none' && !connected) return { ok: false, reason: 'closed' };
+    if (rule === 'connections' && !connected) return { ok: false, reason: 'connections-only' };
+    return { ok: true };
   }, [userId]);
 
-  // Join room when active conversation changes
-  useEffect(() => {
-    if (!state.activeConversationId) return;
+  const loadOlder = useCallback(() => setCount((value) => value + PAGE), []);
 
-    // Try to join socket room
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('join_room', state.activeConversationId);
-    }
-      
-    // Fetch messages for active conversation — keep mock data on failure
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(`/api/messages/${state.activeConversationId}`);
-        if (!res.ok) throw new Error('API unavailable');
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          dispatch({ type: 'SET_MESSAGES', payload: data });
-        }
-        
-        fetch('/api/messages/mark-read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversationId: state.activeConversationId, userId }),
-        }).catch(() => {});
-      } catch {
-        // API not available — keep mock messages
-      }
-    };
-
-    fetchMessages();
-
-    // Reset unread count locally
-    dispatch({ 
-      type: 'UPDATE_UNREAD_COUNT', 
-      payload: { conversationId: state.activeConversationId!, count: 0 } 
-    });
-  }, [state.activeConversationId, userId]);
-
-  const sendMessage = (body: string, file?: any, customSenderId?: string) => {
-    if (!state.activeConversationId) return;
-
-    const newMessage: Message = {
-      id: `msg-local-${Date.now()}`,
-      conversationId: state.activeConversationId,
-      senderId: customSenderId || userId,
-      senderName: customSenderId ? state.conversations.find(c => c.otherParticipant.id === customSenderId)?.otherParticipant.fullName : 'You',
-      body,
-      createdAt: new Date().toISOString(),
-      readStatus: false,
-      isAI: !!customSenderId && state.conversations.find(c => c.otherParticipant.id === customSenderId)?.otherParticipant.isAI,
-      attachments: file ? [{ name: file.name, type: 'file', size: 0, url: file.data }] : undefined,
-    };
-
-    // Add message locally
-    dispatch({ type: 'ADD_MESSAGE', payload: newMessage });
-
-    // Try to send via socket if available
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('send_message', {
-        conversationId: state.activeConversationId,
-        senderId: customSenderId || userId,
-        body,
-        file,
-      });
-    }
+  const value: MessagingValue = {
+    ready: remoteReady,
+    userId,
+    conversations,
+    totalUnread,
+    activeId,
+    setActiveId,
+    active,
+    messages,
+    hasOlder: real ? hasOlder : false,
+    loadOlder,
+    aiTyping,
+    openConversationWith,
+    send,
+    sendTo,
+    react,
+    editMessage,
+    removeMessage,
+    markRead,
+    typing,
+    setFlag,
+    deleteForMe,
+    setValidation,
+    canMessage,
   };
 
-  const markAsRead = (conversationId: string) => {
-    fetch('/api/messages/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, userId }),
-    }).catch(() => {});
-    dispatch({ type: 'UPDATE_UNREAD_COUNT', payload: { conversationId, count: 0 } });
-  };
-
-  const createConversation = async (participants: string[]) => {
-    // Try API first
-    try {
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participants }),
-      });
-      if (!response.ok) throw new Error('API unavailable');
-      const conversation = await response.json();
-      
-      const convsResponse = await fetch(`/api/conversations/${userId}`);
-      if (convsResponse.ok) {
-        const conversations = await convsResponse.json();
-        dispatch({ type: 'SET_CONVERSATIONS', payload: conversations });
-      }
-      
-      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: conversation.id });
-      return conversation;
-    } catch {
-      // API not available — create conversation locally
-      const otherId = participants.find((id) => id !== userId) || participants[participants.length - 1];
-      const existingConv = state.conversations.find((c) =>
-        c.otherParticipant.id === otherId || participants.includes(c.otherParticipant.id)
-      );
-      if (existingConv) {
-        dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: existingConv.id });
-        return existingConv;
-      }
-      if (!otherId) return null;
-      const created = conversationFromCast(`conv-${otherId}`, otherId, '', 'now', 0, { isOnline: true }, userId || 'demo-user');
-      dispatch({ type: 'SET_CONVERSATIONS', payload: [...state.conversations, created] });
-      dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: created.id });
-      return created;
-    }
-  };
-
-  return (
-    <MessagingContext.Provider value={{ state: viewState, dispatch, sendMessage, markAsRead, createConversation }}>
-      {children}
-    </MessagingContext.Provider>
-  );
+  return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>;
 }
 
 export function useMessaging() {
   const context = useContext(MessagingContext);
-  if (!context) {
-    throw new Error('useMessaging must be used within a MessagingProvider');
-  }
+  if (!context) throw new Error('useMessaging must be used within a MessagingProvider');
   return context;
+}
+
+/** Same as useMessaging, but returns null outside the provider (public pages). */
+export function useOptionalMessaging() {
+  return useContext(MessagingContext);
 }

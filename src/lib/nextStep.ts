@@ -2,7 +2,7 @@
  * One next step for the signed-in founder. Same order the studio assistant
  * uses, so Dashboard and chat never disagree about what to do first.
  */
-import { CAST } from '../data/cast';
+import { cofounderPool } from './peopleSource';
 import { readFitCheck } from './fitCheck';
 import { fromProfile, listWords, rankPeople, type CompatibilityInput } from './compatibility';
 import { effectiveStatus, readMilestones, readNeeds, readSessions, readTasks } from './localLists';
@@ -81,7 +81,7 @@ export function studioNextStep(profile: CompatibilityInput | null): StudioNext {
   }
   const ranked = rankPeople(
     fromProfile(profile),
-    CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate'),
+    cofounderPool(),
   )[0];
   if (ranked?.fit.score != null) {
     return {
