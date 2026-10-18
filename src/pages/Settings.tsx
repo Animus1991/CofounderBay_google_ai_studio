@@ -16,7 +16,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
-import { bothText } from "../lib/labels";
+import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
 import { readNotificationPrefs, readSaved, writeNotificationPrefs, writeOpenTo, type NotificationPrefs, type OpenToKind } from "../lib/localLists";
 import { AskLink } from "../components/ui/EmptyHint";
@@ -443,7 +443,7 @@ export default function Settings() {
               <Field label={t("Stage", "Στάδιο")}>
                 <select className={inputClass} value={form.stage} onChange={(e) => setField("stage", e.target.value)}>
                   {["", "Idea", "MVP", "Pre-seed", "Seed", "Series A"].map((item) => (
-                    <option key={item || "blank"} value={item}>{item || t("Choose a stage", "Επίλεξε στάδιο")}</option>
+                    <option key={item || "blank"} value={item}>{item ? labelOf(item) : t("Choose a stage", "Επίλεξε στάδιο")}</option>
                   ))}
                 </select>
               </Field>
@@ -453,7 +453,7 @@ export default function Settings() {
               <Field label={t("Commitment", "Δέσμευση")}>
                 <select className={inputClass} value={form.commitment} onChange={(e) => setField("commitment", e.target.value)}>
                   {["", "Exploring", "Part-time", "Full-time"].map((item) => (
-                    <option key={item || "blank"} value={item}>{item || t("Choose commitment", "Επίλεξε δέσμευση")}</option>
+                    <option key={item || "blank"} value={item}>{item ? labelOf(item) : t("Choose commitment", "Επίλεξε δέσμευση")}</option>
                   ))}
                 </select>
               </Field>

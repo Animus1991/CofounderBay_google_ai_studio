@@ -4,8 +4,10 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Wifi, WifiOff } from 'lucide-react';
+import { useT } from '../lib/language';
 
 export default function OfflineBanner() {
+  const t = useT();
   const [online, setOnline] = useState(() =>
     typeof navigator === 'undefined' ? true : navigator.onLine,
   );
@@ -46,12 +48,12 @@ export default function OfflineBanner() {
       {online ? (
         <>
           <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
-          Back online
+          {t('Back online', 'Επανήλθε η σύνδεση')}
         </>
       ) : (
         <>
           <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />
-          You are offline — changes may not be saved
+          {t('You are offline — changes may not be saved', 'Είσαι εκτός σύνδεσης — οι αλλαγές μπορεί να μην αποθηκευτούν')}
         </>
       )}
     </div>

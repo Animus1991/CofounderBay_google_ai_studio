@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useRef } from 
 import { io, Socket } from 'socket.io-client';
 import { avatarFor, findCast } from '../data/cast';
 import { MOCK_AGENTS } from '../services/aiService';
+import { useT } from '../lib/language';
 
 export interface Reaction {
  emoji: string;
@@ -288,9 +289,35 @@ const MessagingContext = createContext<{
 } | null>(null);
 
 export function MessagingProvider({ children, userId }: { children: React.ReactNode; userId: string }) {
+  const t = useT();
   const [state, dispatch] = useReducer(messagingReducer, initialState);
   const socketRef = useRef<Socket | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
+  const relDemo = (value: string) => {
+    if (value === '2m ago') return t('2m ago', 'πριν από 2 λ.');
+    if (value === '1h ago') return t('1h ago', 'πριν από 1 ώ.');
+    if (value === '5m ago') return t('5m ago', 'πριν από 5 λ.');
+    if (value === '1d ago') return t('1d ago', 'πριν από 1 ημ.');
+    if (value === '3h ago') return t('3h ago', 'πριν από 3 ώ.');
+    if (value === '5h ago') return t('5h ago', 'πριν από 5 ώ.');
+    if (value === '2d ago') return t('2d ago', 'πριν από 2 ημ.');
+    if (value === 'now') return t('now', 'τώρα');
+    return value;
+  };
+  const viewState: MessagingState = {
+    ...state,
+    conversations: state.conversations.map((conversation) => ({
+      ...conversation,
+      lastMessageTime: relDemo(conversation.lastMessageTime),
+    })),
+    messages: state.messages.map((message) => ({
+      ...message,
+      senderName: message.senderName === 'You' ? t('You', 'Εσείς') : message.senderName,
+      replyTo: message.replyTo
+        ? { ...message.replyTo, senderName: message.replyTo.senderName === 'You' ? t('You', 'Εσείς') : message.replyTo.senderName }
+        : message.replyTo,
+    })),
+  };
 
   // Keep ref in sync with state to avoid stale closures in socket listeners
   useEffect(() => {
@@ -473,7 +500,7 @@ export function MessagingProvider({ children, userId }: { children: React.ReactN
   };
 
   return (
-    <MessagingContext.Provider value={{ state, dispatch, sendMessage, markAsRead, createConversation }}>
+    <MessagingContext.Provider value={{ state: viewState, dispatch, sendMessage, markAsRead, createConversation }}>
       {children}
     </MessagingContext.Provider>
   );

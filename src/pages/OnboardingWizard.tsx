@@ -21,6 +21,8 @@ import { doc, setDoc, serverTimestamp, getDocFromServer, deleteDoc } from 'fireb
 import { auth, db } from '../firebase';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
+import { useT } from '../lib/language';
+import { labelOf } from '../lib/labels';
 import { UserRole, FounderStage, CommitmentLevel, ProfileStatus, VerificationStatus, AccountStatus } from '../types';
 
 enum OperationType {
@@ -81,7 +83,33 @@ const STEPS = [
  { id: 'final', title: 'Complete', icon: Sparkles },
 ];
 
+const STEP_EL: Record<string, string> = {
+ 'Your Role': 'Ο ρόλος σου',
+ Expertise: 'Εξειδίκευση',
+ Goals: 'Στόχοι',
+ Complete: 'Ολοκλήρωση',
+};
+
+const INDUSTRY_EL: Record<string, string> = {
+ Technology: 'Τεχνολογία',
+ Finance: 'Οικονομικά',
+ Health: 'Υγεία',
+ Climate: 'Κλίμα',
+ Education: 'Εκπαίδευση',
+ Consumer: 'Καταναλωτικά',
+};
+
+const LOOKING_EL: Record<string, string> = {
+ 'Co-founder': 'Συνιδρυτής',
+ Investor: 'Επενδυτής',
+ Mentor: 'Μέντορας',
+ Sales: 'Πωλήσεις',
+ Growth: 'Ανάπτυξη',
+ 'Technical help': 'Τεχνική βοήθεια',
+};
+
 export default function OnboardingWizard() {
+ const t = useT();
  const { user, profile, isDemoMode } = useAuth();
  const [currentStep, setCurrentStep] = useState(0);
  const [loading, setLoading] = useState(false);
@@ -120,14 +148,14 @@ export default function OnboardingWizard() {
   if (isDemoMode) return true; // Skip validation in demo mode
 
   if (currentStep === 0) {
-   if (!formData.role) newErrors.role = 'Please select a role';
+   if (!formData.role) newErrors.role = t('Please select a role', 'Διάλεξε έναν ρόλο');
   } else if (currentStep === 1) {
-   if (!formData.headline.trim()) newErrors.headline = 'Headline is required';
-   if (!formData.bio.trim()) newErrors.bio = 'Bio is required';
-   if (!formData.location.trim()) newErrors.location = 'Location is required';
+   if (!formData.headline.trim()) newErrors.headline = t('Headline is required', 'Ο τίτλος είναι υποχρεωτικός');
+   if (!formData.bio.trim()) newErrors.bio = t('Bio is required', 'Το βιογραφικό είναι υποχρεωτικό');
+   if (!formData.location.trim()) newErrors.location = t('Location is required', 'Η τοποθεσία είναι υποχρεωτική');
   } else if (currentStep === 2) {
-   if (!formData.stage) newErrors.stage = 'Please select a stage';
-   if (!formData.commitment) newErrors.commitment = 'Please select a commitment level';
+   if (!formData.stage) newErrors.stage = t('Please select a stage', 'Διάλεξε ένα στάδιο');
+   if (!formData.commitment) newErrors.commitment = t('Please select a commitment level', 'Διάλεξε επίπεδο δέσμευσης');
   }
 
   setErrors(newErrors);
@@ -297,15 +325,15 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">What brings you to CoFounderBay?</h2>
-       <p className="text-stone-500">Select the role that best describes your current focus.</p>
+       <h2 className="text-lg font-medium text-stone-900">{t('What brings you to CoFounderBay?', 'Τι σε φέρνει στο CoFounderBay;')}</h2>
+       <p className="text-stone-500">{t('Select the role that best describes your current focus.', 'Διάλεξε τον ρόλο που περιγράφει καλύτερα την τρέχουσα εστίασή σου.')}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
        {[
-        { id: UserRole.FOUNDER, label: 'Founder', desc: 'Building or looking to build a startup', icon: Rocket },
-        { id: UserRole.MENTOR, label: 'Mentor', desc: 'Sharing expertise and guiding others', icon: ShieldCheck },
-        { id: UserRole.INVESTOR, label: 'Investor', desc: 'Looking for promising opportunities', icon: LineChart },
-        { id: UserRole.CO_FOUNDER_CANDIDATE, label: 'Collaborator', desc: 'Looking to join a founding team', icon: Code },
+        { id: UserRole.FOUNDER, label: labelOf(UserRole.FOUNDER), desc: t('Building or looking to build a startup', 'Χτίζεις ή θέλεις να χτίσεις μια startup'), icon: Rocket },
+        { id: UserRole.MENTOR, label: labelOf(UserRole.MENTOR), desc: t('Sharing expertise and guiding others', 'Μοιράζεσαι εμπειρία και καθοδηγείς άλλους'), icon: ShieldCheck },
+        { id: UserRole.INVESTOR, label: labelOf(UserRole.INVESTOR), desc: t('Looking for promising opportunities', 'Ψάχνεις υποσχόμενες ευκαιρίες'), icon: LineChart },
+        { id: UserRole.CO_FOUNDER_CANDIDATE, label: t('Collaborator', 'Συνεργάτης'), desc: t('Looking to join a founding team', 'Θέλεις να μπεις σε ιδρυτική ομάδα'), icon: Code },
        ].map((role) => (
         <button
          key={role.id}
@@ -336,17 +364,17 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">Tell us about your expertise</h2>
-       <p className="text-stone-500">This helps us match you with the right opportunities.</p>
+       <h2 className="text-lg font-medium text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h2>
+       <p className="text-stone-500">{t('This helps us match you with the right opportunities.', 'Έτσι σε αντιστοιχίζουμε με τις σωστές ευκαιρίες.')}</p>
       </div>
       <div className="space-y-4">
        <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">Professional Headline</label>
+        <label className="block text-sm font-medium text-stone-700 mb-1">{t('Professional Headline', 'Επαγγελματικός τίτλος')}</label>
         <input
          type="text"
          value={formData.headline}
          onChange={(e) => updateFormData({ headline: e.target.value })}
-         placeholder="e.g. Full-stack Engineer | 5 years in Fintech"
+         placeholder={t('e.g. Full-stack Engineer | 5 years in Fintech', 'π.χ. Full-stack μηχανικός | 5 χρόνια σε Fintech')}
          className={cn(
           "w-full px-4 py-3 rounded-xl border outline-none transition-all",
           errors.headline ? "border-red-500 focus:ring-red-500" : "border-stone-200 focus:ring-stone-900 focus:border-stone-900"
@@ -357,29 +385,29 @@ export default function OnboardingWizard() {
 
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-         <label className="block text-sm font-medium text-stone-700 mb-1">Skills</label>
+         <label className="block text-sm font-medium text-stone-700 mb-1">{t('Skills', 'Δεξιότητες')}</label>
          <textarea
           rows={2}
           value={formData.skillsRaw}
           onChange={(e) => updateFormData({ skillsRaw: e.target.value })}
-          placeholder="e.g. React, Node.js, Product Management"
+          placeholder={t('e.g. React, Node.js, Product Management', 'π.χ. React, Node.js, Product Management')}
           className="w-full px-4 py-3 rounded-xl border border-stone-200 outline-none transition-all resize-none focus:ring-stone-900 focus:border-stone-900"
          />
         </div>
         <div>
-         <label className="block text-sm font-medium text-stone-700 mb-1">Experience</label>
+         <label className="block text-sm font-medium text-stone-700 mb-1">{t('Experience', 'Εμπειρία')}</label>
          <textarea
           rows={2}
           value={formData.experience}
           onChange={(e) => updateFormData({ experience: e.target.value })}
-          placeholder="Briefly describe your relevant past experience..."
+          placeholder={t('Briefly describe your relevant past experience...', 'Περιέγραψε σύντομα τη σχετική εμπειρία σου…')}
           className="w-full px-4 py-3 rounded-xl border border-stone-200 outline-none transition-all resize-none focus:ring-stone-900 focus:border-stone-900"
          />
         </div>
        </div>
 
        <div>
-        <label className="block text-sm font-medium text-stone-700 mb-2">Industry</label>
+        <label className="block text-sm font-medium text-stone-700 mb-2">{t('Industry', 'Κλάδος')}</label>
         <div className="flex flex-wrap gap-2">
          {['Technology', 'Finance', 'Health', 'Climate', 'Education', 'Consumer'].map((item) => (
           <button
@@ -391,36 +419,36 @@ export default function OnboardingWizard() {
             formData.industry === item ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400',
            )}
           >
-           {item}
+           {t(item, INDUSTRY_EL[item] || item)}
           </button>
          ))}
         </div>
        </div>
        <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">About Me (Bio)</label>
+        <label className="block text-sm font-medium text-stone-700 mb-1">{t('About Me (Bio)', 'Σχετικά με εμένα')}</label>
         <textarea
          rows={4}
          value={formData.bio}
          onChange={(e) => updateFormData({ bio: e.target.value })}
-         placeholder="Share a bit about your background, your long-term vision, and exactly what you are looking for in a co-founder..."
+         placeholder={t('Share a bit about your background, your long-term vision, and exactly what you are looking for in a co-founder...', 'Μοιράσου λίγα για το υπόβαθρό σου, το μακροπρόθεσμο όραμα και τι ακριβώς ψάχνεις σε συνιδρυτή…')}
          className={cn(
           "w-full px-4 py-3 rounded-xl border outline-none transition-all resize-none",
           errors.bio ? "border-red-500 focus:ring-red-500" : "border-stone-200 focus:ring-stone-900 focus:border-stone-900"
          )}
         />
-        <p className="text-xs text-stone-500 mt-1">A short bio is enough. Looking-for comes on the next step.</p>
+        <p className="text-xs text-stone-500 mt-1">{t('A short bio is enough. Looking-for comes on the next step.', 'Ένα σύντομο βιογραφικό αρκεί. Το «ψάχνω για» έρχεται στο επόμενο βήμα.')}</p>
         {errors.bio && <p className="text-xs text-red-500 mt-1">{errors.bio}</p>}
        </div>
        <div className="grid grid-cols-2 gap-4">
         <div>
-         <label className="block text-sm font-medium text-stone-700 mb-1">Location</label>
+         <label className="block text-sm font-medium text-stone-700 mb-1">{t('Location', 'Τοποθεσία')}</label>
          <div className="relative">
           <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
           <input
            type="text"
            value={formData.location}
            onChange={(e) => updateFormData({ location: e.target.value })}
-           placeholder="City, Country"
+           placeholder={t('City, Country', 'Πόλη, χώρα')}
            className={cn(
             "w-full pl-10 pr-4 py-3 rounded-xl border outline-none transition-all",
             errors.location ? "border-red-500 focus:ring-red-500" : "border-stone-200 focus:ring-stone-900 focus:border-stone-900"
@@ -430,7 +458,7 @@ export default function OnboardingWizard() {
          {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
         </div>
         <div>
-         <label className="block text-sm font-medium text-stone-700 mb-1">LinkedIn URL</label>
+         <label className="block text-sm font-medium text-stone-700 mb-1">{t('LinkedIn URL', 'URL LinkedIn')}</label>
          <input
           type="url"
           value={formData.linkedinUrl}
@@ -448,17 +476,17 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">What are your startup goals?</h2>
-       <p className="text-stone-500">Define your current stage and commitment level.</p>
+       <h2 className="text-lg font-medium text-stone-900">{t('What are your startup goals?', 'Ποιοι είναι οι στόχοι της startup σου;')}</h2>
+       <p className="text-stone-500">{t('Define your current stage and commitment level.', 'Όρισε το τρέχον στάδιο και το επίπεδο δέσμευσης.')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
        <div className="space-y-4">
-        <label className="block text-sm font-medium text-stone-900 tracking-wider">Current Stage</label>
+        <label className="block text-sm font-medium text-stone-900 tracking-wider">{t('Current Stage', 'Τρέχον στάδιο')}</label>
         <div className="space-y-2">
          {[
-          { id: FounderStage.IDEA, label: 'Idea Stage', desc: 'Just a concept' },
-          { id: FounderStage.MVP, label: 'MVP Stage', desc: 'Building or built a prototype' },
-          { id: FounderStage.SCALING, label: 'Scaling', desc: 'Have users and growing' },
+          { id: FounderStage.IDEA, label: t('Idea Stage', 'Στάδιο ιδέας'), desc: t('Just a concept', 'Μόνο μια ιδέα') },
+          { id: FounderStage.MVP, label: t('MVP Stage', 'Στάδιο MVP'), desc: t('Building or built a prototype', 'Φτιάχνεις ή έχεις πρωτότυπο') },
+          { id: FounderStage.SCALING, label: t('Scaling', 'Κλιμάκωση'), desc: t('Have users and growing', 'Έχεις χρήστες και μεγαλώνεις') },
          ].map((stage) => (
           <button
            key={stage.id}
@@ -477,12 +505,12 @@ export default function OnboardingWizard() {
         </div>
        </div>
        <div className="space-y-4">
-        <label className="block text-sm font-medium text-stone-900 tracking-wider">Commitment</label>
+        <label className="block text-sm font-medium text-stone-900 tracking-wider">{t('Commitment', 'Δέσμευση')}</label>
         <div className="space-y-2">
          {[
-          { id: CommitmentLevel.FULL_TIME, label: 'Full-time', desc: '100% dedicated' },
-          { id: CommitmentLevel.PART_TIME, label: 'Part-time', desc: 'Working alongside other things' },
-          { id: CommitmentLevel.EXPLORING, label: 'Exploring', desc: 'Casual exploration' },
+          { id: CommitmentLevel.FULL_TIME, label: labelOf(CommitmentLevel.FULL_TIME), desc: t('100% dedicated', 'Αφοσίωση 100%') },
+          { id: CommitmentLevel.PART_TIME, label: labelOf(CommitmentLevel.PART_TIME), desc: t('Working alongside other things', 'Παράλληλα με άλλα') },
+          { id: CommitmentLevel.EXPLORING, label: labelOf(CommitmentLevel.EXPLORING), desc: t('Casual exploration', 'Χαλαρή διερεύνηση') },
          ].map((lvl) => (
           <button
            key={lvl.id}
@@ -502,7 +530,7 @@ export default function OnboardingWizard() {
        </div>
       </div>
       <div>
-       <label className="block text-sm font-medium text-stone-900 tracking-wider mb-2">Looking for</label>
+       <label className="block text-sm font-medium text-stone-900 tracking-wider mb-2">{t('Looking for', 'Ψάχνω για')}</label>
        <div className="flex flex-wrap gap-2">
         {['Co-founder', 'Investor', 'Mentor', 'Sales', 'Growth', 'Technical help'].map((item) => {
          const on = formData.lookingFor.includes(item);
@@ -516,7 +544,7 @@ export default function OnboardingWizard() {
             on ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400',
            )}
           >
-           {item}
+           {t(item, LOOKING_EL[item] || item)}
           </button>
          );
         })}
@@ -532,29 +560,29 @@ export default function OnboardingWizard() {
        <Check className="w-5 h-5" />
       </div>
       <div className="space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">You're all set!</h2>
+       <h2 className="text-lg font-medium text-stone-900">{t("You're all set!", 'Όλα έτοιμα!')}</h2>
        <p className="text-stone-500 max-w-sm mx-auto">
-        Your profile is ready. We'll now show you compatible co-founders and mentors based on your preferences.
+        {t("Your profile is ready. We'll now show you compatible co-founders and mentors based on your preferences.", 'Το προφίλ σου είναι έτοιμο. Θα σου δείξουμε συμβατούς συνιδρυτές και μέντορες με βάση τις προτιμήσεις σου.')}
        </p>
       </div>
       <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100 text-left max-w-md mx-auto">
-       <h4 className="font-medium text-stone-900 mb-4">Profile Summary</h4>
+       <h4 className="font-medium text-stone-900 mb-4">{t('Profile Summary', 'Σύνοψη προφίλ')}</h4>
        <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-         <span className="text-stone-500">Role:</span>
-         <span className="font-medium text-stone-900 capitalize">{formData.role}</span>
+         <span className="text-stone-500">{t('Role:', 'Ρόλος:')}</span>
+         <span className="font-medium text-stone-900 capitalize">{labelOf(formData.role)}</span>
         </div>
         <div className="flex justify-between">
-         <span className="text-stone-500">Stage:</span>
-         <span className="font-medium text-stone-900 capitalize">{formData.stage}</span>
+         <span className="text-stone-500">{t('Stage:', 'Στάδιο:')}</span>
+         <span className="font-medium text-stone-900 capitalize">{labelOf(formData.stage)}</span>
         </div>
         <div className="flex justify-between">
-         <span className="text-stone-500">Commitment:</span>
-         <span className="font-medium text-stone-900 capitalize">{formData.commitment}</span>
+         <span className="text-stone-500">{t('Commitment:', 'Δέσμευση:')}</span>
+         <span className="font-medium text-stone-900 capitalize">{labelOf(formData.commitment)}</span>
         </div>
         <div className="flex justify-between">
-         <span className="text-stone-500">Location:</span>
-         <span className="font-medium text-stone-900">{formData.location || 'Not specified'}</span>
+         <span className="text-stone-500">{t('Location:', 'Τοποθεσία:')}</span>
+         <span className="font-medium text-stone-900">{formData.location || t('Not specified', 'Δεν έχει οριστεί')}</span>
         </div>
        </div>
       </div>
@@ -586,7 +614,7 @@ export default function OnboardingWizard() {
          "text-xs font-medium tracking-wider",
          idx <= currentStep ? "text-stone-900" : "text-stone-400"
         )}>
-         {step.title}
+         {t(step.title, STEP_EL[step.title] || step.title)}
         </span>
        </div>
       ))}
@@ -608,7 +636,7 @@ export default function OnboardingWizard() {
        onClick={() => navigate('/dashboard')}
        className="absolute top-6 right-8 text-sm font-medium text-stone-400 hover:text-stone-900 transition-colors"
       >
-       Skip Onboarding (Demo)
+       {t('Skip Onboarding (Demo)', 'Παράλειψη εισαγωγής (δείγμα)')}
       </button>
      )}
      <AnimatePresence mode="wait">
@@ -635,14 +663,14 @@ export default function OnboardingWizard() {
        )}
       >
        <ArrowLeft className="w-5 h-5" />
-       Back
+       {t('Back', 'Πίσω')}
       </button>
       <button
        onClick={handleNext}
        disabled={loading || (currentStep === 0 && !formData.role)}
        className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-sm disabled:opacity-50 group"
       >
-       {loading ? 'Saving...' : currentStep === STEPS.length - 1 ? 'Get Started' : 'Continue'}
+       {loading ? t('Saving...', 'Αποθήκευση...') : currentStep === STEPS.length - 1 ? t('Get Started', 'Ξεκίνα') : t('Continue', 'Συνέχεια')}
        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
       </button>
      </div>

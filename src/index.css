@@ -201,6 +201,12 @@
   .facts-dotted > li::first-letter {
     text-transform: uppercase;
   }
+  /* A bilingual pair inside one fact uses a slash; dots stay between facts. */
+  .bilingual-separator::before {
+    content: "/";
+    margin: 0 0.25rem;
+    color: rgb(168 162 158);
+  }
 
   .section-header {
     @apply text-sm font-bold text-stone-900 tracking-tight uppercase mb-4;

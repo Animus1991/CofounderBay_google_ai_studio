@@ -16,54 +16,59 @@ import {
 } from "lucide-react";
 import { useAuth } from "../App";
 import { cn } from "../lib/utils";
-import { LanguageToggle, useLanguage } from "../lib/language";
+import { LanguageToggle, useT } from "../lib/language";
 import { Both } from "../lib/both";
-import { bothText } from "../lib/labels";
 import { CAST, avatarFor } from "../data/cast";
 
 export default function LandingPage() {
+  const t = useT();
   const { user, isDemoMode, toggleDemoMode } = useAuth();
-  useLanguage();
   const navigate = useNavigate();
 
   const features = [
     {
-      title: bothText("Structured Matching", "Αντιστοίχιση"),
-      description: bothText(
+      title: t("Structured Matching", "Αντιστοίχιση"),
+      description: t(
         "People with your skills and stage.",
-        "Άνθρωποι με τις δεξιότητες και το στάδιό σας.",
+        "Άνθρωποι με τις δεξιότητες και το στάδιό σου.",
       ),
       icon: Users,
       color: "bg-blue-50 text-blue-600",
     },
     {
-      title: "Mentor Ecosystem",
-      description:
+      title: t("Mentor Ecosystem", "Οικοσύστημα μεντόρων"),
+      description: t(
         "Access a curated network of experienced advisors and industry experts to guide your venture.",
+        "Πρόσβαση σε επιλεγμένο δίκτυο έμπειρων συμβούλων και ειδικών του κλάδου για να καθοδηγήσουν το εγχείρημά σου.",
+      ),
       icon: GraduationCap,
       color: "bg-purple-50 text-purple-600",
     },
     {
-      title: "Thematic Communities",
-      description:
+      title: t("Thematic Communities", "Θεματικές κοινότητες"),
+      description: t(
         "Join industry-specific hubs to discuss trends, share insights, and find collaborators.",
+        "Μπες σε κόμβους ανά κλάδο για τάσεις, γνώσεις και συνεργάτες.",
+      ),
       icon: Zap,
       color: "bg-amber-50 text-amber-600",
     },
     {
-      title: "Progress Tracking",
-      description:
+      title: t("Progress Tracking", "Παρακολούθηση προόδου"),
+      description: t(
         "Set milestones and track your startup's development with structured collaboration tools.",
+        "Όρισε ορόσημα και παρακολούθησε την εξέλιξη της startup σου με εργαλεία συνεργασίας.",
+      ),
       icon: Trophy,
       color: "bg-emerald-50 text-emerald-600",
     },
   ];
 
   const stats = [
-    { label: "Active Founders", value: "12,000+" },
-    { label: "Successful Matches", value: "4,500+" },
-    { label: "Verified Mentors", value: "800+" },
-    { label: "Startup Hubs", value: "150+" },
+    { label: t("Active Founders", "Ενεργοί ιδρυτές"), value: "12,000+" },
+    { label: t("Successful Matches", "Επιτυχημένες αντιστοιχίσεις"), value: "4,500+" },
+    { label: t("Verified Mentors", "Επαληθευμένοι μέντορες"), value: "800+" },
+    { label: t("Startup Hubs", "Κόμβοι startup"), value: "150+" },
   ];
 
   return (
@@ -86,31 +91,31 @@ export default function LandingPage() {
                 href="#features"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                Features
+                {t("Features", "Λειτουργίες")}
               </a>
               <NavLink
                 to="/quiz"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                Fit check
+                {t("Fit check", "Fit check")}
               </NavLink>
               <a
                 href="#how-it-works"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                How it Works
+                {t("How it Works", "Πώς λειτουργεί")}
               </a>
               <a
                 href="#communities"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                Communities
+                {t("Communities", "Κοινότητες")}
               </a>
               <a
                 href="#pricing"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
               >
-                Pricing
+                {t("Pricing", "Τιμές")}
               </a>
             </div>
 
@@ -122,14 +127,14 @@ export default function LandingPage() {
                     onClick={() => toggleDemoMode(false)}
                     className="min-h-11 px-3 whitespace-nowrap text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
                   >
-                    Exit
+                    {t("Exit", "Έξοδος")}
                   </button>
                   <NavLink
                     to="/dashboard"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    <span className="sm:hidden">Dashboard</span>
-                    <span className="hidden sm:inline">Go to Dashboard</span>
+                    <span className="sm:hidden">{t("Dashboard", "Πίνακας")}</span>
+                    <span className="hidden sm:inline">{t("Go to Dashboard", "Στον πίνακα")}</span>
                   </NavLink>
                 </div>
               ) : user ? (
@@ -141,13 +146,13 @@ export default function LandingPage() {
                     }}
                     className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    Demo
+                    {t("Demo", "Δείγμα")}
                   </button>
                   <NavLink
                     to="/dashboard"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    Go to Dashboard
+                    {t("Go to Dashboard", "Στον πίνακα")}
                   </NavLink>
                 </div>
               ) : (
@@ -159,19 +164,19 @@ export default function LandingPage() {
                     }}
                     className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
-                    Demo
+                    {t("Demo", "Δείγμα")}
                   </button>
                   <NavLink
                     to="/login"
                     className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap"
                   >
-                    Log in
+                    {t("Log in", "Είσοδος")}
                   </NavLink>
                   <NavLink
                     to="/signup"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    Get Started
+                    {t("Get Started", "Ξεκίνα")}
                   </NavLink>
                 </>
               )}
@@ -191,22 +196,24 @@ export default function LandingPage() {
             >
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
                 <Sparkles className="w-3 h-3" />
-                60 seconds · same fields Matches scores
+                {t("60 seconds · same fields Matches scores", "60 δευτερόλεπτα · τα ίδια πεδία που βαθμολογεί το Matches")}
               </span>
               <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
-                Build your startup team with{" "}
-                <span className="text-stone-400 italic">precision.</span>
+                {t("Build your startup team with", "Φτιάξε την ομάδα της startup σου με")}{" "}
+                <span className="text-stone-400 italic">{t("precision.", "ακρίβεια.")}</span>
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-stone-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-                Five questions write skills, looking-for, stage, commitment and hours.
-                The studio assistant then ranks people, explains the score, and books the next step — the same lists every page already uses.
+                {t(
+                  "Five questions write skills, looking-for, stage, commitment and hours. The studio assistant then ranks people, explains the score, and books the next step — the same lists every page already uses.",
+                  "Πέντε ερωτήσεις γράφουν δεξιότητες, αναζήτηση, στάδιο, δέσμευση και ώρες. Ο βοηθός του στούντιο μετά βαθμολογεί ανθρώπους, εξηγεί το σκορ και κλείνει το επόμενο βήμα — οι ίδιες λίστες που ήδη χρησιμοποιεί κάθε σελίδα.",
+                )}
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mt-4 w-full max-w-xl mx-auto">
                 <NavLink
                   to="/quiz"
                   className="w-full sm:w-auto min-h-11 bg-stone-900 text-white px-5 rounded-full text-sm font-semibold hover:bg-stone-800 transition-all inline-flex items-center justify-center gap-2 group"
                 >
-                  Take the fit check
+                  {t("Take the fit check", "Κάνε το fit check")}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </NavLink>
                 <button
@@ -216,13 +223,13 @@ export default function LandingPage() {
                   }}
                   className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 border border-stone-200 bg-white transition-all"
                 >
-                  Demo
+                  {t("Demo", "Δείγμα")}
                 </button>
                 <a
                   href="#features"
                   className="w-full sm:w-auto min-h-11 px-5 rounded-full text-sm font-medium text-stone-600 hover:text-stone-900 inline-flex items-center justify-center transition-all"
                 >
-                  Explore Features
+                  {t("Explore Features", "Εξερεύνηση λειτουργιών")}
                 </a>
               </div>
             </motion.div>
@@ -272,7 +279,7 @@ export default function LandingPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-stone-900 truncate">Sarah Chen</p>
                   <p className="text-xs text-stone-500 truncate">{CAST.find((p) => p.id === 'sarah-chen')?.headline}</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">New York · FinTech</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">{t("New York · FinTech", "Νέα Υόρκη · FinTech")}</p>
                 </div>
               </div>
             </NavLink>
@@ -281,7 +288,7 @@ export default function LandingPage() {
                 <Both en="Next session" el="Επόμενη συνάντηση" />
               </p>
               <p className="text-sm font-medium text-stone-900">Startup Founders Networking Night</p>
-              <p className="text-xs text-stone-500 mt-1">London · 28 Mar 2026 · 6–9 PM</p>
+              <p className="text-xs text-stone-500 mt-1">{t("London · 28 Mar 2026 · 6–9 PM", "Λονδίνο · 28 Μαρ 2026 · 6–9 μ.μ.")}</p>
               <p className="text-[11px] text-stone-400 mt-2">
                 <Both en="Same card the Events page lists. Register puts it on Calendar." el="Η ίδια κάρτα με τις Εκδηλώσεις. Η εγγραφή τη βάζει στο Ημερολόγιο." />
               </p>
@@ -290,7 +297,7 @@ export default function LandingPage() {
               <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
                 <Both en="Studio operator" el="Τελεστής στούντιο" />
               </p>
-              <p className="text-sm font-medium">Fit check, then ask the assistant</p>
+              <p className="text-sm font-medium">{t("Fit check, then ask the assistant", "Fit check, μετά ρώτα τον βοηθό")}</p>
               <p className="text-xs text-stone-400 mt-1">
                 <Both en="No login. 5 questions. Then “who should I meet this week” runs on the same people Matches ranks." el="Χωρίς είσοδο. 5 ερωτήσεις. Μετά το «ποιον να γνωρίσω» τρέχει στα ίδια άτομα με το Matches." />
               </p>
@@ -316,11 +323,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-4">
-              Not just another social network.
+              {t("Not just another social network.", "Όχι άλλο ένα κοινωνικό δίκτυο.")}
             </h2>
             <p className="text-sm sm:text-base lg:text-lg text-stone-500">
-              We've replaced random networking with structured discovery and
-              explainable matching logic designed for the startup world.
+              {t(
+                "We've replaced random networking with structured discovery and explainable matching logic designed for the startup world.",
+                "Αντικαταστήσαμε την τυχαία δικτύωση με δομημένη εξερεύνηση και εξηγήσιμη λογική αντιστοίχισης, φτιαγμένη για τον κόσμο των startup.",
+              )}
             </p>
           </div>
 
@@ -357,12 +366,14 @@ export default function LandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16">
             <div className="lg:w-1/2 space-y-8">
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium text-stone-900 tracking-tight">
-                Industry-specific <br />
-                <span className="text-stone-400">Startup Hubs.</span>
+                {t("Industry-specific", "Κόμβοι startup")} <br />
+                <span className="text-stone-400">{t("Startup Hubs.", "ανά κλάδο.")}</span>
               </h2>
               <p className="text-sm sm:text-lg lg:text-xl text-stone-500 leading-relaxed">
-                Join deep-tech, fintech, or sustainability communities to find
-                partners who share your domain expertise and passion.
+                {t(
+                  "Join deep-tech, fintech, or sustainability communities to find partners who share your domain expertise and passion.",
+                  "Μπες σε κοινότητες deep-tech, fintech ή βιωσιμότητας για να βρεις συνεργάτες με την ίδια εξειδίκευση και πάθος.",
+                )}
               </p>
               <div className="flex flex-wrap gap-3">
                 {[
@@ -385,7 +396,7 @@ export default function LandingPage() {
                 to="/communities"
                 className="inline-flex items-center gap-2 text-stone-900 font-medium hover:gap-3 transition-all"
               >
-                Explore all communities
+                {t("Explore all communities", "Εξερεύνηση όλων των κοινοτήτων")}
                 <ArrowRight className="w-5 h-5" />
               </NavLink>
             </div>
@@ -397,10 +408,10 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-stone-900 text-sm">
-                      Growth Hub
+                      {t("Growth Hub", "Κόμβος ανάπτυξης")}
                     </div>
                     <div className="text-xs font-medium text-stone-400 mt-1">
-                      1.2k members
+                      {t("1.2k members", "1.2k μέλη")}
                     </div>
                   </div>
                 </div>
@@ -410,10 +421,10 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-stone-900 text-sm">
-                      Founder Lounge
+                      {t("Founder Lounge", "Σαλόνι ιδρυτών")}
                     </div>
                     <div className="text-xs font-medium text-stone-400 mt-1">
-                      3.4k members
+                      {t("3.4k members", "3.4k μέλη")}
                     </div>
                   </div>
                 </div>
@@ -425,10 +436,10 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-stone-900 text-sm">
-                      AI Builders
+                      {t("AI Builders", "Δημιουργοί AI")}
                     </div>
                     <div className="text-xs font-medium text-stone-400 mt-1">
-                      2.1k members
+                      {t("2.1k members", "2.1k μέλη")}
                     </div>
                   </div>
                 </div>
@@ -438,10 +449,10 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-stone-900 text-sm">
-                      Global Scale
+                      {t("Global Scale", "Παγκόσμια κλίμακα")}
                     </div>
                     <div className="text-xs font-medium text-stone-400 mt-1">
-                      850 members
+                      {t("850 members", "850 μέλη")}
                     </div>
                   </div>
                 </div>
@@ -460,15 +471,15 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-8 md:gap-16 items-center">
             <div>
               <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium tracking-tight mb-6">
-                The ecosystem for{" "}
-                <span className="text-stone-400 italic">serious</span> builders.
+                {t("The ecosystem for", "Το οικοσύστημα για")}{" "}
+                <span className="text-stone-400 italic">{t("serious", "σοβαρούς")}</span> {t("builders.", "δημιουργούς.")}
               </h2>
               <div className="space-y-6">
                 {[
-                  "Verified profiles and trust indicators",
-                  "Explainable compatibility scoring",
-                  "Secure, private collaboration spaces",
-                  "Multi-tenant ready for organizations",
+                  t("Verified profiles and trust indicators", "Επαληθευμένα προφίλ και δείκτες εμπιστοσύνης"),
+                  t("Explainable compatibility scoring", "Εξηγήσιμη βαθμολογία συμβατότητας"),
+                  t("Secure, private collaboration spaces", "Ασφαλείς, ιδιωτικοί χώροι συνεργασίας"),
+                  t("Multi-tenant ready for organizations", "Έτοιμο για οργανισμούς (multi-tenant)"),
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-4">
                     <div className="w-6 h-6 rounded-full bg-stone-800 flex items-center justify-center">
@@ -485,7 +496,7 @@ export default function LandingPage() {
                   to="/signup"
                   className="inline-flex items-center gap-2 bg-white text-stone-900 px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-stone-50 transition-all shadow-md shrink-0"
                 >
-                  Join the Ecosystem
+                  {t("Join the Ecosystem", "Εγγραφή στο οικοσύστημα")}
                   <ArrowRight className="w-5 h-5" />
                 </NavLink>
               </div>
@@ -520,18 +531,20 @@ export default function LandingPage() {
           <div className="p-8 md:p-12 lg:p-20 rounded-xl sm:rounded-xl bg-stone-50 border border-stone-100 relative overflow-hidden">
             <div className="relative z-10">
               <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-6">
-                Ready to find your <br />
-                next co-founder?
+                {t("Ready to find your", "Ώρα να βρεις τον")} <br />
+                {t("next co-founder?", "συνιδρυτή σου;")}
               </h2>
               <p className="text-sm sm:text-base md:text-lg text-stone-500 mb-12 max-w-2xl mx-auto">
-                Join thousands of founders building the next generation of
-                world-changing companies.
+                {t(
+                  "Join thousands of founders building the next generation of world-changing companies.",
+                  "Μπες μαζί με χιλιάδες ιδρυτές που χτίζουν την επόμενη γενιά εταιρειών που αλλάζουν τον κόσμο.",
+                )}
               </p>
               <NavLink
                 to="/signup"
                 className="bg-stone-900 text-white px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-stone-800 transition-all shadow-sm inline-flex items-center gap-3"
               >
-                Create Your Profile
+                {t("Create Your Profile", "Δημιουργία προφίλ")}
                 <ArrowRight className="w-6 h-6" />
               </NavLink>
             </div>
@@ -556,13 +569,15 @@ export default function LandingPage() {
                 </span>
               </div>
               <p className="text-sm sm:text-base text-stone-500 max-w-xs leading-relaxed">
-                The modern startup ecosystem platform designed to reduce founder
-                risk and team formation risk.
+                {t(
+                  "The modern startup ecosystem platform designed to reduce founder risk and team formation risk.",
+                  "Η σύγχρονη πλατφόρμα οικοσυστήματος startup, σχεδιασμένη να μειώνει τον κίνδυνο του ιδρυτή και της συγκρότησης ομάδας.",
+                )}
               </p>
             </div>
             <div>
               <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
-                Platform
+                {t("Platform", "Πλατφόρμα")}
               </h4>
               <ul className="space-y-4 text-sm text-stone-500">
                 <li>
@@ -570,7 +585,7 @@ export default function LandingPage() {
                     to="/quiz"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Fit check
+                    {t("Fit check", "Fit check")}
                   </NavLink>
                 </li>
                 <li>
@@ -578,7 +593,7 @@ export default function LandingPage() {
                     to="/matches"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Matching Engine
+                    {t("Matching Engine", "Μηχανή αντιστοίχισης")}
                   </NavLink>
                 </li>
                 <li>
@@ -586,7 +601,7 @@ export default function LandingPage() {
                     to="/mentors"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Mentor Network
+                    {t("Mentor Network", "Δίκτυο μεντόρων")}
                   </NavLink>
                 </li>
                 <li>
@@ -594,7 +609,7 @@ export default function LandingPage() {
                     to="/communities"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Communities
+                    {t("Communities", "Κοινότητες")}
                   </NavLink>
                 </li>
                 <li>
@@ -602,14 +617,14 @@ export default function LandingPage() {
                     to="/discovery"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    Discovery
+                    {t("Discovery", "Εξερεύνηση")}
                   </NavLink>
                 </li>
               </ul>
             </div>
             <div>
               <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
-                Company
+                {t("Company", "Εταιρεία")}
               </h4>
               <ul className="space-y-4 text-sm text-stone-500">
                 <li>
@@ -617,7 +632,7 @@ export default function LandingPage() {
                     href="#how-it-works"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    {bothText("About Us", "Σχετικά")}
+                    {t("About Us", "Σχετικά")}
                   </a>
                 </li>
                 <li>
@@ -625,7 +640,7 @@ export default function LandingPage() {
                     to="/legal"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    {bothText("Privacy Policy", "Πολιτική απορρήτου")}
+                    {t("Privacy Policy", "Πολιτική απορρήτου")}
                   </NavLink>
                 </li>
                 <li>
@@ -633,7 +648,7 @@ export default function LandingPage() {
                     to="/legal"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    {bothText("Terms of Service", "Όροι χρήσης")}
+                    {t("Terms of Service", "Όροι χρήσης")}
                   </NavLink>
                 </li>
                 <li>
@@ -641,7 +656,7 @@ export default function LandingPage() {
                     href="mailto:support@cofounderbay.com"
                     className="hover:text-stone-900 transition-colors"
                   >
-                    {bothText("Contact", "Επικοινωνία")}
+                    {t("Contact", "Επικοινωνία")}
                   </a>
                 </li>
               </ul>
@@ -649,7 +664,7 @@ export default function LandingPage() {
           </div>
           <div className="pt-8 border-t border-stone-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-stone-400">
-              © {new Date().getFullYear()} CoFounderBay. All rights reserved.
+              © {new Date().getFullYear()} CoFounderBay. {t("All rights reserved.", "Με επιφύλαξη παντός δικαιώματος.")}
             </p>
             <div className="flex gap-6">
               <a

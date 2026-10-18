@@ -16,8 +16,10 @@ import { User } from "../types";
 import { useAuth } from "../App";
 import { avatarFor } from "../data/cast";
 import { keys, readRequests, removeRequest } from "../lib/localLists";
-import { bothText } from "../lib/labels";
-import { useLanguage } from "../lib/language";
+import { labelOf } from "../lib/labels";
+import { useT } from "../lib/language";
+import { formatDate, formatDateTime, formatTime } from "../lib/dates";
+import RelTime from "../components/ui/RelTime";
 import { useStored } from "../lib/useStored";
 
 // =============================================================================
@@ -151,12 +153,13 @@ const TypingDots = () => (
 );
 
 const DateSeparator = ({ date }: { date: string }) => {
+ const t = useT();
  const d = new Date(date);
  const today = new Date();
  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
- const label = d.toDateString() === today.toDateString() ? "Today"
-  : d.toDateString() === yesterday.toDateString() ? "Yesterday"
-  : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+ const label = d.toDateString() === today.toDateString() ? t("Today", "Σήμερα")
+  : d.toDateString() === yesterday.toDateString() ? t("Yesterday", "Χθες")
+  : formatDate(d);
  return (
   <div className="flex items-center gap-3 py-4">
    <div className="flex-1 h-px bg-stone-200" />
@@ -170,8 +173,75 @@ const DateSeparator = ({ date }: { date: string }) => {
 // MAIN COMPONENT
 // =============================================================================
 export default function CommunicationHub({ user: routeUser }: CommunicationHubProps) {
- useLanguage();
+ const t = useT();
  const navigate = useNavigate();
+ const modeText = (mode: ValidationMode) => {
+  if (mode === "casual") return { label: t("Casual Chat", "Απλή συνομιλία"), description: t("Standard private messaging, no validation", "Ιδιωτική συνομιλία χωρίς επαλήθευση") };
+  if (mode === "one_party") return { label: t("One-Party Validation", "Επαλήθευση από μία πλευρά"), description: t("You can save/validate your side of the conversation", "Μπορείς να αποθηκεύσεις την πλευρά σου στη συνομιλία") };
+  return { label: t("Two-Party Validation", "Επαλήθευση από τις δύο πλευρές"), description: t("Both parties agree to validated transcript", "Και οι δύο πλευρές συμφωνούν σε επαληθευμένο αντίγραφο") };
+ };
+ const agentRoleOf = (role: string) => ({
+  "Matchmaking Expert": t("Matchmaking Expert", "Ειδικός αντιστοίχισης"),
+  "Investment Advisor": t("Investment Advisor", "Σύμβουλος επενδύσεων"),
+  "Strategy Consultant": t("Strategy Consultant", "Σύμβουλος στρατηγικής"),
+  "Market Intelligence": t("Market Intelligence", "Πληροφόρηση αγοράς"),
+  "Venture Consultant": t("Venture Consultant", "Σύμβουλος venture"),
+  "Compliance Expert": t("Compliance Expert", "Ειδικός συμμόρφωσης"),
+  "CTO Consultant": t("CTO Consultant", "Σύμβουλος CTO"),
+  "Marketing Expert": t("Marketing Expert", "Ειδικός μάρκετινγκ"),
+  "Academic Researcher": t("Academic Researcher", "Ακαδημαϊκή έρευνα"),
+  "Networking Expert": t("Networking Expert", "Ειδικός δικτύωσης"),
+ }[role] || role);
+ const agentDescOf = (text: string) => ({
+  "I analyze profiles to find your perfect co-founder match.": t("I analyze profiles to find your perfect co-founder match.", "Αναλύω προφίλ για να βρω τον ιδανικό συνιδρυτή για εσένα."),
+  "Upload your pitch deck (PDF/Image) for AI-driven feedback on clarity, completeness, and market appeal.": t("Upload your pitch deck (PDF/Image) for AI-driven feedback on clarity, completeness, and market appeal.", "Ανέβασε το pitch deck (PDF ή εικόνα) για σχόλια AI σε σαφήνεια, πληρότητα και απήχηση στην αγορά."),
+  "I help you refine your startup ideas, business model, and provide market insights.": t("I help you refine your startup ideas, business model, and provide market insights.", "Σε βοηθάω να δουλέψεις την ιδέα, το μοντέλο και την εικόνα της αγοράς."),
+  "I provide deep market research, competitor analysis, and industry trends.": t("I provide deep market research, competitor analysis, and industry trends.", "Προσφέρω έρευνα αγοράς, ανάλυση ανταγωνισμού και τάσεις του κλάδου."),
+  "I help you prepare for fundraising, from valuation to investor targeting.": t("I help you prepare for fundraising, from valuation to investor targeting.", "Σε βοηθάω στην προετοιμασία για fundraising, από την αποτίμηση ως την επιλογή επενδυτών."),
+  "I provide guidance on startup legal structures, IP protection, and compliance.": t("I provide guidance on startup legal structures, IP protection, and compliance.", "Καθοδήγηση για νομική μορφή, προστασία IP και συμμόρφωση."),
+  "I help with tech stack selection, architecture, and engineering management.": t("I help with tech stack selection, architecture, and engineering management.", "Σε βοηθάω στην επιλογή stack, στην αρχιτεκτονική και στη διαχείριση μηχανικής."),
+  "I help you scale your user base through GTM strategy and growth hacking.": t("I help you scale your user base through GTM strategy and growth hacking.", "Σε βοηθάω να μεγαλώσεις τη βάση χρηστών με GTM και growth hacking."),
+  "I help you find academic papers, patents, and technical documentation.": t("I help you find academic papers, patents, and technical documentation.", "Σε βοηθάω να βρεις ακαδημαϊκές εργασίες, πατέντες και τεχνική τεκμηρίωση."),
+  "I help you find the right mentors based on your specific needs.": t("I help you find the right mentors based on your specific needs.", "Σε βοηθάω να βρεις μέντορες με βάση τις ανάγκες σου."),
+ }[text] || text);
+ const capOf = (cap: string) => ({
+  "Profile Analysis": t("Profile Analysis", "Ανάλυση προφίλ"),
+  "Compatibility Scoring": t("Compatibility Scoring", "Βαθμός συμβατότητας"),
+  "Skill Gap Identification": t("Skill Gap Identification", "Εντοπισμός κενών δεξιοτήτων"),
+  "Deck Review": t("Deck Review", "Έλεγχος deck"),
+  "Financial Analysis": t("Financial Analysis", "Οικονομική ανάλυση"),
+  "Storytelling Feedback": t("Storytelling Feedback", "Σχόλια αφήγησης"),
+  "Visual Analysis": t("Visual Analysis", "Οπτική ανάλυση"),
+  "Idea Refinement": t("Idea Refinement", "Δούλεμα ιδέας"),
+  "Business Model Feedback": t("Business Model Feedback", "Σχόλια μοντέλου"),
+  "Market Insights": t("Market Insights", "Εικόνα αγοράς"),
+  "Market Sizing": t("Market Sizing", "Μέγεθος αγοράς"),
+  "Competitor Research": t("Competitor Research", "Έρευνα ανταγωνισμού"),
+  "Trend Analysis": t("Trend Analysis", "Ανάλυση τάσεων"),
+  "Valuation Modeling": t("Valuation Modeling", "Μοντέλο αποτίμησης"),
+  "Investor Targeting": t("Investor Targeting", "Στόχευση επενδυτών"),
+  "Term Sheet Review": t("Term Sheet Review", "Έλεγχος term sheet"),
+  "Entity Formation": t("Entity Formation", "Σύσταση εταιρείας"),
+  "IP Protection": t("IP Protection", "Προστασία IP"),
+  "Contract Review": t("Contract Review", "Έλεγχος σύμβασης"),
+  "Stack Selection": t("Stack Selection", "Επιλογή stack"),
+  "Architecture Review": t("Architecture Review", "Έλεγχος αρχιτεκτονικής"),
+  "Team Scaling": t("Team Scaling", "Κλιμάκωση ομάδας"),
+  "GTM Strategy": t("GTM Strategy", "Στρατηγική GTM"),
+  "Growth Hacking": t("Growth Hacking", "Growth hacking"),
+  "User Acquisition": t("User Acquisition", "Απόκτηση χρηστών"),
+  "Paper Search": t("Paper Search", "Αναζήτηση εργασιών"),
+  "Patent Analysis": t("Patent Analysis", "Ανάλυση πατεντών"),
+  "Technical Writing": t("Technical Writing", "Τεχνική συγγραφή"),
+  "Mentor Matching": t("Mentor Matching", "Αντιστοίχιση μέντορα"),
+  "Networking Advice": t("Networking Advice", "Συμβουλές δικτύωσης"),
+  "Relationship Management": t("Relationship Management", "Διαχείριση σχέσεων"),
+ }[cap] || cap);
+ const fileDateOf = (date: string) =>
+  date === "Apr 28" ? t("Apr 28", "28 Απρ")
+   : date === "Apr 25" ? t("Apr 25", "25 Απρ")
+    : date === "Apr 22" ? t("Apr 22", "22 Απρ")
+     : date;
  const { user: authUser, profile } = useAuth();
  const user = {
   ...(routeUser ?? {}),
@@ -282,7 +352,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   const text = textOverride || inputText;
   if ((!text.trim() && attachedFiles.length === 0) || !selectedConversation) return;
   const finalText = replyingTo
-   ? `${text}\n\n[Replying to ${replyingTo.senderName}: "${replyingTo.body.substring(0, 50)}..."]`
+   ? `${text}\n\n[${t("Replying to", "Απάντηση προς")} ${replyingTo.senderName}: "${replyingTo.body.substring(0, 50)}..."]`
    : text;
   const firstFile = attachedFiles[0];
   if (isAIChat && activeConv) {
@@ -293,16 +363,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    try {
     const response = await AIService.chat(finalText, agent.role, 'llama3.2', firstFile?.data);
     sendMessage(response.text, undefined, agent.id);
-    setAiInsights(prev => [{ id: `insight-${Date.now()}`, type: "suggestion" as const, title: "Follow-up Opportunity", description: "Consider scheduling a follow-up meeting to discuss these points in detail.", priority: "medium" as const }, ...prev].slice(0, 5));
+    setAiInsights(prev => [{ id: `insight-${Date.now()}`, type: "suggestion" as const, title: t("Follow-up Opportunity", "Ευκαιρία συνέχειας"), description: t("Consider scheduling a follow-up meeting to discuss these points in detail.", "Σκέψου μια επόμενη συνάντηση για να συζητήσετε αυτά τα σημεία αναλυτικά."), priority: "medium" as const }, ...prev].slice(0, 5));
    } catch (error) {
     console.error('AI Chat Error:', error);
-    sendMessage("I'm having trouble connecting. Please try again.", undefined, agent.id);
+    sendMessage(t("I'm having trouble connecting. Please try again.", "Δυσκολεύομαι να συνδεθώ. Δοκίμασε ξανά."), undefined, agent.id);
    } finally { setAiIsTyping(false); }
   } else {
    sendMessage(finalText, firstFile ? { name: firstFile.name, data: firstFile.data } : undefined);
    setInputText(""); setAttachedFiles([]); setReplyingTo(null);
   }
- }, [inputText, attachedFiles, selectedConversation, replyingTo, isAIChat, activeConv, sendMessage]);
+ }, [inputText, attachedFiles, selectedConversation, replyingTo, isAIChat, activeConv, sendMessage, t]);
 
  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   Array.from(e.target.files || []).forEach(file => {
@@ -359,8 +429,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   if (format === 'json') {
    blob = new Blob([JSON.stringify({ conversationId: activeConv.id, participants: [user.fullName, activeConv.otherParticipant.fullName], exportedAt: new Date().toISOString(), validationHash: validationState.validationHash, messages: transcript }, null, 2)], { type: 'application/json' });
   } else {
-   const lines = transcript.map(m => `[${new Date(m.timestamp).toLocaleString()}] ${m.sender}: ${m.body}`);
-   blob = new Blob([`Conversation Transcript\nExported: ${new Date().toISOString()}\nHash: ${validationState.validationHash || 'N/A'}\n${'='.repeat(50)}\n\n${lines.join('\n')}`], { type: 'text/plain' });
+   const lines = transcript.map(m => `[${formatDateTime(m.timestamp)}] ${m.sender}: ${m.body}`);
+   blob = new Blob([`${t("Conversation Transcript", "Αντίγραφο συνομιλίας")}\n${t("Exported", "Εξαγωγή")}: ${new Date().toISOString()}\nHash: ${validationState.validationHash || 'N/A'}\n${'='.repeat(50)}\n\n${lines.join('\n')}`], { type: 'text/plain' });
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -436,7 +506,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {conv.otherParticipant.isAI && <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-700 text-[10px] rounded-full font-medium">AI</span>}
       {!conv.otherParticipant.isAI && conv.otherParticipant.roles?.[0] && (
        <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">
-        {conv.otherParticipant.roles[0]}
+        {labelOf(conv.otherParticipant.roles[0])}
        </span>
       )}
      </div>
@@ -444,7 +514,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     </div>
     <div className="flex items-center justify-between">
      <p className={cn("text-xs truncate pr-2", conv.unreadCount > 0 ? "text-stone-700 font-medium" : "text-stone-500")}>
-      {conv.lastMessage || "Start a conversation..."}
+      {conv.lastMessage || t("Start a conversation...", "Ξεκίνα μια συνομιλία...")}
      </p>
      {conv.unreadCount > 0 && (
       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -456,7 +526,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    {/* Conversation actions. One labeled menu on a phone; the same actions on hover at larger sizes. */}
    <button
     type="button"
-    aria-label="Conversation actions"
+    aria-label={t("Conversation actions", "Ενέργειες συνομιλίας")}
     onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === conv.id ? null : conv.id); }}
     className="sm:hidden shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:bg-stone-100 rounded-xl"
    >
@@ -465,39 +535,39 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    {openMenu === conv.id && (
     <div className="sm:hidden absolute right-2 bottom-14 z-30 w-44 bg-white border border-stone-200 rounded-xl shadow-sm py-1" onClick={(e) => e.stopPropagation()}>
      <button type="button" onClick={() => { togglePin(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <Pin className="w-4 h-4" /> {isPinned ? "Unpin" : "Pin"}
+      <Pin className="w-4 h-4" /> {isPinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
      </button>
      <button type="button" onClick={() => { handleArchiveConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <Archive className="w-4 h-4" /> Archive
+      <Archive className="w-4 h-4" /> {t("Archive", "Αρχειοθέτηση")}
      </button>
      <button type="button" className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-stone-700 hover:bg-stone-50">
-      <BellOff className="w-4 h-4" /> Mute
+      <BellOff className="w-4 h-4" /> {t("Mute", "Σίγαση")}
      </button>
      <button type="button" onClick={() => { handleDeleteConv(conv.id); setOpenMenu(null); }} className="w-full flex items-center gap-2 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50">
-      <Trash2 className="w-4 h-4" /> Delete
+      <Trash2 className="w-4 h-4" /> {t("Delete", "Διαγραφή")}
      </button>
     </div>
    )}
    <div className="hidden sm:flex absolute right-2 bottom-2 opacity-0 group-hover/conv:opacity-100 transition-opacity items-center gap-0.5">
-    <button onClick={(e) => { e.stopPropagation(); togglePin(conv.id); }} title={isPinned ? "Unpin" : "Pin"}
+    <button onClick={(e) => { e.stopPropagation(); togglePin(conv.id); }} title={isPinned ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
      className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
      <Pin className="w-3 h-3" />
     </button>
-    <button onClick={(e) => { e.stopPropagation(); handleArchiveConv(conv.id); }} title="Archive"
+    <button onClick={(e) => { e.stopPropagation(); handleArchiveConv(conv.id); }} title={t("Archive", "Αρχειοθέτηση")}
      className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
      <Archive className="w-3 h-3" />
     </button>
     <div className="relative group/ctx" onClick={(e) => e.stopPropagation()}>
-     <button title="More" className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
+     <button title={t("More", "Περισσότερα")} className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded">
       <MoreVertical className="w-3 h-3" />
      </button>
      <div className="absolute right-0 bottom-full mb-1 w-36 bg-white border border-stone-200 rounded-xl shadow-xl opacity-0 pointer-events-none group-hover/ctx:opacity-100 group-hover/ctx:pointer-events-auto transition-all z-30">
       <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50 rounded-t-xl">
-       <BellOff className="w-3 h-3" /> Mute
+       <BellOff className="w-3 h-3" /> {t("Mute", "Σίγαση")}
       </button>
       <button onClick={() => handleDeleteConv(conv.id)}
        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-b-xl">
-       <Trash2 className="w-3 h-3" /> Delete
+       <Trash2 className="w-3 h-3" /> {t("Delete", "Διαγραφή")}
       </button>
      </div>
     </div>
@@ -505,7 +575,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   </div>
  );
 
- const composerTip = bothText("Open a chat first. The composer is the box under that chat.", "Ανοίξτε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.");
+ const composerTip = t("Open a chat first. The composer is the box under that chat.", "Άνοιξε πρώτα μια συνομιλία. Η σύνταξη είναι το πλαίσιο κάτω από τη συνομιλία.");
  const focusComposer = () => {
   if (!selectedConversation) return;
   textareaRef.current?.focus();
@@ -527,14 +597,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <MessageSquare className="w-5 h-5 text-white" />
       </div>
       <div>
-       <h1 className="text-base font-bold text-stone-900 tracking-tight">Messages</h1>
-       <p className="text-[10px] text-stone-400 font-medium tracking-wider">Connect & Collaborate</p>
+       <h1 className="text-base font-bold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
+       <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Connect & Collaborate", "Σύνδεση και συνεργασία")}</p>
       </div>
      </div>
      <div className="flex items-center gap-1">
-      <IconButton icon={Users} size="sm" disabled tooltip={bothText("This page has no group composer. Start with one person.", "Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκινήστε με ένα άτομο.")} />
+      <IconButton icon={Users} size="sm" disabled tooltip={t("This page has no group composer. Start with one person.", "Αυτή η σελίδα δεν έχει σύνταξη ομάδας. Ξεκίνα με ένα άτομο.")} />
       <IconButton icon={Plus} size="sm" variant="filled" disabled={!selectedConversation}
-       tooltip={selectedConversation ? bothText("New message", "Νέο μήνυμα") : composerTip}
+       tooltip={selectedConversation ? t("New message", "Νέο μήνυμα") : composerTip}
        onClick={focusComposer} />
      </div>
     </div>
@@ -545,14 +615,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
        sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <MessageSquare className="w-3.5 h-3.5" />
-      Chats
+      {t("Chats", "Συνομιλίες")}
       {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] font-medium rounded-full tabular-nums">{totalUnread}</span>}
      </button>
      <button onClick={() => setSidebarTab("intros")}
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all",
        sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
-      Intros
+      {t("Intros", "Συστάσεις")}
       {connectionRequests.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{connectionRequests.length}</span>}
      </button>
     </div>
@@ -562,11 +632,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <>
       <div className="relative">
        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-       <input type="text" placeholder="Search messages, people..."
+       <input type="text" placeholder={t("Search messages, people...", "Αναζήτηση μηνυμάτων, ατόμων...")}
         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
         className="w-full min-h-11 pl-10 pr-10 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 transition-colors" />
        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-        <button className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
+        <button type="button" aria-label={t("Filter", "Φίλτρο")} className="p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
          <Filter className="w-3.5 h-3.5" />
         </button>
        </div>
@@ -578,7 +648,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <button key={filter} onClick={() => setMessageFilter(filter)}
          className={cn("flex-1 min-h-11 px-2 py-2 text-sm font-medium rounded-md transition-all capitalize",
           messageFilter === filter ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
-         {filter === "ai" ? "AI Agents" : filter}
+         {filter === "ai" ? t("AI Agents", "Πράκτορες AI") : filter === "unread" ? t("Unread", "Μη αναγνωσμένα") : t("All", "Όλα")}
         </button>
        ))}
       </div>
@@ -595,17 +665,17 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
         <MessageSquare className="w-8 h-8 text-stone-300" />
        </div>
-       <p className="text-sm text-stone-600 font-semibold">No conversations yet</p>
-       <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">Start a new chat or connect with founders in your network</p>
+       <p className="text-sm text-stone-600 font-semibold">{t("No conversations yet", "Δεν υπάρχουν συνομιλίες ακόμη")}</p>
+       <p className="text-xs text-stone-400 mt-1.5 max-w-[200px] leading-relaxed">{t("Start a new chat or connect with founders in your network", "Ξεκίνα μια νέα συνομιλία ή συνδέσου με ιδρυτές στο δίκτυό σου")}</p>
        <div className="mt-4 flex flex-col items-center gap-2">
         <span title={selectedConversation ? undefined : composerTip} className="inline-flex">
          <button type="button" disabled={!selectedConversation} onClick={focusComposer}
           className={cn("flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-          <Plus className="w-3.5 h-3.5" /> {bothText("New message", "Νέο μήνυμα")}
+          <Plus className="w-3.5 h-3.5" /> {t("New message", "Νέο μήνυμα")}
          </button>
         </span>
         <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
-         Ask assistant who to message
+         {t("Ask assistant who to message", "Ρώτα τον βοηθό ποιον να στείλεις μήνυμα")}
         </button>
        </div>
       </div>
@@ -616,7 +686,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <>
          <div className="flex items-center gap-2 px-2 py-2">
           <Pin className="w-3 h-3 text-stone-400 rotate-45" />
-          <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">Pinned</span>
+          <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Pinned", "Καρφιτσωμένα")}</span>
          </div>
          {pinnedConversations.map(c => renderConvCard(c, true))}
          <div className="h-px bg-stone-200 mx-2 my-2" />
@@ -628,7 +698,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          {pinnedConversations.length > 0 && (
           <div className="flex items-center gap-2 px-2 py-2">
            <Clock className="w-3 h-3 text-stone-400" />
-           <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">Recent</span>
+           <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Recent", "Πρόσφατα")}</span>
           </div>
          )}
          {unpinnedConversations.map(c => renderConvCard(c, false))}
@@ -644,10 +714,10 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
          <UserPlus className="w-8 h-8 text-stone-300" />
         </div>
-        <p className="text-sm text-stone-500 font-medium">No pending intros</p>
-        <p className="text-xs text-stone-400 mt-1">You're all caught up!</p>
+        <p className="text-sm text-stone-500 font-medium">{t("No pending intros", "Δεν υπάρχουν εκκρεμείς συστάσεις")}</p>
+        <p className="text-xs text-stone-400 mt-1">{t("You're all caught up!", "Τα έχεις δει όλα!")}</p>
         <button type="button" className="mt-3 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'who is my best match' } }))}>
-         Ask assistant who to invite
+         {t("Ask assistant who to invite", "Ρώτα τον βοηθό ποιον να προσκαλέσεις")}
         </button>
        </div>
       ) : (
@@ -661,11 +731,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
            <h4 className="text-sm font-semibold text-stone-900">{req.from.fullName}</h4>
            <p className="text-xs text-stone-500 truncate">{req.from.headline}</p>
            {req.from.role && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{req.from.role}</span>
+            <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{labelOf(req.from.role)}</span>
            )}
           </div>
           <span className="text-[10px] text-stone-400 shrink-0">
-           {new Date(req.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+           <RelTime iso={req.createdAt} />
           </span>
          </div>
          {req.message && (
@@ -674,15 +744,15 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          <div className="flex items-center gap-2">
           <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${req.from.fullName}`, context: req.from.fullName } }))}
            className="px-3 py-2 bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg hover:border-stone-900 transition-all">
-           Ask
+           {t("Ask", "Ρώτα")}
           </button>
           <button onClick={() => handleAcceptIntro(req.id)}
            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-900 text-white text-xs font-medium rounded-lg hover:bg-stone-800 transition-all">
-           <Check className="w-3.5 h-3.5" /> Accept
+           <Check className="w-3.5 h-3.5" /> {t("Accept", "Αποδοχή")}
           </button>
           <button onClick={() => handleDeclineIntro(req.id)}
            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-stone-100 text-stone-600 text-xs font-medium rounded-lg hover:bg-stone-200 transition-all">
-           <X className="w-3.5 h-3.5" /> Decline
+           <X className="w-3.5 h-3.5" /> {t("Decline", "Απόρριψη")}
           </button>
          </div>
         </motion.div>
@@ -695,13 +765,13 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    {/* Bottom Actions */}
    <div className="p-3 border-t border-stone-100">
     <div className="flex items-center justify-between">
-     <button type="button" title="Opens the same studio assistant as the corner control — stays on Messages." onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1', prompt: 'Draft a reply in this thread' } }))}
+     <button type="button" title={t("Opens the same studio assistant as the corner control — stays on Messages.", "Ανοίγει τον ίδιο βοηθό studio με το κουμπί στη γωνία — μένεις στα Μηνύματα.")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1', prompt: 'Draft a reply in this thread' } }))}
       className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all",
        "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
-      <span className="text-xs font-semibold">AI Center</span>
+      <span className="text-xs font-semibold">{t("AI Center", "Κέντρο AI")}</span>
      </button>
-     <button className="flex items-center gap-2 p-2 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-all">
+     <button type="button" aria-label={t("Settings", "Ρυθμίσεις")} title={t("Settings", "Ρυθμίσεις")} className="flex items-center gap-2 p-2 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-all">
       <Settings className="w-4 h-4" />
      </button>
     </div>
@@ -734,7 +804,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {!isMe && (
       <div className="w-8 h-8 shrink-0">
        {showAvatar ? (
-        <Avatar src={activeConv?.otherParticipant.profile?.profilePhoto} alt={msg.senderName || "User"} size="sm" />
+        <Avatar src={activeConv?.otherParticipant.profile?.profilePhoto} alt={msg.senderName || t("User", "Χρήστης")} size="sm" />
        ) : <div className="w-full h-full" />}
       </div>
      )}
@@ -785,20 +855,20 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity z-10",
         isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1")}>
         <div className="flex items-center gap-0.5 p-1 bg-white rounded-lg shadow-lg border border-stone-200">
-         <button type="button" aria-label="Reply" onClick={() => setReplyingTo(msg)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Reply">
+         <button type="button" aria-label={t("Reply", "Απάντηση")} onClick={() => setReplyingTo(msg)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Reply", "Απάντηση")}>
           <Reply className="w-3.5 h-3.5" />
          </button>
-         <button type="button" aria-label="React" onClick={() => setShowEmojiPicker(msg.id)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="React">
+         <button type="button" aria-label={t("React", "Αντίδραση")} onClick={() => setShowEmojiPicker(msg.id)} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("React", "Αντίδραση")}>
           <Smile className="w-3.5 h-3.5" />
          </button>
-         <button type="button" aria-label="Copy" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Copy"
+         <button type="button" aria-label={t("Copy", "Αντιγραφή")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Copy", "Αντιγραφή")}
           onClick={() => navigator.clipboard.writeText(msg.body)}>
           <Copy className="w-3.5 h-3.5" />
          </button>
-         <button type="button" aria-label="Forward" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Forward">
+         <button type="button" aria-label={t("Forward", "Προώθηση")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Forward", "Προώθηση")}>
           <Forward className="w-3.5 h-3.5" />
          </button>
-         <button type="button" aria-label="Bookmark" className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title="Bookmark">
+         <button type="button" aria-label={t("Bookmark", "Σελιδοδείκτης")} className="min-h-11 min-w-11 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md" title={t("Bookmark", "Σελιδοδείκτης")}>
           <Bookmark className="w-3.5 h-3.5" />
          </button>
         </div>
@@ -819,7 +889,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {/* Meta Row */}
       <div className={cn("flex items-center gap-2 px-1", isMe ? "flex-row-reverse" : "flex-row")}>
        <span className="text-[10px] text-stone-400">
-        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {formatTime(msg.createdAt)}
        </span>
        {isMe && (
         <span className="text-stone-400">
@@ -829,7 +899,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {hasThread && (
         <button className="flex items-center gap-1 text-[10px] text-stone-500 hover:text-stone-900">
          <MessageCircle className="w-3 h-3" />
-         {msg.threadCount} replies
+         {msg.threadCount} {t("replies", "απαντήσεις")}
         </button>
        )}
       </div>
@@ -866,17 +936,17 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </div>
       </div>
 
-      <h2 className="text-2xl font-bold text-stone-900 mb-2 tracking-tight">Your Communication Hub</h2>
+      <h2 className="text-2xl font-bold text-stone-900 mb-2 tracking-tight">{t("Your Communication Hub", "Ο κόμβος επικοινωνίας σου")}</h2>
       <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
-       Connect with co-founders, mentors, and AI agents. Schedule meetings, share files, and collaborate seamlessly.
+       {t("Connect with co-founders, mentors, and AI agents. Schedule meetings, share files, and collaborate seamlessly.", "Συνδέσου με συνιδρυτές, μέντορες και πράκτορες AI. Προγραμμάτισε συναντήσεις, μοίρασε αρχεία και συνεργάσου χωρίς εμπόδια.")}
       </p>
 
       {/* Quick stats row */}
       <div className="flex items-center justify-center gap-3 mb-8">
        {[
-        { label: "Conversations", value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
-        { label: "Unread", value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
-        { label: "AI Agents", value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
+        { label: t("Conversations", "Συνομιλίες"), value: msgState.conversations.length, icon: MessageSquare, color: "bg-stone-900 text-white" },
+        { label: t("Unread", "Μη αναγνωσμένα"), value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
+        { label: t("AI Agents", "Πράκτορες AI"), value: MOCK_AGENTS.length, icon: BrainCircuit, color: "bg-stone-100 text-stone-600" },
        ].map(({ label, value, icon: Icon, color }) => (
         <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}>
@@ -895,21 +965,21 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <span title={selectedConversation ? undefined : composerTip} className="w-full">
         <button type="button" disabled={!selectedConversation} onClick={focusComposer}
          className={cn("w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all shadow-sm  ", !selectedConversation && "opacity-50 cursor-not-allowed")}>
-         <Plus className="w-4 h-4" /> {bothText("New message", "Νέο μήνυμα")}
+         <Plus className="w-4 h-4" /> {t("New message", "Νέο μήνυμα")}
         </button>
        </span>
        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
         className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
-        <Sparkles className="w-4 h-4" /> Talk to AI Agent
+        <Sparkles className="w-4 h-4" /> {t("Talk to AI Agent", "Συνομιλία με πράκτορα AI")}
        </button>
        <div className="flex items-center gap-2.5 w-full">
         <a href="/discovery"
          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
-         <Users className="w-3.5 h-3.5" /> Find People
+         <Users className="w-3.5 h-3.5" /> {t("Find People", "Εύρεση ατόμων")}
         </a>
         <a href="/network"
          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
-         <UserIcon className="w-3.5 h-3.5" /> Connections
+         <UserIcon className="w-3.5 h-3.5" /> {t("Connections", "Συνδέσεις")}
         </a>
        </div>
       </div>
@@ -917,7 +987,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {/* Recent contacts strip */}
       {msgState.conversations.length > 0 && (
        <div className="mt-8 pt-6 border-t border-stone-200/60">
-        <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">Recent Conversations</p>
+        <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">{t("Recent Conversations", "Πρόσφατες συνομιλίες")}</p>
         <div className="flex items-center justify-center gap-2">
          {msgState.conversations.slice(0, 6).map(conv => (
           <button key={conv.id} onClick={() => { setSelectedConversation(conv.id); markAsRead(conv.id); }}
@@ -946,7 +1016,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {/* Header */}
     <header className="border-b border-stone-100 bg-white shrink-0">
      <div className="min-h-16 flex items-center gap-2 px-3 sm:px-5 py-2">
-      <button type="button" aria-label="Back to conversations" onClick={() => setSelectedConversation(null)} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0">
+      <button type="button" aria-label={t("Back to conversations", "Πίσω στις συνομιλίες")} onClick={() => setSelectedConversation(null)} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0">
        <ChevronLeft className="w-5 h-5" />
       </button>
       <Avatar src={activeConv.otherParticipant.profile?.profilePhoto} alt={activeConv.otherParticipant.fullName}
@@ -955,46 +1025,46 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className="flex items-center gap-2 min-w-0">
         <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeConv.otherParticipant.fullName}</h2>
         {activeConv.otherParticipant.roles?.[0] && (
-         <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{activeConv.otherParticipant.roles[0]}</span>
+         <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{labelOf(activeConv.otherParticipant.roles[0])}</span>
         )}
        </div>
        <p className="text-xs text-stone-500 truncate">
         {isRecipientTyping ? (
-         <span className="text-emerald-600 font-medium animate-pulse">typing...</span>
-        ) : activeConv.otherParticipant.isAI ? "AI Assistant \u2022 Always online"
+         <span className="text-emerald-600 font-medium animate-pulse">{t("typing...", "πληκτρολογεί...")}</span>
+        ) : activeConv.otherParticipant.isAI ? t("AI Assistant \u2022 Always online", "Βοηθός AI \u2022 Πάντα σε σύνδεση")
          : activeConv.otherParticipant.isOnline ? (
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" /> Online now</span>
-         ) : "Last seen recently"}
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" /> {t("Online now", "Σε σύνδεση τώρα")}</span>
+         ) : t("Last seen recently", "Τελευταία εμφάνιση πρόσφατα")}
        </p>
       </div>
       <div className="relative shrink-0">
-       <IconButton icon={MoreVertical} size="sm" tooltip="More options" onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
+       <IconButton icon={MoreVertical} size="sm" tooltip={t("More options", "Περισσότερες επιλογές")} onClick={() => setOpenMenu(openMenu === "chat-more" ? null : "chat-more")} />
        <div className={cn("absolute right-0 top-full mt-1 w-48 bg-white border border-stone-200 rounded-xl shadow-sm z-30", openMenu === "chat-more" ? "opacity-100" : "opacity-0 pointer-events-none")}>
         <button type="button" onClick={() => { setOpenMenu(null); if (activeConv?.otherParticipant.id) navigate(`/profile/${activeConv.otherParticipant.id}`); }} className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50 rounded-t-xl">
-         <UserIcon className="w-4 h-4" /> View Profile
+         <UserIcon className="w-4 h-4" /> {t("View Profile", "Προφίλ")}
         </button>
         <button type="button" onClick={() => { setShowValidationDialog(true); setOpenMenu(null); }}
          className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-stone-600 hover:bg-stone-50">
-         <Shield className="w-4 h-4" /> Conversation Mode
+         <Shield className="w-4 h-4" /> {t("Conversation Mode", "Λειτουργία συνομιλίας")}
         </button>
         <div className="h-px bg-stone-100 mx-2" />
         <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'report' }); setOpenMenu(null); }}
          className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-amber-600 hover:bg-amber-50">
-         <Flag className="w-4 h-4" /> Report
+         <Flag className="w-4 h-4" /> {t("Report", "Αναφορά")}
         </button>
         <button type="button" onClick={() => { setReportBlockModal({ open: true, mode: 'block' }); setOpenMenu(null); }}
          className="w-full flex items-center gap-2.5 min-h-11 px-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl">
-         <Ban className="w-4 h-4" /> Block
+         <Ban className="w-4 h-4" /> {t("Block", "Αποκλεισμός")}
         </button>
        </div>
       </div>
      </div>
      <div className="md:hidden flex items-center gap-2 overflow-x-auto px-3 pb-3">
-      <button type="button" title="Does not start a live call. Opens the studio assistant to draft the first line." className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>Call</button>
-      <button type="button" title="Does not start a live call. Opens the studio assistant to draft the first line." className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>Video</button>
-      <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Search</button>
-      <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? "Unpin" : "Pin"}</button>
-      <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">Details</button>
+      <button type="button" title={t("Does not start a live call. Opens the studio assistant to draft the first line.", "Δεν ξεκινά ζωντανή κλήση. Ανοίγει τον βοηθό του studio για την πρώτη γραμμή.")} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))}>{t("Call", "Κλήση")}</button>
+      <button type="button" title={t("Does not start a live call. Opens the studio assistant to draft the first line.", "Δεν ξεκινά ζωντανή κλήση. Ανοίγει τον βοηθό του studio για την πρώτη γραμμή.")} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))}>{t("Video", "Βίντεο")}</button>
+      <button type="button" onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{t("Search", "Αναζήτηση")}</button>
+      <button type="button" onClick={() => togglePin(activeConv.id)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{pinnedConvIds.has(activeConv.id) ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}</button>
+      <button type="button" onClick={() => setShowRightSidebar(!showRightSidebar)} className="shrink-0 min-h-11 px-3 rounded-xl border border-stone-200 text-sm font-medium text-stone-700">{t("Details", "Λεπτομέρειες")}</button>
      </div>
      <div className="hidden md:flex items-center gap-1 px-5 pb-3">
       {/* Validation badge — dynamic */}
@@ -1002,16 +1072,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        className={cn("hidden sm:flex items-center gap-1 mr-1 px-2 py-1 rounded-lg transition-colors",
         MODE_CONFIG[validationState.mode].bgColor)}>
        {(() => { const VIcon = MODE_CONFIG[validationState.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_CONFIG[validationState.mode].color)} />; })()}
-       <span className={cn("text-[10px] font-medium", MODE_CONFIG[validationState.mode].color)}>{MODE_CONFIG[validationState.mode].label}</span>
+       <span className={cn("text-[10px] font-medium", MODE_CONFIG[validationState.mode].color)}>{modeText(validationState.mode).label}</span>
       </button>
-      <IconButton icon={Phone} size="sm" tooltip="Does not start a live call — drafts the first line in the studio assistant" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
-      <IconButton icon={Video} size="sm" tooltip="Does not start a live call — drafts the first line in the studio assistant" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
-      <IconButton icon={Search} size="sm" tooltip="Search in chat" active={showSearchPanel}
+      <IconButton icon={Phone} size="sm" tooltip={t("Does not start a live call — drafts the first line in the studio assistant", "Δεν ξεκινά ζωντανή κλήση — γράφει την πρώτη γραμμή στον βοηθό του studio")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a voice call?' } }))} />
+      <IconButton icon={Video} size="sm" tooltip={t("Does not start a live call — drafts the first line in the studio assistant", "Δεν ξεκινά ζωντανή κλήση — γράφει την πρώτη γραμμή στον βοηθό του studio")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I start a video call?' } }))} />
+      <IconButton icon={Search} size="sm" tooltip={t("Search in chat", "Αναζήτηση στη συνομιλία")} active={showSearchPanel}
        onClick={() => { setShowSearchPanel(!showSearchPanel); setChatSearchQuery(""); }} />
       <div className="w-px h-6 bg-stone-200 mx-1" />
-      <IconButton icon={Pin} size="sm" tooltip={pinnedConvIds.has(activeConv.id) ? "Unpin" : "Pin"}
+      <IconButton icon={Pin} size="sm" tooltip={pinnedConvIds.has(activeConv.id) ? t("Unpin", "Ξεκαρφίτσωμα") : t("Pin", "Καρφίτσωμα")}
        active={pinnedConvIds.has(activeConv.id)} onClick={() => togglePin(activeConv.id)} />
-      <IconButton icon={Info} size="sm" tooltip="Details" active={showRightSidebar}
+      <IconButton icon={Info} size="sm" tooltip={t("Details", "Λεπτομέρειες")} active={showRightSidebar}
        onClick={() => setShowRightSidebar(!showRightSidebar)} />
      </div>
     </header>
@@ -1023,13 +1093,13 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        exit={{ height: 0, opacity: 0 }} className="border-b border-stone-200 bg-white overflow-hidden shrink-0">
        <div className="p-3 flex items-center gap-2">
         <Search className="w-4 h-4 text-stone-400 shrink-0" />
-        <input type="text" placeholder="Search in this conversation..." value={chatSearchQuery}
+        <input type="text" placeholder={t("Search in this conversation...", "Αναζήτηση σε αυτή τη συνομιλία...")} value={chatSearchQuery}
          onChange={(e) => setChatSearchQuery(e.target.value)} autoFocus
          className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-stone-400" />
         <span className="text-[10px] text-stone-400">
-         {chatSearchQuery ? `${chatMessages.filter(m => m.body.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} found` : ""}
+         {chatSearchQuery ? `${chatMessages.filter(m => m.body.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} ${t("found", "βρέθηκαν")}` : ""}
         </span>
-         <button type="button" aria-label="Close search" onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }}
+         <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }}
          className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded">
          <X className="w-4 h-4" />
         </button>
@@ -1044,7 +1114,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {chatMessages.length > 10 && (
       <div className="flex justify-center py-2">
        <button className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-colors">
-        Load older messages
+        {t("Load older messages", "Φόρτωση παλαιότερων μηνυμάτων")}
        </button>
       </div>
      )}
@@ -1054,7 +1124,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         {activeConv.otherParticipant.isAI ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
        </div>
        <p className="text-sm text-stone-500 font-medium">
-        {activeConv.otherParticipant.isAI ? `Start chatting with ${activeConv.otherParticipant.fullName}` : "No messages yet. Say hello!"}
+        {activeConv.otherParticipant.isAI ? t("Start chatting with", "Ξεκίνα συνομιλία με") + ` ${activeConv.otherParticipant.fullName}` : t("No messages yet. Say hello!", "Δεν υπάρχουν μηνύματα ακόμη. Πες ένα γεια!")}
        </p>
        {activeConv.otherParticipant.isAI && (
         <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-sm">
@@ -1136,22 +1206,22 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <div className="h-full bg-red-500 rounded-full animate-pulse" style={{ width: `${Math.min(100, (recordingTime / 120) * 100)}%` }} />
        </div>
        <button onClick={() => { setIsRecording(false); setRecordingTime(0); }}
-        className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-white rounded-lg" title="Cancel"><X className="w-4 h-4" /></button>
-       <button onClick={() => { setIsRecording(false); setRecordingTime(0); handleSendMessage("[Voice message]"); }}
-        className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600" title="Send"><Send className="w-4 h-4" /></button>
+        className="p-1.5 text-stone-500 hover:text-stone-900 hover:bg-white rounded-lg" title={t("Cancel", "Ακύρωση")}><X className="w-4 h-4" /></button>
+       <button onClick={() => { setIsRecording(false); setRecordingTime(0); handleSendMessage(t("[Voice message]", "[Φωνητικό μήνυμα]")); }}
+        className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600" title={t("Send", "Αποστολή")}><Send className="w-4 h-4" /></button>
       </div>
      ) : (
       /* Input Row */
       <div className="flex items-end gap-2">
        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" />
-       <IconButton icon={Paperclip} size="sm" tooltip="Attach files" onClick={() => fileInputRef.current?.click()} />
-       <IconButton icon={Mic} size="sm" tooltip="Voice message" onClick={() => { setIsRecording(true); setRecordingTime(0); }} />
+       <IconButton icon={Paperclip} size="sm" tooltip={t("Attach files", "Επισύναψη αρχείων")} onClick={() => fileInputRef.current?.click()} />
+       <IconButton icon={Mic} size="sm" tooltip={t("Voice message", "Φωνητικό μήνυμα")} onClick={() => { setIsRecording(true); setRecordingTime(0); }} />
 
        <div className="flex-1 relative">
         <textarea ref={textareaRef} value={inputText}
          onChange={(e) => { handleTypingChange(e.target.value); autoResizeTextarea(); }}
          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-         placeholder={isAIChat ? "Ask anything... (Shift+Enter for new line)" : "Type a message... (Shift+Enter for new line)"}
+         placeholder={isAIChat ? t("Ask anything... (Shift+Enter for new line)", "Ρώτα ό,τι θέλεις... (Shift+Enter για νέα γραμμή)") : t("Type a message... (Shift+Enter for new line)", "Γράψε μήνυμα... (Shift+Enter για νέα γραμμή)")}
          rows={1}
          className="w-full px-4 py-2.5 pr-10 bg-stone-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 transition-all resize-none min-h-[44px] max-h-[120px]" />
         <div className="absolute right-2 bottom-2">
@@ -1173,6 +1243,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        </div>
 
        <button onClick={() => handleSendMessage()} disabled={!inputText.trim() && attachedFiles.length === 0}
+        aria-label={t("Send", "Αποστολή")}
         className="w-11 h-11 bg-stone-900 text-white rounded-xl flex items-center justify-center hover:bg-stone-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0 self-end">
         <Send className="w-4 h-4" />
        </button>
@@ -1199,8 +1270,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    >
     {/* Close button */}
     <div className="flex items-center justify-between p-3 border-b border-stone-100">
-     <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">Details</h4>
-     <button type="button" aria-label="Close details" onClick={() => setShowRightSidebar(false)}
+     <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">{t("Details", "Λεπτομέρειες")}</h4>
+     <button type="button" aria-label={t("Close details", "Κλείσιμο λεπτομερειών")} onClick={() => setShowRightSidebar(false)}
       className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
     </div>
 
@@ -1216,20 +1287,20 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
       <h3 className="font-semibold text-stone-900 text-sm mb-0.5">{activeConv.otherParticipant.fullName}</h3>
       <p className="text-xs text-stone-500 mb-3">
-       {activeConv.otherParticipant.roles?.join(" \u2022 ") || "Co-founder"}
+       {activeConv.otherParticipant.roles?.map((role) => labelOf(role)).join(" \u2022 ") || t("Co-founder", "Συνιδρυτής")}
       </p>
       <button type="button" onClick={() => activeConv.otherParticipant.id && navigate(`/profile/${activeConv.otherParticipant.id}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
-       <UserIcon className="w-3 h-3" /> View Profile
+       <UserIcon className="w-3 h-3" /> {t("View Profile", "Προφίλ")}
       </button>
      </div>
 
      {/* Shared Media */}
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">Shared Media</h4>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Media", "Κοινόχρηστα μέσα")}</h4>
       <div className="grid grid-cols-3 gap-1.5">
        {SHARED_MEDIA_MOCK.map(i => (
         <div key={i} className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 cursor-pointer transition-opacity">
-         <img src={`https://picsum.photos/seed/media-${i}/100/100`} alt="Media" className="w-full h-full object-cover" />
+         <img src={`https://picsum.photos/seed/media-${i}/100/100`} alt={t("Media", "Μέσο")} className="w-full h-full object-cover" />
         </div>
        ))}
       </div>
@@ -1237,7 +1308,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
      {/* Shared Files */}
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">Shared Files</h4>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Files", "Κοινόχρηστα αρχεία")}</h4>
       <div className="space-y-1.5">
        {SHARED_FILES_MOCK.map(({ name, size, icon: Icon, date }) => (
         <div key={name} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 cursor-pointer group">
@@ -1246,7 +1317,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          </div>
          <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-stone-900 truncate">{name}</p>
-          <p className="text-[10px] text-stone-500">{size} \u2022 {date}</p>
+          <p className="text-[10px] text-stone-500">{size} \u2022 {fileDateOf(date)}</p>
          </div>
          <Download className="w-3.5 h-3.5 text-stone-400 opacity-0 group-hover:opacity-100 shrink-0" />
         </div>
@@ -1257,9 +1328,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {/* Conversation Validation — Full */}
      <div className="p-3 border-b border-stone-100">
       <div className="flex items-center justify-between mb-2">
-       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">Conversation Mode</h4>
+       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">{t("Conversation Mode", "Λειτουργία συνομιλίας")}</h4>
        <button onClick={() => setShowValidationDialog(true)}
-        className="text-[10px] text-stone-400 hover:text-stone-900 transition-colors">Change</button>
+        className="text-[10px] text-stone-400 hover:text-stone-900 transition-colors">{t("Change", "Αλλαγή")}</button>
       </div>
 
       {/* Current Mode Card */}
@@ -1270,8 +1341,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          <VIcon className={cn("w-3.5 h-3.5", cfg.color)} />
         </div>
         <div className="min-w-0 flex-1">
-         <p className="text-xs font-medium text-stone-900">{cfg.label}</p>
-         <p className="text-[10px] text-stone-500">{cfg.description}</p>
+         <p className="text-xs font-medium text-stone-900">{modeText(validationState.mode).label}</p>
+         <p className="text-[10px] text-stone-500">{modeText(validationState.mode).description}</p>
         </div>
         <Check className={cn("w-3.5 h-3.5 shrink-0", cfg.color)} />
        </div>
@@ -1292,11 +1363,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className="flex items-center gap-1.5">
         <button onClick={() => handleExportTranscript('txt')}
          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all">
-         <FileText className="w-3 h-3" /> Export .txt
+         <FileText className="w-3 h-3" /> {t("Export .txt", "Εξαγωγή .txt")}
         </button>
         <button onClick={() => handleExportTranscript('json')}
          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all">
-         <Download className="w-3 h-3" /> Export .json
+         <Download className="w-3 h-3" /> {t("Export .json", "Εξαγωγή .json")}
         </button>
        </div>
       )}
@@ -1304,29 +1375,29 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
      {/* Chat Settings */}
      <div className="p-3">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">Settings</h4>
+      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Settings", "Ρυθμίσεις")}</h4>
       <div className="space-y-0.5">
        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
-        <BellOff className="w-3.5 h-3.5" /> Mute Notifications
+        <BellOff className="w-3.5 h-3.5" /> {t("Mute Notifications", "Σίγαση ειδοποιήσεων")}
        </button>
        <button onClick={() => togglePin(activeConv.id)}
         className={cn("w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl transition-all",
          pinnedConvIds.has(activeConv.id) ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
-        <Pin className="w-3.5 h-3.5" /> {pinnedConvIds.has(activeConv.id) ? "Unpin Conversation" : "Pin Conversation"}
+        <Pin className="w-3.5 h-3.5" /> {pinnedConvIds.has(activeConv.id) ? t("Unpin Conversation", "Ξεκαρφίτσωμα συνομιλίας") : t("Pin Conversation", "Καρφίτσωμα συνομιλίας")}
        </button>
        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-stone-600 hover:bg-stone-50 rounded-xl transition-all">
-        <Archive className="w-3.5 h-3.5" /> Archive Chat
+        <Archive className="w-3.5 h-3.5" /> {t("Archive Chat", "Αρχειοθέτηση συνομιλίας")}
        </button>
        <button onClick={() => setReportBlockModal({ open: true, mode: 'report' })}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-amber-600 hover:bg-amber-50 rounded-xl transition-all">
-        <Flag className="w-3.5 h-3.5" /> Report User
+        <Flag className="w-3.5 h-3.5" /> {t("Report User", "Αναφορά χρήστη")}
        </button>
        <button onClick={() => setReportBlockModal({ open: true, mode: 'block' })}
         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
-        <Ban className="w-3.5 h-3.5" /> Block User
+        <Ban className="w-3.5 h-3.5" /> {t("Block User", "Αποκλεισμός χρήστη")}
        </button>
        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-xl transition-all">
-        <Trash2 className="w-3.5 h-3.5" /> Delete Chat
+        <Trash2 className="w-3.5 h-3.5" /> {t("Delete Chat", "Διαγραφή συνομιλίας")}
        </button>
       </div>
      </div>
@@ -1348,16 +1419,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <BrainCircuit className="w-5 h-5 text-white" />
      </div>
      <div>
-      <h1 className="font-bold text-stone-900 tracking-tight">AI Center</h1>
-      <p className="text-[10px] text-stone-400 font-medium tracking-wider">Intelligent startup assistant</p>
+      <h1 className="font-bold text-stone-900 tracking-tight">{t("AI Center", "Κέντρο AI")}</h1>
+      <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Intelligent startup assistant", "Έξυπνος βοηθός για startup")}</p>
      </div>
     </div>
     <div className="scroll-tabs p-1 bg-stone-100 rounded-xl">
      {([
-      { id: "chat", label: "Chat", icon: MessageSquare },
-      { id: "agents", label: "Agents", icon: Users },
-      { id: "insights", label: "Insights", icon: Lightbulb },
-      { id: "history", label: "History", icon: Clock },
+      { id: "chat", label: t("Chat", "Συνομιλία"), icon: MessageSquare },
+      { id: "agents", label: t("Agents", "Πράκτορες"), icon: Users },
+      { id: "insights", label: t("Insights", "Εικόνα"), icon: Lightbulb },
+      { id: "history", label: t("History", "Ιστορικό"), icon: Clock },
      ] as { id: AIView; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
       <button
        key={id}
@@ -1381,8 +1452,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {aiView === "agents" && (
      <div className="max-w-4xl mx-auto space-y-6">
       <div className="text-center mb-8">
-       <h2 className="text-lg font-bold text-stone-900 mb-1.5 tracking-tight">AI Agents</h2>
-       <p className="text-sm text-stone-500">Specialized AI assistants for every aspect of your startup journey</p>
+       <h2 className="text-lg font-bold text-stone-900 mb-1.5 tracking-tight">{t("AI Agents", "Πράκτορες AI")}</h2>
+       <p className="text-sm text-stone-500">{t("Specialized AI assistants for every aspect of your startup journey", "Εξειδικευμένοι βοηθοί AI για κάθε πτυχή της διαδρομής σου")}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        {MOCK_AGENTS.map((agent) => (
@@ -1404,12 +1475,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
             <h3 className="font-semibold text-stone-900">{agent.name}</h3>
             <Sparkles className="w-4 h-4 text-stone-500" />
            </div>
-           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agent.role}</p>
-           <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agent.description}</p>
+           <p className="text-xs text-stone-600 font-semibold mb-1.5">{agentRoleOf(agent.role)}</p>
+           <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agentDescOf(agent.description)}</p>
            <div className="mt-3 flex flex-wrap gap-1.5">
             {agent.capabilities.map((cap, i) => (
              <span key={i} className="px-2 py-1 bg-stone-100 text-stone-600 text-xs rounded-full">
-              {cap}
+              {capOf(cap)}
              </span>
             ))}
            </div>
@@ -1423,11 +1494,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
     {aiView === "insights" && (
      <div className="max-w-2xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">AI Insights & Suggestions</h2>
+      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("AI Insights & Suggestions", "Στοιχεία και προτάσεις AI")}</h2>
       {aiInsights.length === 0 ? (
        <div className="text-center py-12">
         <Lightbulb className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-        <p className="text-sm text-stone-500">Start chatting with AI agents to generate insights</p>
+        <p className="text-sm text-stone-500">{t("Start chatting with AI agents to generate insights", "Ξεκίνα συνομιλία με πράκτορες AI για να δημιουργηθούν στοιχεία")}</p>
        </div>
       ) : (
        aiInsights.map((insight) => (
@@ -1454,7 +1525,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
              insight.priority === "medium" ? "bg-amber-100 text-amber-700" :
              "bg-stone-100 text-stone-600"
             )}>
-             {insight.priority} priority
+             {insight.priority === "high" ? t("high priority", "υψηλή προτεραιότητα") : insight.priority === "medium" ? t("medium priority", "μεσαία προτεραιότητα") : t("low priority", "χαμηλή προτεραιότητα")}
             </span>
            </div>
           </div>
@@ -1471,16 +1542,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center mx-auto mb-4">
         <Sparkles className="w-5 h-5 text-stone-500" />
        </div>
-       <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">Select an AI Agent</h3>
+       <h3 className="text-lg font-bold text-stone-900 mb-2 tracking-tight">{t("Select an AI Agent", "Επίλεξε πράκτορα AI")}</h3>
        <p className="text-sm text-stone-500 max-w-xs mx-auto mb-6 leading-relaxed">
-        The corner studio assistant is the same chat. Specialists stay in that panel so Messages is not a second composer.
+        {t("The corner studio assistant is the same chat. Specialists stay in that panel so Messages is not a second composer.", "Ο βοηθός στη γωνία είναι η ίδια συνομιλία. Οι ειδικοί μένουν εκεί, ώστε τα Μηνύματα να μην είναι δεύτερη σύνταξη.")}
        </p>
        <button 
         type="button"
         onClick={() => window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', { detail: { agentId: 'a1' } }))}
         className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
        >
-        Open studio assistant
+        {t("Open studio assistant", "Άνοιγμα βοηθού studio")}
        </button>
       </div>
      </div>
@@ -1488,7 +1559,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
     {aiView === "history" && (
      <div className="max-w-2xl mx-auto">
-      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">AI Chat History</h2>
+      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("AI Chat History", "Ιστορικό συνομιλιών AI")}</h2>
       <div className="space-y-2">
        {msgState.conversations
         .filter(c => c.otherParticipant.isAI)
@@ -1558,8 +1629,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <Shield className="w-6 h-6 text-stone-600" />
          </div>
          <div>
-          <h3 className="text-lg font-semibold text-stone-900">Conversation Validation Mode</h3>
-          <p className="text-sm text-stone-500">Choose how this conversation should be validated</p>
+          <h3 className="text-lg font-semibold text-stone-900">{t("Conversation Validation Mode", "Λειτουργία επαλήθευσης συνομιλίας")}</h3>
+          <p className="text-sm text-stone-500">{t("Choose how this conversation should be validated", "Επίλεξε πώς θα επαληθεύεται αυτή η συνομιλία")}</p>
          </div>
         </div>
         <div className="space-y-2 mb-4">
@@ -1575,15 +1646,15 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
             </div>
             <div className="flex-1 min-w-0">
              <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-stone-900">{cfg.label}</p>
+              <p className="text-sm font-medium text-stone-900">{modeText(mode).label}</p>
               {isActive && (
-               <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-[9px] rounded-full font-medium">Current</span>
+               <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-[9px] rounded-full font-medium">{t("Current", "Τρέχουσα")}</span>
               )}
              </div>
-             <p className="text-xs text-stone-500 mt-0.5">{cfg.description}</p>
+             <p className="text-xs text-stone-500 mt-0.5">{modeText(mode).description}</p>
              {mode === 'two_party' && activeConv && (
               <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
-               <Flag className="w-3 h-3" /> Requires acceptance from {activeConv.otherParticipant.fullName}
+               <Flag className="w-3 h-3" /> {t("Requires acceptance from", "Απαιτεί αποδοχή από")} {activeConv.otherParticipant.fullName}
               </p>
              )}
             </div>
@@ -1595,18 +1666,18 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          <div className="flex items-start gap-2">
           <Info className="w-4 h-4 shrink-0 text-stone-400 mt-0.5" />
           <div className="text-[11px] text-stone-500">
-           <p className="font-medium text-stone-700 mb-1">About validation modes</p>
+           <p className="font-medium text-stone-700 mb-1">{t("About validation modes", "Σχετικά με τις λειτουργίες επαλήθευσης")}</p>
            <ul className="space-y-0.5">
-            <li><strong>Casual:</strong> Standard messaging, no records saved</li>
-            <li><strong>One-Party:</strong> You can save transcripts; other party is notified</li>
-            <li><strong>Two-Party:</strong> Both agree to validated, verifiable transcript</li>
+            <li><strong>{t("Casual", "Απλή")}:</strong> {t("Standard messaging, no records saved", "κανονική συνομιλία, χωρίς αρχείο")}</li>
+            <li><strong>{t("One-Party", "Από μία πλευρά")}:</strong> {t("You can save transcripts; other party is notified", "μπορείς να αποθηκεύσεις αντίγραφα· η άλλη πλευρά ενημερώνεται")}</li>
+            <li><strong>{t("Two-Party", "Από τις δύο πλευρές")}:</strong> {t("Both agree to validated, verifiable transcript", "και οι δύο συμφωνούν σε επαληθευμένο, ελέγξιμο αντίγραφο")}</li>
            </ul>
           </div>
          </div>
         </div>
         <button onClick={() => setShowValidationDialog(false)}
          className="w-full px-4 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">
-         Close
+         {t("Close", "Κλείσιμο")}
         </button>
        </div>
       </motion.div>
@@ -1633,40 +1704,40 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          </div>
          <div>
           <h3 className="text-lg font-semibold text-stone-900">
-           {reportBlockModal.mode === 'report' ? 'Report User' : 'Block User'}
+           {reportBlockModal.mode === 'report' ? t("Report User", "Αναφορά χρήστη") : t("Block User", "Αποκλεισμός χρήστη")}
           </h3>
           <p className="text-sm text-stone-500">{activeConv.otherParticipant.fullName}</p>
          </div>
         </div>
         <p className="text-sm text-stone-600 mb-4">
          {reportBlockModal.mode === 'report'
-          ? "Report this user for inappropriate behavior. Our team will review the report and take appropriate action."
-          : "Blocking this user will prevent them from sending you messages. You can unblock them later from Settings."}
+          ? t("Report this user for inappropriate behavior. Our team will review the report and take appropriate action.", "Ανέφερε αυτό το άτομο για ακατάλληλη συμπεριφορά. Η ομάδα θα εξετάσει την αναφορά.")
+          : t("Blocking this user will prevent them from sending you messages. You can unblock them later from Settings.", "Ο αποκλεισμός εμποδίζει την αποστολή μηνυμάτων προς εσένα. Μπορείς να άρεις τον αποκλεισμό αργότερα από τις ρυθμίσεις.")}
         </p>
         {reportBlockModal.mode === 'report' && (
          <div className="mb-4 space-y-2">
-          <label className="text-xs font-semibold text-stone-600">Reason</label>
+          <label className="text-xs font-semibold text-stone-600">{t("Reason", "Αιτία")}</label>
           <select className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900">
-           <option value="">Select a reason...</option>
-           <option value="spam">Spam or scam</option>
-           <option value="harassment">Harassment</option>
-           <option value="inappropriate">Inappropriate content</option>
-           <option value="impersonation">Impersonation</option>
-           <option value="other">Other</option>
+           <option value="">{t("Select a reason...", "Επίλεξε αιτία...")}</option>
+           <option value="spam">{t("Spam or scam", "Ανεπιθύμητα ή απάτη")}</option>
+           <option value="harassment">{t("Harassment", "Παρενόχληση")}</option>
+           <option value="inappropriate">{t("Inappropriate content", "Ακατάλληλο περιεχόμενο")}</option>
+           <option value="impersonation">{t("Impersonation", "Υποκλοπή ταυτότητας")}</option>
+           <option value="other">{t("Other", "Άλλο")}</option>
           </select>
-          <textarea placeholder="Additional details (optional)..." rows={3}
+          <textarea placeholder={t("Additional details (optional)...", "Επιπλέον λεπτομέρειες (προαιρετικά)...")} rows={3}
            className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-stone-900 resize-none" />
          </div>
         )}
         <div className="flex items-center gap-2">
          <button onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}
           className="flex-1 px-4 py-2.5 bg-stone-100 text-stone-700 text-sm font-medium rounded-xl hover:bg-stone-200 transition-all">
-          Cancel
+          {t("Cancel", "Ακύρωση")}
          </button>
          <button onClick={() => setReportBlockModal({ ...reportBlockModal, open: false })}
           className={cn("flex-1 px-4 py-2.5 text-white text-sm font-medium rounded-xl transition-all",
            reportBlockModal.mode === 'report' ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700")}>
-          {reportBlockModal.mode === 'report' ? 'Submit Report' : 'Block User'}
+          {reportBlockModal.mode === 'report' ? t("Submit Report", "Υποβολή αναφοράς") : t("Block User", "Αποκλεισμός χρήστη")}
          </button>
         </div>
        </div>

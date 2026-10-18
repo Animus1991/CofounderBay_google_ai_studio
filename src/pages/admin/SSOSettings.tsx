@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from "motion/react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { User, IdentityProvider, TenantSSOConfig, UserRole } from "../../types";
+import { useT } from "../../lib/language";
+import { labelOf } from "../../lib/labels";
 
 interface SSOSettingsProps {
  user: User;
 }
 
 export default function SSOSettings({ user }: SSOSettingsProps) {
+ const t = useT();
  const [activeTab, setActiveTab] = useState<'config' | 'mapping' | 'audit'>('config');
  const [ssoEnabled, setSsoEnabled] = useState(true);
  const [ssoMandatory, setSsoMandatory] = useState(false);
@@ -31,10 +34,10 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
  };
 
  const auditLogs = [
-  { id: 1, event: "LoginSuccess", user: "alex@stanford.edu", provider: "Stanford SAML", time: "2 mins ago", status: "success" },
-  { id: 2, event: "LoginFailure", user: "unknown@stanford.edu", provider: "Stanford SAML", time: "15 mins ago", status: "failure", reason: "Invalid claim mapping" },
-  { id: 3, event: "Provisioned", user: "sarah@stanford.edu", provider: "Stanford SAML", time: "1h ago", status: "success" },
-  { id: 4, event: "SSOInitiated", user: "mike@stanford.edu", provider: "Stanford SAML", time: "2h ago", status: "success" },
+  { id: 1, event: "LoginSuccess", user: "alex@stanford.edu", provider: "Stanford SAML", time: t('2 mins ago', 'πριν από 2 λεπτά'), status: "success" },
+  { id: 2, event: "LoginFailure", user: "unknown@stanford.edu", provider: "Stanford SAML", time: t('15 mins ago', 'πριν από 15 λεπτά'), status: "failure", reason: t('Invalid claim mapping', 'Άκυρη αντιστοίχιση claim') },
+  { id: 3, event: "Provisioned", user: "sarah@stanford.edu", provider: "Stanford SAML", time: t('1h ago', 'πριν από 1 ώρα'), status: "success" },
+  { id: 4, event: "SSOInitiated", user: "mike@stanford.edu", provider: "Stanford SAML", time: t('2h ago', 'πριν από 2 ώρες'), status: "success" },
  ];
 
  return (
@@ -45,17 +48,17 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
       <div className="p-1.5 bg-stone-900 text-white rounded-lg">
        <ShieldCheck className="w-5 h-5" />
       </div>
-      <h2 className="section-header">SSO & Identity</h2>
+      <h2 className="section-header">{t('SSO & Identity', 'SSO και ταυτότητα')}</h2>
      </div>
-     <p className="text-stone-500 text-xs font-medium">Configure enterprise Single Sign-On for your organization.</p>
+     <p className="text-stone-500 text-xs font-medium">{t('Configure enterprise Single Sign-On for your organization.', 'Ρύθμισε το SSO του οργανισμού.')}</p>
     </div>
     <div className="flex gap-2">
      <Button variant="outline" className="gap-1.5 h-9 px-4 text-xs font-medium">
-      <History className="w-3.5 h-3.5" /> View Full Audit
+      <History className="w-3.5 h-3.5" /> {t('View Full Audit', 'Πλήρες αρχείο ελέγχου')}
      </Button>
      <Button onClick={handleSave} loading={loading} className="gap-1.5 h-9 px-5 text-xs font-medium min-w-[130px]">
       {success ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-      {success ? 'Saved!' : 'Save Changes'}
+      {success ? t('Saved!', 'Αποθηκεύτηκε') : t('Save Changes', 'Αποθήκευση αλλαγών')}
      </Button>
     </div>
    </div>
@@ -63,9 +66,9 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
    {/* Tabs */}
    <div className="scroll-tabs p-1 bg-stone-100/80 rounded-xl">
     {[
-     { id: 'config', label: 'Configuration', icon: Settings2 },
-     { id: 'mapping', label: 'Role Mapping', icon: Key },
-     { id: 'audit', label: 'Auth Logs', icon: History },
+     { id: 'config', label: t('Configuration', 'Διαμόρφωση'), icon: Settings2 },
+     { id: 'mapping', label: t('Role Mapping', 'Αντιστοίχιση ρόλων'), icon: Key },
+     { id: 'audit', label: t('Auth Logs', 'Καταγραφές εισόδου'), icon: History },
     ].map((tab) => (
      <button
       key={tab.id}
@@ -97,8 +100,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
         <Card className="p-6">
          <div className="flex items-center justify-between gap-8">
           <div className="space-y-0.5">
-           <h3 className="text-sm font-medium text-stone-900">Enable Single Sign-On</h3>
-           <p className="text-xs text-stone-500">Allow members to sign in using your organization's identity provider.</p>
+           <h3 className="text-sm font-medium text-stone-900">{t('Enable Single Sign-On', 'Ενεργοποίηση SSO')}</h3>
+           <p className="text-xs text-stone-500">{t("Allow members to sign in using your organization's identity provider.", 'Επίτρεψε στα μέλη να μπαίνουν με τον πάροχο ταυτότητας του οργανισμού.')}</p>
           </div>
           <button 
            onClick={() => setSsoEnabled(!ssoEnabled)}
@@ -113,12 +116,12 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            <div className="flex items-center justify-between gap-8">
             <div className="space-y-0.5">
              <div className="flex items-center gap-2">
-              <h4 className="text-xs font-medium text-stone-900">Mandatory SSO</h4>
+              <h4 className="text-xs font-medium text-stone-900">{t('Mandatory SSO', 'Υποχρεωτικό SSO')}</h4>
               {ssoMandatory && (
-               <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[8px] font-medium tracking-wider">Strict Security</span>
+               <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[8px] font-medium tracking-wider">{t('Strict Security', 'Αυστηρή ασφάλεια')}</span>
               )}
              </div>
-             <p className="text-xs text-stone-400 font-medium">Require all members with your domain to use SSO. Standard login will be disabled for them.</p>
+             <p className="text-xs text-stone-400 font-medium">{t('Require all members with your domain to use SSO. Standard login will be disabled for them.', 'Υποχρέωσε όλα τα μέλη του τομέα σου να χρησιμοποιούν SSO. Η κανονική είσοδος θα απενεργοποιηθεί για αυτά.')}</p>
             </div>
             <button 
              onClick={() => setSsoMandatory(!ssoMandatory)}
@@ -136,7 +139,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
             >
              <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
              <p className="text-xs text-red-700 leading-relaxed">
-              <strong>Warning:</strong> Enabling Mandatory SSO will prevent users with your organization's domains from using their email and password to log in. Ensure your SSO provider is correctly configured before enabling this.
+              <strong>{t('Warning:', 'Προσοχή:')}</strong> {t("Enabling Mandatory SSO will prevent users with your organization's domains from using their email and password to log in. Ensure your SSO provider is correctly configured before enabling this.", 'Το υποχρεωτικό SSO εμποδίζει τα μέλη με τους τομείς του οργανισμού να μπαίνουν με email και κωδικό. Βεβαιώσου ότι ο πάροχος SSO είναι σωστά ρυθμισμένος πριν το ενεργοποιήσεις.')}
              </p>
             </motion.div>
            )}
@@ -146,20 +149,20 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
         {/* Provider Details */}
         {ssoEnabled && (
-         <Card title="Provider Configuration" className="p-6">
+         <Card title={t('Provider Configuration', 'Διαμόρφωση παρόχου')} className="p-6">
           <div className="space-y-5">
            <div className="p-3.5 bg-stone-50/50 rounded-xl border border-stone-100 flex items-center gap-3 mb-2">
             <Server className="w-4 h-4 text-stone-400" />
             <div className="flex-1">
-             <p className="text-micro mb-0.5">Organization Context</p>
+             <p className="text-micro mb-0.5">{t('Organization Context', 'Πλαίσιο οργανισμού')}</p>
              <p className="text-xs font-medium text-stone-900">Techstars Ecosystem</p>
             </div>
-            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium tracking-wider">Active Tenant</span>
+            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium tracking-wider">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-             <label className="text-micro">Provider Type</label>
+             <label className="text-micro">{t('Provider Type', 'Τύπος παρόχου')}</label>
              <select 
               value={providerType}
               onChange={(e) => setProviderType(e.target.value as any)}
@@ -171,38 +174,38 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </select>
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">Provider Name</label>
+             <label className="text-micro">{t('Provider Name', 'Όνομα παρόχου')}</label>
              <input 
               type="text" 
               value={providerName}
               onChange={(e) => setProviderName(e.target.value)}
-              placeholder="e.g. Okta, Azure AD, Google"
+              placeholder={t('e.g. Okta, Azure AD, Google', 'π.χ. Okta, Azure AD, Google')}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
              />
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">Login Button Label</label>
+             <label className="text-micro">{t('Login Button Label', 'Ετικέτα κουμπιού εισόδου')}</label>
              <input 
               type="text" 
               value={buttonLabel}
               onChange={(e) => setButtonLabel(e.target.value)}
-              placeholder="e.g. Sign in with Okta"
+              placeholder={t('e.g. Sign in with Okta', 'π.χ. Είσοδος με Okta')}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
              />
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">Default Provisioning Role</label>
+             <label className="text-micro">{t('Default Provisioning Role', 'Προεπιλεγμένος ρόλος παροχής')}</label>
              <select 
               value={defaultRole}
               onChange={(e) => setDefaultRole(e.target.value as UserRole)}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
              >
-              <option value={UserRole.FOUNDER}>Founder</option>
-              <option value={UserRole.CO_FOUNDER_CANDIDATE}>Co-Founder Candidate</option>
-              <option value={UserRole.MENTOR}>Mentor</option>
-              <option value={UserRole.ADVISOR}>Advisor</option>
-              <option value={UserRole.ORGANIZATION_MANAGER}>Organization Manager</option>
-              <option value={UserRole.ADMIN}>Admin</option>
+              <option value={UserRole.FOUNDER}>{labelOf(UserRole.FOUNDER)}</option>
+              <option value={UserRole.CO_FOUNDER_CANDIDATE}>{labelOf(UserRole.CO_FOUNDER_CANDIDATE)}</option>
+              <option value={UserRole.MENTOR}>{labelOf(UserRole.MENTOR)}</option>
+              <option value={UserRole.ADVISOR}>{labelOf(UserRole.ADVISOR)}</option>
+              <option value={UserRole.ORGANIZATION_MANAGER}>{labelOf(UserRole.ORGANIZATION_MANAGER)}</option>
+              <option value={UserRole.ADMIN}>{labelOf(UserRole.ADMIN)}</option>
              </select>
             </div>
            </div>
@@ -220,7 +223,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
               <>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                 <label className="text-micro">Client ID</label>
+                 <label className="text-micro">{t('Client ID', 'Client ID')}</label>
                  <input 
                   type="text" 
                   placeholder="your-client-id"
@@ -228,7 +231,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                  />
                 </div>
                 <div className="space-y-1.5">
-                 <label className="text-micro">Client Secret</label>
+                 <label className="text-micro">{t('Client Secret', 'Client Secret')}</label>
                  <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
                   <input 
@@ -240,7 +243,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 </div>
                </div>
                <div className="space-y-1.5">
-                <label className="text-micro">Issuer URL</label>
+                <label className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
                 <input 
                  type="text" 
                  placeholder="https://accounts.google.com"
@@ -248,7 +251,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 />
                </div>
                <div className="space-y-1.5">
-                <label className="text-micro">Authorization URL</label>
+                <label className="text-micro">{t('Authorization URL', 'Authorization URL')}</label>
                 <div className="relative">
                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
                  <input 
@@ -265,7 +268,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              {providerType === 'SAML' && (
               <>
                <div className="space-y-1.5">
-                <label className="text-micro">Issuer URL</label>
+                <label className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
                 <input 
                  type="text" 
                  placeholder="urn:example:idp"
@@ -274,7 +277,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">SSO Endpoint URL</label>
+                <label className="text-micro">{t('SSO Endpoint URL', 'SSO Endpoint URL')}</label>
                 <div className="relative">
                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
                  <input 
@@ -286,7 +289,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">Metadata URL</label>
+                <label className="text-micro">{t('Metadata URL', 'Metadata URL')}</label>
                 <input 
                  type="url" 
                  placeholder="https://your-idp.com/saml/metadata"
@@ -295,7 +298,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">Certificate</label>
+                <label className="text-micro">{t('Certificate', 'Πιστοποιητικό')}</label>
                 <textarea 
                  rows={4}
                  placeholder="-----BEGIN CERTIFICATE-----"
@@ -312,10 +315,10 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
         {/* Domain Restrictions */}
         {ssoEnabled && (
-         <Card title="Domain Discovery" className="p-6">
+         <Card title={t('Domain Discovery', 'Ανακάλυψη τομέων')} className="p-6">
           <div className="space-y-4">
            <p className="text-xs text-stone-500 font-medium">
-            Users with these email domains will be automatically routed to your SSO provider.
+            {t('Users with these email domains will be automatically routed to your SSO provider.', 'Τα μέλη με αυτούς τους τομείς email θα οδηγούνται αυτόματα στον πάροχο SSO.')}
            </p>
            <div className="flex flex-wrap gap-2">
             {['stanford.edu', 'alumni.stanford.edu'].map(domain => (
@@ -325,7 +328,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </div>
             ))}
             <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-wide">
-             <Plus className="w-3 h-3 mr-1" /> Add Domain
+             <Plus className="w-3 h-3 mr-1" /> {t('Add Domain', 'Προσθήκη τομέα')}
             </Button>
            </div>
           </div>
@@ -342,16 +345,16 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
         exit={{ opacity: 0, y: -10 }}
         className="space-y-6"
        >
-        <Card title="Role Mapping Rules" subtitle="Map IdP claims to CoFounderBay roles" className="p-6">
+        <Card title={t('Role Mapping Rules', 'Κανόνες αντιστοίχισης ρόλων')} subtitle={t('Map IdP claims to CoFounderBay roles', 'Αντιστοίχισε claims του IdP σε ρόλους CoFounderBay')} className="p-6">
          <div className="space-y-5">
           <div className="overflow-hidden border border-stone-100 rounded-xl">
            <table className="w-full text-left border-collapse">
             <thead>
              <tr className="bg-stone-50/50 border-b border-stone-100">
-              <th className="px-5 py-3 text-micro">IdP Claim</th>
-              <th className="px-5 py-3 text-micro">Claim Value</th>
-              <th className="px-5 py-3 text-micro">Platform Role</th>
-              <th className="px-5 py-3 text-micro text-right">Actions</th>
+              <th className="px-5 py-3 text-micro">{t('IdP Claim', 'IdP Claim')}</th>
+              <th className="px-5 py-3 text-micro">{t('Claim Value', 'Τιμή claim')}</th>
+              <th className="px-5 py-3 text-micro">{t('Platform Role', 'Ρόλος πλατφόρμας')}</th>
+              <th className="px-5 py-3 text-micro text-right">{t('Actions', 'Ενέργειες')}</th>
              </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -364,7 +367,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                <td className="px-5 py-3 text-xs font-mono text-stone-500">{rule.claim}</td>
                <td className="px-5 py-3 text-xs font-medium text-stone-900">{rule.value}</td>
                <td className="px-5 py-3">
-                <span className="px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-medium tracking-wider">{rule.role}</span>
+                <span className="px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-medium tracking-wider">{labelOf(rule.role)}</span>
                </td>
                <td className="px-5 py-3 text-right">
                 <button className="text-stone-400 hover:text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -375,17 +378,17 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            </table>
           </div>
           <Button variant="outline" className="w-full border-dashed gap-2 h-9 text-xs font-medium">
-           <Plus className="w-3.5 h-3.5" /> Add Mapping Rule
+           <Plus className="w-3.5 h-3.5" /> {t('Add Mapping Rule', 'Προσθήκη κανόνα αντιστοίχισης')}
           </Button>
          </div>
         </Card>
 
-        <Card title="Auto-Provisioning" className="p-6">
+        <Card title={t('Auto-Provisioning', 'Αυτόματη παροχή λογαριασμών')} className="p-6">
          <div className="space-y-5">
           <div className="flex items-center justify-between gap-8">
            <div className="space-y-0.5">
-            <h4 className="text-xs font-medium text-stone-900">Just-In-Time (JIT) Provisioning</h4>
-            <p className="text-xs text-stone-400 font-medium">Automatically create accounts for new users when they sign in through SSO.</p>
+            <h4 className="text-xs font-medium text-stone-900">{t('Just-In-Time (JIT) Provisioning', 'Just-In-Time (JIT) παροχή')}</h4>
+            <p className="text-xs text-stone-400 font-medium">{t('Automatically create accounts for new users when they sign in through SSO.', 'Δημιούργησε αυτόματα λογαριασμούς για νέα μέλη όταν μπαίνουν μέσω SSO.')}</p>
            </div>
            <button className="w-10 h-5 bg-stone-900 rounded-full relative">
             <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full"></div>
@@ -393,11 +396,11 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
           </div>
           <div className="pt-5 border-t border-stone-100">
            <div className="space-y-1.5">
-            <label className="text-micro">Default Role for New Users</label>
+            <label className="text-micro">{t('Default Role for New Users', 'Προεπιλεγμένος ρόλος για νέα μέλη')}</label>
             <select className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium">
-             <option>Co-Founder Candidate</option>
-             <option>Founder</option>
-             <option>Mentor</option>
+             <option value="Co-Founder Candidate">{labelOf('Co-Founder Candidate')}</option>
+             <option value="Founder">{labelOf('Founder')}</option>
+             <option value="Mentor">{labelOf('Mentor')}</option>
             </select>
            </div>
           </div>
@@ -430,7 +433,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                <span className="text-xs font-medium text-stone-400 tracking-wide">{log.event}</span>
               </div>
               <p className="text-xs text-stone-500 font-medium">
-               via {log.provider} • {log.time}
+               {t('via', 'μέσω')} {log.provider} • {log.time}
                {log.reason && <span className="text-red-500 ml-2">• {log.reason}</span>}
               </p>
              </div>
@@ -449,39 +452,39 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
     {/* Sidebar Info */}
     <div className="lg:col-span-4 space-y-6">
-     <Card title="Quick Setup Guide" className="p-5 bg-stone-900 text-white border-none rounded-3xl">
+     <Card title={t('Quick Setup Guide', 'Γρήγορος οδηγός ρύθμισης')} className="p-5 bg-stone-900 text-white border-none rounded-3xl">
       <div className="space-y-5">
        <div className="space-y-3">
         <div className="flex gap-3">
          <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium shrink-0">1</div>
-         <p className="text-xs text-stone-400 leading-relaxed">Register CoFounderBay in your IdP (Okta, Azure, etc.)</p>
+         <p className="text-xs text-stone-400 leading-relaxed">{t('Register CoFounderBay in your IdP (Okta, Azure, etc.)', 'Καταχώρισε το CoFounderBay στο IdP (Okta, Azure κ.λπ.)')}</p>
         </div>
         <div className="flex gap-3">
          <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium shrink-0">2</div>
-         <p className="text-xs text-stone-400 leading-relaxed">Copy the SAML/OIDC endpoints and certificate to the configuration tab.</p>
+         <p className="text-xs text-stone-400 leading-relaxed">{t('Copy the SAML/OIDC endpoints and certificate to the configuration tab.', 'Αντίγραψε τα SAML/OIDC endpoints και το πιστοποιητικό στην καρτέλα διαμόρφωσης.')}</p>
         </div>
         <div className="flex gap-3">
          <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium shrink-0">3</div>
-         <p className="text-xs text-stone-400 leading-relaxed">Map your organization's groups to platform roles.</p>
+         <p className="text-xs text-stone-400 leading-relaxed">{t("Map your organization's groups to platform roles.", 'Αντιστοίχισε τις ομάδες του οργανισμού σε ρόλους πλατφόρμας.')}</p>
         </div>
        </div>
        <Button variant="secondary" className="w-full gap-2 h-9 text-xs font-medium shadow-lg shadow-black/20">
-        <ExternalLink className="w-3.5 h-3.5" /> Documentation
+        <ExternalLink className="w-3.5 h-3.5" /> {t('Documentation', 'Τεκμηρίωση')}
        </Button>
       </div>
      </Card>
 
-     <Card title="Service Provider Info" className="p-5">
+     <Card title={t('Service Provider Info', 'Στοιχεία παρόχου υπηρεσίας')} className="p-5">
       <div className="space-y-4">
        <div className="space-y-1.5">
-        <label className="text-micro">Assertion Consumer Service (ACS)</label>
+        <label className="text-micro">{t('Assertion Consumer Service (ACS)', 'Assertion Consumer Service (ACS)')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/api/auth/sso/callback</code>
          <button className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
         </div>
        </div>
        <div className="space-y-1.5">
-        <label className="text-micro">Entity ID</label>
+        <label className="text-micro">{t('Entity ID', 'Entity ID')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/auth/sp</code>
          <button className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
@@ -490,13 +493,13 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
       </div>
      </Card>
 
-     <Card title="Test Connection" className="p-5">
+     <Card title={t('Test Connection', 'Δοκιμή σύνδεσης')} className="p-5">
       <div className="space-y-4">
        <p className="text-xs text-stone-500 leading-relaxed font-medium">
-        Safely test your SSO configuration before enabling it for all members.
+        {t('Safely test your SSO configuration before enabling it for all members.', 'Δοκίμασε με ασφάλεια τη διαμόρφωση SSO πριν την ενεργοποιήσεις για όλα τα μέλη.')}
        </p>
        <Button variant="outline" className="w-full gap-2 h-9 text-xs font-medium">
-        <ArrowRight className="w-3.5 h-3.5" /> Run Test Login
+        <ArrowRight className="w-3.5 h-3.5" /> {t('Run Test Login', 'Δοκιμαστική είσοδος')}
        </Button>
       </div>
      </Card>

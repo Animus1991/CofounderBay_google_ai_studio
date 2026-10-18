@@ -3,8 +3,10 @@ import { useTenant } from '../context/TenantContext';
 import { Zap, ArrowRight, CheckCircle2, Users, GraduationCap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { Link } from 'react-router-dom';
+import { useT } from '../lib/language';
 
 export default function TenantLanding() {
+ const t = useT();
  const { tenant, loading, error } = useTenant();
 
  if (loading) {
@@ -19,9 +21,9 @@ export default function TenantLanding() {
   return (
    <div className="min-h-screen flex items-center justify-center bg-stone-50">
     <div className="text-center">
-     <h1 className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900">Tenant Not Found</h1>
-     <p className="text-stone-500 mt-2">The organization ecosystem you are looking for doesn't exist.</p>
-     <Link to="/" className="mt-4 inline-block text-primary font-medium hover:underline">Go to CoFounderBay Global</Link>
+     <h1 className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900">{t('Tenant Not Found', 'Ο οργανισμός δεν βρέθηκε')}</h1>
+     <p className="text-stone-500 mt-2">{t("The organization ecosystem you are looking for doesn't exist.", 'Το οικοσύστημα οργανισμού που ψάχνεις δεν υπάρχει.')}</p>
+     <Link to="/" className="mt-4 inline-block text-primary font-medium hover:underline">{t('Go to CoFounderBay Global', 'Στο CoFounderBay Global')}</Link>
     </div>
    </div>
   );
@@ -45,7 +47,7 @@ export default function TenantLanding() {
      <span className="text-xl font-medium tracking-tight">{tenant.displayName}</span>
     </div>
     <div className="flex items-center gap-6">
-     <Link to="/login" className="text-sm font-medium text-stone-500 hover:text-stone-900">Login</Link>
+     <Link to="/login" className="text-sm font-medium text-stone-500 hover:text-stone-900">{t('Login', 'Είσοδος')}</Link>
      <Link to="/signup"><Button size="sm">{content.ctaLabel}</Button></Link>
     </div>
    </nav>
@@ -60,7 +62,7 @@ export default function TenantLanding() {
      <div className="space-y-8">
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium tracking-wider">
        <Zap className="w-3 h-3 fill-current" />
-       Powered by CoFounderBay
+       {t('Powered by CoFounderBay', 'Με την υποστήριξη του CoFounderBay')}
       </div>
       <h1 className="text-xl sm:text-2xl xl:text-3xl font-medium tracking-tight leading-snug">
        {content.heroTitle}
@@ -76,7 +78,7 @@ export default function TenantLanding() {
         </Button>
        </Link>
        <Button variant="outline" size="lg" onClick={() => document.getElementById('tenant-about')?.scrollIntoView({ behavior: 'smooth' })}>
-        Learn More
+        {t('Learn More', 'Μάθε περισσότερα')}
        </Button>
       </div>
      </div>
@@ -84,7 +86,7 @@ export default function TenantLanding() {
       {branding.heroImageUrl ? (
        <img 
         src={branding.heroImageUrl} 
-        alt="Hero" 
+        alt={t('Hero', 'Κεντρική εικόνα')} 
         className="rounded-2xl shadow-sm border border-stone-200 w-full aspect-video object-cover"
        />
       ) : (
@@ -101,15 +103,15 @@ export default function TenantLanding() {
    <section id="tenant-about" className="py-24 bg-stone-50 px-8 md:px-16">
     <div className="max-w-7xl mx-auto">
      <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-      <h2 className="text-xl font-medium tracking-tight">Everything you need to build your team</h2>
-      <p className="text-stone-500">A specialized environment for {tenant.displayName} members to connect and grow.</p>
+      <h2 className="text-xl font-medium tracking-tight">{t('Everything you need to build your team', 'Ό,τι χρειάζεσαι για να φτιάξεις την ομάδα σου')}</h2>
+      <p className="text-stone-500">{t(`A specialized environment for ${tenant.displayName} members to connect and grow.`, `Ένα εξειδικευμένο περιβάλλον για τα μέλη του ${tenant.displayName} να συνδεθούν και να αναπτυχθούν.`)}</p>
      </div>
 
      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {[
-       { icon: Users, title: "Co-Founder Matching", desc: "Find partners with complementary skills and shared values." },
-       { icon: GraduationCap, title: "Expert Mentorship", desc: "Access a curated network of advisors within our ecosystem." },
-       { icon: Globe, title: content.communityNamingConvention, desc: "Join industry-specific hubs to share knowledge and resources." }
+       { icon: Users, title: t("Co-Founder Matching", "Αντιστοίχιση συνιδρυτών"), desc: t("Find partners with complementary skills and shared values.", "Βρες συνεργάτες με συμπληρωματικές δεξιότητες και κοινές αξίες.") },
+       { icon: GraduationCap, title: t("Expert Mentorship", "Καθοδήγηση από ειδικούς"), desc: t("Access a curated network of advisors within our ecosystem.", "Πρόσβαση σε επιλεγμένο δίκτυο συμβούλων στο οικοσύστημά μας.") },
+       { icon: Globe, title: content.communityNamingConvention, desc: t("Join industry-specific hubs to share knowledge and resources.", "Μπες σε κόμβους ανά κλάδο για γνώση και πόρους.") }
       ].map((feature, i) => (
        <div key={i} className="bg-white p-8 rounded-2xl border border-stone-200 shadow-sm hover:shadow-md transition-all">
         <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
@@ -126,7 +128,7 @@ export default function TenantLanding() {
    {/* About */}
    <section className="py-24 px-8 md:px-16">
     <div className="max-w-4xl mx-auto text-center space-y-8">
-     <h2 className="text-xl font-medium tracking-tight">About {tenant.displayName}</h2>
+     <h2 className="text-xl font-medium tracking-tight">{t(`About ${tenant.displayName}`, `Σχετικά με ${tenant.displayName}`)}</h2>
      <p className="text-lg text-stone-600 leading-relaxed">
       {tenant.fullDescription}
      </p>
@@ -145,12 +147,12 @@ export default function TenantLanding() {
       <span className="font-medium">{tenant.displayName}</span>
      </div>
      <div className="flex gap-8 text-sm text-stone-500">
-      <a href={tenant.privacyPolicyUrl || "#"} className="hover:text-stone-900">Privacy</a>
-      <a href={tenant.termsUrl || "#"} className="hover:text-stone-900">Terms</a>
-      <a href={`mailto:${tenant.supportEmail}`} className="hover:text-stone-900">Support</a>
+      <a href={tenant.privacyPolicyUrl || "#"} className="hover:text-stone-900">{t('Privacy', 'Απόρρητο')}</a>
+      <a href={tenant.termsUrl || "#"} className="hover:text-stone-900">{t('Terms', 'Όροι')}</a>
+      <a href={`mailto:${tenant.supportEmail}`} className="hover:text-stone-900">{t('Support', 'Υποστήριξη')}</a>
      </div>
      <div className="text-xs text-stone-400">
-      © 2026 {tenant.name}. Powered by CoFounderBay.
+      © 2026 {tenant.name}. {t('Powered by CoFounderBay.', 'Με την υποστήριξη του CoFounderBay.')}
      </div>
     </div>
    </footer>

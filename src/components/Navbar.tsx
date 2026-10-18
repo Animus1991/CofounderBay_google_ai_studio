@@ -20,12 +20,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
+import { useT } from '../lib/language';
+import { labelOf } from '../lib/labels';
 
 interface NavbarProps {
  onMenuToggle?: () => void;
 }
 
 export default function Navbar({ onMenuToggle }: NavbarProps) {
+ const t = useT();
  const [isMenuOpen, setIsMenuOpen] = useState(false);
  const [isProfileOpen, setIsProfileOpen] = useState(false);
  const { user, isAdmin, profile, isDemoMode, toggleDemoMode } = useAuth();
@@ -45,17 +48,17 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
  };
 
  const navLinks: { name: string; href: string; icon?: React.ComponentType<{ className?: string }> }[] = user ? [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Matches', href: '/matches', icon: Search },
-  { name: 'Mentors', href: '/mentors', icon: Users },
-  { name: 'Communities', href: '/communities', icon: TrendingUp },
-  { name: 'Messages', href: '/messages', icon: MessageSquare },
-  { name: 'Milestones', href: '/milestones', icon: Target },
+  { name: t('Dashboard', 'Πίνακας'), href: '/dashboard', icon: LayoutDashboard },
+  { name: t('Matches', 'Αντιστοιχίσεις'), href: '/matches', icon: Search },
+  { name: t('Mentors', 'Μέντορες'), href: '/mentors', icon: Users },
+  { name: t('Communities', 'Κοινότητες'), href: '/communities', icon: TrendingUp },
+  { name: t('Messages', 'Μηνύματα'), href: '/messages', icon: MessageSquare },
+  { name: t('Milestones', 'Ορόσημα'), href: '/milestones', icon: Target },
  ] : [
-  { name: 'Features', href: '/#features' },
-  { name: 'How it Works', href: '/#how-it-works' },
-  { name: 'Communities', href: '/#communities' },
-  { name: 'Pricing', href: '/#pricing' },
+  { name: t('Features', 'Λειτουργίες'), href: '/#features' },
+  { name: t('How it Works', 'Πώς λειτουργεί'), href: '/#how-it-works' },
+  { name: t('Communities', 'Κοινότητες'), href: '/#communities' },
+  { name: t('Pricing', 'Τιμές'), href: '/#pricing' },
  ];
 
  return (
@@ -97,10 +100,10 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
        <button
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
         className="flex items-center gap-2 px-3 py-1.5 text-sm text-stone-400 bg-stone-50 border border-stone-200 rounded-xl hover:border-stone-300 hover:text-stone-600 transition-all"
-        title="Search (Ctrl+K)"
+        title={t('Search (Ctrl+K)', 'Αναζήτηση (Ctrl+K)')}
        >
         <Search className="w-4 h-4" />
-        <span className="text-xs">Search...</span>
+        <span className="text-xs">{t('Search...', 'Αναζήτηση…')}</span>
         <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-white border border-stone-200 rounded-md">⌘K</kbd>
        </button>
       )}
@@ -110,7 +113,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
          <NavLink 
           to="/admin" 
           className="p-2.5 text-stone-400 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
-          title="Admin Dashboard"
+          title={t('Admin Dashboard', 'Πίνακας διαχείρισης')}
          >
           <ShieldCheck className="w-6 h-6" />
          </NavLink>
@@ -123,11 +126,11 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
          >
           <img 
            src={`https://picsum.photos/seed/${user.uid}/100/100`} 
-           alt={user.displayName || 'User'} 
+           alt={user.displayName || t('User', 'Χρήστης')} 
            className="w-8 h-8 rounded-xl object-cover shadow-sm"
            referrerPolicy="no-referrer"
           />
-          <span className="text-sm font-medium text-stone-900">{user.displayName?.split(' ')[0] || 'Founder'}</span>
+          <span className="text-sm font-medium text-stone-900">{user.displayName?.split(' ')[0] || labelOf('Founder')}</span>
          </button>
 
          {/* Profile Dropdown */}
@@ -150,7 +153,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
               onClick={() => setIsProfileOpen(false)}
              >
               <UserIcon className="w-5 h-5" />
-              My Profile
+              {t('My Profile', 'Το προφίλ μου')}
              </NavLink>
              <NavLink 
               to="/settings" 
@@ -158,7 +161,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
               onClick={() => setIsProfileOpen(false)}
              >
               <Settings className="w-5 h-5" />
-              Settings
+              {t('Settings', 'Ρυθμίσεις')}
              </NavLink>
              <div className="h-px bg-stone-100 my-2" />
              <button 
@@ -166,7 +169,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 rounded-xl transition-all"
              >
               <LogOut className="w-5 h-5" />
-              Log Out
+              {t('Log Out', 'Αποσύνδεση')}
              </button>
             </motion.div>
            </>
@@ -180,13 +183,13 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
          to="/login" 
          className="px-6 py-2.5 text-sm font-medium text-stone-600 hover:text-stone-900 transition-all"
         >
-         Log In
+         {t('Log In', 'Είσοδος')}
         </NavLink>
         <NavLink 
          to="/signup" 
          className="px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all shadow-sm"
         >
-         Sign Up
+         {t('Sign Up', 'Εγγραφή')}
         </NavLink>
        </div>
       )}
@@ -198,7 +201,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
        <button 
         onClick={onMenuToggle}
         className="lg:hidden p-2 text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
-        title="Toggle Sidebar"
+        title={t('Toggle Sidebar', 'Εναλλαγή πλευρικής στήλης')}
        >
         <Menu className="w-6 h-6" />
        </button>
@@ -246,14 +249,14 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
           onClick={() => setIsMenuOpen(false)}
           className="w-full py-3 text-center font-medium text-stone-600 hover:bg-stone-50 rounded-xl transition-all"
          >
-          Log In
+          {t('Log In', 'Είσοδος')}
          </NavLink>
          <NavLink 
           to="/signup" 
           onClick={() => setIsMenuOpen(false)}
           className="w-full py-3 bg-stone-900 text-white text-center font-medium rounded-xl shadow-sm"
          >
-          Sign Up
+          {t('Sign Up', 'Εγγραφή')}
          </NavLink>
         </div>
        )}
@@ -264,7 +267,7 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
           className="w-full flex items-center gap-3 px-4 py-3 text-base font-medium text-red-500 hover:bg-red-50 rounded-xl transition-all"
          >
           <LogOut className="w-5 h-5" />
-          Log Out
+          {t('Log Out', 'Αποσύνδεση')}
          </button>
         </div>
        )}

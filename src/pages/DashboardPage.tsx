@@ -16,10 +16,10 @@ import {
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { arrayRemove, arrayUnion, collection, doc, increment, limit, onSnapshot, query, updateDoc } from 'firebase/firestore';
-import { cn, formatRelativeTime } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { rememberPerson } from '../lib/people';
-import { bothText } from '../lib/labels';
+import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
@@ -30,7 +30,12 @@ import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
 import { CAST, avatarFor } from '../data/cast';
 import { fromProfile, rankPeople } from '../lib/compatibility';
-import { studioNextStep } from '../lib/nextStep';
+import { studioNextStep, studioWaiting } from '../lib/nextStep';
+import { useT } from '../lib/language';
+import NextMove from '../components/ui/NextMove';
+import PersonHovercard from '../components/ui/PersonHovercard';
+import RelTime from '../components/ui/RelTime';
+import FactLine from '../components/ui/FactLine';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -378,15 +383,13 @@ export default function DashboardPage() {
     };
   }, [user, isDemoMode]);
 
+  const t = useT();
   const heroAction = nextActions[0];
   const studioNext = useMemo(() => studioNextStep(fromProfile(profile)), [profile, activity]);
-  const goStudioNext = () => {
+  const waiting = useMemo(() => studioWaiting(), [activity]);
+  const goStep = (href: string) => {
     if (heroAction && user) logNudgeConversion(user.uid, heroAction.id);
-    if (studioNext.prompt) {
-      window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: studioNext.prompt } }));
-      return;
-    }
-    navigate(studioNext.href);
+    navigate(href);
   };
 
   const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
@@ -398,8 +401,8 @@ export default function DashboardPage() {
     authorId: item.byAssistant ? 'assistant' : user?.uid || 'you',
     name: item.byAssistant ? 'Studio' : firstName,
     avatar: '',
-    text: item.title,
-    time: formatRelativeTime(item.at),
+    text: t(item.title, item.titleEl || item.title),
+    time: item.at,
     likes: 0,
     comments: 0,
     likedBy: [],
@@ -443,7 +446,7 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center bg-stone-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-stone-200 border-t-stone-900 rounded-full animate-spin" />
-          <p className="text-stone-500 font-medium">Loading your ecosystem...</p>
+          <p className="text-stone-500 font-medium">{t('Loading your ecosystem...', 'Φόρτωση του οικοσυστήματος...')}</p>
         </div>
       </div>
     );
@@ -484,27 +487,34 @@ export default function DashboardPage() {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={studioNext.id}
+            key={waiting ? waiting.id : studioNext.id}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="studio-nudge bg-stone-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            className="space-y-3"
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-white" />
-              </div>
-              <p className="text-[12.5px] sm:text-sm font-medium text-white">
-                <Both en={studioNext.en} el={studioNext.el} />
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={goStudioNext}
-              className="min-h-11 self-start sm:self-center px-4 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-colors whitespace-nowrap shrink-0"
-            >
-              Go
-            </button>
+            {waiting ? (
+              <NextMove
+                tone="waiting"
+                icon={Clock}
+                label={t('Waiting on you', 'Σε περιμένει')}
+                title={t(waiting.title?.en ?? waiting.en, waiting.title?.el ?? waiting.el)}
+                why={waiting.why ? t(waiting.why.en, waiting.why.el) : undefined}
+                action={t(waiting.action?.en ?? 'Open', waiting.action?.el ?? 'Άνοιγμα')}
+                onAction={() => goStep(waiting.href)}
+                askPrompt={waiting.prompt}
+              />
+            ) : null}
+            <NextMove
+              tone="next"
+              icon={CheckCircle2}
+              label={t('Next', 'Επόμενο')}
+              title={t(studioNext.title?.en ?? studioNext.en, studioNext.title?.el ?? studioNext.el)}
+              why={studioNext.why ? t(studioNext.why.en, studioNext.why.el) : undefined}
+              action={t(studioNext.action?.en ?? 'Go', studioNext.action?.el ?? 'Άνοιγμα')}
+              onAction={() => goStep(studioNext.href)}
+              askPrompt={studioNext.prompt}
+            />
           </motion.div>
         </AnimatePresence>
 
@@ -515,7 +525,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 <img src={leadMatch.avatar} alt="" className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-stone-900 truncate">{leadMatch.name}</p>
+                  <p className="text-sm font-medium text-stone-900 truncate"><PersonHovercard person={leadMatch.id}>{leadMatch.name}</PersonHovercard></p>
                   <p className="text-xs text-stone-500 truncate">{leadMatch.role}</p>
                 </div>
               </div>
@@ -526,7 +536,7 @@ export default function DashboardPage() {
           <button type="button" onClick={() => navigate('/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
             <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
             <p className="text-sm font-medium text-stone-900">{schedule[0]?.title ?? DEMO_EVENTS[0]?.title}</p>
-            <p className="text-xs text-stone-500 mt-1">{schedule[0]?.time ?? DEMO_EVENTS[0]?.time}</p>
+            <p className="text-xs text-stone-500 mt-1">{schedule[0]?.time ? (schedule[0].id === 'downtown' || schedule[0].id === 'hackathon' || schedule[0].id === 'deadline' ? t(schedule[0].time, schedule[0].id === 'downtown' ? 'Αύριο, 07:00' : schedule[0].id === 'hackathon' ? 'Σάββατο, 08:00' : 'Την επόμενη Παρασκευή') : schedule[0].time) : t(DEMO_EVENTS[0]?.time ?? 'Tomorrow, 7:00 AM', 'Αύριο, 07:00')}</p>
           </button>
           <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-900 rounded-2xl p-4 text-white hover:bg-stone-800 transition-all">
             <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · playbook" /></p>
@@ -551,7 +561,7 @@ export default function DashboardPage() {
               {circles.map((match) => (
                 <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
                   <Avatar src={match.avatar} fallback={match.name} size="lg" className="group-hover:scale-95 transition-transform" />
-                  <span className="text-[10px] font-medium text-stone-400">{match.name.split(' ')[0]}</span>
+                  <span className="text-[10px] font-medium text-stone-400"><PersonHovercard person={match.id}>{match.name.split(' ')[0]}</PersonHovercard></span>
                 </div>
               ))}
             </div>
@@ -596,10 +606,10 @@ export default function DashboardPage() {
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-stone-900">
-                      <span className="font-medium">{item.name.split(' ')[0]}</span>{' '}
+                      <span className="font-medium"><PersonHovercard person={item.authorId}>{item.name.split(' ')[0]}</PersonHovercard></span>{' '}
                       <span className="text-stone-400">{item.text}</span>
                     </p>
-                    <span className="text-xs text-stone-400">{item.time}</span>
+                    {/^\d{4}-/.test(item.time) ? <RelTime iso={item.time} className="text-xs text-stone-400" /> : <span className="text-xs text-stone-400">{item.time === '2h ago' ? t('2h ago', 'πριν από 2 ώρες') : item.time === '4h ago' ? t('4h ago', 'πριν από 4 ώρες') : item.time}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-3 ml-12">
@@ -618,28 +628,28 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             {
-              label: 'Profile Views',
+              label: t('Profile Views', 'Προβολές προφίλ'),
               value: profileViews == null ? '—' : String(profileViews),
               sub: profileViews == null && !isDemoMode ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
               href: '/profile',
               hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
             },
             {
-              label: 'Match Score',
+              label: t('Match Score', 'Σκορ αντιστοίχισης'),
               value: matchScore == null ? '—' : `${matchScore}%`,
               sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
               href: '/matches',
               hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
             },
             {
-              label: 'Streak',
+              label: t('Streak', 'Σειρά'),
               value: `${streakDays}d`,
               sub: null,
               href: '/milestones',
               hint: bothText('Days in a row the work kept going', 'Μέρες στη σειρά που η δουλειά συνεχίστηκε'),
             },
             {
-              label: 'Messages',
+              label: t('Messages', 'Μηνύματα'),
               value: unread == null ? '—' : String(unread),
               sub: null,
               href: '/messages',
@@ -678,8 +688,8 @@ export default function DashboardPage() {
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-900">{prospect.name}</p>
-                  <p className="text-xs text-stone-400">{prospect.role}</p>
+                  <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
+                  <FactLine className="text-xs" items={[labelOf(prospect.role)]} label={t('Role', 'Ρόλος')} />
                 </div>
                 {prospect.match > 0 && (
                   <span className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg">{prospect.match}%</span>
@@ -687,12 +697,12 @@ export default function DashboardPage() {
               </div>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => { saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' }); navigate(`/messages?user=${prospect.id}`); }} className="flex-1 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"><Both en="Connect" el="Σύνδεση" /></button>
-                <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">View Profile</button>
+                <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
               </div>
             </div>
           )}
           <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider">Current Streak</p>
+            <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχουσα σειρά')}</p>
             <div>
               <p className="text-[13px] sm:text-[14px] font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-[11px] font-medium text-stone-400">d</span></p>
               <div className="flex items-center gap-1.5 mt-2">
@@ -707,7 +717,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-stone-400" />
-              <p className="text-sm font-medium text-stone-900">Complete your profile</p>
+              <p className="text-sm font-medium text-stone-900">{t('Complete your profile', 'Συμπλήρωσε το προφίλ')}</p>
             </div>
             <span className="text-xs font-semibold text-stone-900">{score}%</span>
           </div>
@@ -717,17 +727,17 @@ export default function DashboardPage() {
           {missing.length > 0 && (
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-stone-400">
-                Missing: {missing.slice(0, 3).map((item, index) => (
+                {t('Missing:', 'Λείπουν:')} {missing.slice(0, 3).map((item, index) => (
                   <span key={item}>
                     {index > 0 ? ', ' : ''}
                     <Both en={item} el={MISSING_EL[item] || item} />
                   </span>
                 ))}
-                {missing.length > 3 ? ` +${missing.length - 3} more` : ''}
+                {missing.length > 3 ? t(` +${missing.length - 3} more`, ` +${missing.length - 3} ακόμα`) : ''}
               </p>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))} className="text-xs font-medium text-stone-900 hover:underline">Ask</button>
-                <button onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">Edit Profile →</button>
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))} className="text-xs font-medium text-stone-900 hover:underline">{t('Ask', 'Ρώτα')}</button>
+                <button onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">{t('Edit Profile →', 'Επεξεργασία προφίλ →')}</button>
               </div>
             </div>
           )}
@@ -767,8 +777,8 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 mt-1">
                     <Clock className="w-3 h-3 text-stone-400" />
                     <span className="text-xs text-stone-400">{ev.time}</span>
-                    {ev.type && <span className="text-[10px] font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{ev.type}</span>}
-                    {ev.attendees > 0 && <span className="text-xs text-stone-400">{ev.attendees} attending</span>}
+                    {ev.type && <span className="text-[10px] font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
+                    {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
                   </div>
                 </div>
               ))}

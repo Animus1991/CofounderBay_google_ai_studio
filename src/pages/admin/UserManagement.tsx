@@ -12,6 +12,9 @@ import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { User } from "../../types";
 import { cn } from "../../lib/utils";
+import { useT } from "../../lib/language";
+import { labelOf } from "../../lib/labels";
+import { formatDate } from "../../lib/dates";
 
 interface AdminProps {
  user: User;
@@ -33,6 +36,7 @@ const UserManagementSkeleton = () => (
 );
 
 export default function UserManagement({ user }: AdminProps) {
+ const t = useT();
  const [users, setUsers] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [searchQuery, setSearchQuery] = useState("");
@@ -56,10 +60,12 @@ export default function UserManagement({ user }: AdminProps) {
  if (loading) return <UserManagementSkeleton />;
 
  const moderationQueue = [
-  { id: 1, type: "Profile", user: "Alex Rivera", reason: "Potential spam", time: "2h ago", severity: "medium" },
-  { id: 2, type: "Community", user: "Web3 Builders", reason: "Inappropriate content", time: "4h ago", severity: "high" },
-  { id: 3, type: "Message", user: "Sarah Chen", reason: "Harassment report", time: "6h ago", severity: "low" },
+  { id: 1, type: "Profile", user: "Alex Rivera", reason: t('Potential spam', 'Πιθανό spam'), time: t('2h ago', 'πριν από 2 ώρες'), severity: "medium" },
+  { id: 2, type: "Community", user: "Web3 Builders", reason: t('Inappropriate content', 'Ακατάλληλο περιεχόμενο'), time: t('4h ago', 'πριν από 4 ώρες'), severity: "high" },
+  { id: 3, type: "Message", user: "Sarah Chen", reason: t('Harassment report', 'Αναφορά παρενόχλησης'), time: t('6h ago', 'πριν από 6 ώρες'), severity: "low" },
  ];
+ const typeLabel = (type: string) => type === 'Profile' ? t('Profile', 'Προφίλ') : type === 'Community' ? t('Community', 'Κοινότητα') : t('Message', 'Μήνυμα');
+ const tabLabel = (tab: string) => tab === 'All Users' ? t('All Users', 'Όλα τα μέλη') : tab === 'Admins' ? t('Admins', 'Διαχειριστές') : tab === 'Mentors' ? t('Mentors', 'Μέντορες') : t('Founders', 'Ιδρυτές');
 
  const filteredUsers = users.filter(u => 
   u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,8 +92,8 @@ export default function UserManagement({ user }: AdminProps) {
         <Users className="w-7 h-7 text-stone-900" />
        </div>
        <div>
-        <h2 className="text-xl font-medium tracking-tight text-stone-900">User Management</h2>
-        <p className="text-stone-400 text-xs font-medium tracking-wider mt-1">Orchestrate your ecosystem's member base</p>
+        <h2 className="text-xl font-medium tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h2>
+        <p className="text-stone-400 text-xs font-medium tracking-wider mt-1">{t("Orchestrate your ecosystem's member base", 'Οργάνωσε τη βάση μελών του οικοσυστήματος')}</p>
        </div>
       </motion.div>
      </div>
@@ -96,20 +102,20 @@ export default function UserManagement({ user }: AdminProps) {
       <div className="hidden lg:flex items-center gap-3 mr-4">
        <Link to="/admin/branding">
         <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-900 font-medium text-xs tracking-wider transition-all h-11 px-6 rounded-xl">
-         <Palette className="w-4 h-4 mr-2.5" /> Branding
+         <Palette className="w-4 h-4 mr-2.5" /> {t('Branding', 'Ταυτότητα')}
         </Button>
        </Link>
        <Link to="/admin/taxonomies">
         <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-900 font-medium text-xs tracking-wider transition-all h-11 px-6 rounded-xl">
-         <Tag className="w-4 h-4 mr-2.5" /> Taxonomies
+         <Tag className="w-4 h-4 mr-2.5" /> {t('Taxonomies', 'Ταξινομίες')}
         </Button>
        </Link>
       </div>
       <Button variant="outline" className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
-       <Download className="w-3.5 h-3.5 mr-2.5" /> Export
+       <Download className="w-3.5 h-3.5 mr-2.5" /> {t('Export', 'Εξαγωγή')}
       </Button>
       <Button className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-wide shadow-xl shadow-stone-200 transition-all">
-       <UserPlus className="w-3.5 h-3.5 mr-2.5" /> Invite Member
+       <UserPlus className="w-3.5 h-3.5 mr-2.5" /> {t('Invite Member', 'Πρόσκληση μέλους')}
       </Button>
      </div>
     </div>
@@ -118,10 +124,10 @@ export default function UserManagement({ user }: AdminProps) {
    {/* Stats Grid */}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
     {[
-     { label: "Total Members", value: "2,542", change: "+12%", icon: Users, color: "text-blue-600", bg: "bg-blue-50/50" },
-     { label: "Active Now", value: "850", change: "+5%", icon: Zap, color: "text-amber-600", bg: "bg-amber-50/50" },
-     { label: "Verified Hubs", value: "42", change: "Stable", icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50/50" },
-     { label: "Pending Issues", value: "3", change: "Critical", icon: AlertCircle, color: "text-red-600", bg: "bg-red-50/50" },
+     { label: t('Total Members', 'Σύνολο μελών'), value: "2,542", change: "+12%", icon: Users, color: "text-blue-600", bg: "bg-blue-50/50" },
+     { label: t('Active Now', 'Ενεργά τώρα'), value: "850", change: "+5%", icon: Zap, color: "text-amber-600", bg: "bg-amber-50/50" },
+     { label: t('Verified Hubs', 'Επαληθευμένοι κόμβοι'), value: "42", change: "Stable", icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50/50" },
+     { label: t('Pending Issues', 'Εκκρεμή ζητήματα'), value: "3", change: "Critical", icon: AlertCircle, color: "text-red-600", bg: "bg-red-50/50" },
     ].map((stat, i) => (
      <motion.div
       key={i}
@@ -144,7 +150,7 @@ export default function UserManagement({ user }: AdminProps) {
         "px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium tracking-wider",
         stat.color
        )}>
-        <TrendingUp className="w-3.5 h-3.5" /> {stat.change} this month
+        <TrendingUp className="w-3.5 h-3.5" /> {stat.change === 'Stable' || stat.change === 'Critical' ? labelOf(stat.change) : stat.change} {t('this month', 'αυτό τον μήνα')}
        </div>
       </Card>
      </motion.div>
@@ -171,7 +177,7 @@ export default function UserManagement({ user }: AdminProps) {
             : "border-transparent text-stone-400 hover:text-stone-600"
           )}
          >
-          {tab}
+          {tabLabel(tab)}
          </button>
         ))}
        </div>
@@ -179,7 +185,7 @@ export default function UserManagement({ user }: AdminProps) {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
         <input 
          type="text"
-         placeholder="Search members..."
+         placeholder={t('Search members...', 'Αναζήτηση μελών...')}
          value={searchQuery}
          onChange={(e) => setSearchQuery(e.target.value)}
          className="input-minimal pl-12 text-xs font-medium tracking-wide"
@@ -191,11 +197,11 @@ export default function UserManagement({ user }: AdminProps) {
        <table className="w-full text-left border-collapse">
         <thead>
          <tr className="bg-stone-50/20 border-b border-stone-50">
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">Member</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">Role & Hub</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">Status</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">Activity</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider text-right">Actions</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Member', 'Μέλος')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Role & Hub', 'Ρόλος και κόμβος')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Activity', 'Δραστηριότητα')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider text-right">{t('Actions', 'Ενέργειες')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-50">
@@ -233,7 +239,7 @@ export default function UserManagement({ user }: AdminProps) {
               <div className="flex flex-wrap gap-2">
                {u.roles.map((role: string) => (
                 <span key={role} className="text-xs font-medium px-2.5 py-1 bg-stone-50 text-stone-500 rounded-md tracking-wide border border-stone-100">
-                 {role}
+                 {labelOf(role)}
                 </span>
                ))}
               </div>
@@ -248,13 +254,13 @@ export default function UserManagement({ user }: AdminProps) {
                : "text-red-600 border-transparent"
              )}>
               <div className={cn("w-1.5 h-1.5 rounded-full shadow-sm", u.accountStatus === "Active" ? "bg-emerald-500" : "bg-red-500")}></div>
-              {u.accountStatus}
+              {labelOf(u.accountStatus)}
              </span>
             </td>
             <td className="px-8 py-7">
              <div className="space-y-1.5">
-              <p className="text-xs font-medium text-stone-700 tracking-tight">Last login: 2h ago</p>
-              <p className="text-xs text-stone-300 font-medium tracking-wider">Joined {new Date(u.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs font-medium text-stone-700 tracking-tight">{t('Last login: 2h ago', 'Τελευταία είσοδος: πριν από 2 ώρες')}</p>
+              <p className="text-xs text-stone-300 font-medium tracking-wider">{t('Joined', 'Εγγραφή')} {formatDate(u.createdAt)}</p>
              </div>
             </td>
             <td className="px-8 py-7 text-right">
@@ -278,7 +284,7 @@ export default function UserManagement({ user }: AdminProps) {
       </div>
       <div className="p-8 bg-stone-50/20 border-t border-stone-50 flex flex-col md:flex-row items-center justify-between gap-8">
        <p className="text-xs text-stone-400 font-medium tracking-wider">
-        Showing <span className="text-stone-900">{filteredUsers.length}</span> of <span className="text-stone-900">2,542</span> members
+        {t('Showing', 'Εμφάνιση')} <span className="text-stone-900">{filteredUsers.length}</span> {t('of', 'από')} <span className="text-stone-900">2,542</span> {t('members', 'μέλη')}
        </p>
        <div className="flex items-center gap-8">
         <div className="flex gap-2">
@@ -316,12 +322,12 @@ export default function UserManagement({ user }: AdminProps) {
          <ShieldAlert className="w-7 h-7 text-red-500" />
         </div>
         <div className="space-y-1">
-         <h2 className="text-sm font-semibold text-stone-900 tracking-wider">Moderation Queue</h2>
-         <p className="text-stone-400 font-medium text-xs tracking-wider mt-1">Items requiring administrative review</p>
+         <h2 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Moderation Queue', 'Ουρά εποπτείας')}</h2>
+         <p className="text-stone-400 font-medium text-xs tracking-wider mt-1">{t('Items requiring administrative review', 'Στοιχεία που χρειάζονται έλεγχο από τη διαχείριση')}</p>
         </div>
        </div>
        <Button variant="ghost" className="text-xs font-medium tracking-wider text-stone-400 hover:text-stone-900 h-11 px-8 rounded-xl transition-all">
-        View All Reports
+        {t('View All Reports', 'Όλες οι αναφορές')}
        </Button>
       </div>
 
@@ -351,22 +357,22 @@ export default function UserManagement({ user }: AdminProps) {
              <div className="flex items-center gap-5">
               <span className="text-sm font-semibold text-stone-900">{item.user}</span>
               <span className="px-3 py-1 bg-stone-100 text-stone-500 rounded-md text-xs font-medium tracking-wider border border-stone-200/50">
-               {item.type}
+               {typeLabel(item.type)}
               </span>
              </div>
              <p className="text-sm text-stone-500 font-medium flex items-center gap-4">
               <span className="text-red-500 font-medium text-xs tracking-wider">{item.reason}</span>
               <span className="w-1 h-1 rounded-full bg-stone-200"></span>
-              <span className="text-stone-400 font-medium text-xs tracking-[0.15em]">Reported {item.time}</span>
+              <span className="text-stone-400 font-medium text-xs tracking-[0.15em]">{t('Reported', 'Αναφορά')} {item.time}</span>
              </p>
             </div>
            </div>
            <div className="flex items-center gap-4 w-full md:w-auto">
             <Button variant="ghost" className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-wide text-stone-400 hover:text-stone-900 rounded-xl transition-all">
-             Dismiss
+             {t('Dismiss', 'Απόρριψη')}
             </Button>
             <Button className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-wide bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
-             Review & Action
+             {t('Review & Action', 'Έλεγχος και ενέργεια')}
             </Button>
            </div>
           </div>
@@ -383,15 +389,15 @@ export default function UserManagement({ user }: AdminProps) {
       <div className="p-3 bg-stone-50 rounded-2xl border border-stone-100 shadow-sm">
        <BarChart3 className="w-5 h-5 text-stone-900" />
       </div>
-      <h2 className="text-lg font-medium text-stone-900 tracking-tight">Ecosystem Health</h2>
+      <h2 className="text-lg font-medium text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h2>
      </div>
 
      <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-10">
       <div className="space-y-8">
        {[
-        { label: "Profile Completion", value: 78, color: "bg-blue-500" },
-        { label: "Match Success Rate", value: 64, color: "bg-emerald-500" },
-        { label: "Daily Engagement", value: 42, color: "bg-amber-500" },
+        { label: t('Profile Completion', 'Ολοκλήρωση προφίλ'), value: 78, color: "bg-blue-500" },
+        { label: t('Match Success Rate', 'Επιτυχία αντιστοιχίσεων'), value: 64, color: "bg-emerald-500" },
+        { label: t('Daily Engagement', 'Ημερήσια συμμετοχή'), value: 42, color: "bg-amber-500" },
        ].map((metric, i) => (
         <div key={i} className="space-y-4">
          <div className="flex items-center justify-between">
@@ -416,8 +422,8 @@ export default function UserManagement({ user }: AdminProps) {
          <CheckCircle2 className="w-6 h-6" />
         </div>
         <div>
-         <p className="text-xs font-medium text-emerald-900 tracking-wider">All Systems Normal</p>
-         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">Last check: 1m ago</p>
+         <p className="text-xs font-medium text-emerald-900 tracking-wider">{t('All Systems Normal', 'Όλα τα συστήματα κανονικά')}</p>
+         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">{t('Last check: 1m ago', 'Τελευταίος έλεγχος: πριν από 1 λεπτό')}</p>
         </div>
        </div>
       </div>
@@ -425,13 +431,13 @@ export default function UserManagement({ user }: AdminProps) {
 
      {/* Ecosystem Distribution */}
      <div className="space-y-4">
-      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">Member Distribution</h3>
+      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Member Distribution', 'Κατανομή μελών')}</h3>
       <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-8">
        {[
-        { label: "Founders", value: 45, color: "bg-stone-900", icon: Zap },
-        { label: "Co-Founders", value: 35, color: "bg-stone-600", icon: Users },
-        { label: "Mentors", value: 15, color: "bg-stone-400", icon: Star },
-        { label: "Advisors", value: 5, color: "bg-stone-200", icon: ShieldCheck },
+        { label: t('Founders', 'Ιδρυτές'), value: 45, color: "bg-stone-900", icon: Zap },
+        { label: t('Co-Founders', 'Συνιδρυτές'), value: 35, color: "bg-stone-600", icon: Users },
+        { label: t('Mentors', 'Μέντορες'), value: 15, color: "bg-stone-400", icon: Star },
+        { label: t('Advisors', 'Σύμβουλοι'), value: 5, color: "bg-stone-200", icon: ShieldCheck },
        ].map((item, i) => (
         <div key={i} className="space-y-3">
          <div className="flex items-center justify-between">
@@ -457,7 +463,7 @@ export default function UserManagement({ user }: AdminProps) {
 
      {/* Quick Actions */}
      <div className="space-y-4">
-      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">Administrative Actions</h3>
+      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Administrative Actions', 'Ενέργειες διαχείρισης')}</h3>
       <div className="grid grid-cols-1 gap-4">
        <motion.button
         whileHover={{ x: 6, scale: 1.01 }}
@@ -467,8 +473,8 @@ export default function UserManagement({ user }: AdminProps) {
          <Globe className="w-7 h-7" />
         </div>
         <div className="space-y-1">
-         <p className="text-sm font-medium text-stone-900 tracking-tight">New Ecosystem Hub</p>
-         <p className="text-xs text-stone-500 font-medium">Create a branded tenant environment</p>
+         <p className="text-sm font-medium text-stone-900 tracking-tight">{t('New Ecosystem Hub', 'Νέος κόμβος οικοσυστήματος')}</p>
+         <p className="text-xs text-stone-500 font-medium">{t('Create a branded tenant environment', 'Δημιούργησε περιβάλλον οργανισμού με ταυτότητα')}</p>
         </div>
         <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center ml-auto group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm border border-stone-100/50">
          <ChevronRight className="w-4 h-4" />
@@ -483,8 +489,8 @@ export default function UserManagement({ user }: AdminProps) {
          <Briefcase className="w-7 h-7" />
         </div>
         <div className="space-y-1">
-         <p className="text-sm font-medium text-stone-900 tracking-tight">Export Platform Data</p>
-         <p className="text-xs text-stone-500 font-medium">Generate CSV/JSON ecosystem reports</p>
+         <p className="text-sm font-medium text-stone-900 tracking-tight">{t('Export Platform Data', 'Εξαγωγή δεδομένων πλατφόρμας')}</p>
+         <p className="text-xs text-stone-500 font-medium">{t('Generate CSV/JSON ecosystem reports', 'Δημιουργία αναφορών οικοσυστήματος σε CSV/JSON')}</p>
         </div>
         <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center ml-auto group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm border border-stone-100/50">
          <ChevronRight className="w-4 h-4" />

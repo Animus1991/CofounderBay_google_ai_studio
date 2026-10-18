@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { captureException } from '../lib/errorTracking';
+import { bothText } from '../lib/labels';
 
 interface Props {
  children: ReactNode;
@@ -27,14 +28,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
  public render() {
   if (this.state.hasError) {
-   let errorMessage = 'An unexpected error occurred.';
+   let errorMessage = bothText('An unexpected error occurred.', 'Προέκυψε μη αναμενόμενο σφάλμα.');
    let errorDetails = null;
 
    try {
     if (this.state.error?.message) {
      const parsed = JSON.parse(this.state.error.message);
      if (parsed.error) {
-      errorMessage = 'Firebase Permission Error';
+      errorMessage = bothText('Firebase Permission Error', 'Σφάλμα δικαιωμάτων Firebase');
       errorDetails = parsed;
      }
     }
@@ -51,15 +52,15 @@ export class ErrorBoundary extends Component<Props, State> {
       <h1 className="text-lg sm:text-xl font-medium text-stone-900 mb-2">{errorMessage}</h1>
       <p className="text-stone-600 mb-8">
        {errorDetails 
-        ? `You don't have permission to perform this ${errorDetails.operationType} operation on ${errorDetails.path}.`
-        : 'We encountered a problem while loading this page.'}
+        ? bothText(`You don't have permission to perform this ${errorDetails.operationType} operation on ${errorDetails.path}.`, `Δεν έχεις δικαίωμα για αυτή την ενέργεια ${errorDetails.operationType} στο ${errorDetails.path}.`)
+        : bothText('We encountered a problem while loading this page.', 'Πρόβλημα κατά τη φόρτωση αυτής της σελίδας.')}
       </p>
       <button
        onClick={() => window.location.reload()}
        className="w-full flex items-center justify-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-stone-800 transition-colors"
       >
        <RefreshCw className="w-4 h-4" />
-       Try Again
+       {bothText('Try Again', 'Επανάληψη')}
       </button>
       {errorDetails && (
        <div className="mt-8 pt-6 border-t border-stone-100 text-left">

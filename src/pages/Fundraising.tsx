@@ -51,7 +51,9 @@ import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
 import { User, FundraisingTracker } from "../types";
 import { cn } from "../lib/utils";
-import { bothText } from "../lib/labels";
+import { labelOf } from "../lib/labels";
+import { useT } from "../lib/language";
+import { formatDate } from "../lib/dates";
 import { addRoomFile, addSession, listKeys, readIds, readRoomFiles, toggleId, trackApplication, type RoomFile } from "../lib/localLists";
 
 interface FundraisingProps {
@@ -69,6 +71,7 @@ const STAGE_META: Record<string, { color: string; dot: string }> = {
 };
 
 export default function Fundraising({ user }: FundraisingProps) {
+ const t = useT();
  const navigate = useNavigate();
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
@@ -185,9 +188,9 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  // Meeting Scheduler Data
  const upcomingMeetings = [
-  { id: "m1", investor: "Sequoia Capital", type: "Video Call", date: "2026-04-28", time: "10:00 AM", duration: "45 min", status: "confirmed", notes: "Partnership discussion" },
-  { id: "m2", investor: "Naval Ravikant", type: "Coffee Chat", date: "2026-04-30", time: "2:00 PM", duration: "30 min", status: "pending", notes: "Advisory role" },
-  { id: "m3", investor: "First Round", type: "Pitch", date: "2026-05-02", time: "11:00 AM", duration: "60 min", status: "confirmed", notes: "Seed round pitch" },
+  { id: "m1", investor: "Sequoia Capital", type: "Video Call", date: "2026-04-28", time: "10:00", duration: "45 min", status: "confirmed", notes: "Partnership discussion" },
+  { id: "m2", investor: "Naval Ravikant", type: "Coffee Chat", date: "2026-04-30", time: "14:00", duration: "30 min", status: "pending", notes: "Advisory role" },
+  { id: "m3", investor: "First Round", type: "Pitch", date: "2026-05-02", time: "11:00", duration: "60 min", status: "confirmed", notes: "Seed round pitch" },
  ];
 
  // Document Room Data
@@ -214,9 +217,90 @@ export default function Fundraising({ user }: FundraisingProps) {
   mostFavoredNation: true,
  };
 
+ const tabLabel: Record<typeof activeTab, string> = {
+  tracker: t("Tracker", "Παρακολούθηση"),
+  investors: t("Investors", "Επενδυτές"),
+  programs: t("Programs", "Προγράμματα"),
+  opportunities: t("Opportunities", "Ευκαιρίες"),
+ };
+ const stageLabel = (stage: string) => {
+  const names: Record<string, string> = {
+   Identified: t("Identified", "Εντοπίστηκε"),
+   Contacted: t("Contacted", "Έγινε επαφή"),
+   Meeting: t("Meeting", "Συνάντηση"),
+   "Due Diligence": t("Due Diligence", "Δέουσα επιμέλεια"),
+   "Term Sheet": t("Term Sheet", "Term sheet"),
+   Closed: t("Closed", "Κλειστό"),
+   Passed: t("Passed", "Απορρίφθηκε"),
+  };
+  return names[stage] ?? labelOf(stage);
+ };
+ const ddLabel = (label: string) => {
+  const names: Record<string, string> = {
+   "Incorporation docs": t("Incorporation docs", "Έγγραφα σύστασης"),
+   "IP assignments": t("IP assignments", "Εκχωρήσεις IP"),
+   "Financial projections": t("Financial projections", "Οικονομικές προβλέψεις"),
+   "Cap table audit": t("Cap table audit", "Έλεγχος cap table"),
+   "Key contracts": t("Key contracts", "Βασικές συμβάσεις"),
+  };
+  return names[label] ?? label;
+ };
+ const emailName = (name: string) => {
+  const names: Record<string, string> = {
+   "Cold Intro": t("Cold Intro", "Πρώτη επαφή"),
+   "Follow-up": t("Follow-up", "Υπενθύμιση"),
+   "Data Room": t("Data Room", "Data room"),
+  };
+  return names[name] ?? name;
+ };
+ const capName = (name: string) => {
+  if (name === "Seed SAFEs") return name;
+  if (name === "Founders") return t("Founders", "Ιδρυτές");
+  if (name === "ESOP Pool") return t("ESOP Pool", "Δεξαμενή ESOP");
+  return name;
+ };
+ const meetingTypeLabel = (type: string) => {
+  const names: Record<string, string> = {
+   "Video Call": t("Video Call", "Βιντεοκλήση"),
+   Phone: t("Phone", "Τηλέφωνο"),
+   Coffee: t("Coffee", "Καφές"),
+   Office: t("Office", "Γραφείο"),
+   "Coffee Chat": t("Coffee Chat", "Καφές"),
+   Pitch: t("Pitch", "Pitch"),
+  };
+  return names[type] ?? type;
+ };
+ const tagLabel = (tag: string) => {
+  const names: Record<string, string> = {
+   "Hot Lead": t("Hot Lead", "Θερμό lead"),
+   Strategic: t("Strategic", "Στρατηγικό"),
+   Advisor: t("Advisor", "Σύμβουλος"),
+   Angel: t("Angel", "Angel"),
+   Competition: t("Competition", "Ανταγωνισμός"),
+  };
+  return names[tag] ?? labelOf(tag);
+ };
+ const typeLabel = (value: string) => {
+  if (value === "All") return t("All", "Όλα");
+  const names: Record<string, string> = {
+   "Intro Request": t("Intro Request", "Αίτημα γνωριμίας"),
+   "Pitch Event": t("Pitch Event", "Εκδήλωση pitch"),
+   "Non-dilutive Grant": t("Non-dilutive Grant", "Μη αραιωτική επιχορήγηση"),
+   "Revenue-Based": t("Revenue-Based", "Με βάση τα έσοδα"),
+   Studio: t("Studio", "Studio"),
+   VC: t("VC", "VC"),
+   Angel: t("Angel", "Angel"),
+  };
+  return names[value] ?? labelOf(value);
+ };
+ const moneyWords = (amount: string) =>
+  amount.startsWith("up to ") ? `${t("up to", "έως")} ${amount.slice(6)}` : amount;
+ const daysLeftText = (n: number) =>
+  n === 2 ? t("2d left", "απομένουν 2 ημ.") : t(`${n}d left`, `απομένουν ${n} ημ.`);
+
  return (
   <>
-  <PageShell title="Fundraising" description="Track your round, discover investors, and apply for programs." maxWidth="full">
+  <PageShell title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολουθήστε τον γύρο, βρείτε επενδυτές και κάντε αίτηση σε προγράμματα.")} maxWidth="full">
    <div className="space-y-5">
 
     {/* Tab Bar */}
@@ -230,7 +314,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
        )}
       >
-       {tab.charAt(0).toUpperCase() + tab.slice(1)}
+       {tabLabel[tab]}
       </button>
      ))}
     </div>
@@ -244,9 +328,9 @@ export default function Fundraising({ user }: FundraisingProps) {
        <Card className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-         <p className="text-xs font-semibold text-stone-400 tracking-wide">Seed Round Progress</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Seed Round Progress", "Πρόοδος γύρου Seed")}</p>
          <span className="px-2 py-0.5 text-emerald-700 text-xs font-semibold rounded-md">
-          {mockTracker.status}
+          {labelOf(mockTracker.status)}
          </span>
         </div>
 
@@ -254,26 +338,26 @@ export default function Fundraising({ user }: FundraisingProps) {
         <div className="space-y-1.5">
          <div className="flex items-baseline gap-1.5">
           <span className="text-xl font-bold text-stone-900">${(mockTracker.raisedAmount / 1000).toFixed(0)}k</span>
-          <span className="text-sm text-stone-400">of ${(mockTracker.targetAmount / 1000000).toFixed(1)}M</span>
+          <span className="text-sm text-stone-400">{t("of", "από")} ${(mockTracker.targetAmount / 1000000).toFixed(1)}M</span>
          </div>
          <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
           <div className="h-full bg-stone-900 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
          </div>
          <div className="flex justify-between text-xs text-stone-400">
-          <span>{pct}% raised</span>
-          <span>${((mockTracker.targetAmount - mockTracker.raisedAmount) / 1000).toFixed(0)}k remaining</span>
+          <span>{pct}% {t("raised", "συγκεντρώθηκε")}</span>
+          <span>${((mockTracker.targetAmount - mockTracker.raisedAmount) / 1000).toFixed(0)}k {t("remaining", "απομένουν")}</span>
          </div>
         </div>
 
         {/* KPI Grid */}
         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-100">
          {[
-          { label: "Active Leads",  value: "3",        color: "" },
-          { label: "Days in Round", value: "42",       color: "" },
-          { label: "Meetings",      value: "18",       color: "" },
-          { label: "Burn Rate",     value: "$12k/mo",  color: "text-red-500" },
-          { label: "Runway Left",   value: `${runway}mo`, color: runway < 6 ? "text-amber-600" : "" },
-          { label: "Close Rate",    value: "38%",      color: "" },
+          { label: t("Active Leads", "Ενεργά leads"),  value: "3",        color: "" },
+          { label: t("Days in Round", "Ημέρες στον γύρο"), value: "42",       color: "" },
+          { label: t("Meetings", "Συναντήσεις"),      value: "18",       color: "" },
+          { label: t("Burn Rate", "Burn rate"),     value: "$12k/mo",  color: "text-red-500" },
+          { label: t("Runway Left", "Υπόλοιπο runway"),   value: `${runway}mo`, color: runway < 6 ? "text-amber-600" : "" },
+          { label: t("Close Rate", "Ρυθμός κλεισίματος"),    value: "38%",      color: "" },
          ].map(({ label, value, color }) => (
           <div key={label} className="space-y-0.5 py-1.5">
            <p className="text-xs text-stone-400 tracking-wider">{label}</p>
@@ -284,23 +368,23 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         {/* Quick Actions */}
         <div className="space-y-3 pt-2 border-t border-stone-100">
-         <p className="text-xs font-semibold text-stone-400 tracking-wide">Quick Actions</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Quick Actions", "Γρήγορες ενέργειες")}</p>
          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9 rounded-lg" onClick={() => setShowDocumentRoom(true)}>
-          <FileText className="w-3.5 h-3.5 shrink-0" /> Update Data Room
+          <FileText className="w-3.5 h-3.5 shrink-0" /> {t("Update Data Room", "Ενημέρωση data room")}
          </Button>
          <Button variant="outline" className="w-full justify-start gap-2 text-sm h-9 rounded-lg" onClick={() => setShowMeetingScheduler(true)}>
-          <Users className="w-3.5 h-3.5 shrink-0" /> Log New Meeting
+          <Users className="w-3.5 h-3.5 shrink-0" /> {t("Log New Meeting", "Καταγραφή νέας συνάντησης")}
          </Button>
          <Button className="w-full justify-start gap-2 text-sm h-9 rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Record a $50k investment in my round' } }))}>
-          <DollarSign className="w-3.5 h-3.5 shrink-0" /> Record Investment
+          <DollarSign className="w-3.5 h-3.5 shrink-0" /> {t("Record Investment", "Καταγραφή επένδυσης")}
          </Button>
         </div>
 
         {/* Mini Cap Table */}
         <div className="pt-2 border-t border-stone-100 space-y-2">
          <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-stone-400 tracking-wide">Cap Table</p>
-          <span className="text-xs text-stone-400">10M shares</span>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Cap Table", "Cap table")}</p>
+          <span className="text-xs text-stone-400">10M {t("shares", "μετοχές")}</span>
          </div>
          <div className="flex h-2 rounded-full overflow-hidden">
           {mockCapTable.map((row, i) => (
@@ -311,7 +395,7 @@ export default function Fundraising({ user }: FundraisingProps) {
           {mockCapTable.map((row, i) => (
            <div key={i} className="flex items-center gap-1">
             <div className={cn("w-1.5 h-1.5 rounded-full", row.color)} />
-            <span className="text-xs text-stone-600">{row.name} {row.pct}%</span>
+            <span className="text-xs text-stone-600">{capName(row.name)} {row.pct}%</span>
            </div>
           ))}
          </div>
@@ -320,7 +404,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         {/* Due Diligence Checklist Mini */}
         <div className="pt-2 border-t border-stone-100 space-y-1.5">
          <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-stone-400 tracking-wide">Due Diligence</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Due Diligence", "Δέουσα επιμέλεια")}</p>
           <span className="text-xs text-emerald-600 font-semibold">
            {dueDiligenceItems.filter(i => i.status === "complete").length}/{dueDiligenceItems.length}
           </span>
@@ -337,7 +421,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <span className={cn(
              "text-xs truncate",
              item.status === "complete" ? "text-stone-500 line-through" : "text-stone-600"
-            )}>{item.label}</span>
+            )}>{ddLabel(item.label)}</span>
            </div>
           ))}
          </div>
@@ -345,11 +429,11 @@ export default function Fundraising({ user }: FundraisingProps) {
 
         {/* Email Templates Quick Access */}
         <div className="pt-2 border-t border-stone-100 space-y-1.5">
-         <p className="text-xs font-semibold text-stone-400 tracking-wide">Email Templates</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Email Templates", "Πρότυπα email")}</p>
          <div className="flex flex-wrap gap-1">
           {emailTemplates.map((et) => (
-           <button key={et.id} onClick={() => { navigator.clipboard.writeText(et.subject.replace('{{startup}}', 'EcoFlow Systems').replace('{{sector}}', 'CleanTech')); showToast(`"${et.name}" subject copied`); }} className="px-2 py-1 bg-stone-50 hover:bg-stone-100 border border-stone-100 rounded-md text-xs text-stone-600 transition-colors">
-            {et.name}
+           <button key={et.id} onClick={() => { navigator.clipboard.writeText(et.subject.replace('{{startup}}', 'EcoFlow Systems').replace('{{sector}}', 'CleanTech')); showToast(`"${emailName(et.name)}" ${t("subject copied", "το θέμα αντιγράφηκε")}`); }} className="px-2 py-1 bg-stone-50 hover:bg-stone-100 border border-stone-100 rounded-md text-xs text-stone-600 transition-colors">
+            {emailName(et.name)}
            </button>
           ))}
          </div>
@@ -358,12 +442,12 @@ export default function Fundraising({ user }: FundraisingProps) {
         {/* Meeting Scheduler Mini */}
         <div className="pt-2 border-t border-stone-100 space-y-2">
          <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-stone-400 tracking-wide">Upcoming Meetings</p>
+          <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Upcoming Meetings", "Επερχόμενες συναντήσεις")}</p>
           <button 
            onClick={() => setShowMeetingScheduler(true)}
            className="text-xs text-stone-500 hover:text-stone-900 flex items-center gap-0.5 transition-colors"
           >
-           <Plus className="w-3 h-3" /> Schedule
+           <Plus className="w-3 h-3" /> {t("Schedule", "Προγραμματισμός")}
           </button>
          </div>
          <div className="space-y-1.5">
@@ -377,7 +461,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             </div>
             <div className="flex-1 min-w-0">
              <p className="text-sm font-medium text-stone-900 truncate">{meeting.investor}</p>
-             <p className="text-xs text-stone-400">{meeting.date} · {meeting.time}</p>
+             <p className="text-xs text-stone-400">{formatDate(meeting.date)} · {meeting.time}</p>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-500 transition-colors shrink-0" />
            </div>
@@ -387,14 +471,14 @@ export default function Fundraising({ user }: FundraisingProps) {
           onClick={() => setShowMeetingScheduler(true)}
           className="w-full py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-50 rounded-lg border border-stone-100 transition-all"
          >
-          View All {upcomingMeetings.length} Meetings
+          {t("View All", "Όλα")} {upcomingMeetings.length} {t("Meetings", "συναντήσεις")}
          </button>
         </div>
        </Card>
 
        {/* Stage Funnel */}
        <Card className="p-4 space-y-3">
-        <p className="text-xs font-semibold text-stone-400 tracking-wide">Pipeline Funnel</p>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Pipeline Funnel", "Χωνί pipeline")}</p>
         <div className="space-y-1.5">
          {stageCounts.filter(s => s.stage !== "Passed").concat(stageCounts.filter(s => s.stage === "Passed")).map(({ stage, count }) => {
           const meta = STAGE_META[stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
@@ -402,7 +486,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            <div key={stage} className="flex items-center gap-2">
             <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", meta.dot)} />
             <div className="flex-1 flex items-center justify-between min-w-0">
-             <span className="text-sm text-stone-600 truncate">{stage}</span>
+             <span className="text-sm text-stone-600 truncate">{stageLabel(stage)}</span>
              <span className="text-sm font-bold text-stone-900 shrink-0 ml-2">{count}</span>
             </div>
            </div>
@@ -414,12 +498,12 @@ export default function Fundraising({ user }: FundraisingProps) {
        {/* Document Room */}
        <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
-         <p className="text-xs font-semibold text-stone-400 tracking-wide">Data Room</p>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Data Room", "Data room")}</p>
          <button 
           onClick={() => setShowDocumentRoom(true)}
           className="text-xs text-stone-500 hover:text-stone-900 flex items-center gap-0.5 transition-colors"
          >
-          <Eye className="w-3 h-3" /> View
+          <Eye className="w-3 h-3" /> {t("View", "Προβολή")}
          </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -435,10 +519,10 @@ export default function Fundraising({ user }: FundraisingProps) {
             </div>
             {folder.access === "investors" ? <Lock className="w-3 h-3 text-stone-400" /> : <Unlock className="w-3 h-3 text-stone-400" />}
            </div>
-           <p className="text-sm font-medium text-stone-900">{folder.name}</p>
+           <p className="text-sm font-medium text-stone-900">{labelOf(folder.name)}</p>
            <div className="flex items-center justify-between mt-1">
-            <p className="text-xs text-stone-400">{folder.count} files</p>
-            <p className="text-xs text-stone-400">{folder.lastUpdated.slice(5)}</p>
+            <p className="text-xs text-stone-400">{folder.count} {t("files", "αρχεία")}</p>
+            <p className="text-xs text-stone-400">{formatDate(folder.lastUpdated)}</p>
            </div>
           </div>
          ))}
@@ -446,9 +530,9 @@ export default function Fundraising({ user }: FundraisingProps) {
         <div className="flex items-center justify-between p-2 bg-amber-50 rounded-lg border border-amber-100">
          <div className="flex items-center gap-1.5">
           <BarChart2 className="w-3.5 h-3.5 text-amber-600" />
-          <span className="text-xs text-stone-600">12 investors viewed this week</span>
+          <span className="text-xs text-stone-600">{t("12 investors viewed this week", "12 επενδυτές το είδαν αυτή την εβδομάδα")}</span>
          </div>
-         <button className="text-xs text-amber-700 font-semibold hover:underline" onClick={() => navigate('/insights')}>Analytics</button>
+         <button className="text-xs text-amber-700 font-semibold hover:underline" onClick={() => navigate('/insights')}>{t("Analytics", "Αναλυτικά")}</button>
         </div>
        </Card>
       </div>
@@ -457,7 +541,7 @@ export default function Fundraising({ user }: FundraisingProps) {
       <div className="lg:col-span-2 space-y-4">
 
        {/* Investor Pipeline Table */}
-       <Card title="Investor Pipeline" subtitle="Manage your investor relationships and deal stages">
+       <Card title={t("Investor Pipeline", "Pipeline επενδυτών")} subtitle={t("Manage your investor relationships and deal stages", "Διαχείριση σχέσεων με επενδυτές και σταδίων συμφωνίας")}>
         <ul className="divide-y divide-stone-100 sm:hidden">
          {(mockTracker.investorPipeline ?? []).map((item, i) => {
           const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
@@ -467,9 +551,9 @@ export default function Fundraising({ user }: FundraisingProps) {
              <Briefcase className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
-             <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `Investor ${i + 1}`}</p>
-             <p className="text-xs text-stone-400">Lead investor</p>
-             <p className={cn("mt-1 text-sm font-semibold", meta.color)}>{item.stage}</p>
+             <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `${t("Investor", "Επενδυτής")} ${i + 1}`}</p>
+             <p className="text-xs text-stone-400">{t("Lead investor", "Κύριος επενδυτής")}</p>
+             <p className={cn("mt-1 text-sm font-semibold", meta.color)}>{stageLabel(item.stage)}</p>
              <p className="mt-1 text-sm text-stone-600">{item.notes}</p>
             </div>
             <ChevronRight className="mt-1 w-4 h-4 shrink-0 text-stone-300" />
@@ -481,9 +565,9 @@ export default function Fundraising({ user }: FundraisingProps) {
          <table className="w-full min-w-[640px] text-left border-collapse">
           <thead>
            <tr className="bg-stone-50 border-b border-stone-100">
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Investor</th>
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Stage</th>
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">Latest Note</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Investor", "Επενδυτής")}</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Stage", "Στάδιο")}</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Latest Note", "Τελευταία σημείωση")}</th>
             <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide"></th>
            </tr>
           </thead>
@@ -498,14 +582,14 @@ export default function Fundraising({ user }: FundraisingProps) {
                  <Briefcase className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                 <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `Investor ${i + 1}`}</p>
-                 <p className="text-xs text-stone-400">Lead investor</p>
+                 <p className="text-sm font-semibold text-stone-900">{investorNames[i] ?? `${t("Investor", "Επενδυτής")} ${i + 1}`}</p>
+                 <p className="text-xs text-stone-400">{t("Lead investor", "Κύριος επενδυτής")}</p>
                 </div>
                </div>
               </td>
               <td className="px-3 py-2.5">
                <span className={cn("px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide whitespace-nowrap", meta.color)}>
-                {item.stage}
+                {stageLabel(item.stage)}
                </span>
               </td>
               <td className="px-3 py-2.5">
@@ -522,7 +606,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         </div>
         <div className="px-3 py-2.5 bg-stone-50 border-t border-stone-100 flex justify-center">
          <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-wide text-stone-400 hover:text-stone-900 h-7" onClick={() => setActiveTab('investors')}>
-          View Full CRM <ChevronRight className="w-3 h-3 ml-1" />
+          {t("View Full CRM", "Όλο το CRM")} <ChevronRight className="w-3 h-3 ml-1" />
          </Button>
         </div>
        </Card>
@@ -530,13 +614,13 @@ export default function Fundraising({ user }: FundraisingProps) {
        {/* Bottom: Insights + Deadlines */}
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <Card title="Fundraising Insights" subtitle="Round analytics and benchmarks" className="p-4">
+        <Card title={t("Fundraising Insights", "Εικόνα χρηματοδότησης")} subtitle={t("Round analytics and benchmarks", "Αναλυτικά γύρου και σημεία αναφοράς")} className="p-4">
          <div className="space-y-4">
           {/* Bar chart */}
           <div className="space-y-1.5">
            <div className="flex justify-between text-xs tracking-wide">
-            <span className="text-stone-400 font-semibold">Investor Interest</span>
-            <span className="text-emerald-600 font-semibold">+15% vs last week</span>
+            <span className="text-stone-400 font-semibold">{t("Investor Interest", "Ενδιαφέρον επενδυτών")}</span>
+            <span className="text-emerald-600 font-semibold">{t("+15% vs last week", "+15% έναντι προηγούμενης εβδομάδας")}</span>
            </div>
            <div className="h-24 flex items-end gap-1 group/bar">
             {barData.map((h, i) => (
@@ -547,14 +631,14 @@ export default function Fundraising({ user }: FundraisingProps) {
              >
               {/* Tooltip on hover */}
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover/bar:opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-               {h} views
+               {h} {t("views", "προβολές")}
               </div>
              </div>
             ))}
            </div>
            <div className="flex justify-between text-xs text-stone-400">
-            {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => (
-             <span key={d} className="flex-1 text-center">{d}</span>
+            {(["Mo","Tu","We","Th","Fr","Sa","Su"] as const).map(d => (
+             <span key={d} className="flex-1 text-center">{t(d, { Mo: "Δε", Tu: "Τρ", We: "Τε", Th: "Πε", Fr: "Πα", Sa: "Σα", Su: "Κυ" }[d] ?? d)}</span>
             ))}
            </div>
           </div>
@@ -562,9 +646,9 @@ export default function Fundraising({ user }: FundraisingProps) {
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
            {[
-            { label: "Avg Response", value: "3.2d" },
-            { label: "Open Rate",    value: "68%" },
-            { label: "Reply Rate",   value: "41%" },
+            { label: t("Avg Response", "Μέσος χρόνος απάντησης"), value: "3.2d" },
+            { label: t("Open Rate", "Ποσοστό ανοίγματος"),    value: "68%" },
+            { label: t("Reply Rate", "Ποσοστό απαντήσεων"),   value: "41%" },
            ].map(({ label, value }) => (
             <div key={label} className="text-center py-1.5 bg-stone-50 rounded-xl border border-stone-100">
              <p className="text-base font-bold text-stone-900">{value}</p>
@@ -577,13 +661,13 @@ export default function Fundraising({ user }: FundraisingProps) {
           <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2">
            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
            <p className="text-sm text-stone-600 leading-relaxed">
-            Your <span className="font-semibold text-stone-900">Due Diligence</span> stage moves 20% faster than the industry average for Seed rounds.
+            {t("Your", "Το στάδιο")} <span className="font-semibold text-stone-900">{t("Due Diligence", "δέουσα επιμέλεια")}</span> {t("stage moves 20% faster than the industry average for Seed rounds.", "κινείται 20% πιο γρήγορα από τον μέσο όρο του κλάδου για γύρους Seed.")}
            </p>
           </div>
          </div>
         </Card>
 
-        <Card title="Upcoming Deadlines" subtitle="Don't miss these opportunities" className="p-4">
+        <Card title={t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")} subtitle={t("Don't miss these opportunities", "Μην χάσετε αυτές τις ευκαιρίες")} className="p-4">
          <div className="space-y-2">
           {mockPrograms.map((p) => {
            const daysLeft = Math.max(0, Math.round((new Date(p.deadline).getTime() - Date.now()) / 86400000));
@@ -593,19 +677,19 @@ export default function Fundraising({ user }: FundraisingProps) {
              <div className="min-w-0">
               <p className="text-sm font-semibold text-stone-900 truncate">{p.title}</p>
               <p className={cn("text-xs tracking-wide mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
-               Due: {p.deadline} {urgent && `· ${daysLeft}d left`}
+               {t("Due", "Προθεσμία")}: {formatDate(p.deadline)} {urgent && `· ${daysLeftText(daysLeft)}`}
               </p>
              </div>
              <div className="text-right shrink-0 ml-2">
               <p className="text-sm font-bold text-stone-900">{p.grant}</p>
-              <p className="text-xs text-stone-400">{p.type}</p>
+              <p className="text-xs text-stone-400">{typeLabel(p.type)}</p>
              </div>
             </div>
            );
           })}
          </div>
          <Button variant="outline" size="sm" className="w-full mt-3 text-sm h-7 rounded-lg" onClick={() => setActiveTab("programs")}>
-          Explore All Programs <ArrowRight className="w-3 h-3 ml-1.5" />
+          {t("Explore All Programs", "Όλα τα προγράμματα")} <ArrowRight className="w-3 h-3 ml-1.5" />
          </Button>
         </Card>
 
@@ -613,8 +697,8 @@ export default function Fundraising({ user }: FundraisingProps) {
         <Card className="p-4 space-y-3">
          <div className="flex items-center justify-between">
           <div>
-           <p className="text-xs font-semibold text-stone-400 tracking-wide">SAFE Calculator</p>
-           <p className="text-sm font-semibold text-stone-900">Valuation & Ownership</p>
+           <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("SAFE Calculator", "Υπολογιστής SAFE")}</p>
+           <p className="text-sm font-semibold text-stone-900">{t("Valuation & Ownership", "Αποτίμηση και ιδιοκτησία")}</p>
           </div>
           <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center">
            <Calculator className="w-4 h-4 text-stone-600" />
@@ -623,22 +707,22 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="space-y-2">
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
-           <span className="text-xs text-stone-500">Valuation Cap</span>
+           <span className="text-xs text-stone-500">{t("Valuation Cap", "Ανώτατο όριο αποτίμησης")}</span>
            <span className="text-sm font-semibold text-stone-900">$8M</span>
           </div>
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
-           <span className="text-xs text-stone-500">Discount Rate</span>
+           <span className="text-xs text-stone-500">{t("Discount Rate", "Ποσοστό έκπτωσης")}</span>
            <span className="text-sm font-semibold text-stone-900">20%</span>
           </div>
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
-           <span className="text-xs text-stone-500">Investment</span>
+           <span className="text-xs text-stone-500">{t("Investment", "Επένδυση")}</span>
            <span className="text-sm font-semibold text-stone-900">$500k</span>
           </div>
          </div>
 
          <div className="pt-2 border-t border-stone-100">
           <div className="flex items-center justify-between mb-1">
-           <span className="text-xs text-stone-500">Effective Ownership</span>
+           <span className="text-xs text-stone-500">{t("Effective Ownership", "Πραγματική ιδιοκτησία")}</span>
            <span className="text-base font-bold text-stone-900">5.88%</span>
           </div>
           <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
@@ -650,8 +734,8 @@ export default function Fundraising({ user }: FundraisingProps) {
           <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about SAFE agreement' } }))}>
            <Download className="w-3 h-3 mr-1" /> SAFE
           </Button>
-          <Button size="sm" className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => { navigator.clipboard.writeText('https://cofounderbay.app/dataroom/safe-note'); showToast('Share link copied!'); }}>
-           <Share2 className="w-3 h-3 mr-1" /> Share
+          <Button size="sm" className="flex-1 h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => { navigator.clipboard.writeText('https://cofounderbay.app/dataroom/safe-note'); showToast(t("Share link copied!", "Ο σύνδεσμος αντιγράφηκε!")); }}>
+           <Share2 className="w-3 h-3 mr-1" /> {t("Share", "Κοινοποίηση")}
           </Button>
          </div>
         </Card>
@@ -671,14 +755,14 @@ export default function Fundraising({ user }: FundraisingProps) {
         <input
          type="text"
          ref={investorSearchRef}
-         placeholder={bothText("Search by name or focus...", "Όνομα ή τομέας...")}
+         placeholder={t("Search by name or focus...", "Αναζήτηση…")}
          value={investorSearch}
          onChange={(e) => setInvestorSearch(e.target.value)}
          className="w-full bg-white border border-stone-200 rounded-xl py-2 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
         />
        </div>
        <Button variant="outline" size="sm" className="h-8 text-sm rounded-xl gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockInvestors.map((item) => item.type)))]; const index = types.indexOf(investorType); setInvestorType(types[(index + 1) % types.length] ?? 'All'); }}>
-        <SlidersHorizontal className="w-3.5 h-3.5" /> {investorType === 'All' ? 'Filters' : investorType}
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {investorType === 'All' ? t("Filters", "Φίλτρα") : typeLabel(investorType)}
        </Button>
       </div>
 
@@ -697,13 +781,10 @@ export default function Fundraising({ user }: FundraisingProps) {
            </div>
            <div className="min-w-0">
             <h4 className="text-sm font-bold text-stone-900 leading-tight truncate">{inv.name}</h4>
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-             <span className="px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded text-xs font-semibold tracking-wide">{inv.type}</span>
-             <span className="text-xs text-stone-400 flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{inv.location}</span>
-            </div>
+            <FactLine className="mt-0.5" items={[typeLabel(inv.type), inv.location]} label={t("Investor facts", "Στοιχεία επενδυτή")} />
            </div>
           </div>
-          <Button variant="ghost" size="icon" aria-label="Watch" title="Watch" className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => setFavoriteInvestors(new Set(toggleId(listKeys.watch, inv.id)))}>
+          <Button variant="ghost" size="icon" aria-label={t("Watch", "Παρακολούθηση")} title={t("Watch", "Παρακολούθηση")} className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => setFavoriteInvestors(new Set(toggleId(listKeys.watch, inv.id)))}>
            <Star className="w-3.5 h-3.5" fill={favoriteInvestors.has(inv.id) ? 'currentColor' : 'none'} />
           </Button>
          </div>
@@ -720,18 +801,18 @@ export default function Fundraising({ user }: FundraisingProps) {
              tag === "Angel" ? "text-emerald-600" :
              "text-stone-600"
             )}>
-             <Tag className="w-2.5 h-2.5 inline mr-0.5" />{tag}
+             <Tag className="w-2.5 h-2.5 inline mr-0.5" />{tagLabel(tag)}
             </span>
            ))}
           </div>
          )}
 
-         <FactLine items={inv.focus.slice(0, 3)} label="Focus" />
+         <FactLine items={inv.focus.slice(0, 3)} label={t("Focus", "Εστίαση")} />
 
          <FactLine
           className="pt-2 border-t border-stone-100 text-stone-600"
           items={[inv.checkSize, inv.portfolio, crm ? `${crm.relationshipScore}%` : inv.stage[0]]}
-          label={crm ? 'Check, portfolio, relationship' : 'Check, portfolio, stage'}
+          label={crm ? t("Check, portfolio, relationship", "Check, χαρτοφυλάκιο, σχέση") : t("Check, portfolio, stage", "Check, χαρτοφυλάκιο, στάδιο")}
          />
 
          {/* Last Contact / Next Action */}
@@ -739,11 +820,11 @@ export default function Fundraising({ user }: FundraisingProps) {
           <div className="pt-1.5 border-t border-stone-100 space-y-1">
            <div className="flex items-center justify-between">
             <span className="text-xs text-stone-400 flex items-center gap-1">
-             <History className="w-2.5 h-2.5" /> Last contact: {crm.lastContact.slice(5)}
+             <History className="w-2.5 h-2.5" /> {t("Last contact", "Τελευταία επαφή")}: {formatDate(crm.lastContact)}
             </span>
            </div>
            <p className="text-xs text-stone-500 truncate">
-              Next: <span className="font-medium text-stone-700">{crm.nextAction}</span>
+              {t("Next", "Επόμενο")}: <span className="font-medium text-stone-700">{crm.nextAction}</span>
            </p>
           </div>
          )}
@@ -751,7 +832,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          {/* Actions */}
          <div className="flex gap-1.5 pt-1">
           <Button variant="outline" size="sm" className="flex-1 h-7 text-sm rounded-lg" onClick={() => navigate('/messages')}>
-           <Mail className="w-3 h-3 mr-1" /> Contact
+           <Mail className="w-3 h-3 mr-1" /> {t("Contact", "Επικοινωνία")}
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${inv.name}` } }))}>
            <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
@@ -769,11 +850,11 @@ export default function Fundraising({ user }: FundraisingProps) {
      <div className="space-y-4">
       <div className="flex items-center justify-between">
        <div>
-        <p className="text-xs font-semibold text-stone-400 tracking-wide">Programs</p>
-        <h3 className="text-base font-semibold text-stone-900">Accelerators, Grants & Studios</h3>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Programs", "Προγράμματα")}</p>
+        <h3 className="text-base font-semibold text-stone-900">{t("Accelerators, Grants & Studios", "Επιταχυντές, επιχορηγήσεις και studios")}</h3>
        </div>
        <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockPrograms.map((item) => item.type)))]; const index = types.indexOf(programType); setProgramType(types[(index + 1) % types.length] ?? 'All'); }}>
-        <SlidersHorizontal className="w-3.5 h-3.5" /> {programType === 'All' ? 'Filter' : programType}
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {programType === 'All' ? t("Filter", "Φίλτρο") : typeLabel(programType)}
        </Button>
       </div>
 
@@ -795,36 +876,34 @@ export default function Fundraising({ user }: FundraisingProps) {
              <h4 className="text-sm font-bold text-stone-900">{p.title}</h4>
              <div className="flex items-center gap-1 shrink-0">
               <div className={cn("w-1.5 h-1.5 rounded-full", p.match >= 90 ? "bg-emerald-500" : p.match >= 75 ? "bg-amber-500" : "bg-stone-300")} />
-              <span className="text-xs font-bold text-stone-600">{p.match}% match</span>
+              <span className="text-xs font-bold text-stone-600">{p.match}% {t("match", "ταίριασμα")}</span>
              </div>
             </div>
 
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-             <span className="text-xs text-stone-400 flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{p.location}</span>
-             <span className={cn("text-xs font-semibold", urgent ? "text-red-500" : "text-stone-400")}>
-              <Calendar className="w-2.5 h-2.5 inline mr-0.5" />
-              {p.deadline} {urgent && `· ${daysLeft}d left`}
-             </span>
-            </div>
+            <FactLine
+             className="mt-0.5"
+             items={[p.location, `${formatDate(p.deadline)}${urgent ? ` ${daysLeftText(daysLeft)}` : ''}`]}
+             label={t("Program facts", "Στοιχεία προγράμματος")}
+            />
 
-            <FactLine className="mt-2" items={p.tags} label="Tags" />
+            <FactLine className="mt-2" items={p.tags} label={t("Tags", "Ετικέτες")} />
            </div>
           </div>
 
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100">
            <div className="flex items-center gap-3">
             <div>
-             <p className="text-xs text-stone-400">Award</p>
+             <p className="text-xs text-stone-400">{t("Award", "Ποσό")}</p>
              <p className="text-sm font-bold text-stone-900">{p.grant}</p>
             </div>
             <div>
-             <p className="text-xs text-stone-400">Type</p>
-             <p className="text-xs font-semibold text-stone-700">{p.type}</p>
+             <p className="text-xs text-stone-400">{t("Type", "Τύπος")}</p>
+             <p className="text-xs font-semibold text-stone-700">{typeLabel(p.type)}</p>
             </div>
            </div>
            <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${p.title}` } }))}>Details</Button>
-            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${p.title}` } })); }}>Apply</Button>
+            <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${p.title}` } }))}>{t("Details", "Λεπτομέρειες")}</Button>
+            <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${p.title}` } })); }}>{t("Apply", "Αίτηση")}</Button>
            </div>
           </div>
          </div>
@@ -839,20 +918,20 @@ export default function Fundraising({ user }: FundraisingProps) {
      <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
        <div>
-        <p className="text-xs font-semibold text-stone-400 tracking-wide">Opportunities</p>
-        <h3 className="text-base font-semibold text-stone-900">Funding & Non-Dilutive Sources</h3>
+        <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Opportunities", "Ευκαιρίες")}</p>
+        <h3 className="text-base font-semibold text-stone-900">{t("Funding & Non-Dilutive Sources", "Πηγές χρηματοδότησης και μη αραιωτικές")}</h3>
        </div>
        <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockOpportunities.map((item) => item.type)))]; const index = types.indexOf(opportunityType); setOpportunityType(types[(index + 1) % types.length] ?? 'All'); }}>
-        <SlidersHorizontal className="w-3.5 h-3.5" /> {opportunityType === 'All' ? 'Filter' : opportunityType}
+        <SlidersHorizontal className="w-3.5 h-3.5" /> {opportunityType === 'All' ? t("Filter", "Φίλτρο") : typeLabel(opportunityType)}
        </Button>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
        {[
-        { label: "Open Opps",   value: "5",      icon: Target,   color: "text-stone-900" },
-        { label: "Total Capital", value: "$11M+", icon: BadgeDollarSign, color: "text-emerald-700" },
-        { label: "Avg Close",   value: "28d",    icon: Clock,    color: "text-stone-900" },
+        { label: t("Open Opps", "Ανοιχτές ευκαιρίες"),   value: "5",      icon: Target,   color: "text-stone-900" },
+        { label: t("Total Capital", "Συνολικό κεφάλαιο"), value: "$11M+", icon: BadgeDollarSign, color: "text-emerald-700" },
+        { label: t("Avg Close", "Μέσο κλείσιμο"),   value: "28d",    icon: Clock,    color: "text-stone-900" },
        ].map(({ label, value, icon: Icon, color }) => (
         <div key={label} className="bg-white border border-stone-100 rounded-2xl p-3 flex items-center gap-2.5">
          <div className="w-8 h-8 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center shrink-0">
@@ -881,25 +960,25 @@ export default function Fundraising({ user }: FundraisingProps) {
              <p className="text-xs text-stone-400 mt-0.5">{opp.org}</p>
             </div>
             <div className="shrink-0 text-right">
-             <p className="text-sm font-bold text-stone-900">{opp.amount}</p>
-             <p className="text-xs text-stone-400">{opp.type}</p>
+             <p className="text-sm font-bold text-stone-900">{moneyWords(opp.amount)}</p>
+             <p className="text-xs text-stone-400">{typeLabel(opp.type)}</p>
             </div>
            </div>
 
            <div className="flex items-center gap-3 mt-2">
-            <FactLine className="flex-1" items={opp.tags} label="Tags" />
+            <FactLine className="flex-1" items={opp.tags} label={t("Tags", "Ετικέτες")} />
             <span className={cn("text-xs font-semibold ml-auto shrink-0",
              opp.deadline === "Rolling" ? "text-emerald-600" : "text-stone-400"
             )}>
-             <Calendar className="w-2.5 h-2.5 inline mr-0.5" />{opp.deadline}
+             <Calendar className="w-2.5 h-2.5 inline mr-0.5" />{opp.deadline === "Rolling" ? t("Rolling", "Συνεχής") : formatDate(opp.deadline)}
             </span>
            </div>
           </div>
          </div>
 
          <div className="flex gap-1.5 mt-3 pt-3 border-t border-stone-100 justify-end">
-          <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${opp.title}` } }))}>Learn More</Button>
-          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${opp.title}` } })); }}>Apply Now</Button>
+          <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${opp.title}` } }))}>{t("Learn More", "Μάθετε περισσότερα")}</Button>
+          <Button size="sm" className="h-7 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${opp.title}` } })); }}>{t("Apply Now", "Αίτηση τώρα")}</Button>
          </div>
         </div>
        ))}
@@ -915,8 +994,8 @@ export default function Fundraising({ user }: FundraisingProps) {
       <div className="bg-white rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-sm">
        <div className="flex items-center justify-between">
         <div>
-         <h3 className="text-base font-semibold text-stone-900">Schedule Meeting</h3>
-         <p className="text-xs text-stone-400">Book time with investors</p>
+         <h3 className="text-base font-semibold text-stone-900">{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</h3>
+         <p className="text-xs text-stone-400">{t("Book time with investors", "Κλείστε ώρα με επενδυτές")}</p>
         </div>
         <button 
          onClick={() => setShowMeetingScheduler(false)}
@@ -928,40 +1007,40 @@ export default function Fundraising({ user }: FundraisingProps) {
 
        <div className="space-y-3">
         <div className="space-y-1.5">
-         <label className="text-xs font-semibold text-stone-500 tracking-wider">Investor</label>
+         <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Investor", "Επενδυτής")}</label>
          <select value={meetingInvestor} onChange={(e) => setMeetingInvestor(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200">
           {mockInvestors.map(inv => <option key={inv.id} value={inv.id}>{inv.name}</option>)}
          </select>
         </div>
         <div className="grid grid-cols-2 gap-3">
          <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-stone-500 tracking-wider">Date</label>
+          <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Date", "Ημερομηνία")}</label>
           <input type="date" className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
          </div>
          <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-stone-500 tracking-wider">Time</label>
+          <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Time", "Ώρα")}</label>
           <input type="time" value={meetingWhen} onChange={(e) => setMeetingWhen(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm" />
          </div>
         </div>
         <div className="space-y-1.5">
-         <label className="text-xs font-semibold text-stone-500 tracking-wider">Meeting Type</label>
+         <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Meeting Type", "Τύπος συνάντησης")}</label>
          <div className="flex gap-2">
           {["Video Call", "Phone", "Coffee", "Office"].map(type => (
            <button key={type} onClick={() => setSelectedMeetingType(type)} className={cn("px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors", selectedMeetingType === type ? "bg-stone-900 text-white border-stone-900" : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100")}>
-            {type}
+            {meetingTypeLabel(type)}
            </button>
           ))}
          </div>
         </div>
         <div className="space-y-1.5">
-         <label className="text-xs font-semibold text-stone-500 tracking-wider">Notes</label>
-         <textarea placeholder="Meeting agenda..." className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm h-20 resize-none" />
+         <label className="text-xs font-semibold text-stone-500 tracking-wider">{t("Notes", "Σημειώσεις")}</label>
+         <textarea placeholder={t("Meeting agenda...", "Ατζέντα συνάντησης...")} className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm h-20 resize-none" />
         </div>
        </div>
 
        <div className="flex gap-2 pt-2">
-        <Button variant="outline" className="flex-1 h-8 text-sm" onClick={() => setShowMeetingScheduler(false)}>Cancel</Button>
-        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = mockInvestors.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast('Meeting scheduled!'); }}>Schedule Meeting</Button>
+        <Button variant="outline" className="flex-1 h-8 text-sm" onClick={() => setShowMeetingScheduler(false)}>{t("Cancel", "Ακύρωση")}</Button>
+        <Button className="flex-1 h-8 text-sm bg-stone-900 text-white" onClick={() => { const investor = mockInvestors.find((item) => item.id === meetingInvestor); addSession({ id: String(Date.now()), title: `${selectedMeetingType} · ${investor?.name || 'Investor'}`, type: 'Meeting', time: meetingWhen || 'TBD', duration: '30m', location: selectedMeetingType, participants: [investor?.name || 'Investor'], priority: 'Medium' }); setShowMeetingScheduler(false); showToast(t("Meeting scheduled!", "Η συνάντηση προγραμματίστηκε!")); }}>{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</Button>
        </div>
       </div>
      </div>
@@ -973,12 +1052,12 @@ export default function Fundraising({ user }: FundraisingProps) {
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[min(92dvh,100%)] overflow-y-auto p-4 sm:p-5 space-y-4 shadow-sm">
        <div className="flex items-center justify-between">
         <div>
-         <h3 className="text-base font-semibold text-stone-900">Data Room</h3>
-         <p className="text-xs text-stone-400">Manage investor documents</p>
+         <h3 className="text-base font-semibold text-stone-900">{t("Data Room", "Data room")}</h3>
+         <p className="text-xs text-stone-400">{t("Manage investor documents", "Διαχείριση εγγράφων επενδυτών")}</p>
         </div>
         <button 
          type="button"
-         aria-label="Close data room"
+         aria-label={t("Close data room", "Κλείσιμο data room")}
          onClick={() => setShowDocumentRoom(false)}
          className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
         >
@@ -1001,8 +1080,8 @@ export default function Fundraising({ user }: FundraisingProps) {
           <div className="w-8 h-8 rounded-lg bg-stone-100 mb-2 flex items-center justify-center">
            <FolderOpen className="w-4 h-4 text-stone-500" />
           </div>
-          <p className="text-sm font-medium text-stone-900">{folder.name}</p>
-          <p className="text-xs text-stone-400">{folder.count} files</p>
+          <p className="text-sm font-medium text-stone-900">{labelOf(folder.name)}</p>
+          <p className="text-xs text-stone-400">{folder.count} {t("files", "αρχεία")}</p>
          </button>
         ))}
        </div>
@@ -1010,10 +1089,10 @@ export default function Fundraising({ user }: FundraisingProps) {
        <div className="border border-stone-100 rounded-xl p-3 space-y-2">
         <div className="flex items-center justify-between pb-2 border-b border-stone-100">
          <span className="text-xs font-semibold text-stone-500 tracking-wider">
-          {selectedFolder ? documentFolders.find(f => f.id === selectedFolder)?.name : "All Documents"}
+          {selectedFolder ? labelOf(documentFolders.find(f => f.id === selectedFolder)?.name ?? "") : t("All Documents", "Όλα τα έγγραφα")}
          </span>
          <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
-          <Plus className="w-3 h-3 mr-1" /> Upload
+          <Plus className="w-3 h-3 mr-1" /> {t("Upload", "Μεταφόρτωση")}
          </Button>
          <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10) }); const names = new Set(next.map((item) => item.name)); setRoomFiles([...next, ...seedRoomFiles.filter((item) => !names.has(item.name))]); e.target.value = ''; }} />
         </div>
@@ -1026,7 +1105,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             </div>
             <div>
              <p className="text-sm font-medium text-stone-900">{file.name}</p>
-             <p className="text-xs text-stone-400">{file.size} · Updated {file.updated.slice(5)}</p>
+             <p className="text-xs text-stone-400">{file.size} · {t("Updated", "Ενημερώθηκε")} {formatDate(file.updated)}</p>
             </div>
            </div>
            <div className="flex items-center gap-2">
@@ -1045,9 +1124,9 @@ export default function Fundraising({ user }: FundraisingProps) {
        <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2 text-xs text-stone-400">
          <Shield className="w-3.5 h-3.5" />
-         <span>End-to-end encrypted. Access logged.</span>
+         <span>{t("End-to-end encrypted. Access logged.", "Κρυπτογράφηση από άκρο σε άκρο. Η πρόσβαση καταγράφεται.")}</span>
         </div>
-        <Button variant="outline" className="h-8 text-sm" onClick={() => setShowDocumentRoom(false)}>Close</Button>
+        <Button variant="outline" className="h-8 text-sm" onClick={() => setShowDocumentRoom(false)}>{t("Close", "Κλείσιμο")}</Button>
        </div>
       </div>
      </div>

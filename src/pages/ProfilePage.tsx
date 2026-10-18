@@ -48,10 +48,14 @@ import Button from '../components/ui/Button';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { cn } from '../lib/utils';
+import { useT } from '../lib/language';
+import { labelOf } from '../lib/labels';
+import { formatDate } from '../lib/dates';
 import { listKeys, readIds, saveRequest, toggleId } from '../lib/localLists';
 import { lookupPerson } from '../lib/people';
 import { useAuth } from '../App';
 import { avatarFor, findCast } from '../data/cast';
+import FactLine from '../components/ui/FactLine';
 import { UserProfile, UserSkill, Endorsement, ReadinessScore } from '../types';
 
 enum OperationType {
@@ -107,21 +111,21 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 // ── Activity feed mock data ──────────────────────────────────────────────────
 const PROFILE_ACTIVITY = [
- { id: 'a1', type: 'endorsement', text: 'Received endorsement for Machine Learning', time: '2h ago', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
- { id: 'a2', type: 'connection', text: 'Connected with Elena Rodriguez', time: '5h ago', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
- { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', time: '1d ago', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' },
- { id: 'a4', type: 'project', text: 'Updated venture "TechFlow AI"', time: '2d ago', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
- { id: 'a5', type: 'skill', text: 'Added React & TypeScript skills', time: '3d ago', icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' },
- { id: 'a6', type: 'view', text: 'Profile viewed 38 times this week', time: '4d ago', icon: Eye, color: 'text-stone-500', bg: 'bg-stone-50' },
+ { id: 'a1', type: 'endorsement', text: 'Received endorsement for Machine Learning', textEl: 'Νέα σύσταση για Machine Learning', time: '2h ago', timeEl: 'πριν από 2 ώρες', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
+ { id: 'a2', type: 'connection', text: 'Connected with Elena Rodriguez', textEl: 'Σύνδεση με Elena Rodriguez', time: '5h ago', timeEl: 'πριν από 5 ώρες', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+ { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', textEl: 'Ορόσημο: 50+ συνδέσεις', time: '1d ago', timeEl: 'πριν από 1 ημέρα', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' },
+ { id: 'a4', type: 'project', text: 'Updated venture "TechFlow AI"', textEl: 'Ενημέρωση εγχειρήματος «TechFlow AI»', time: '2d ago', timeEl: 'πριν από 2 ημέρες', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
+ { id: 'a5', type: 'skill', text: 'Added React & TypeScript skills', textEl: 'Προσθήκη δεξιοτήτων React και TypeScript', time: '3d ago', timeEl: 'πριν από 3 ημέρες', icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' },
+ { id: 'a6', type: 'view', text: 'Profile viewed 38 times this week', textEl: '38 προβολές προφίλ αυτή την εβδομάδα', time: '4d ago', timeEl: 'πριν από 4 ημέρες', icon: Eye, color: 'text-stone-500', bg: 'bg-stone-50' },
 ];
 // ── Achievements / Badges ────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
- { id: 'b1', name: 'Early Adopter', desc: 'Joined in the first 1,000 users', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100', earned: true },
- { id: 'b2', name: 'Connector', desc: '25+ accepted connections', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', earned: true },
- { id: 'b3', name: 'Thought Leader', desc: '10+ endorsements received', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', earned: true },
- { id: 'b4', name: 'Mentor Star', desc: 'Complete 5 mentoring sessions', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', earned: false },
- { id: 'b5', name: 'Pitch Pro', desc: 'Win a pitch competition', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', earned: false },
- { id: 'b6', name: 'Full Profile', desc: '100% profile completion', icon: CheckCircle2, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-teal-100', earned: false },
+ { id: 'b1', name: 'Early Adopter', nameEl: 'Μέλος από την αρχή', desc: 'Joined in the first 1,000 users', descEl: 'Ένα από τα πρώτα 1.000 μέλη', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100', earned: true },
+ { id: 'b2', name: 'Connector', nameEl: 'Συνδετικός κρίκος', desc: '25+ accepted connections', descEl: '25+ αποδεκτές συνδέσεις', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', earned: true },
+ { id: 'b3', name: 'Thought Leader', nameEl: 'Σημείο αναφοράς', desc: '10+ endorsements received', descEl: '10+ συστάσεις από άλλα μέλη', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', earned: true },
+ { id: 'b4', name: 'Mentor Star', nameEl: 'Αστέρι καθοδήγησης', desc: 'Complete 5 mentoring sessions', descEl: 'Ολοκλήρωσε 5 συνεδρίες καθοδήγησης', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', earned: false },
+ { id: 'b5', name: 'Pitch Pro', nameEl: 'Νικητήριο pitch', desc: 'Win a pitch competition', descEl: 'Κέρδισε έναν διαγωνισμό pitch', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', earned: false },
+ { id: 'b6', name: 'Full Profile', nameEl: 'Πλήρες προφίλ', desc: '100% profile completion', descEl: 'Προφίλ ολοκληρωμένο 100%', icon: CheckCircle2, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-teal-100', earned: false },
 ];
 // ── Mutual connections / People also viewed ──────────────────────────────────
 const MUTUAL_CONNECTIONS = [
@@ -159,6 +163,12 @@ const MOCK_READINESS: ReadinessScore = {
  },
  updatedAt: new Date().toISOString(),
 };
+const AVAILABILITY_EL: Record<string, string> = {
+ Immediate: 'Άμεσα',
+ '1 week notice': 'Σε 1 εβδομάδα',
+ '2 weeks notice': 'Σε 2 εβδομάδες',
+ '1 month notice': 'Σε 1 μήνα',
+};
 function fallbackProfile(profileId: string, ownName?: string | null): UserProfile {
  const person = lookupPerson(profileId);
  return {
@@ -187,6 +197,7 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
  } as UserProfile;
 }
 export default function ProfilePage() {
+ const t = useT();
  const { id } = useParams();
  const { user: currentUser } = useAuth();
  const navigate = useNavigate();
@@ -335,13 +346,13 @@ export default function ProfilePage() {
      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
       <X className="w-8 h-8" />
      </div>
-     <h2 className="text-lg font-medium text-stone-900">Profile Error</h2>
-     <p className="text-stone-500">{error || 'Profile not found'}</p>
+     <h2 className="text-lg font-medium text-stone-900">{t('Profile Error', 'Σφάλμα προφίλ')}</h2>
+     <p className="text-stone-500">{error || t('Profile not found', 'Το προφίλ δεν βρέθηκε')}</p>
      <button 
       onClick={() => navigate('/dashboard')}
       className="w-full py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all"
      >
-      Back to Dashboard
+      {t('Back to Dashboard', 'Επιστροφή στον πίνακα')}
      </button>
     </div>
    </div>
@@ -349,23 +360,23 @@ export default function ProfilePage() {
  }
 
  const matchGaps = [
-  { ok: !!(profile.skills && profile.skills.length), key: 'Skills', why: 'The scorer uses skills to see what you cover.' },
-  { ok: !!(profile.lookingFor && profile.lookingFor.length), key: 'Looking for', why: 'Matches rank people who cover what you still lack.' },
-  { ok: !!profile.industry, key: 'Industry', why: 'Same industry is a market dimension.' },
-  { ok: !!profile.stage, key: 'Stage', why: 'Stage distance is 15% of the match score.' },
-  { ok: !!profile.commitment, key: 'Commitment', why: 'Full-time vs part-time is scored, not guessed.' },
-  { ok: !!profile.location, key: 'Location', why: 'Working hours come from city and time zone.' },
+  { ok: !!(profile.skills && profile.skills.length), key: t('Skills', 'Δεξιότητες'), why: t('The scorer uses skills to see what you cover.', 'Η βαθμολόγηση χρησιμοποιεί τις δεξιότητες για να δει τι καλύπτεις.') },
+  { ok: !!(profile.lookingFor && profile.lookingFor.length), key: t('Looking for', 'Τι αναζητάς'), why: t('Matches rank people who cover what you still lack.', 'Οι αντιστοιχίσεις κατατάσσουν ψηλότερα τα άτομα που καλύπτουν ό,τι σου λείπει ακόμη.') },
+  { ok: !!profile.industry, key: t('Industry', 'Κλάδος'), why: t('Same industry is a market dimension.', 'Ο ίδιος κλάδος μετράει ως διάσταση αγοράς.') },
+  { ok: !!profile.stage, key: t('Stage', 'Στάδιο'), why: t('Stage distance is 15% of the match score.', 'Η απόσταση σταδίου είναι το 15% του σκορ αντιστοίχισης.') },
+  { ok: !!profile.commitment, key: t('Commitment', 'Δέσμευση'), why: t('Full-time vs part-time is scored, not guessed.', 'Η πλήρης ή μερική απασχόληση βαθμολογείται, δεν μαντεύεται.') },
+  { ok: !!profile.location, key: t('Location', 'Τοποθεσία'), why: t('Working hours come from city and time zone.', 'Οι ώρες εργασίας προκύπτουν από την πόλη και τη ζώνη ώρας.') },
  ].filter((item) => !item.ok);
  const showMatchStatus = isOwnProfile && (matchGaps.length > 0 || (profile.profileCompletionScore ?? 100) < 80);
  const matchNote = matchGaps.length
   ? matchGaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
-  : 'Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.';
+  : t('Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.', 'Τα πεδία δεξιότητες, τι αναζητάς, κλάδος, στάδιο και δέσμευση είναι συμπληρωμένα — τα ίδια που βαθμολογούν οι αντιστοιχίσεις.');
 
  return (
   <div className="w-full px-2 sm:px-6 lg:px-8 pb-24 pt-4 sm:pt-8 space-y-6">
    <button type="button" onClick={() => navigate(-1)} className="lg:hidden inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-stone-600">
     <ArrowLeft className="w-4 h-4" />
-    Back
+    {t('Back', 'Πίσω')}
    </button>
    {/* Profile Header */}
    <div className="relative lg:pr-36">
@@ -377,7 +388,7 @@ export default function ProfilePage() {
       <div className="relative">
        <img 
         src={currentUser?.photoURL || avatarFor(profile.uid, 200)} 
-        alt={isOwnProfile ? (currentUser?.displayName || 'User') : (profile.fullName || 'Founder')} 
+        alt={isOwnProfile ? (currentUser?.displayName || t('User', 'Μέλος')) : labelOf(profile.fullName || 'Founder')} 
         className="w-20 h-20 sm:w-28 lg:w-36 rounded-2xl object-cover border-4 border-white shadow-sm"
         referrerPolicy="no-referrer"
        />
@@ -390,7 +401,7 @@ export default function ProfilePage() {
        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
          <h1 className="text-lg font-medium text-stone-900 tracking-tight">
-          {isOwnProfile ? (currentUser?.displayName || 'Founder') : (profile.fullName || 'Founder')}
+          {isOwnProfile ? (currentUser?.displayName || t('Founder', 'Ιδρυτής')) : labelOf(profile.fullName || 'Founder')}
          </h1>
          {isEditing ? (
           <input 
@@ -398,10 +409,10 @@ export default function ProfilePage() {
            value={editForm.headline || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, headline: e.target.value }))}
            className="w-full px-4 py-2 mt-2 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-base"
-           placeholder="Headline"
+           placeholder={t('Headline', 'Τίτλος')}
           />
          ) : (
-          <p className="text-lg font-medium text-stone-500 mt-1">{profile.headline}</p>
+          <p className="text-lg font-medium text-stone-500 mt-1">{labelOf(profile.headline)}</p>
          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -412,7 +423,7 @@ export default function ProfilePage() {
             className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
            >
             <Check className="w-5 h-5" />
-            Save Changes
+            {t('Save Changes', 'Αποθήκευση αλλαγών')}
            </button>
           ) : (
            <button 
@@ -420,14 +431,14 @@ export default function ProfilePage() {
             className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md"
            >
             <Edit3 className="w-5 h-5" />
-            Edit Profile
+            {t('Edit Profile', 'Επεξεργασία προφίλ')}
            </button>
           )
          ) : (
           <>
            <button type="button" onClick={() => id && saveRequest({ id, fullName: profile?.fullName || 'Founder', role: profile?.role || 'FOUNDER', industry: profile?.industry || '', location: profile?.location || '', note: '', status: 'Pending' })} className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-4 py-2 bg-stone-900 text-white rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all">
             <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-            Connect
+            {t('Connect', 'Σύνδεση')}
            </button>
            <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
             <MessageSquare className="w-5 h-5" />
@@ -443,38 +454,33 @@ export default function ProfilePage() {
         </div>
        </div>
 
-       <div className="flex flex-wrap gap-4 text-sm font-medium text-stone-500">
-        <div className="flex items-center gap-1.5">
-         <MapPin className="w-4 h-4" />
-         {isEditing ? (
+       <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-stone-500">
+        {isEditing ? (
+         <div className="flex items-center gap-1.5">
+          <MapPin className="w-4 h-4" />
           <input 
            type="text" 
            value={editForm.location || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
            className="px-3 py-1 bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900"
-           placeholder="Location"
+           placeholder={t('Location', 'Τοποθεσία')}
           />
-         ) : (
-          profile.location || 'Remote'
-         )}
-        </div>
-        <div className="flex items-center gap-1.5">
-         <Briefcase className="w-4 h-4" />
-         {profile.stage} stage
-        </div>
-        <div className="flex items-center gap-1.5">
-         <Target className="w-4 h-4" />
-         {profile.commitment}
-        </div>
-        {profile.availability && (
-         <div className="flex items-center gap-1.5">
-          <CalendarIcon className="w-4 h-4" />
-          {profile.availability}
          </div>
+        ) : (
+         <FactLine
+          className="text-sm text-stone-500"
+          items={[
+           profile.location || t('Remote', 'Εξ αποστάσεως'),
+           labelOf(profile.stage),
+           labelOf(profile.commitment),
+           profile.availability ? t(profile.availability, AVAILABILITY_EL[profile.availability] ?? profile.availability) : '',
+          ]}
+          label={t('Profile facts', 'Στοιχεία προφίλ')}
+         />
         )}
         <div className="flex items-center gap-1.5">
          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-         80% Match Score
+         {t('80% Match Score', 'Σκορ αντιστοίχισης 80%')}
         </div>
         {showMatchStatus && (
          <div
@@ -487,7 +493,7 @@ export default function ProfilePage() {
           }}
          >
           <span tabIndex={0} className="cursor-default underline decoration-stone-300 underline-offset-4" aria-describedby="match-fields-note">
-           {profile.profileCompletionScore ?? 0}% complete
+           {t(`${profile.profileCompletionScore ?? 0}% complete`, `${profile.profileCompletionScore ?? 0}% ολοκληρωμένο`)}
           </span>
           <div
            id="match-fields-note"
@@ -499,7 +505,7 @@ export default function ProfilePage() {
           >
            <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 shadow-sm">
             <p className="text-sm leading-relaxed text-stone-500">
-             <span className="font-medium text-stone-700">Matching reads these fields ({profile.profileCompletionScore ?? 0}% complete).</span>{' '}
+             <span className="font-medium text-stone-700">{t(`Matching reads these fields (${profile.profileCompletionScore ?? 0}% complete).`, `Η αντιστοίχιση βασίζεται σε αυτά τα πεδία (ολοκλήρωση ${profile.profileCompletionScore ?? 0}%).`)}</span>{' '}
              {matchNote}
             </p>
             <button
@@ -507,7 +513,7 @@ export default function ProfilePage() {
              className="mt-1 min-h-11 text-sm text-stone-500 hover:text-stone-800"
              onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}
             >
-             Ask what the team still lacks
+             {t('Ask what the team still lacks', 'Ρώτα τι λείπει ακόμη από την ομάδα')}
             </button>
            </div>
           </div>
@@ -524,7 +530,7 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6">
      {/* About Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">About Me</h3>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('About Me', 'Σχετικά με μένα')}</h3>
       {isEditing ? (
        <div className="space-y-4">
         <textarea 
@@ -532,13 +538,13 @@ export default function ProfilePage() {
          onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
          rows={4}
          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900 text-base"
-         placeholder="Tell us about yourself..."
+         placeholder={t('Tell us about yourself...', 'Πες μας για σένα…')}
         />
-        <p className="text-xs text-stone-500 mt-2">Add more details about your professional experience and values highly increases match accuracy.</p>
+        <p className="text-xs text-stone-500 mt-2">{t('Add more details about your professional experience and values highly increases match accuracy.', 'Περισσότερες λεπτομέρειες για την επαγγελματική σου εμπειρία και τις αξίες σου αυξάνουν πολύ την ακρίβεια της αντιστοίχισης.')}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-stone-100">
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">LinkedIn URL</label>
+          <label className="block text-sm font-medium text-stone-500 mb-1">{t('LinkedIn URL', 'Σύνδεσμος LinkedIn')}</label>
           <input 
            type="url" 
            value={editForm.linkedinUrl || ''}
@@ -548,7 +554,7 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">GitHub URL</label>
+          <label className="block text-sm font-medium text-stone-500 mb-1">{t('GitHub URL', 'Σύνδεσμος GitHub')}</label>
           <input 
            type="url" 
            value={editForm.githubUrl || ''}
@@ -558,7 +564,7 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">Portfolio URL</label>
+          <label className="block text-sm font-medium text-stone-500 mb-1">{t('Portfolio URL', 'Σύνδεσμος portfolio')}</label>
           <input 
            type="url" 
            value={editForm.portfolioUrl || ''}
@@ -568,34 +574,34 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">Availability</label>
+          <label className="block text-sm font-medium text-stone-500 mb-1">{t('Availability', 'Διαθεσιμότητα')}</label>
           <select
            value={editForm.availability || 'Immediate'}
            onChange={(e) => setEditForm(prev => ({ ...prev, availability: e.target.value }))}
            className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900 cursor-pointer"
           >
-           <option value="Immediate">Immediate</option>
-           <option value="1 week notice">1 week notice</option>
-           <option value="2 weeks notice">2 weeks notice</option>
-           <option value="1 month notice">1 month notice</option>
+           <option value="Immediate">{t('Immediate', AVAILABILITY_EL['Immediate'])}</option>
+           <option value="1 week notice">{t('1 week notice', AVAILABILITY_EL['1 week notice'])}</option>
+           <option value="2 weeks notice">{t('2 weeks notice', AVAILABILITY_EL['2 weeks notice'])}</option>
+           <option value="1 month notice">{t('1 month notice', AVAILABILITY_EL['1 month notice'])}</option>
           </select>
          </div>
         </div>
        </div>
       ) : (
        <p className="text-stone-600 leading-relaxed whitespace-pre-wrap">
-        {profile.bio || 'No bio provided yet.'}
+        {profile.bio || t('No bio provided yet.', 'Δεν έχει προστεθεί ακόμη βιογραφικό.')}
        </p>
       )}
      </div>
 
      {/* Experience / Projects */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Experience & Projects</h3>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Experience & Projects', 'Εμπειρία και έργα')}</h3>
       <div className="space-y-8">
        {[
-        { title: 'Founder & CEO', company: 'TechFlow AI', period: '2021 - Present', desc: 'Building the future of automated logistics using computer vision.' },
-        { title: 'Senior Product Manager', company: 'Google', period: '2018 - 2021', desc: 'Led the development of core search features for mobile users.' },
+        { title: 'Founder & CEO', company: 'TechFlow AI', period: '2021 - Present', periodEl: '2021 - Σήμερα', desc: 'Building the future of automated logistics using computer vision.' },
+        { title: 'Senior Product Manager', company: 'Google', period: '2018 - 2021', periodEl: '2018 - 2021', desc: 'Led the development of core search features for mobile users.' },
        ].map((exp, idx) => (
         <div key={idx} className="flex gap-6 group">
          <div className="flex flex-col items-center">
@@ -609,7 +615,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 text-sm text-stone-500 mt-1">
            <span className="font-medium">{exp.company}</span>
            <span>•</span>
-           <span>{exp.period}</span>
+           <span>{t(exp.period, exp.periodEl)}</span>
           </div>
           <p className="text-sm text-stone-600 mt-3 leading-relaxed">{exp.desc}</p>
          </div>
@@ -623,9 +629,9 @@ export default function ProfilePage() {
       <div className="flex items-center justify-between">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Activity className="w-4 h-4 text-stone-400" />
-        Recent Activity
+        {t('Recent Activity', 'Πρόσφατη δραστηριότητα')}
        </h3>
-       <span className="text-xs text-stone-400 font-medium">Last 7 days</span>
+       <span className="text-xs text-stone-400 font-medium">{t('Last 7 days', 'Τελευταίες 7 ημέρες')}</span>
       </div>
       <div className="space-y-1">
        {PROFILE_ACTIVITY.map((item, idx) => (
@@ -640,10 +646,10 @@ export default function ProfilePage() {
           <item.icon className="w-4 h-4" />
          </div>
          <div className="flex-1 min-w-0">
-          <p className="text-sm text-stone-700 leading-snug">{item.text}</p>
+          <p className="text-sm text-stone-700 leading-snug">{t(item.text, item.textEl)}</p>
           <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1">
            <Clock className="w-3 h-3" />
-           {item.time}
+           {t(item.time, item.timeEl)}
           </p>
          </div>
         </motion.div>
@@ -656,11 +662,11 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6">
 {/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Skills & Endorsements</h3>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>
 
       <div className="flex flex-wrap gap-2">
        {Array.isArray(profile.skills) && profile.skills.length === 0 && (
-        <p className="text-sm text-stone-500">No skills yet.</p>
+        <p className="text-sm text-stone-500">{t('No skills yet.', 'Δεν υπάρχουν ακόμη δεξιότητες.')}</p>
        )}
        {(profile.skills || ['Product Strategy', 'Machine Learning', 'React', 'Node.js', 'Venture Capital', 'Growth Hacking']).map(skill => {
         const skillName = typeof skill === 'string' ? skill : (skill as any).name;
@@ -673,7 +679,7 @@ export default function ProfilePage() {
           <div className="px-4 py-2 flex flex-col justify-center">
            <span className="text-stone-900 text-sm font-medium">{skillName}</span>
            {skillProficiency > 0 && (
-            <div className="flex items-center gap-0.5 mt-0.5" title={`Proficiency: ${skillProficiency}/5`}>
+            <div className="flex items-center gap-0.5 mt-0.5" title={t(`Proficiency: ${skillProficiency}/5`, `Επίπεδο: ${skillProficiency}/5`)}>
              {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className={cn("w-2.5 h-2.5", i < skillProficiency ? "text-amber-400 fill-amber-400" : "text-stone-300")} />
              ))}
@@ -696,7 +702,7 @@ export default function ProfilePage() {
              "px-3 py-2 border-l border-stone-100 transition-all flex items-center justify-center",
              hasEndorsed ? "bg-emerald-50 text-emerald-600 cursor-default" : "bg-white text-stone-400 hover:bg-stone-900 hover:text-white"
             )}
-            title={hasEndorsed ? "Endorsed" : "Endorse skill"}
+            title={hasEndorsed ? t("Endorsed", "Έκανες σύσταση") : t("Endorse skill", "Σύσταση δεξιότητας")}
            >
             {hasEndorsed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
            </button>
@@ -717,13 +723,13 @@ export default function ProfilePage() {
          className="p-6 bg-stone-50 rounded-2xl border border-stone-200 space-y-4"
         >
          <div className="flex items-center justify-between">
-          <h4 className="font-medium text-stone-900">Endorse for {selectedSkillForEndorsement}</h4>
+          <h4 className="font-medium text-stone-900">{t('Endorse for', 'Σύσταση για')} {selectedSkillForEndorsement}</h4>
           <button onClick={() => setSelectedSkillForEndorsement('')} className="text-stone-400 hover:text-stone-900">
            <X className="w-5 h-5" />
           </button>
          </div>
          <textarea 
-          placeholder="Add a brief comment (optional)..."
+          placeholder={t('Add a brief comment (optional)...', 'Πρόσθεσε ένα σύντομο σχόλιο (προαιρετικά)…')}
           value={endorsementComment}
           onChange={(e) => setEndorsementComment(e.target.value)}
           className="w-full p-4 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
@@ -734,7 +740,7 @@ export default function ProfilePage() {
           disabled={isEndorsing}
           className="w-full h-10 rounded-xl bg-stone-900 text-white font-medium text-sm"
          >
-          {isEndorsing ? 'Endorsing...' : 'Confirm Endorsement'}
+          {isEndorsing ? t('Endorsing...', 'Αποστολή…') : t('Confirm Endorsement', 'Επιβεβαίωση σύστασης')}
          </Button>
         </motion.div>
        )}
@@ -745,10 +751,10 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
          <h4 className="text-sm font-medium text-stone-400 tracking-wide flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-400" />
-          Recent Endorsements
+          {t('Recent Endorsements', 'Πρόσφατες συστάσεις')}
          </h4>
          <span className="text-xs text-stone-400 font-medium bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-100">
-          {displayEndorsements.length} total
+          {displayEndorsements.length} {t('total', 'συνολικά')}
          </span>
         </div>
         <div className="space-y-3">
@@ -766,7 +772,7 @@ export default function ProfilePage() {
            <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center justify-between">
              <p className="text-sm text-stone-900">
-              <span className="font-medium">{findCast(endorsement.endorserId)?.fullName || 'Someone'}</span> endorsed for{' '}
+              <span className="font-medium">{findCast(endorsement.endorserId)?.fullName || t('Someone', 'Κάποιο μέλος')}</span> {t('endorsed for', 'έκανε σύσταση για')}{' '}
               <span className="font-semibold text-stone-900 bg-amber-50 px-1.5 py-0.5 rounded-md text-xs border border-amber-100">{endorsement.skillId}</span>
              </p>
             </div>
@@ -775,7 +781,7 @@ export default function ProfilePage() {
             )}
             <p className="text-[10px] text-stone-400 flex items-center gap-1">
              <Clock className="w-3 h-3" />
-             {endorsement.createdAt ? new Date(endorsement.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'}
+             {endorsement.createdAt ? formatDate(endorsement.createdAt) : t('Recently', 'Πρόσφατα')}
             </p>
            </div>
            <div className="shrink-0 flex items-start">
@@ -793,10 +799,10 @@ export default function ProfilePage() {
       <div className="flex items-center justify-between">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Trophy className="w-4 h-4 text-amber-500" />
-        Achievements
+        {t('Achievements', 'Επιτεύγματα')}
        </h3>
        <span className="text-xs text-stone-400 font-medium">
-        {ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length} earned
+        {ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length} {t('earned', 'κερδισμένα')}
        </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -815,8 +821,8 @@ export default function ProfilePage() {
           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
          </div>
          <div>
-          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-400")}>{badge.name}</p>
-          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{badge.desc}</p>
+          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-400")}>{t(badge.name, badge.nameEl)}</p>
+          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{t(badge.desc, badge.descEl)}</p>
          </div>
          {badge.earned && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
@@ -832,18 +838,18 @@ export default function ProfilePage() {
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Heart className="w-4 h-4 text-rose-400" />
-        Open To
+        {t('Open To', 'Ενδιαφέρομαι για')}
        </h3>
        <div className="space-y-2">
         {[
-         { label: 'Co-founder matching', active: true },
-         { label: 'Mentorship sessions', active: true },
-         { label: 'Advisory roles', active: false },
-         { label: 'Investment opportunities', active: false },
-         { label: 'Speaking invitations', active: true },
+         { label: 'Co-founder matching', labelEl: 'Αντιστοίχιση συνιδρυτών', active: true },
+         { label: 'Mentorship sessions', labelEl: 'Συνεδρίες καθοδήγησης', active: true },
+         { label: 'Advisory roles', labelEl: 'Συμβουλευτικοί ρόλοι', active: false },
+         { label: 'Investment opportunities', labelEl: 'Επενδυτικές ευκαιρίες', active: false },
+         { label: 'Speaking invitations', labelEl: 'Προσκλήσεις για ομιλίες', active: true },
         ].map(item => (
          <div key={item.label} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50 transition-colors">
-          <span className="text-sm text-stone-700">{item.label}</span>
+          <span className="text-sm text-stone-700">{t(item.label, item.labelEl)}</span>
           <div className={cn(
            "w-8 h-5 rounded-full flex items-center transition-all cursor-pointer",
            item.active ? "bg-emerald-500 justify-end" : "bg-stone-200 justify-start"
@@ -854,24 +860,24 @@ export default function ProfilePage() {
         ))}
        </div>
        <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">
-        These preferences are visible to other users and affect your match suggestions.
+        {t('These preferences are visible to other users and affect your match suggestions.', 'Αυτές οι προτιμήσεις φαίνονται σε άλλα μέλη και επηρεάζουν τις προτάσεις αντιστοίχισης.')}
        </p>
       </div>
      )}
 {/* Social Links */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Connect</h3>
+      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Connect', 'Σύνδεση')}</h3>
       <div className="space-y-4">
        {profile.linkedinUrl && (
         <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Linkedin className="w-5 h-5" />
-         LinkedIn Profile
+         {t('LinkedIn Profile', 'Προφίλ LinkedIn')}
         </a>
        )}
        {profile.githubUrl && (
         <a href={profile.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Github className="w-5 h-5" />
-         GitHub Portfolio
+         {t('GitHub Portfolio', 'Προφίλ GitHub')}
         </a>
        )}
        {profile.twitterUrl && (
@@ -883,11 +889,11 @@ export default function ProfilePage() {
        {profile.portfolioUrl && (
         <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Globe className="w-5 h-5" />
-         Personal Website
+         {t('Personal Website', 'Προσωπικός ιστότοπος')}
         </a>
        )}
        {!profile.linkedinUrl && !profile.githubUrl && !profile.twitterUrl && !profile.portfolioUrl && (
-        <p className="text-stone-500 text-sm">No social links added yet.</p>
+        <p className="text-stone-500 text-sm">{t('No social links added yet.', 'Δεν έχουν προστεθεί ακόμη σύνδεσμοι κοινωνικών δικτύων.')}</p>
        )}
       </div>
      </div>
@@ -904,13 +910,13 @@ export default function ProfilePage() {
           <Sparkles className="w-4 h-4 text-amber-400" />
          </div>
          <div>
-          <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? 'AI Profile Insight' : 'AI Match Analysis'}</h3>
-          <p className="text-[10px] text-stone-500">Powered by CoFounderBay AI</p>
+          <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
+          <p className="text-[10px] text-stone-500">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
          </div>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-400">{isOwnProfile ? 'Profile strength' : 'Overall compatibility'}</span>
+          <span className="text-stone-400">{isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
           <span className="text-white font-semibold">84%</span>
          </div>
          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -923,20 +929,20 @@ export default function ProfilePage() {
          </div>
          <div className="grid grid-cols-3 gap-2 pt-2">
           {[
-           { label: 'Skills', pct: 92 },
-           { label: 'Values', pct: 78 },
-           { label: 'Goals', pct: 81 },
+           { label: 'Skills', labelEl: 'Δεξιότητες', pct: 92 },
+           { label: 'Values', labelEl: 'Αξίες', pct: 78 },
+           { label: 'Goals', labelEl: 'Στόχοι', pct: 81 },
           ].map(d => (
            <div key={d.label} className="text-center p-2 bg-white/5 rounded-lg border border-white/5">
             <p className="text-white font-semibold text-sm">{d.pct}%</p>
-            <p className="text-[10px] text-stone-500">{d.label}</p>
+            <p className="text-[10px] text-stone-500">{t(d.label, d.labelEl)}</p>
            </div>
           ))}
          </div>
          <p className="text-xs text-stone-400 leading-relaxed italic pt-1">
           {isOwnProfile
-           ? '"Strong technical profile with excellent product thinking. Consider adding more market validation artifacts to boost your readiness score."'
-           : '"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."'
+           ? t('"Strong technical profile with excellent product thinking. Consider adding more market validation artifacts to boost your readiness score."', '«Ισχυρό τεχνικό προφίλ με εξαιρετική σκέψη προϊόντος. Πρόσθεσε περισσότερα στοιχεία επικύρωσης αγοράς για να ανεβάσεις το readiness score σου.»')
+           : t('"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."', '«Συμπληρωματικές δεξιότητες σε διαχείριση προϊόντος και μηχανική. Ισχυρή ευθυγράμμιση σε εγχειρήματα με αποστολή και σε ρυθμό startup.»')
           }
          </p>
         </div>
@@ -945,7 +951,7 @@ export default function ProfilePage() {
 {/* Readiness Score Section */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
        <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Startup Readiness</h3>
+        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
         <TrendingUp className="w-5 h-5 text-stone-400" />
        </div>
 
@@ -977,22 +983,22 @@ export default function ProfilePage() {
          </div>
         </div>
         <div className="flex-1 space-y-1">
-         <p className="text-sm font-medium text-stone-900">Ecosystem Standing</p>
+         <p className="text-sm font-medium text-stone-900">{t('Ecosystem Standing', 'Θέση στο οικοσύστημα')}</p>
          <p className="text-xs text-stone-500 leading-relaxed">
-          Based on your artifacts, team momentum, and mentor feedback loops.
+          {t('Based on your artifacts, team momentum, and mentor feedback loops.', 'Με βάση το υλικό σου, τη δυναμική της ομάδας και την ανατροφοδότηση από μέντορες.')}
          </p>
         </div>
        </div>
 
        <div className="grid grid-cols-2 gap-3">
         {[
-         { label: 'Artifacts', value: displayReadiness.dimensionScores.artifactCompleteness, color: 'blue' },
-         { label: 'Team', value: displayReadiness.dimensionScores.teamCompleteness, color: 'green' },
-         { label: 'Market', value: displayReadiness.dimensionScores.marketUnderstanding, color: 'amber' },
-         { label: 'Product', value: displayReadiness.dimensionScores.solutionClarity, color: 'purple' },
+         { label: 'Artifacts', labelEl: 'Υλικό', value: displayReadiness.dimensionScores.artifactCompleteness, color: 'blue' },
+         { label: 'Team', labelEl: 'Ομάδα', value: displayReadiness.dimensionScores.teamCompleteness, color: 'green' },
+         { label: 'Market', labelEl: 'Αγορά', value: displayReadiness.dimensionScores.marketUnderstanding, color: 'amber' },
+         { label: 'Product', labelEl: 'Προϊόν', value: displayReadiness.dimensionScores.solutionClarity, color: 'purple' },
         ].map((dim) => (
          <div key={dim.label} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-          <div className="text-xs font-medium text-stone-400 tracking-wide mb-1">{dim.label}</div>
+          <div className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t(dim.label, dim.labelEl)}</div>
           <div className="text-sm font-medium text-stone-900">{dim.value}/100</div>
          </div>
         ))}
@@ -1002,28 +1008,28 @@ export default function ProfilePage() {
      <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
        <TrendingUp className="w-4 h-4 text-stone-400" />
-       Profile Analytics
+       {t('Profile Analytics', 'Στατιστικά προφίλ')}
       </h3>
       <div className="grid grid-cols-2 gap-3">
        {[
-        { label: 'Views', value: '1.2k', delta: '+18%', up: true },
-        { label: 'Matches', value: '48', delta: '+6', up: true },
-        { label: 'Endorsements', value: String(displayEndorsements.length), delta: '+3', up: true },
-        { label: 'Connections', value: '67', delta: '+9', up: true },
+        { label: 'Views', labelEl: 'Προβολές', value: '1.2k', delta: '+18%', up: true },
+        { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: '48', delta: '+6', up: true },
+        { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), delta: '+3', up: true },
+        { label: 'Connections', labelEl: 'Συνδέσεις', value: '67', delta: '+9', up: true },
        ].map(stat => (
         <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
          <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-         <div className="text-xs text-stone-500 font-medium tracking-wider">{stat.label}</div>
+         <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
          <div className={cn("text-[10px] font-semibold", stat.up ? "text-emerald-600" : "text-red-500")}>
-          {stat.delta} this week
+          {stat.delta} {t('this week', 'αυτή την εβδομάδα')}
          </div>
         </div>
        ))}
       </div>
       <div className="pt-2 border-t border-stone-200/60">
        <div className="flex items-center justify-between text-xs text-stone-400">
-        <span>Profile rank</span>
-        <span className="font-semibold text-stone-900">Top 15%</span>
+        <span>{t('Profile rank', 'Κατάταξη προφίλ')}</span>
+        <span className="font-semibold text-stone-900">{t('Top 15%', 'Στο κορυφαίο 15%')}</span>
        </div>
        <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
         <motion.div
@@ -1039,7 +1045,7 @@ export default function ProfilePage() {
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Handshake className="w-4 h-4 text-stone-400" />
-        {isOwnProfile ? 'Top Connections' : 'Mutual Connections'}
+        {isOwnProfile ? t('Top Connections', 'Κορυφαίες συνδέσεις') : t('Mutual Connections', 'Κοινές συνδέσεις')}
        </h3>
        <div className="space-y-2">
         {MUTUAL_CONNECTIONS.map(conn => (
@@ -1055,7 +1061,7 @@ export default function ProfilePage() {
            <p className="text-xs text-stone-400 truncate">{conn.headline}</p>
           </div>
           <span className="text-[10px] text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
-           {conn.mutual} mutual
+           {conn.mutual} {t('mutual', 'κοινές')}
           </span>
          </div>
         ))}
@@ -1065,7 +1071,7 @@ export default function ProfilePage() {
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
        <Eye className="w-4 h-4 text-stone-400" />
-       People Also Viewed
+       {t('People Also Viewed', 'Τα μέλη είδαν επίσης')}
       </h3>
       <div className="space-y-2">
        {ALSO_VIEWED.map(person => (
@@ -1088,7 +1094,7 @@ export default function ProfilePage() {
        ))}
       </div>
       <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
-       View more suggestions
+       {t('View more suggestions', 'Περισσότερες προτάσεις')}
       </button>
      </div>
      </div>

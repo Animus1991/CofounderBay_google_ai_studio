@@ -29,17 +29,21 @@ import {
   trackApplication,
   upsertMilestone,
   closeNeed,
+  editNeed,
   upsertNeed,
   writeMatchFilters,
   writeOpenTo,
   writeRound,
   type NeedCard,
+  type NeedField,
   type OpenToKind,
+  type TurnSource,
 } from '../lib/localLists';
 import { milestoneService } from './milestoneService';
 import { readFitCheck } from '../lib/fitCheck';
 import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
-import { studioNextStep } from '../lib/nextStep';
+import { studioNextStep, studioWaiting } from '../lib/nextStep';
+import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
 
 export type AssistantProfile = CompatibilityInput & {
   fullName?: string;
@@ -51,6 +55,8 @@ export type AssistantLink = { href: string; en: string; el: string };
 
 export type AssistantFollowUp = { en: string; el: string };
 
+export type AssistantSource = TurnSource;
+
 export type AssistantResult = {
   en: string;
   el: string;
@@ -58,9 +64,73 @@ export type AssistantResult = {
   links: AssistantLink[];
   tool: string;
   followUps?: AssistantFollowUp[];
+  sources?: AssistantSource[];
 };
 
-const PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
+const SOURCE = {
+  people: { kind: 'people', en: 'People directory', el: 'Κατάλογος ανθρώπων', href: '/matches' },
+  profile: { kind: 'profile', en: 'Your profile', el: 'Το προφίλ σου', href: '/profile' },
+  fit: { kind: 'fit', en: 'Fit check', el: 'Fit check', href: '/quiz' },
+  openTo: { kind: 'settings', en: 'Open to · Settings', el: 'Ανοιχτός σε · Ρυθμίσεις', href: '/settings' },
+  milestones: { kind: 'milestones', en: 'Milestones', el: 'Ορόσημα', href: '/milestones' },
+  needs: { kind: 'needs', en: 'Need cards', el: 'Κάρτες ανάγκης', href: '/network?tab=needs' },
+  messages: { kind: 'messages', en: 'Messages', el: 'Μηνύματα', href: '/messages' },
+  round: { kind: 'round', en: 'Fundraising round', el: 'Γύρος χρηματοδότησης', href: '/fundraising' },
+  activity: { kind: 'activity', en: 'Notifications', el: 'Ειδοποιήσεις', href: '/notifications' },
+  calendar: { kind: 'calendar', en: 'Calendar', el: 'Ημερολόγιο', href: '/calendar' },
+  events: { kind: 'calendar', en: 'Events', el: 'Εκδηλώσεις', href: '/events' },
+  programs: { kind: 'programs', en: 'Programs', el: 'Προγράμματα', href: '/programs' },
+  applications: { kind: 'programs', en: 'Tracked applications', el: 'Αιτήσεις σε εξέλιξη', href: '/fundraising' },
+  perks: { kind: 'perks', en: 'Perks', el: 'Παροχές', href: '/perks' },
+  mentors: { kind: 'mentors', en: 'Mentors', el: 'Μέντορες', href: '/mentors' },
+  communities: { kind: 'people', en: 'Communities', el: 'Κοινότητες', href: '/communities' },
+  resources: { kind: 'resources', en: 'Resources', el: 'Πόροι', href: '/resources' },
+  legal: { kind: 'legal', en: 'Legal Hub', el: 'Νομικά', href: '/legal' },
+  tasks: { kind: 'tasks', en: 'Workspace tasks', el: 'Εργασίες', href: '/workspace' },
+  invites: { kind: 'people', en: 'Founder invites', el: 'Προσκλήσεις ιδρυτών', href: '/network' },
+  saved: { kind: 'people', en: 'Saved people', el: 'Αποθηκευμένα πρόσωπα', href: '/network?tab=saved' },
+  requests: { kind: 'people', en: 'Connection requests', el: 'Αιτήματα σύνδεσης', href: '/network' },
+} satisfies Record<string, AssistantSource>;
+
+const TOOL_SOURCES: Record<string, AssistantSource[]> = {
+  matches: [SOURCE.people, SOURCE.profile],
+  'match-detail': [SOURCE.people, SOURCE.profile],
+  'about-person': [SOURCE.people],
+  'team-gap': [SOURCE.profile, SOURCE.people],
+  scout: [SOURCE.people, SOURCE.profile, SOURCE.openTo],
+  need: [SOURCE.needs],
+  inbox: [SOURCE.messages],
+  next: [SOURCE.calendar, SOURCE.tasks, SOURCE.fit, SOURCE.profile, SOURCE.milestones, SOURCE.needs, SOURCE.people],
+  'open-to': [SOURCE.openTo],
+  briefing: [SOURCE.people, SOURCE.milestones, SOURCE.round],
+  milestones: [SOURCE.milestones],
+  'milestone-add': [SOURCE.milestones],
+  round: [SOURCE.round],
+  pipeline: [SOURCE.round],
+  'record-investment': [SOURCE.round],
+  activity: [SOURCE.activity],
+  events: [SOURCE.events],
+  'session-add': [SOURCE.calendar],
+  book: [SOURCE.mentors, SOURCE.calendar],
+  programs: [SOURCE.programs],
+  apply: [SOURCE.programs, SOURCE.applications],
+  perks: [SOURCE.perks],
+  'claim-perk': [SOURCE.perks],
+  mentors: [SOURCE.mentors],
+  'become-mentor': [SOURCE.mentors],
+  communities: [SOURCE.communities],
+  resources: [SOURCE.resources],
+  legal: [SOURCE.legal],
+  'task-add': [SOURCE.tasks],
+  playbook: [SOURCE.tasks, SOURCE.people],
+  invite: [SOURCE.invites],
+  'week-meet': [SOURCE.people, SOURCE.events],
+  'fit-check': [SOURCE.fit],
+  save: [SOURCE.saved],
+  connect: [SOURCE.requests],
+};
+
+export const ASSISTANT_PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
   { keys: ['dashboard', 'home', 'πίνακ', 'αρχικ'], href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' },
   { keys: ['match', 'cofounder', 'co-founder', 'συνιδρυτ', 'αντιστοιχ'], href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
   { keys: ['discover', 'explore', 'εξερεύ'], href: '/discovery', en: 'Discovery', el: 'Εξερεύνηση' },
@@ -102,9 +172,9 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
 
 export function pageContext(pathname: string): { href: string; en: string; el: string } {
   const path = (pathname.split('?')[0] || '/dashboard').replace(/\/+$/, '') || '/dashboard';
-  const exact = PAGES.find((page) => page.href === path);
+  const exact = ASSISTANT_PAGES.find((page) => page.href === path);
   if (exact) return { href: exact.href, en: exact.en, el: exact.el };
-  const nested = PAGES.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
+  const nested = ASSISTANT_PAGES.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
   if (nested) return { href: nested.href, en: nested.en, el: nested.el };
   return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
 }
@@ -155,6 +225,16 @@ const KNOWLEDGE: KnowledgeCard[] = [
 
 function fold(text: string): string {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** `\b` does not treat Greek as a word. Stems match anywhere; Latin needs a non-letter on each side. */
+function hasStem(hay: string, ...stems: string[]): boolean {
+  return stems.some((stem) => {
+    if (/[a-z0-9]/.test(stem) && !/[α-ω]/.test(stem)) {
+      return new RegExp(`(?:^|[^a-z0-9])${stem}(?:$|[^a-z0-9])`).test(hay);
+    }
+    return hay.includes(stem);
+  });
 }
 
 function namedPerson(text: string): CastMember | undefined {
@@ -219,15 +299,32 @@ function briefingResult(profile: AssistantProfile | null): AssistantResult {
 }
 
 function matchesResult(profile: AssistantProfile | null, query: string): AssistantResult {
-  const folded = fold(query);
-  let pool = candidates();
+  const parsed = parseQualifiers(query);
+  const folded = fold(parsed.text || query);
+  let pool = applyQualifiers(candidates(), parsed.filters, (person) => ({
+    role: person.role,
+    location: placeOf(person),
+    skills: person.skills,
+    industry: person.industry,
+    stage: person.stage,
+  }));
+  let skill = parsed.filters.skill || '';
   if (/\btech|engineer|typescript|react|τεχνικ/.test(folded)) {
-    pool = pool.filter((person) => person.skills.some((skill) => /typescript|react|node|python|mlops|embedded/i.test(skill)));
-    writeMatchFilters({ q: query, role: '', stage: '', commitment: '', location: '', skill: 'TypeScript' });
+    pool = pool.filter((person) => person.skills.some((item) => /typescript|react|node|python|mlops|embedded/i.test(item)));
+    skill = skill || 'TypeScript';
   }
   if (/\bsales|growth|πωλησ|αναπτυξ/.test(folded)) {
-    pool = pool.filter((person) => person.skills.some((skill) => /sales|growth|marketing/i.test(skill)));
+    pool = pool.filter((person) => person.skills.some((item) => /sales|growth|marketing/i.test(item)));
   }
+  writeMatchFilters({
+    q: parsed.text,
+    role: parsed.filters.role || '',
+    stage: parsed.filters.stage || '',
+    commitment: '',
+    location: parsed.filters.location || '',
+    skill,
+    industry: parsed.filters.industry || '',
+  });
   const ranked = rankPeople(meInput(profile), pool).slice(0, 4);
   if (ranked.length === 0) {
     return {
@@ -367,9 +464,19 @@ function scoutResult(profile: AssistantProfile | null): AssistantResult {
   };
 }
 
+const NEED_HREF = '/network?tab=needs';
+const NEED_LINK: AssistantLink = { href: NEED_HREF, en: 'Open need cards', el: 'Άνοιγμα καρτών ανάγκης' };
+
+const NEED_FIELDS: { field: NeedField; stems: string[]; en: string; el: string }[] = [
+  { field: 'outcome', stems: ['outcome', 'αποτελεσμα'], en: 'outcome', el: 'αποτέλεσμα' },
+  { field: 'offer', stems: ['offer', 'προσφορα'], en: 'offer', el: 'προσφορά' },
+  { field: 'exists', stems: ['exists', 'υπαρχει'], en: 'what exists', el: 'τι υπάρχει' },
+  { field: 'missing', stems: ['missing', 'λειπει'], en: 'who is missing', el: 'ποιος λείπει' },
+];
+
 function needResult(query: string): AssistantResult {
   const folded = fold(query);
-  const closing = /\b(close|κλεισ)\b/.test(folded) && /\b(need|card|καρτα|αναγκ)\b/.test(folded);
+  const closing = hasStem(folded, 'close', 'κλεισ') && hasStem(folded, 'need', 'card', 'καρτα', 'αναγκ');
   if (closing) {
     const open = readNeeds().filter((item) => item.status === 'open');
     const card = open[0];
@@ -378,21 +485,38 @@ function needResult(query: string): AssistantResult {
         tool: 'need',
         en: 'No open need card to close. Say “draft a need card for a technical co-founder”.',
         el: 'Δεν υπάρχει ανοιχτή κάρτα ανάγκης. Πες «γράψε κάρτα ανάγκης για τεχνικό συνιδρυτή».',
-        href: '/network',
-        links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+        href: NEED_HREF,
+        links: [NEED_LINK],
       };
     }
     closeNeed(card.id);
-    logActivity({ kind: 'profile', title: `Closed need: ${card.missing}`, titleEl: `Έκλεισε ανάγκη: ${card.missing}`, href: '/network', byAssistant: true });
+    logActivity({ kind: 'profile', title: `Closed need: ${card.missing}`, titleEl: `Έκλεισε ανάγκη: ${card.missing}`, href: NEED_HREF, byAssistant: true });
     return {
       tool: 'need',
       en: `Closed “${card.missing}”. Other cards stay as they are.`,
       el: `Έκλεισε το «${card.missing}». Οι άλλες κάρτες μένουν όπως είναι.`,
-      href: '/network',
-      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+      href: NEED_HREF,
+      links: [NEED_LINK],
     };
   }
-  const drafting = /\b(draft|write|create|new|γραψ|φτιαξ|δημιουργ)\b/.test(folded);
+  const editing = hasStem(folded, 'set', 'change', 'update', 'edit', 'αλλαξ', 'ορισ', 'διορθωσ') && hasStem(folded, 'need', 'card', 'καρτα', 'αναγκ');
+  const target = editing ? NEED_FIELDS.find((item) => hasStem(folded, ...item.stems)) : undefined;
+  const value = query.split(/\s(?:to|σε)\s|:\s*/i).slice(1).join(' ').replace(/^["«“]|["»”.]$/g, '').trim();
+  if (target && value) {
+    const card = readNeeds().find((item) => item.status === 'open') ?? readNeeds()[0];
+    if (card) {
+      const updated = editNeed(card.id, { [target.field]: value });
+      logActivity({ kind: 'profile', title: `Need card v${updated?.version ?? 2}: ${target.en}`, titleEl: `Κάρτα ανάγκης v${updated?.version ?? 2}: ${target.el}`, href: NEED_HREF, byAssistant: true });
+      return {
+        tool: 'need',
+        en: `Changed the ${target.en} of “${card.missing}” to “${value}”. The card is now v${updated?.version ?? 2}; Network keeps the earlier version in its timeline.`,
+        el: `Άλλαξε το πεδίο «${target.el}» της κάρτας «${card.missing}» σε «${value}». Η κάρτα είναι πλέον v${updated?.version ?? 2}· το Δίκτυο κρατά την προηγούμενη έκδοση στο χρονολόγιο.`,
+        href: NEED_HREF,
+        links: [NEED_LINK],
+      };
+    }
+  }
+  const drafting = hasStem(folded, 'draft', 'write', 'create', 'new', 'γραψ', 'φτιαξ', 'δημιουργ');
   if (drafting || (/\b(need card|καρτα αναγκ)\b/.test(folded) && readNeeds().length === 0)) {
     const missing = query
       .replace(/^(please\s+)?(draft|write|create|new|γραψε|φτιαξε|δημιουργησε)\s+(a\s+)?(need card|καρτα αναγκης)?\s*(for|για)?\s*/i, '')
@@ -407,13 +531,13 @@ function needResult(query: string): AssistantResult {
       at: new Date().toISOString(),
     };
     upsertNeed(card);
-    logActivity({ kind: 'profile', title: `Need card: ${missing}`, titleEl: `Κάρτα ανάγκης: ${missing}`, href: '/network', byAssistant: true });
+    logActivity({ kind: 'profile', title: `Need card: ${missing}`, titleEl: `Κάρτα ανάγκης: ${missing}`, href: NEED_HREF, byAssistant: true });
     return {
       tool: 'need',
-      en: `Need card is open: exists — ${card.exists}. Outcome — ${card.outcome}. Missing — ${card.missing}. Same list the next-step strip reads. I did not notify anyone.`,
-      el: `Η κάρτα ανάγκης είναι ανοιχτή: υπάρχει — ${card.exists}. Αποτέλεσμα — ${card.outcome}. Λείπει — ${card.missing}. Η ίδια λίστα με το επόμενο βήμα. Δεν ειδοποίησα κανέναν.`,
-      href: '/network',
-      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+      en: `Need card is open: exists — ${card.exists}. Outcome — ${card.outcome}. Missing — ${card.missing}. Same list the next-step strip and Network read. I did not notify anyone.`,
+      el: `Η κάρτα ανάγκης είναι ανοιχτή: υπάρχει — ${card.exists}. Αποτέλεσμα — ${card.outcome}. Λείπει — ${card.missing}. Η ίδια λίστα με το επόμενο βήμα και το Δίκτυο. Δεν ειδοποίησα κανέναν.`,
+      href: NEED_HREF,
+      links: [NEED_LINK],
     };
   }
   const list = readNeeds();
@@ -422,18 +546,18 @@ function needResult(query: string): AssistantResult {
       tool: 'need',
       en: 'No need cards yet. One card, three sentences: what exists, the outcome, who is missing. Say “draft a need card for a technical co-founder”.',
       el: 'Δεν υπάρχουν κάρτες ανάγκης. Μία κάρτα, τρεις προτάσεις: τι υπάρχει, το αποτέλεσμα, ποιος λείπει. Πες «γράψε κάρτα ανάγκης για τεχνικό συνιδρυτή».',
-      href: '/network',
-      links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+      href: NEED_HREF,
+      links: [NEED_LINK],
     };
   }
-  const linesEn = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Open' : 'Closed'} · missing ${item.missing} · ${item.outcome}`);
-  const linesEl = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Ανοιχτή' : 'Κλειστή'} · λείπει ${item.missing} · ${item.outcome}`);
+  const linesEn = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Open' : 'Closed'} · v${item.version ?? 1} · missing ${item.missing} · ${item.outcome}`);
+  const linesEl = list.slice(0, 6).map((item) => `${item.status === 'open' ? 'Ανοιχτή' : 'Κλειστή'} · v${item.version ?? 1} · λείπει ${item.missing} · ${item.outcome}`);
   return {
     tool: 'need',
-    en: `Your need cards:\n${linesEn.join('\n')}`,
-    el: `Οι κάρτες ανάγκης σου:\n${linesEl.join('\n')}`,
-    href: '/network',
-    links: [{ href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+    en: `Your need cards:\n${linesEn.join('\n')}\nSay “change the outcome of my need card to …” to write a new version.`,
+    el: `Οι κάρτες ανάγκης σου:\n${linesEl.join('\n')}\nΠες «άλλαξε το αποτέλεσμα της κάρτας σε …» για νέα έκδοση.`,
+    href: NEED_HREF,
+    links: [NEED_LINK],
   };
 }
 
@@ -466,13 +590,24 @@ function inboxResult(query: string): AssistantResult {
 }
 
 function nextStepAssistant(profile: AssistantProfile | null): AssistantResult {
+  const waiting = studioWaiting();
   const next = studioNextStep(fromProfile(profile));
+  const nextLink = { href: next.href, en: next.action?.en ?? 'Open that page', el: next.action?.el ?? 'Άνοιγμα της σελίδας' };
+  if (waiting) {
+    return {
+      tool: 'next',
+      en: `Waiting on you: ${waiting.en} Then: ${next.en}`,
+      el: `Σε περιμένει: ${waiting.el} Μετά: ${next.el}`,
+      href: waiting.href,
+      links: [{ href: waiting.href, en: waiting.action?.en ?? 'Open that page', el: waiting.action?.el ?? 'Άνοιγμα της σελίδας' }, nextLink],
+    };
+  }
   return {
     tool: 'next',
     en: next.en,
     el: next.el,
     href: next.href,
-    links: [{ href: next.href, en: 'Open that page', el: 'Άνοιγμα της σελίδας' }],
+    links: [nextLink],
   };
 }
 
@@ -676,10 +811,10 @@ function roundResult(): AssistantResult {
 
 function navigateResult(query: string): AssistantResult | null {
   const folded = fold(query);
-  if (!/\b(open|go|show|take me|ανοιξ|πηγαιν|δειξ)\b/.test(folded) && !PAGES.some((page) => page.keys.some((key) => folded === key))) {
+  if (!/\b(open|go|show|take me|ανοιξ|πηγαιν|δειξ)\b/.test(folded) && !ASSISTANT_PAGES.some((page) => page.keys.some((key) => folded === key))) {
     return null;
   }
-  const page = PAGES.find((item) => item.keys.some((key) => folded.includes(key)));
+  const page = ASSISTANT_PAGES.find((item) => item.keys.some((key) => folded.includes(key)));
   if (!page) return null;
   return {
     tool: 'navigate',
@@ -1084,8 +1219,8 @@ function fitCheckResult(): AssistantResult {
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Type @ to pin a person, /new to start over.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
+    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
@@ -1094,8 +1229,19 @@ function helpResult(): AssistantResult {
   };
 }
 
+function attachSources(result: AssistantResult): AssistantResult {
+  if (result.sources?.length) return result;
+  const listed = TOOL_SOURCES[result.tool];
+  if (listed?.length) return { ...result, sources: listed };
+  if (result.tool === 'about' && result.href) {
+    const page = pageContext(result.href);
+    return { ...result, sources: [{ kind: 'page', en: page.en, el: page.el, href: page.href }] };
+  }
+  return result;
+}
+
 export function runAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
-  return attachFollowUps(resolveAssistant(text, profile));
+  return attachSources(attachFollowUps(resolveAssistant(text, profile)));
 }
 
 function resolveAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
@@ -1127,7 +1273,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null): Assis
   if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person);
   if (/\b(still lack|team lack|founding team|τι λειπ|τι χρειάζεται η ομάδα)\b/.test(folded)) return teamGapResult(profile);
   if (/\b(propose|scout|do not send|μην στειλ|προτειν)\b/.test(folded) && /\b(people|three|3|τρεις|συνιδρυτ|match)\b/.test(folded)) return scoutResult(profile);
-  if (/\b(need card|καρτα αναγκ|draft a need)\b/.test(folded)) return needResult(query);
+  if (hasStem(folded, 'need card', 'καρτα αναγκ', 'draft a need') || (hasStem(folded, 'need', 'καρτα', 'αναγκ') && hasStem(folded, 'draft', 'write', 'close', 'change', 'list', 'γραψ', 'κλεισ', 'αλλαξ'))) return needResult(query);
   if (/\b(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ)\b/.test(folded)) return inboxResult(query);
   if (/\b(open to (a )?(co-?founder|investor|advisor)|ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ))\b/.test(folded)) return openToResult(query);
   if (/\b(what should i do first|next step|τι να κανω πρωτα)\b/.test(folded)) return nextStepAssistant(profile);
@@ -1150,7 +1296,9 @@ function resolveAssistant(text: string, profile: AssistantProfile | null): Assis
   if (nav) return nav;
 
   if (/\b(best match|who (should|can) i|find .{0,20}(co-?founder|match)|καλυτερ.{0,12}αντιστοιχ|ποιος .{0,20}συνιδρυτ)\b/.test(folded)
-    || (/\b(match|co-?founder|συνιδρυτ|αντιστοιχ)\b/.test(folded) && !/\bopen|ανοιξ/.test(folded))) {
+    || (/\b(match|co-?founder|συνιδρυτ|αντιστοιχ)\b/.test(folded) && !/\bopen|ανοιξ/.test(folded))
+    || (hasStem(folded, 'αντιστοιχ', 'συνιδρυτ') && !hasStem(folded, 'ανοιξ', 'ανοιγμα'))
+    || Object.keys(parseQualifiers(query).filters).length > 0) {
     return matchesResult(profile, query);
   }
   if (/\b(become|how do i|πως γιν|γινω)\b/.test(folded) && /\b(mentor|μεντορ)\b/.test(folded)) return becomeMentorResult();

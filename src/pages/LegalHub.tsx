@@ -17,42 +17,45 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
+import { useT } from "../lib/language";
+import { labelOf } from "../lib/labels";
 
 export default function LegalHub() {
+ const t = useT();
  const [activeCategory, setActiveCategory] = useState<'incorporation' | 'ip' | 'employment' | 'fundraising'>('incorporation');
 
  const categories = [
-  { id: 'incorporation', label: 'Incorporation', icon: Globe },
-  { id: 'ip', label: 'Intellectual Property', icon: Shield },
-  { id: 'employment', label: 'Employment & HR', icon: Users },
-  { id: 'fundraising', label: 'Fundraising Legal', icon: Scale },
+  { id: 'incorporation', label: t('Incorporation', 'Σύσταση εταιρείας'), icon: Globe },
+  { id: 'ip', label: t('Intellectual Property', 'Πνευματική ιδιοκτησία'), icon: Shield },
+  { id: 'employment', label: t('Employment & HR', 'Απασχόληση και HR'), icon: Users },
+  { id: 'fundraising', label: t('Fundraising Legal', 'Νομικά χρηματοδότησης'), icon: Scale },
  ] as const;
 
  const templates = {
   incorporation: [
-   { name: "Articles of Incorporation", description: "Standard template for Delaware C-Corp.", status: "Verified" },
-   { name: "Bylaws Template", description: "Corporate governance rules and procedures.", status: "Verified" },
-   { name: "Founder Stock Purchase Agreement", description: "Vesting schedules and IP assignment.", status: "Critical" },
+   { name: t("Articles of Incorporation", "Καταστατικό σύστασης"), promptName: "Articles of Incorporation", description: t("Standard template for Delaware C-Corp.", "Πρότυπο για Delaware C-Corp."), status: "Verified" },
+   { name: t("Bylaws Template", "Πρότυπο εσωτερικού κανονισμού"), promptName: "Bylaws Template", description: t("Corporate governance rules and procedures.", "Κανόνες και διαδικασίες εταιρικής διακυβέρνησης."), status: "Verified" },
+   { name: t("Founder Stock Purchase Agreement", "Συμφωνία αγοράς μετοχών ιδρυτών"), promptName: "Founder Stock Purchase Agreement", description: t("Vesting schedules and IP assignment.", "Χρονοδιαγράμματα vesting και ανάθεση IP."), status: "Critical" },
   ],
   ip: [
-   { name: "Proprietary Information & Inventions Agreement", description: "Ensure the company owns all IP.", status: "Critical" },
-   { name: "Mutual NDA", description: "Standard non-disclosure agreement for partnerships.", status: "Verified" },
-   { name: "Trademark Assignment", description: "Transfer personal trademarks to the company.", status: "Verified" },
+   { name: t("Proprietary Information & Inventions Agreement", "Συμφωνία εμπιστευτικών πληροφοριών και εφευρέσεων"), promptName: "Proprietary Information & Inventions Agreement", description: t("Ensure the company owns all IP.", "Η εταιρεία να κατέχει όλη την IP."), status: "Critical" },
+   { name: t("Mutual NDA", "Αμοιβαίο NDA"), promptName: "Mutual NDA", description: t("Standard non-disclosure agreement for partnerships.", "Τυπική συμφωνία εμπιστευτικότητας για συνεργασίες."), status: "Verified" },
+   { name: t("Trademark Assignment", "Εκχώρηση εμπορικού σήματος"), promptName: "Trademark Assignment", description: t("Transfer personal trademarks to the company.", "Μεταφορά προσωπικών σημάτων στην εταιρεία."), status: "Verified" },
   ],
   employment: [
-   { name: "Offer Letter Template", description: "Standard employee offer with equity terms.", status: "Verified" },
-   { name: "Independent Contractor Agreement", description: "For freelancers and external consultants.", status: "Verified" },
-   { name: "Employee Handbook", description: "Basic policies and code of conduct.", status: "Optional" },
+   { name: t("Offer Letter Template", "Πρότυπο επιστολής πρόσληψης"), promptName: "Offer Letter Template", description: t("Standard employee offer with equity terms.", "Τυπική προσφορά εργασίας με όρους equity."), status: "Verified" },
+   { name: t("Independent Contractor Agreement", "Συμφωνία ανεξάρτητου συνεργάτη"), promptName: "Independent Contractor Agreement", description: t("For freelancers and external consultants.", "Για freelancers και εξωτερικούς συμβούλους."), status: "Verified" },
+   { name: t("Employee Handbook", "Εγχειρίδιο εργαζομένων"), promptName: "Employee Handbook", description: t("Basic policies and code of conduct.", "Βασικές πολιτικές και κώδικας συμπεριφοράς."), status: "Optional" },
   ],
   fundraising: [
-   { name: "SAFE Agreement (Post-Money)", description: "Y Combinator standard for early rounds.", status: "Standard" },
-   { name: "Term Sheet (Seed Round)", description: "Summary of key investment terms.", status: "Standard" },
-   { name: "Board Consent for Financing", description: "Formal approval for new investment.", status: "Verified" },
+   { name: t("SAFE Agreement (Post-Money)", "Συμφωνία SAFE (post-money)"), promptName: "SAFE Agreement (Post-Money)", description: t("Y Combinator standard for early rounds.", "Πρότυπο Y Combinator για πρώιμους γύρους."), status: "Standard" },
+   { name: t("Term Sheet (Seed Round)", "Term sheet (γύρος Seed)"), promptName: "Term Sheet (Seed Round)", description: t("Summary of key investment terms.", "Σύνοψη βασικών όρων επένδυσης."), status: "Standard" },
+   { name: t("Board Consent for Financing", "Έγκριση διοικητικού συμβουλίου για χρηματοδότηση"), promptName: "Board Consent for Financing", description: t("Formal approval for new investment.", "Τυπική έγκριση νέας επένδυσης."), status: "Verified" },
   ]
  };
 
  return (
-  <PageShell title="Legal Hub" description="Protect your startup with verified templates and legal resources.">
+  <PageShell title={t("Legal Hub", "Νομικά")} description={t("Protect your startup with verified templates and legal resources.", "Προστάτεψε το startup σου με επαληθευμένα πρότυπα και νομικούς πόρους.")}>
    <div className="space-y-6">
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {categories.map((cat) => (
@@ -86,17 +89,17 @@ export default function LegalHub() {
           "text-sm font-medium tracking-wide px-2 py-0.5 rounded-full",
           template.status === 'Critical' ? "text-red-600" : "text-stone-500"
          )}>
-          {template.status}
+          {labelOf(template.status)}
          </span>
         </div>
         <h4 className="font-medium text-lg mb-1">{template.name}</h4>
         <p className="text-base text-stone-500 mb-6 leading-relaxed">{template.description}</p>
         <div className="flex gap-2">
-         <Button type="button" size="sm" variant="outline" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `How do I download ${template.name}` } }))}>
-          <Download className="w-3 h-3 mr-1" /> Download
+         <Button type="button" size="sm" variant="outline" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `How do I download ${template.promptName}` } }))}>
+          <Download className="w-3 h-3 mr-1" /> {t('Download', 'Λήψη')}
          </Button>
-         <Button type="button" size="sm" variant="ghost" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
-          Preview
+         <Button type="button" size="sm" variant="ghost" className="flex-1 text-base py-1.5" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.promptName}` } }))}>
+          {t('Preview', 'Προεπισκόπηση')}
          </Button>
         </div>
        </Card>
@@ -104,14 +107,14 @@ export default function LegalHub() {
      </div>
 
      {/* Legal Checklist */}
-     <Card title="Compliance Checklist" subtitle="Ensure your startup meets all legal requirements">
+     <Card title={t("Compliance Checklist", "Λίστα συμμόρφωσης")} subtitle={t("Ensure your startup meets all legal requirements", "Βεβαιώσου ότι το startup σου καλύπτει όλες τις νομικές απαιτήσεις")}>
       <div className="space-y-4">
        {[
-        { task: "Incorporate the legal entity", done: true },
-        { task: "Assign all IP to the company", done: true },
-        { task: "Obtain Employer Identification Number (EIN)", done: false },
-        { task: "Open a business bank account", done: false },
-        { task: "Draft and sign Founder Vesting agreements", done: false },
+        { task: t("Incorporate the legal entity", "Σύσταση της νομικής οντότητας"), done: true },
+        { task: t("Assign all IP to the company", "Ανάθεση όλης της IP στην εταιρεία"), done: true },
+        { task: t("Obtain Employer Identification Number (EIN)", "Απόκτηση EIN"), done: false },
+        { task: t("Open a business bank account", "Άνοιγμα επαγγελματικού λογαριασμού"), done: false },
+        { task: t("Draft and sign Founder Vesting agreements", "Σύνταξη και υπογραφή συμφωνιών vesting ιδρυτών"), done: false },
        ].map((item, i) => (
         <div key={i} className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl border border-stone-100">
          {item.done ? (
@@ -136,22 +139,22 @@ export default function LegalHub() {
         <Gavel className="w-5 h-5 text-white" />
        </div>
        <div>
-        <h4 className="font-medium text-base">Legal Office Hours</h4>
-        <p className="text-sm text-white/60 mt-1">Get 15 minutes of free legal advice from our partner firms.</p>
+        <h4 className="font-medium text-base">{t('Legal Office Hours', 'Νομικές ώρες γραφείου')}</h4>
+        <p className="text-sm text-white/60 mt-1">{t('Get 15 minutes of free legal advice from our partner firms.', '15 λεπτά δωρεάν νομικής συμβουλής από τις συνεργαζόμενες δικηγορικές.')}</p>
        </div>
        <Button type="button" variant="secondary" size="sm" className="w-full text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I book legal office hours?' } }))}>
-        Book a Session
+        {t('Book a Session', 'Κλείσε συνεδρία')}
        </Button>
       </div>
      </Card>
 
      <section>
-      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">Partner Law Firms</h3>
+      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">{t('Partner Law Firms', 'Συνεργαζόμενες δικηγορικές')}</h3>
       <div className="space-y-4">
        {[
-        { name: "Wilson Sonsini", specialty: "Tech & Venture", location: "Palo Alto" },
-        { name: "Gunderson Dettmer", specialty: "Emerging Companies", location: "Global" },
-        { name: "Cooley LLP", specialty: "IP & Litigation", location: "New York" },
+        { name: "Wilson Sonsini", specialty: t("Tech & Venture", "Τεχνολογία και venture"), location: "Palo Alto" },
+        { name: "Gunderson Dettmer", specialty: t("Emerging Companies", "Αναδυόμενες εταιρείες"), location: t("Global", "Παγκόσμια") },
+        { name: "Cooley LLP", specialty: t("IP & Litigation", "IP και δικαστικές διαφορές"), location: "New York" },
        ].map((firm, i) => (
         <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${firm.name}` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${firm.name}` } })); } }} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-xl hover:shadow-md transition-all cursor-pointer group">
          <div className="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
@@ -167,20 +170,20 @@ export default function LegalHub() {
       </div>
      </section>
 
-     <Card title="Legal Alerts" noPadding>
+     <Card title={t("Legal Alerts", "Νομικές ειδοποιήσεις")} noPadding>
       <div className="divide-y divide-stone-100">
        <div className="p-4 flex items-start gap-3">
         <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
         <div className="space-y-1">
-         <p className="text-sm font-medium text-stone-900">New Delaware Tax Filing</p>
-         <p className="text-sm text-stone-500 leading-tight">Annual franchise tax reports are due by June 1st.</p>
+         <p className="text-sm font-medium text-stone-900">{t('New Delaware Tax Filing', 'Νέα φορολογική δήλωση Delaware')}</p>
+         <p className="text-sm text-stone-500 leading-tight">{t('Annual franchise tax reports are due by June 1st.', 'Οι ετήσιες δηλώσεις franchise tax υποβάλλονται έως την 1η Ιουνίου.')}</p>
         </div>
        </div>
        <div className="p-4 flex items-start gap-3">
         <Lock className="w-4 h-4 text-stone-400 mt-0.5 shrink-0" />
         <div className="space-y-1">
-         <p className="text-sm font-medium text-stone-900">GDPR Compliance Update</p>
-         <p className="text-sm text-stone-500 leading-tight">New guidelines for data processing in the EU.</p>
+         <p className="text-sm font-medium text-stone-900">{t('GDPR Compliance Update', 'Ενημέρωση συμμόρφωσης GDPR')}</p>
+         <p className="text-sm text-stone-500 leading-tight">{t('New guidelines for data processing in the EU.', 'Νέες οδηγίες για την επεξεργασία δεδομένων στην ΕΕ.')}</p>
         </div>
        </div>
       </div>

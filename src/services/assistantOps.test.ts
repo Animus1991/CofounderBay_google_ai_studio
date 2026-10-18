@@ -26,6 +26,19 @@ describe('runAssistant', () => {
     expect(result.en.toLowerCase()).toMatch(/jordan|marcus|mia|elena/);
     expect(result.links.length).toBeGreaterThan(0);
     expect(result.followUps?.[0]?.en).toMatch(/Why do I match with/);
+    expect(result.sources?.some((source) => source.kind === 'people')).toBe(true);
+  });
+
+  it('ranks matches from a Greek best-match question', () => {
+    const result = runAssistant('Ποια είναι η καλύτερη αντιστοίχιση;', demo);
+    expect(result.tool).toBe('matches');
+    expect(result.href).toBe('/matches');
+  });
+
+  it('filters the same directory from role and skill qualifiers', () => {
+    const result = runAssistant('role:Founder skill:TypeScript', demo);
+    expect(result.tool).toBe('matches');
+    expect(result.en).toMatch(/Alex Rivera|TypeScript|directory/i);
   });
 
   it('explains one named match with reasons, friction and a first conversation', () => {

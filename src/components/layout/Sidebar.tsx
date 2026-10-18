@@ -35,6 +35,7 @@ import { User, UserRole } from "../../types";
 import { cn } from "../../lib/utils";
 import { bothText, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
+import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
 import { auth } from "../../firebase";
 
@@ -48,6 +49,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
+ useLanguage();
  const { tenant } = useTenant();
  const navigate = useNavigate();
  const isAdmin = user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.SUPER_ADMIN);
@@ -175,7 +177,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
         className="flex flex-col whitespace-nowrap"
        >
         <h1 className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</h1>
-        <span className="text-[10px] font-medium text-stone-400 tracking-wide mt-1">Ecosystem Hub</span>
+        <span className="text-[10px] font-medium text-stone-400 tracking-wide mt-1">{withEl("Ecosystem Hub")}</span>
        </motion.div>
       )}
      </div>

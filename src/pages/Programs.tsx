@@ -14,6 +14,22 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { User } from "../types";
 import { motion } from "framer-motion";
+import { useT } from "../lib/language";
+import { labelOf } from "../lib/labels";
+import { formatDate } from "../lib/dates";
+
+const TAB_EL: Record<string, string> = {
+ All: 'Όλα',
+ Accelerators: 'Επιταχυντές',
+ Grants: 'Επιχορηγήσεις',
+ Bootcamps: 'Εντατικά προγράμματα',
+};
+
+const PROGRAM_DESC_EL: Record<string, string> = {
+ "1": "Εντατικό πρόγραμμα 3 μηνών για fintech startups σε πρώιμο στάδιο. Περιλαμβάνει χρηματοδότηση $120k και καθοδήγηση από κορυφαίους ειδικούς του κλάδου.",
+ "2": "Χρηματοδότηση χωρίς αραίωση μετοχών για startups με καινοτόμες λύσεις καθαρής ενέργειας. Έμφαση στην κλιμάκωση και τον αντίκτυπο.",
+ "3": "Εντατικό πρόγραμμα 4 εβδομάδων για κλιμάκωση του SaaS προϊόντος σου, βελτιστοποίηση απόκτησης χρηστών και καλύτερη διατήρηση.",
+};
 
 interface ProgramsProps {
  user: User;
@@ -33,6 +49,7 @@ interface Program {
 }
 
 export default function Programs({ user }: ProgramsProps) {
+ const t = useT();
  const navigate = useNavigate();
  const [activeTab, setActiveTab] = useState('All');
 
@@ -84,7 +101,7 @@ export default function Programs({ user }: ProgramsProps) {
  });
 
  return (
-  <PageShell title="Programs" description="Curated accelerators, grants, and strategic opportunities for every stage.">
+  <PageShell title={t("Programs", "Προγράμματα")} description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}>
    <div className="space-y-6">
     <div className="flex flex-wrap items-center gap-2">
      <Button type="button" variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5" onClick={() => {
@@ -92,10 +109,10 @@ export default function Programs({ user }: ProgramsProps) {
       const next = order[(order.indexOf(activeTab) + 1) % order.length] || 'All';
       setActiveTab(next);
      }}>
-      <Filter className="w-3 h-3" /> Filter
+      <Filter className="w-3 h-3" /> {t('Filter', 'Φίλτρο')}
      </Button>
      <Button type="button" variant="primary" className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
-      Find Programs
+      {t('Find Programs', 'Εύρεση προγραμμάτων')}
      </Button>
     </div>
 
@@ -113,14 +130,14 @@ export default function Programs({ user }: ProgramsProps) {
          activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
         )}
        >
-        {tab}
+        {t(tab, TAB_EL[tab] ?? tab)}
        </button>
       ))}
      </div>
 
      <div className="space-y-3">
       {visiblePrograms.length === 0 && (
-       <EmptyHint title={`No programs in the ${activeTab} filter.`} detail="Ask the studio assistant which programs you can apply to, or switch the tab.">
+       <EmptyHint title={t(`No programs in the ${activeTab} filter.`, `Δεν υπάρχουν προγράμματα στο φίλτρο «${TAB_EL[activeTab] ?? activeTab}».`)} detail={t("Ask the studio assistant which programs you can apply to, or switch the tab.", "Ρώτα τον βοηθό του στούντιο σε ποια προγράμματα μπορείς να κάνεις αίτηση, ή άλλαξε καρτέλα.")}>
         <AskLink prompt="What programs can I apply to?" />
        </EmptyHint>
       )}
@@ -141,24 +158,24 @@ export default function Programs({ user }: ProgramsProps) {
             referrerPolicy="no-referrer"
            />
            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-white/95 backdrop-blur-sm rounded-md text-xs font-semibold tracking-wider border border-stone-100 shadow-sm">
-            {program.type}
+            {labelOf(program.type)}
            </div>
           </div>
           <div className="flex-1 p-4 space-y-3">
            <div className="flex items-start justify-between gap-2">
             <div className="space-y-0.5">
              <h3 className="text-sm font-semibold text-stone-900 leading-snug">{program.title}</h3>
-             <p className="text-xs text-stone-400">by {program.organizer}</p>
+             <p className="text-xs text-stone-400">{t(`by ${program.organizer}`, `Διοργάνωση: ${program.organizer}`)}</p>
             </div>
             <button className="p-1 text-stone-300 hover:text-amber-500 transition-colors shrink-0">
              <Star className="w-3.5 h-3.5" />
             </button>
            </div>
-           <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{program.description}</p>
-           <FactLine items={[program.funding, program.duration, program.deadline, ...program.focus.slice(0, 2)]} label="Program facts" />
+           <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(program.description, PROGRAM_DESC_EL[program.id] ?? program.description)}</p>
+           <FactLine items={[program.funding, program.duration === 'N/A' ? 'N/A' : t(program.duration, program.duration.replace('Weeks', 'εβδομάδες')), formatDate(program.deadline), ...program.focus.slice(0, 2)]} label={t('Program facts', 'Στοιχεία προγράμματος')} />
            <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${program.title}` } }))}>
-             Apply Now
+             {t('Apply Now', 'Κάνε αίτηση')}
             </Button>
            </div>
           </div>
@@ -173,31 +190,31 @@ export default function Programs({ user }: ProgramsProps) {
     <aside className="lg:col-span-4 space-y-4">
      <Card className="rounded-2xl border-stone-100 p-4 space-y-3">
       <div>
-       <h4 className="text-sm font-semibold text-stone-900">Program Finder</h4>
-       <p className="text-xs text-stone-400 mt-0.5">AI-matched to your stage, industry, and goals.</p>
+       <h4 className="text-sm font-semibold text-stone-900">{t('Program Finder', 'Εύρεση προγραμμάτων')}</h4>
+       <p className="text-xs text-stone-400 mt-0.5">{t('AI-matched to your stage, industry, and goals.', 'Με AI, με βάση το στάδιο, τον κλάδο και τους στόχους σου.')}</p>
       </div>
       <div className="p-3 bg-stone-50 rounded-xl border border-stone-100 flex items-center gap-2.5">
        <div className="w-7 h-7 rounded-lg bg-stone-900 flex items-center justify-center text-white shrink-0">
         <Zap className="w-3.5 h-3.5" />
        </div>
-       <span className="text-sm font-semibold text-stone-700">AI-Powered Matching</span>
+       <span className="text-sm font-semibold text-stone-700">{t('AI-Powered Matching', 'Αντιστοίχιση με AI')}</span>
       </div>
       <Button type="button" variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
-       Start Finder
+       {t('Start Finder', 'Έναρξη εύρεσης')}
       </Button>
      </Card>
 
      <Card className="rounded-2xl border-stone-100 p-4 space-y-3">
       <div className="flex items-center justify-between">
-       <h4 className="text-sm font-semibold text-stone-900">Ecosystem Stats</h4>
+       <h4 className="text-sm font-semibold text-stone-900">{t('Ecosystem Stats', 'Στατιστικά οικοσυστήματος')}</h4>
        <TrendingUp className="w-3.5 h-3.5 text-stone-400" />
       </div>
       <div className="grid grid-cols-2 gap-2">
        {[
-        { label: "Active Programs", value: "24",   icon: Rocket },
-        { label: "Total Funding",   value: "$2.4M", icon: DollarSign },
-        { label: "Applications",    value: "1.2k",  icon: Users },
-        { label: "Success Rate",    value: "85%",   icon: Target },
+        { label: t("Active Programs", "Ενεργά προγράμματα"), value: "24",   icon: Rocket },
+        { label: t("Total Funding", "Συνολική χρηματοδότηση"),   value: "$2.4M", icon: DollarSign },
+        { label: t("Applications", "Αιτήσεις"),    value: "1.2k",  icon: Users },
+        { label: t("Success Rate", "Ποσοστό επιτυχίας"),    value: "85%",   icon: Target },
        ].map((stat, idx) => (
         <div key={idx} className="p-2.5 bg-stone-50 border border-stone-100 rounded-xl space-y-1">
          <div className="flex items-center gap-1 text-xs text-stone-400 tracking-wider">
@@ -215,13 +232,13 @@ export default function Programs({ user }: ProgramsProps) {
        <Award className="w-4 h-4 text-amber-600" />
       </div>
       <div>
-       <h4 className="text-sm font-semibold text-stone-900">Premium Opportunities</h4>
+       <h4 className="text-sm font-semibold text-stone-900">{t('Premium Opportunities', 'Προνομιακές ευκαιρίες')}</h4>
        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-        Upgrade to Pro for early access to exclusive grants and accelerators before they go public.
+        {t('Upgrade to Pro for early access to exclusive grants and accelerators before they go public.', 'Αναβάθμισε σε Pro για πρώιμη πρόσβαση σε αποκλειστικές επιχορηγήσεις και επιταχυντές πριν γίνουν δημόσια.')}
        </p>
       </div>
       <Button onClick={() => navigate('/pricing')} className="w-full h-8 rounded-xl text-sm font-semibold bg-stone-900 text-white hover:bg-stone-800">
-       Upgrade Now
+       {t('Upgrade Now', 'Αναβάθμιση τώρα')}
       </Button>
      </div>
     </aside>

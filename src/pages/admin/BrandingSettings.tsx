@@ -4,12 +4,14 @@ import { User } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Palette, Layout, Type, Globe, Check, RefreshCcw, Save, Zap } from 'lucide-react';
+import { useT } from '../../lib/language';
 
 interface BrandingSettingsProps {
  user: User;
 }
 
 export default function BrandingSettings({ user }: BrandingSettingsProps) {
+ const t = useT();
  const { tenant, updateBranding, updateContent } = useTenant();
  const [activeTab, setActiveTab] = useState<'theme' | 'content' | 'preview'>('theme');
  const [saving, setSaving] = useState(false);
@@ -53,17 +55,17 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
   <div className="max-w-5xl mx-auto space-y-6">
    <div className="flex items-center justify-between">
     <div>
-     <h1 className="section-header">Tenant Branding</h1>
-     <p className="text-sm text-stone-500 mt-1">Customize the visual identity and content of your ecosystem.</p>
+     <h1 className="section-header">{t('Tenant Branding', 'Ταυτότητα οργανισμού')}</h1>
+     <p className="text-sm text-stone-500 mt-1">{t('Customize the visual identity and content of your ecosystem.', 'Προσάρμοσε την οπτική ταυτότητα και το περιεχόμενο του οικοσυστήματος.')}</p>
     </div>
     <div className="flex gap-2">
      <Button variant="outline" size="sm" onClick={handleReset} className="h-9 px-4 text-xs font-medium">
       <RefreshCcw className="w-3.5 h-3.5 mr-2" />
-      Reset
+      {t('Reset', 'Επαναφορά')}
      </Button>
      <Button size="sm" onClick={handleSave} loading={saving} className="h-9 px-4 text-xs font-medium">
       {success ? <Check className="w-3.5 h-3.5 mr-2" /> : <Save className="w-3.5 h-3.5 mr-2" />}
-      {success ? "Saved" : "Save Changes"}
+      {success ? t('Saved', 'Αποθηκεύτηκε') : t('Save Changes', 'Αποθήκευση αλλαγών')}
      </Button>
     </div>
    </div>
@@ -76,7 +78,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
      }`}
     >
      <Palette className="w-3.5 h-3.5" />
-     Theme & Colors
+     {t('Theme & Colors', 'Θέμα και χρώματα')}
     </button>
     <button
      onClick={() => setActiveTab('content')}
@@ -85,7 +87,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
      }`}
     >
      <Layout className="w-3.5 h-3.5" />
-     Landing Content
+     {t('Landing Content', 'Περιεχόμενο αρχικής')}
     </button>
     <button
      onClick={() => setActiveTab('preview')}
@@ -94,18 +96,18 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
      }`}
     >
      <Globe className="w-3.5 h-3.5" />
-     Live Preview
+     {t('Live Preview', 'Ζωντανή προεπισκόπηση')}
     </button>
    </div>
 
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
     <div className="lg:col-span-8 space-y-6">
      {activeTab === 'theme' && (
-      <Card title="Visual Identity" subtitle="Define your brand colors and logo.">
+      <Card title={t('Visual Identity', 'Οπτική ταυτότητα')} subtitle={t('Define your brand colors and logo.', 'Όρισε τα χρώματα και το λογότυπο.')}>
        <div className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
          <div className="space-y-1.5">
-          <label className="text-micro">Logo URL</label>
+          <label className="text-micro">{t('Logo URL', 'URL λογοτύπου')}</label>
           <input
            type="text"
            value={brandingForm.logoUrl}
@@ -115,7 +117,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
           />
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">Hero Image URL</label>
+          <label className="text-micro">{t('Hero Image URL', 'URL εικόνας hero')}</label>
           <input
            type="text"
            value={brandingForm.heroImageUrl || ''}
@@ -128,7 +130,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
          <div className="space-y-1.5">
-          <label className="text-micro">Primary Color</label>
+          <label className="text-micro">{t('Primary Color', 'Κύριο χρώμα')}</label>
           <div className="flex gap-2">
            <input
             type="color"
@@ -145,7 +147,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
           </div>
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">Secondary Color</label>
+          <label className="text-micro">{t('Secondary Color', 'Δευτερεύον χρώμα')}</label>
           <div className="flex gap-2">
            <input
             type="color"
@@ -162,7 +164,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
           </div>
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">Accent Color</label>
+          <label className="text-micro">{t('Accent Color', 'Χρώμα έμφασης')}</label>
           <div className="flex gap-2">
            <input
             type="color"
@@ -181,7 +183,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
         </div>
 
         <div className="space-y-2">
-         <label className="text-micro">Background Style</label>
+         <label className="text-micro">{t('Background Style', 'Στυλ φόντου')}</label>
          <div className="flex gap-3">
           {['solid', 'gradient', 'mesh'].map(style => (
            <button
@@ -193,7 +195,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
               : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300'
             }`}
            >
-            {style}
+            {style === 'solid' ? t('solid', 'συμπαγές') : style === 'gradient' ? t('gradient', 'ντεγκραντέ') : t('mesh', 'πλέγμα')}
            </button>
           ))}
          </div>
@@ -203,10 +205,10 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
      )}
 
      {activeTab === 'content' && (
-      <Card title="Landing Page Content" subtitle="Customize the text and labels on your public landing page.">
+      <Card title={t('Landing Page Content', 'Περιεχόμενο αρχικής σελίδας')} subtitle={t('Customize the text and labels on your public landing page.', 'Προσάρμοσε τα κείμενα και τις ετικέτες στην δημόσια αρχική σελίδα.')}>
        <div className="space-y-5">
         <div className="space-y-1.5">
-         <label className="text-micro">Hero Title</label>
+         <label className="text-micro">{t('Hero Title', 'Τίτλος hero')}</label>
          <input
           type="text"
           value={contentForm.heroTitle}
@@ -215,7 +217,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
          />
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">Hero Subtitle</label>
+         <label className="text-micro">{t('Hero Subtitle', 'Υπότιτλος hero')}</label>
          <textarea
           rows={3}
           value={contentForm.heroSubtitle}
@@ -225,7 +227,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
          <div className="space-y-1.5">
-          <label className="text-micro">Call to Action Label</label>
+          <label className="text-micro">{t('Call to Action Label', 'Ετικέτα πρόσκλησης σε ενέργεια')}</label>
           <input
            type="text"
            value={contentForm.ctaLabel}
@@ -234,36 +236,36 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
           />
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">Community Naming Convention</label>
+          <label className="text-micro">{t('Community Naming Convention', 'Ονομασία κοινοτήτων')}</label>
           <input
            type="text"
            value={contentForm.communityNamingConvention}
            onChange={e => setContentForm({ ...contentForm, communityNamingConvention: e.target.value })}
            className="w-full bg-stone-50/50 border border-stone-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 transition-all"
-           placeholder="e.g. Communities, Hubs, Circles"
+           placeholder={t('e.g. Communities, Hubs, Circles', 'π.χ. Κοινότητες, κόμβοι, κύκλοι')}
           />
          </div>
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">Dashboard Welcome Text</label>
+         <label className="text-micro">{t('Dashboard Welcome Text', 'Κείμενο καλωσορίσματος στον πίνακα')}</label>
          <input
           type="text"
           value={contentForm.dashboardWelcomeText}
           onChange={e => setContentForm({ ...contentForm, dashboardWelcomeText: e.target.value })}
           className="w-full bg-stone-50/50 border border-stone-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 transition-all"
          />
-         <p className="text-xs text-stone-400 font-medium">Use {'{score}'} as a placeholder for profile completion score.</p>
+         <p className="text-xs text-stone-400 font-medium">{t('Use {score} as a placeholder for profile completion score.', 'Χρησιμοποίησε το {score} ως σύμβολο για το ποσοστό ολοκλήρωσης προφίλ.')}</p>
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">Email Signature</label>
+         <label className="text-micro">{t('Email Signature', 'Υπογραφή email')}</label>
          <input
           type="text"
           value={contentForm.emailSignature}
           onChange={e => setContentForm({ ...contentForm, emailSignature: e.target.value })}
           className="w-full bg-stone-50/50 border border-stone-200 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 transition-all"
-          placeholder="e.g. The CoFounderBay Team"
+          placeholder={t('e.g. The CoFounderBay Team', 'π.χ. The CoFounderBay Team')}
          />
-         <p className="text-xs text-stone-400 font-medium">This closing line will be used in all automated outgoing emails.</p>
+         <p className="text-xs text-stone-400 font-medium">{t('This closing line will be used in all automated outgoing emails.', 'Αυτή η γραμμή κλεισίματος θα μπαίνει σε όλα τα αυτοματοποιημένα εξερχόμενα email.')}</p>
         </div>
        </div>
       </Card>
@@ -271,16 +273,16 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
 
      {activeTab === 'preview' && (
       <div className="space-y-6">
-       <Card title="Button Preview" noPadding>
+       <Card title={t('Button Preview', 'Προεπισκόπηση κουμπιών')} noPadding>
         <div className="p-8 flex flex-wrap gap-4 items-center justify-center bg-stone-50/50">
-         <Button variant="primary" size="sm">Primary Action</Button>
-         <Button variant="secondary" size="sm">Secondary Action</Button>
-         <Button variant="outline" size="sm">Outline Action</Button>
-         <Button variant="ghost" size="sm">Ghost Action</Button>
+         <Button variant="primary" size="sm">{t('Primary Action', 'Κύρια ενέργεια')}</Button>
+         <Button variant="secondary" size="sm">{t('Secondary Action', 'Δευτερεύουσα ενέργεια')}</Button>
+         <Button variant="outline" size="sm">{t('Outline Action', 'Ενέργεια περιγράμματος')}</Button>
+         <Button variant="ghost" size="sm">{t('Ghost Action', 'Διάφανη ενέργεια')}</Button>
         </div>
        </Card>
 
-       <Card title="Sidebar Preview" noPadding>
+       <Card title={t('Sidebar Preview', 'Προεπισκόπηση πλευρικής στήλης')} noPadding>
         <div className="flex h-64 border border-stone-100 rounded-lg overflow-hidden">
          <div className="w-40 bg-white border-r border-stone-100 p-4 space-y-4">
           <div className="flex items-center gap-2 mb-4">
@@ -290,8 +292,8 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
            <span className="text-xs font-medium tracking-wider">{tenant.displayName}</span>
           </div>
           <div className="space-y-1">
-           <div className="bg-stone-900 text-white px-3 py-1.5 rounded-md text-xs font-medium tracking-wider">Dashboard</div>
-           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium tracking-wider">Matches</div>
+           <div className="bg-stone-900 text-white px-3 py-1.5 rounded-md text-xs font-medium tracking-wider">{t('Dashboard', 'Πίνακας')}</div>
+           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium tracking-wider">{t('Matches', 'Αντιστοιχίσεις')}</div>
            <div className="text-stone-400 px-3 py-1.5 text-xs font-medium tracking-wider">{contentForm.communityNamingConvention}</div>
           </div>
          </div>
@@ -309,40 +311,40 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
     </div>
 
     <div className="lg:col-span-4 space-y-6">
-     <Card title="Current Theme">
+     <Card title={t('Current Theme', 'Τρέχον θέμα')}>
       <div className="space-y-4">
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">Primary</span>
+        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Primary', 'Κύριο')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.primaryColor }}></div>
        </div>
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">Secondary</span>
+        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Secondary', 'Δευτερεύον')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.secondaryColor }}></div>
        </div>
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">Accent</span>
+        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Accent', 'Έμφαση')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.accentColor }}></div>
        </div>
        <div className="pt-4 border-t border-stone-100">
         <p className="text-xs text-stone-400 font-medium leading-relaxed italic">
-         Branding changes are applied instantly to the dashboard and internal pages. Landing page changes require a publish action.
+         {t('Branding changes are applied instantly to the dashboard and internal pages. Landing page changes require a publish action.', 'Οι αλλαγές ταυτότητας εφαρμόζονται αμέσως στον πίνακα και στις εσωτερικές σελίδες. Οι αλλαγές αρχικής σελίδας θέλουν δημοσίευση.')}
         </p>
        </div>
       </div>
      </Card>
 
-     <Card title="Organization Info">
+     <Card title={t('Organization Info', 'Στοιχεία οργανισμού')}>
       <div className="space-y-4">
        <div>
-        <label className="text-micro">Slug</label>
+        <label className="text-micro">{t('Slug', 'Slug')}</label>
         <p className="text-sm font-mono text-stone-900 bg-stone-50 p-2 rounded border border-stone-100 mt-1">{tenant.slug}</p>
        </div>
        <div>
-        <label className="text-micro">Support Email</label>
+        <label className="text-micro">{t('Support Email', 'Email υποστήριξης')}</label>
         <p className="text-sm text-stone-900 mt-1">{tenant.supportEmail}</p>
        </div>
        <Button variant="outline" size="sm" className="w-full text-xs font-medium h-10">
-        View Public Page
+        {t('View Public Page', 'Δημόσια σελίδα')}
        </Button>
       </div>
      </Card>

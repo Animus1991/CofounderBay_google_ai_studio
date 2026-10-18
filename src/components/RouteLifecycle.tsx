@@ -91,8 +91,8 @@ const EL_TITLES: Record<string, string> = {
 export function titleForPath(pathname: string): string {
   const exact = ROUTE_TITLES[pathname];
   if (exact) return bothText(exact, EL_TITLES[pathname] ?? exact);
-  if (pathname.startsWith('/profile/')) return 'Profile';
-  return 'Page Not Found';
+  if (pathname.startsWith('/profile/')) return bothText('Profile', 'Προφίλ');
+  return bothText('Page Not Found', 'Η σελίδα δεν βρέθηκε');
 }
 
 export default function RouteLifecycle() {

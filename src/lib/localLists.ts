@@ -275,9 +275,10 @@ export type MatchFilters = {
   commitment: string;
   location: string;
   skill: string;
+  industry: string;
 };
 
-export const emptyMatchFilters = (): MatchFilters => ({ q: '', role: '', stage: '', commitment: '', location: '', skill: '' });
+export const emptyMatchFilters = (): MatchFilters => ({ q: '', role: '', stage: '', commitment: '', location: '', skill: '', industry: '' });
 
 export function readMatchFilters(): MatchFilters {
   const stored = readJson<Partial<MatchFilters> | null>(keys.matchFilters, null);
@@ -702,6 +703,14 @@ export function ensureChatConversation(personId: string): StoredConversation {
 
 // ── Studio assistant transcript ────────────────────────────────────────────
 
+/** A list a tool read, shown under the answer. */
+export type TurnSource = {
+  kind: string;
+  en: string;
+  el: string;
+  href?: string;
+};
+
 export type AssistantTurn = {
   id: string;
   role: 'user' | 'assistant';
@@ -709,6 +718,9 @@ export type AssistantTurn = {
   href?: string;
   tool?: string;
   at: string;
+  sources?: TurnSource[];
+  links?: { href: string; en: string; el: string }[];
+  followUps?: { en: string; el: string }[];
 };
 
 export function readAssistant(): AssistantTurn[] {
@@ -724,6 +736,9 @@ export function appendAssistant(turn: Omit<AssistantTurn, 'id' | 'at'> & { id?: 
     text: turn.text,
     href: turn.href,
     tool: turn.tool,
+    sources: turn.sources,
+    links: turn.links,
+    followUps: turn.followUps,
   };
   const next = [...readAssistant(), entry].slice(-80);
   writeJson(keys.assistant, next);
@@ -744,6 +759,14 @@ export function searchChat(query: string): StoredMessage[] {
 
 // ── Need cards: what exists, the outcome, who is missing ───────────────────
 
+export type NeedField = 'exists' | 'outcome' | 'missing' | 'offer';
+
+export type NeedHistory = {
+  version: number;
+  replacedAt: string;
+  changed: NeedField[];
+};
+
 export type NeedCard = {
   id: string;
   exists: string;
@@ -752,23 +775,76 @@ export type NeedCard = {
   offer?: string;
   status: 'open' | 'closed';
   at: string;
+  createdAt?: string;
+  version?: number;
+  history?: NeedHistory[];
 };
+
+const NEED_FIELDS: NeedField[] = ['exists', 'outcome', 'missing', 'offer'];
+
+function hydrateNeed(card: NeedCard): NeedCard {
+  return {
+    ...card,
+    createdAt: card.createdAt ?? card.at,
+    version: card.version ?? 1,
+    history: card.history ?? [],
+  };
+}
 
 export function readNeeds(): NeedCard[] {
   const stored = readJson<NeedCard[] | null>(keys.needs, null);
-  return Array.isArray(stored) ? stored : [];
+  return Array.isArray(stored) ? stored.map(hydrateNeed) : [];
+}
+
+function writeNeeds(list: NeedCard[]): NeedCard[] {
+  writeJson(keys.needs, list.slice(0, 40));
+  return list;
 }
 
 export function upsertNeed(card: NeedCard): NeedCard[] {
-  const next = [card, ...readNeeds().filter((item) => item.id !== card.id)].slice(0, 40);
-  writeJson(keys.needs, next);
-  return next;
+  const previous = readNeeds().find((item) => item.id === card.id);
+  const now = card.at || new Date().toISOString();
+  const incoming = hydrateNeed({
+    ...card,
+    at: now,
+    createdAt: previous?.createdAt ?? card.createdAt ?? now,
+    version: previous?.version ?? card.version ?? 1,
+    history: previous?.history ?? card.history ?? [],
+  });
+  const nextCard = previous ? versionedNeed(previous, incoming, now) : incoming;
+  return writeNeeds([nextCard, ...readNeeds().filter((item) => item.id !== card.id)]);
+}
+
+function versionedNeed(previous: NeedCard, incoming: NeedCard, at: string): NeedCard {
+  const changed = NEED_FIELDS.filter((field) => (incoming[field] ?? '') !== (previous[field] ?? ''));
+  if (changed.length === 0) {
+    return { ...previous, ...incoming, version: previous.version ?? 1, history: previous.history ?? [], createdAt: previous.createdAt ?? previous.at };
+  }
+  const version = (previous.version ?? 1) + 1;
+  return {
+    ...previous,
+    ...incoming,
+    version,
+    createdAt: previous.createdAt ?? previous.at,
+    at,
+    history: [{ version: previous.version ?? 1, replacedAt: at, changed }, ...(previous.history ?? [])].slice(0, 12),
+  };
+}
+
+export function editNeed(id: string, patch: Partial<Pick<NeedCard, NeedField>>): NeedCard | undefined {
+  const current = readNeeds().find((item) => item.id === id);
+  if (!current) return undefined;
+  const next = upsertNeed({ ...current, ...patch, at: new Date().toISOString() });
+  return next.find((item) => item.id === id);
 }
 
 export function closeNeed(id: string): NeedCard[] {
-  const next = readNeeds().map((item) => (item.id === id ? { ...item, status: 'closed' as const } : item));
-  writeJson(keys.needs, next);
-  return next;
+  return setNeedStatus(id, 'closed');
+}
+
+export function setNeedStatus(id: string, status: NeedCard['status']): NeedCard[] {
+  const now = new Date().toISOString();
+  return writeNeeds(readNeeds().map((item) => (item.id === id ? { ...item, status, at: now } : item)));
 }
 
 export type OpenToKind = 'cofounder' | 'investor' | 'advisor';

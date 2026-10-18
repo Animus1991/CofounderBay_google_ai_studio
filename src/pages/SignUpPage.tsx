@@ -5,11 +5,11 @@ import { Zap, Mail, Lock, ArrowRight, Github, Chrome, User, FlaskConical } from 
 import { auth } from '../firebase';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
-import { bothText } from '../lib/labels';
-import { LanguageToggle } from '../lib/language';
+import { LanguageToggle, useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
 
 export default function SignUpPage() {
+ const t = useT();
  const [email, setEmail] = useState('');
  const [password, setPassword] = useState('');
  const [fullName, setFullName] = useState('');
@@ -26,16 +26,16 @@ export default function SignUpPage() {
 
  const friendlyError = (code: string): string => {
   const map: Record<string, string> = {
-   'auth/operation-not-allowed': 'Email/password sign-up is not enabled yet. Please use Demo Mode or try Google sign-in.',
-   'auth/email-already-in-use': 'An account with this email already exists. Try signing in.',
-   'auth/weak-password': 'Password must be at least 6 characters.',
-   'auth/invalid-email': 'Please enter a valid email address.',
-   'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
-   'auth/cancelled-popup-request': 'Only one sign-in popup can be open at a time.',
-   'auth/network-request-failed': 'Network error. Please check your connection and try again.',
-   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+   'auth/operation-not-allowed': t('Email/password sign-up is not enabled yet. Please use Demo Mode or try Google sign-in.', 'Η εγγραφή με email/κωδικό δεν είναι ενεργή ακόμα. Χρησιμοποίησε τη δοκιμή με δείγμα ή την είσοδο με Google.'),
+   'auth/email-already-in-use': t('An account with this email already exists. Try signing in.', 'Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκίμασε είσοδο.'),
+   'auth/weak-password': t('Password must be at least 6 characters.', 'Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'),
+   'auth/invalid-email': t('Please enter a valid email address.', 'Βάλε μια έγκυρη διεύθυνση email.'),
+   'auth/popup-closed-by-user': t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'),
+   'auth/cancelled-popup-request': t('Only one sign-in popup can be open at a time.', 'Μόνο ένα παράθυρο εισόδου μπορεί να είναι ανοιχτό κάθε φορά.'),
+   'auth/network-request-failed': t('Network error. Please check your connection and try again.', 'Σφάλμα δικτύου. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'),
+   'auth/too-many-requests': t('Too many attempts. Please wait a moment and try again.', 'Πολλές προσπάθειες. Περίμενε λίγο και δοκίμασε ξανά.'),
   };
-  return map[code] || 'Something went wrong. Please try again.';
+  return map[code] || t('Something went wrong. Please try again.', 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
  };
 
  const handleEmailSignUp = async (e: React.FormEvent) => {
@@ -64,11 +64,11 @@ export default function SignUpPage() {
   } catch (err: any) {
    console.error('Google Auth Error:', err);
    if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
-    setError(bothText('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
+    setError(t('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
    } else if (err.code === 'auth/popup-closed-by-user') {
-    setError('Sign-in popup was closed. Please try again.');
+    setError(t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'));
    } else if (err.code === 'auth/popup-blocked') {
-    setError('Popup was blocked. Please allow popups for this site.');
+    setError(t('Popup was blocked. Please allow popups for this site.', 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επίτρεψε τα αναδυόμενα για αυτό τον ιστότοπο.'));
    } else {
     setError(friendlyError(err.code));
    }
@@ -90,12 +90,12 @@ export default function SignUpPage() {
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
     <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
-     Create your account
+     {t('Create your account', 'Δημιούργησε τον λογαριασμό σου')}
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
-     Already have an account?{' '}
+     {t('Already have an account?', 'Έχεις ήδη λογαριασμό;')}{' '}
      <NavLink to="/login" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
-      Sign in
+      {t('Sign in', 'Είσοδος')}
      </NavLink>
     </p>
    </div>
@@ -105,7 +105,7 @@ export default function SignUpPage() {
      <form className="space-y-6" onSubmit={handleEmailSignUp}>
       <div>
        <label htmlFor="fullName" className="block text-sm font-medium text-stone-700">
-        Full name
+        {t('Full name', 'Ονοματεπώνυμο')}
        </label>
        <div className="mt-1 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -119,14 +119,14 @@ export default function SignUpPage() {
          value={fullName}
          onChange={(e) => setFullName(e.target.value)}
          className="appearance-none block w-full min-h-11 pl-10 px-3 py-3 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-stone-900 focus:border-stone-900 text-base sm:text-sm transition-all"
-         placeholder="John Doe"
+         placeholder={t('John Doe', 'Όνομα Επίθετο')}
         />
        </div>
       </div>
 
       <div>
        <label htmlFor="email" className="block text-sm font-medium text-stone-700">
-        Email address
+        {t('Email address', 'Διεύθυνση email')}
        </label>
        <div className="mt-1 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -148,7 +148,7 @@ export default function SignUpPage() {
 
       <div>
        <label htmlFor="password" className="block text-sm font-medium text-stone-700">
-        Password
+        {t('Password', 'Κωδικός')}
        </label>
        <div className="mt-1 relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -167,7 +167,7 @@ export default function SignUpPage() {
         />
        </div>
        <p className="mt-2 text-xs text-stone-400">
-        Must be at least 8 characters long.
+        {t('Must be at least 8 characters long.', 'Τουλάχιστον 8 χαρακτήρες.')}
        </p>
       </div>
 
@@ -183,7 +183,7 @@ export default function SignUpPage() {
         disabled={loading}
         className="w-full min-h-11 flex justify-center items-center py-2 px-4 rounded-xl text-sm font-semibold text-white bg-stone-900 hover:bg-stone-800 disabled:opacity-50 transition-all group"
        >
-        {loading ? 'Creating account...' : 'Create account'}
+        {loading ? t('Creating account...', 'Δημιουργία λογαριασμού...') : t('Create account', 'Δημιουργία λογαριασμού')}
         <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
        </button>
       </div>
@@ -195,7 +195,7 @@ export default function SignUpPage() {
         <div className="w-full border-t border-stone-200" />
        </div>
        <div className="relative flex justify-center text-sm">
-        <span className="px-2 bg-white text-stone-500">Or sign up with</span>
+        <span className="px-2 bg-white text-stone-500">{t('Or sign up with', 'Ή εγγραφή με')}</span>
        </div>
       </div>
 
@@ -209,7 +209,7 @@ export default function SignUpPage() {
        </button>
        <button
         type="button"
-        onClick={() => toastInfo('GitHub sign-in is not available here.', 'Use email, Google, or Demo Mode.')}
+        onClick={() => toastInfo(t('GitHub sign-in is not available here.', 'Η είσοδος με GitHub δεν είναι διαθέσιμη εδώ.'), t('Use email, Google, or Demo Mode.', 'Χρησιμοποίησε email, Google ή δοκιμή με δείγμα.'))}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
@@ -224,14 +224,14 @@ export default function SignUpPage() {
        className="w-full min-h-11 flex items-center justify-center gap-2 px-4 border border-dashed border-stone-300 rounded-xl text-sm font-medium text-stone-500 hover:bg-stone-50 hover:border-stone-400 transition-all"
       >
        <FlaskConical className="h-4 w-4 text-amber-500" />
-       Try Demo Mode — no account needed
+       {t('Try Demo Mode — no account needed', 'Δοκιμή με δείγμα — χωρίς λογαριασμό')}
       </button>
      </div>
      <div className="mt-4">
       <p className="text-xs text-stone-400 text-center leading-relaxed">
-       By creating an account, you agree to our{' '}
-       <a href="#" className="underline hover:text-stone-600">Terms of Service</a> and{' '}
-       <a href="#" className="underline hover:text-stone-600">Privacy Policy</a>.
+       {t('By creating an account, you agree to our', 'Με τη δημιουργία λογαριασμού αποδέχεσαι τους')}{' '}
+       <a href="#" className="underline hover:text-stone-600">{t('Terms of Service', 'Όρους χρήσης')}</a> {t('and', 'και την')}{' '}
+       <a href="#" className="underline hover:text-stone-600">{t('Privacy Policy', 'Πολιτική απορρήτου')}</a>.
       </p>
      </div>
     </div>

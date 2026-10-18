@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { User } from "../../types";
 import { useTenant } from "../../context/TenantContext";
 import { cn } from "../../lib/utils";
+import { useT } from "../../lib/language";
+import { labelOf } from "../../lib/labels";
 
 interface NavbarProps {
  user: User;
@@ -11,6 +13,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user, onMenuClick }: NavbarProps) {
+ const t = useT();
  const { tenant } = useTenant();
  const [isSearchFocused, setIsSearchFocused] = useState(false);
  const [scrolled, setScrolled] = useState(false);
@@ -63,7 +66,7 @@ export default function Navbar({ user, onMenuClick }: NavbarProps) {
       )} />
       <input
        type="text"
-       placeholder={`Search ${tenant?.content?.communityNamingConvention || 'communities'}...`}
+       placeholder={t(`Search ${tenant?.content?.communityNamingConvention || 'communities'}...`, `Αναζήτηση ${tenant?.content?.communityNamingConvention || 'κοινοτήτων'}…`)}
        onFocus={() => setIsSearchFocused(true)}
        onBlur={() => setIsSearchFocused(false)}
        className="w-full py-2 pl-2.5 pr-4 text-sm font-medium focus:outline-none bg-transparent text-stone-900 placeholder:text-stone-400"
@@ -84,7 +87,7 @@ export default function Navbar({ user, onMenuClick }: NavbarProps) {
      className="hidden lg:flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium tracking-wider shadow-md shadow-stone-900/10 transition-all"
     >
      <Plus className="w-3.5 h-3.5" />
-     Quick Action
+     {t('Quick Action', 'Γρήγορη ενέργεια')}
     </motion.button>
 
     <div className="flex items-center gap-1">
@@ -105,7 +108,7 @@ export default function Navbar({ user, onMenuClick }: NavbarProps) {
      >
       <div className="text-right hidden sm:block">
        <p className="text-xs font-semibold text-stone-900 group-hover:text-stone-600 transition-colors">{user.fullName}</p>
-       <p className="text-xs font-medium text-stone-400 tracking-wider">{user.roles[0]}</p>
+       <p className="text-xs font-medium text-stone-400 tracking-wider">{labelOf(user.roles[0])}</p>
       </div>
       <div className="relative">
        <div className="w-9 h-9 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center overflow-hidden relative z-10 shadow-sm group-hover:border-stone-400 transition-all">

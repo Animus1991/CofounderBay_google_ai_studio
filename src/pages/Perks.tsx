@@ -24,8 +24,22 @@ import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { keys, listKeys, readIds } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
+import { useT } from "../lib/language";
+import { labelOf } from "../lib/labels";
+
+const PERK_VALUE_EL: Record<string, string> = {
+ "$100,000 Credits": "$100,000 πιστώσεις",
+ "$20,000 Fee-free": "$20,000 χωρίς προμήθεια",
+ "90% Discount": "90% έκπτωση",
+ "6 Months Free": "6 μήνες δωρεάν",
+ "$200,000 Credits": "$200,000 πιστώσεις",
+ "95% Discount": "95% έκπτωση",
+ "80% Discount": "80% έκπτωση",
+ "$500 Bonus": "$500 μπόνους",
+};
 
 export default function Perks() {
+ const t = useT();
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
  const [perkQuery, setPerkQuery] = useState('');
  const [savedPerks, setSavedPerks] = useState<number[]>([]);
@@ -40,11 +54,11 @@ export default function Perks() {
  };
 
  const categories = [
-  { id: 'all', label: 'All Perks', icon: Gift },
-  { id: 'cloud', label: 'Cloud & Infrastructure', icon: Cloud },
-  { id: 'finance', label: 'Finance & Payments', icon: CreditCard },
-  { id: 'marketing', label: 'Marketing & Sales', icon: BarChart3 },
-  { id: 'productivity', label: 'Productivity & HR', icon: Zap },
+  { id: 'all', label: t('All Perks', 'Όλες οι παροχές'), icon: Gift },
+  { id: 'cloud', label: t('Cloud & Infrastructure', 'Cloud και υποδομή'), icon: Cloud },
+  { id: 'finance', label: t('Finance & Payments', 'Οικονομικά και πληρωμές'), icon: CreditCard },
+  { id: 'marketing', label: t('Marketing & Sales', 'Μάρκετινγκ και πωλήσεις'), icon: BarChart3 },
+  { id: 'productivity', label: t('Productivity & HR', 'Παραγωγικότητα και HR'), icon: Zap },
  ] as const;
 
  const perks = [
@@ -64,7 +78,7 @@ export default function Perks() {
  });
 
  return (
-  <PageShell title="Perks" description="Exclusive discounts and credits from our ecosystem partners.">
+  <PageShell title={t("Perks", "Παροχές")} description={t("Exclusive discounts and credits from our ecosystem partners.", "Αποκλειστικές εκπτώσεις και πιστώσεις από τους συνεργάτες του οικοσυστήματος.")}>
    <div className="space-y-6">
     <div className="scroll-tabs gap-2 bg-stone-50 p-1 rounded-xl border border-stone-100">
      {categories.map((cat) => (
@@ -93,7 +107,7 @@ export default function Perks() {
        type="text"
        value={perkQuery}
        onChange={(e) => setPerkQuery(e.target.value)}
-       placeholder="Search perks by name or category..." 
+       placeholder={t('Search perks by name or category…', 'Αναζήτηση παροχών ανά όνομα ή κατηγορία…')} 
        className="w-full bg-stone-50 border border-stone-200 rounded-full py-2.5 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
       />
      </div>
@@ -102,12 +116,12 @@ export default function Perks() {
       const index = ids.indexOf(activeCategory);
       setActiveCategory(ids[(index + 1) % ids.length] ?? 'all');
      }}>
-      <SlidersHorizontal className="w-4 h-4 mr-2" /> {activeCategory === 'all' ? 'Filters' : categories.find((c) => c.id === activeCategory)?.label}
+      <SlidersHorizontal className="w-4 h-4 mr-2" /> {activeCategory === 'all' ? t('Filters', 'Φίλτρα') : categories.find((c) => c.id === activeCategory)?.label}
      </Button>
     </Card>
     <Card className="bg-stone-900 text-white border-none flex items-center justify-between p-6">
      <div>
-      <p className="text-md font-medium text-white/40 tracking-wide">Potential Savings</p>
+      <p className="text-md font-medium text-white/40 tracking-wide">{t('Potential Savings', 'Πιθανή εξοικονόμηση')}</p>
       <h4 className="text-xl font-semibold">$450k+</h4>
      </div>
      <Zap className="w-8 h-8 text-amber-500 fill-current" />
@@ -115,7 +129,7 @@ export default function Perks() {
    </div>
 
    {filteredPerks.length === 0 && (
-    <EmptyHint title="No perks match this search." detail="Ask the studio assistant which credits you can claim.">
+    <EmptyHint title={t("No perks match this search.", "Καμία παροχή δεν ταιριάζει σε αυτή την αναζήτηση.")} detail={t("Ask the studio assistant which credits you can claim.", "Ρώτα τον βοηθό του στούντιο ποιες πιστώσεις μπορείς να διεκδικήσεις.")}>
      <AskLink prompt="What perks can I claim?" />
     </EmptyHint>
    )}
@@ -134,14 +148,14 @@ export default function Perks() {
       <div className="space-y-2 flex-1">
        <div className="space-y-1">
         <h4 className="font-medium text-base">{perk.name}</h4>
-        <FactLine items={[perk.category]} label="Category" />
+        <FactLine items={[labelOf(perk.category)]} label={t('Category', 'Κατηγορία')} />
        </div>
-       <p className="text-sm font-medium text-stone-900">{perk.value}</p>
+       <p className="text-sm font-medium text-stone-900">{t(perk.value, PERK_VALUE_EL[perk.value] ?? perk.value)}</p>
        <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{perk.description}</p>
       </div>
       <div className="mt-6 pt-4 border-t border-stone-100">
        <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
-        {claimed.includes(perkClaimId(perk.name)) ? 'Claimed' : 'Claim Perk'} <ArrowRight className="w-3 h-3 ml-1" />
+        {claimed.includes(perkClaimId(perk.name)) ? t('Claimed', 'Διεκδικήθηκε') : t('Claim Perk', 'Διεκδίκηση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
        </Button>
       </div>
      </Card>
@@ -156,10 +170,10 @@ export default function Perks() {
      </div>
      <div className="flex-1 text-center md:text-left space-y-2">
       <h3 className="text-md font-medium text-stone-900">AWS Activate for CoFounderBay</h3>
-      <p className="text-stone-500 max-w-2xl">Get exclusive access to the AWS Activate program through our partnership. Includes $100,000 in credits, technical support, and training resources.</p>
+      <p className="text-stone-500 max-w-2xl">{t('Get exclusive access to the AWS Activate program through our partnership. Includes $100,000 in credits, technical support, and training resources.', 'Αποκλειστική πρόσβαση στο πρόγραμμα AWS Activate μέσω της συνεργασίας μας. Περιλαμβάνει $100,000 πιστώσεις, τεχνική υποστήριξη και εκπαιδευτικούς πόρους.')}</p>
      </div>
      <Button type="button" variant="primary" className="px-8 h-10" onClick={() => ask('Claim the Amazon Web Services perk')}>
-      {claimed.includes('aws') ? 'Claimed' : 'Apply Now'}
+      {claimed.includes('aws') ? t('Claimed', 'Διεκδικήθηκε') : t('Apply Now', 'Κάνε αίτηση')}
      </Button>
     </div>
 

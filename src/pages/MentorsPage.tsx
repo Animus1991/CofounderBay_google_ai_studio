@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useT } from '../lib/language';
+import { labelOf } from '../lib/labels';
 import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
@@ -39,7 +41,14 @@ const MENTORS = castByRole('Mentor').map((person) => ({
   achievements: person.achievements || [],
 }));
 
+const AVAILABILITY_EL: Record<string, string> = {
+ Immediate: 'Άμεσα',
+ Flexible: 'Ευέλικτα',
+ '1 month notice': 'Σε 1 μήνα',
+};
+
 export default function MentorsPage() {
+ const t = useT();
  const [searchQuery, setSearchQuery] = useState('');
  const [availabilityFilter, setAvailabilityFilter] = useState('All');
  const [expertiseFilter, setExpertiseFilter] = useState('All');
@@ -67,27 +76,27 @@ export default function MentorsPage() {
  });
 
  return (
-  <PageShell title="Mentors" description="Connect with world-class mentors who have built and scaled successful startups.">
+  <PageShell title={t('Mentors', 'Μέντορες')} description={t('Connect with world-class mentors who have built and scaled successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει και αναπτύξει επιτυχημένες startups.')}>
   <div className="space-y-6">
    {/* Hero Section */}
    <div className="bg-stone-900 rounded-xl p-6 sm:p-8 relative overflow-hidden">
     <div className="relative z-10 max-w-2xl space-y-6">
      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-full backdrop-blur-md text-sm font-medium tracking-wide">
       <Zap className="w-4 h-4 text-amber-400" />
-      Expert Guidance
+      {t('Expert Guidance', 'Καθοδήγηση από ειδικούς')}
      </div>
      <h2 className="text-lg font-semibold text-white tracking-tight leading-tight">
-      Learn from the <span className="text-stone-400">Best in the World.</span>
+      {t('Learn from the', 'Μάθε από')} <span className="text-stone-400">{t('Best in the World.', 'τα καλύτερα μυαλά του κόσμου.')}</span>
      </h2>
      <p className="text-sm text-stone-400 leading-relaxed">
-      Connect with world-class mentors who have built, scaled, and exited successful startups.
+      {t('Connect with world-class mentors who have built, scaled, and exited successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει, αναπτύξει και πουλήσει επιτυχημένες startups.')}
      </p>
      <div className="flex flex-col sm:flex-row gap-4 pt-4 relative z-20">
       <div className="flex-1 relative group">
        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-stone-500 group-focus-within:text-white transition-colors" />
        <input 
         type="text"
-        placeholder="Search by expertise, company, or name..."
+        placeholder={t('Search by expertise, company, or name...', 'Αναζήτηση με εξειδίκευση, εταιρεία ή όνομα…')}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3.5 bg-white/10 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-stone-400 outline-none focus:ring-2 focus:ring-white/20 transition-all font-semibold backdrop-blur-sm shadow-sm"
@@ -97,12 +106,12 @@ export default function MentorsPage() {
        onClick={() => document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' })}
        className="px-4 sm:px-6 py-2 sm:py-2.5 bg-white text-stone-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-50 transition-all shadow-md whitespace-nowrap "
       >
-       Find Mentor
+       {t('Find Mentor', 'Βρες μέντορα')}
       </button>
      </div>
      <div className="flex flex-wrap gap-y-3 gap-x-6 pt-2 relative z-20">
       <div className="space-y-2 flex-1">
-       <span className="text-xs font-semibold text-stone-400 tracking-wide block">Expertise</span>
+       <span className="text-xs font-semibold text-stone-400 tracking-wide block">{t('Expertise', 'Εξειδίκευση')}</span>
        <div className="flex flex-wrap gap-2">
         {expertiseFilters.map(filter => (
          <button
@@ -115,14 +124,14 @@ export default function MentorsPage() {
             : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
           )}
          >
-          {filter}
+          {filter === 'All' ? t('All', 'Όλα') : labelOf(filter)}
          </button>
         ))}
        </div>
       </div>
 
       <div className="space-y-2">
-       <span className="text-xs font-semibold text-stone-400 tracking-wide block">Availability</span>
+       <span className="text-xs font-semibold text-stone-400 tracking-wide block">{t('Availability', 'Διαθεσιμότητα')}</span>
        <div className="flex flex-wrap gap-2">
         {availableFilters.map(filter => (
          <button
@@ -135,7 +144,7 @@ export default function MentorsPage() {
             : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
           )}
          >
-          {filter === 'All' ? 'Any Time' : filter}
+          {filter === 'All' ? t('Any Time', 'Οποτεδήποτε') : t(filter, AVAILABILITY_EL[filter] ?? filter)}
          </button>
         ))}
        </div>
@@ -147,14 +156,14 @@ export default function MentorsPage() {
    {/* Stats Bar */}
    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-5 border-y border-stone-100">
     {[
-     { label: 'Verified Mentors', value: '500+' },
-     { label: 'Sessions Completed', value: '12k+' },
-     { label: 'Avg. Rating', value: '4.9/5' },
-     { label: 'Success Rate', value: '94%' },
+     { label: 'Verified Mentors', labelEl: 'Μέντορες με επαλήθευση', value: '500+' },
+     { label: 'Sessions Completed', labelEl: 'Ολοκληρωμένες συνεδρίες', value: '12k+' },
+     { label: 'Avg. Rating', labelEl: 'Μέση βαθμολογία', value: '4.9/5' },
+     { label: 'Success Rate', labelEl: 'Ποσοστό επιτυχίας', value: '94%' },
     ].map((stat) => (
      <div key={stat.label} className="text-center space-y-1">
       <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-      <div className="text-[10px] font-medium text-stone-400 tracking-wider">{stat.label}</div>
+      <div className="text-[10px] font-medium text-stone-400 tracking-wider">{t(stat.label, stat.labelEl)}</div>
      </div>
     ))}
    </div>
@@ -162,14 +171,14 @@ export default function MentorsPage() {
    {/* Mentor Grid */}
    <div id="mentor-grid" className="space-y-4">
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-     <p className="text-xs font-semibold text-stone-400 tracking-wider">Top Rated Mentors</p>
+     <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Top Rated Mentors', 'Μέντορες με την υψηλότερη βαθμολογία')}</p>
      <div className="flex items-center gap-4">
       <button
        type="button"
        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Find a fundraising mentor' } }))}
        className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors group"
       >
-       Ask the assistant
+       {t('Ask the assistant', 'Ρώτα τον βοηθό')}
        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
       </button>
      </div>
@@ -203,10 +212,10 @@ export default function MentorsPage() {
        <div className="p-4 flex flex-col flex-1">
         <div className="mb-3">
          <h3 className="text-sm font-semibold text-stone-900 leading-snug">{mentor.name}</h3>
-         <p className="text-xs text-stone-400 mt-0.5">{mentor.role}</p>
+         <FactLine className="mt-0.5" items={[mentor.role, mentor.company]} label={t('Mentor facts', 'Στοιχεία μέντορα')} />
         </div>
 
-        <FactLine className="mb-3" items={mentor.expertise.slice(0, 3)} label="Expertise" />
+        <FactLine className="mb-3" items={mentor.expertise.slice(0, 3)} label={t('Expertise', 'Εξειδίκευση')} />
 
         <div className="flex items-center justify-between mb-3">
          <div className="flex items-center gap-1">
@@ -216,7 +225,7 @@ export default function MentorsPage() {
          </div>
          <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-400 tracking-wider">
           <CheckCircle2 className="w-3 h-3 text-green-500" />
-          {mentor.availability}
+          {t(mentor.availability, AVAILABILITY_EL[mentor.availability] ?? mentor.availability)}
          </div>
         </div>
 
@@ -225,10 +234,10 @@ export default function MentorsPage() {
           onClick={(e) => { e.stopPropagation(); navigate('/messages'); }}
           className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-lg text-sm font-semibold hover:bg-stone-800 transition-all flex items-center justify-center gap-1.5"
          >
-          <MessageSquare className="w-3.5 h-3.5" /> Message
+          <MessageSquare className="w-3.5 h-3.5" /> {t('Message', 'Μήνυμα')}
          </button>
          <button 
-          aria-label={savedMentors.has(mentor.id) ? "Remove saved mentor" : "Save mentor"}
+          aria-label={savedMentors.has(mentor.id) ? t("Remove saved mentor", "Αφαίρεση από τα αποθηκευμένα") : t("Save mentor", "Αποθήκευση μέντορα")}
           onClick={(e) => { e.stopPropagation(); setSavedMentors(new Set(toggleId(listKeys.mentors, mentor.id))); }}
           className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-all border border-stone-100"
          >
@@ -240,8 +249,8 @@ export default function MentorsPage() {
      ))}
     </div>
     {filteredMentors.length === 0 && (
-     <EmptyHint title="No mentors match these filters." detail="Ask the studio assistant to find a fundraising, product, or growth mentor.">
-      <AskLink prompt="Find a fundraising mentor" />
+     <EmptyHint title={t('No mentors match these filters.', 'Δεν υπάρχουν μέντορες για αυτά τα φίλτρα.')} detail={t('Ask the studio assistant to find a fundraising, product, or growth mentor.', 'Ζήτα από τον βοηθό του στούντιο να βρει μέντορα για χρηματοδότηση, προϊόν ή ανάπτυξη.')}>
+      <AskLink prompt="Find a fundraising mentor">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
      </EmptyHint>
     )}
    </div>
@@ -249,23 +258,23 @@ export default function MentorsPage() {
   {/* Become a Mentor CTA */}
   <div className="bg-stone-50 rounded-2xl p-6 sm:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border border-stone-100">
    <div className="max-w-xl space-y-3">
-    <h2 className="text-sm font-semibold text-stone-900 leading-snug">Share your experience. Become a Mentor.</h2>
+    <h2 className="text-sm font-semibold text-stone-900 leading-snug">{t('Share your experience. Become a Mentor.', 'Μοιράσου την εμπειρία σου. Γίνε μέντορας.')}</h2>
     <p className="text-xs text-stone-500 leading-relaxed">
-     Help the next generation of founders succeed. Join our elite network of mentors and give back to the startup community.
+     {t('Help the next generation of founders succeed. Join our elite network of mentors and give back to the startup community.', 'Βοήθησε τη νέα γενιά ιδρυτών να πετύχει. Μπες στο επίλεκτο δίκτυο μεντόρων μας και στήριξε την κοινότητα των startups.')}
     </p>
     <div className="flex flex-wrap gap-3 mt-1">
      <button 
       onClick={() => navigate('/profile')}
       className="px-4 py-2 bg-stone-900 text-white rounded-lg text-xs font-semibold hover:bg-stone-800 transition-all"
      >
-      Apply to Mentor
+      {t('Apply to Mentor', 'Αίτηση ως μέντορας')}
      </button>
      <button
       type="button"
       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I become a mentor?' } }))}
       className="px-4 py-2 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-50 transition-all border border-stone-200"
      >
-      Learn More
+      {t('Learn More', 'Περισσότερα')}
      </button>
     </div>
    </div>
@@ -335,14 +344,14 @@ export default function MentorsPage() {
          </div>
          <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
           <CheckCircle2 className="w-4 h-4" />
-          {selectedMentor.availability}
+          {t(selectedMentor.availability, AVAILABILITY_EL[selectedMentor.availability] ?? selectedMentor.availability)}
          </div>
         </div>
        </div>
 
        {/* Expertise */}
        <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">Expertise</h3>
+        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('Expertise', 'Εξειδίκευση')}</h3>
         <div className="flex flex-wrap gap-2">
          {selectedMentor.expertise.map((skill: string) => (
           <span key={skill} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-xl text-sm font-medium border border-stone-200">
@@ -354,16 +363,16 @@ export default function MentorsPage() {
 
        {/* Bio */}
        <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">About</h3>
+        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('About', 'Σχετικά')}</h3>
         <p className="text-stone-600 leading-relaxed">
-         {selectedMentor.detailedBio || "No detailed bio available."}
+         {selectedMentor.detailedBio || t("No detailed bio available.", "Δεν υπάρχει αναλυτικό βιογραφικό.")}
         </p>
        </div>
 
        {/* Achievements */}
        {selectedMentor.achievements && selectedMentor.achievements.length > 0 && (
         <div className="space-y-3">
-         <h3 className="text-sm font-semibold text-stone-400 tracking-wide">Achievements</h3>
+         <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('Achievements', 'Επιτεύγματα')}</h3>
          <ul className="space-y-3">
           {selectedMentor.achievements.map((achievement: string, idx: number) => (
            <li key={idx} className="flex items-start gap-3">
@@ -383,7 +392,7 @@ export default function MentorsPage() {
          onClick={() => setIsMentorshipModalOpen(true)}
          className="w-full py-2 sm:py-2.5 bg-stone-900 text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all shadow-md text-center"
         >
-         Request Mentorship
+         {t('Request Mentorship', 'Αίτημα καθοδήγησης')}
         </button>
        </div>
       </div>
@@ -412,8 +421,8 @@ export default function MentorsPage() {
       <div className="p-8 space-y-6">
        <div className="flex items-start justify-between">
         <div>
-         <h2 className="text-lg font-semibold text-stone-900">Request Mentorship</h2>
-         <p className="text-stone-500 mt-1">Connect with {selectedMentor?.name}</p>
+         <h2 className="text-lg font-semibold text-stone-900">{t('Request Mentorship', 'Αίτημα καθοδήγησης')}</h2>
+         <p className="text-stone-500 mt-1">{t('Connect with', 'Σύνδεση με')} {selectedMentor?.name}</p>
         </div>
        </div>
 
@@ -424,9 +433,9 @@ export default function MentorsPage() {
          </div>
         )}
         <div className="space-y-2">
-         <label className="text-sm font-semibold text-stone-900">Focus Areas</label>
+         <label className="text-sm font-semibold text-stone-900">{t('Focus Areas', 'Τομείς εστίασης')}</label>
          <textarea 
-          placeholder="What specific challenges are you facing? Example: Fundraising, PMF, Go-to-Market..."
+          placeholder={t('What specific challenges are you facing? Example: Fundraising, PMF, Go-to-Market...', 'Ποιες συγκεκριμένες προκλήσεις αντιμετωπίζεις; Π.χ. χρηματοδότηση, PMF, go-to-market…')}
           value={focusAreas}
           onChange={(e) => {
            setFocusAreas(e.target.value);
@@ -438,10 +447,10 @@ export default function MentorsPage() {
         </div>
 
         <div className="space-y-2">
-         <label className="text-sm font-semibold text-stone-900">Your Availability</label>
+         <label className="text-sm font-semibold text-stone-900">{t('Your Availability', 'Η διαθεσιμότητά σου')}</label>
          <input 
           type="text"
-          placeholder="e.g. Next week, Mon-Wed after 5pm EST"
+          placeholder={t('e.g. Next week, Mon-Wed after 5pm EST', 'π.χ. την επόμενη εβδομάδα, Δευ-Τετ μετά τις 17:00 EST')}
           value={yourAvailability}
           onChange={(e) => {
            setYourAvailability(e.target.value);
@@ -457,12 +466,12 @@ export default function MentorsPage() {
          onClick={() => setIsMentorshipModalOpen(false)}
          className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-100 text-stone-900 font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-200 transition-all border border-stone-200"
         >
-         Cancel
+         {t('Cancel', 'Ακύρωση')}
         </button>
         <button 
          onClick={() => {
           if (!focusAreas.trim() || !yourAvailability.trim()) {
-           setRequestError('Please fill in all fields before sending the request.');
+           setRequestError(t('Please fill in all fields before sending the request.', 'Συμπλήρωσε όλα τα πεδία πριν στείλεις το αίτημα.'));
            return;
           }
           addSession({
@@ -475,7 +484,7 @@ export default function MentorsPage() {
            participants: [selectedMentor?.name || 'Mentor'],
            priority: 'Medium',
           });
-          logActivity({ kind: 'session', title: `Requested ${selectedMentor?.name || 'mentor'}`, titleEl: `Αίτημα mentorship: ${selectedMentor?.name || 'μέντορας'}`, href: '/calendar', byAssistant: false });
+          logActivity({ kind: 'session', title: `Requested ${selectedMentor?.name || 'mentor'}`, titleEl: `Αίτημα καθοδήγησης: ${selectedMentor?.name || 'μέντορας'}`, href: '/calendar', byAssistant: false });
           window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${selectedMentor?.name || 'this mentor'}` } }));
           setIsMentorshipModalOpen(false);
           setSelectedMentor(null);
@@ -485,7 +494,7 @@ export default function MentorsPage() {
          }}
          className="flex-1 px-4 sm:px-6 py-2 sm:py-2.5 bg-stone-900 text-white font-semibold rounded-xl text-xs sm:text-sm hover:bg-stone-800 transition-all shadow-md"
         >
-         Send Request
+         {t('Send Request', 'Αποστολή αιτήματος')}
         </button>
        </div>
       </div>

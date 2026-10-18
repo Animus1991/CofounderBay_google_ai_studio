@@ -4,8 +4,10 @@ import { Zap, Twitter, Linkedin, Github, Mail } from 'lucide-react';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
+import { useT } from '../lib/language';
 
 export default function Footer() {
+ const t = useT();
  const { user } = useAuth();
  const currentYear = new Date().getFullYear();
 
@@ -54,7 +56,7 @@ export default function Footer() {
        <span className="text-[13px] sm:text-[14px] font-medium text-stone-900 tracking-tight">CoFounderBay</span>
       </NavLink>
       <p className="text-stone-500 text-[15px] sm:text-lg leading-relaxed max-w-sm mb-8">
-       The premium ecosystem for founders to find co-founders, mentors, and build the next generation of startups.
+       {t('The premium ecosystem for founders to find co-founders, mentors, and build the next generation of startups.', 'Το premium οικοσύστημα για ιδρυτές: βρες συνιδρυτή, μέντορες και χτίσε την επόμενη γενιά startup.')}
       </p>
       <div className="flex gap-4">
        {[
@@ -113,11 +115,11 @@ export default function Footer() {
 
     <div className="pt-10 border-t border-stone-100 flex flex-col md:flex-row justify-between items-center gap-6">
      <p className="text-stone-400 text-sm font-medium">
-      © {currentYear} CoFounderBay. All rights reserved.
+      © {currentYear} CoFounderBay. {t('All rights reserved.', 'Με επιφύλαξη παντός δικαιώματος.')}
      </p>
      <div className="flex items-center gap-2">
       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-      <span className="text-stone-400 text-sm font-medium tracking-wider">System Operational</span>
+      <span className="text-stone-400 text-sm font-medium tracking-wider">{t('System Operational', 'Σύστημα σε λειτουργία')}</span>
      </div>
     </div>
    </div>

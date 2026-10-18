@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bot, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, X } from 'lucide-react';
+import { Bot, Check, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
-import { bothText } from '../lib/labels';
-import { useLanguage } from '../lib/language';
+import { bothText, labelOf } from '../lib/labels';
+import { useLanguage, useT } from '../lib/language';
 import { appendAssistant, clearAssistant, readAssistant, type AssistantTurn } from '../lib/localLists';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
-import { assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantResult } from '../services/assistantOps';
+import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantResult } from '../services/assistantOps';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { CAST } from '../data/cast';
 import { useAuth } from '../App';
@@ -78,6 +78,7 @@ export default function ChatWidget() {
   const location = useLocation();
   const { profile } = useAuth();
   const { mode } = useLanguage();
+  const t = useT();
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -85,6 +86,9 @@ export default function ChatWidget() {
   const [agentId, setAgentId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pageOpen, setPageOpen] = useState(false);
   const [turns, setTurns] = useState<Bubble[]>(() => readAssistant());
   const [agentTurns, setAgentTurns] = useState<Bubble[]>([]);
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
@@ -142,13 +146,15 @@ export default function ChatWidget() {
   const speak = (result: AssistantResult): string => (mode === 'el' ? result.el : result.en);
 
   const pushStudio = (bubble: Bubble) => {
-    appendAssistant({ role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool });
+    appendAssistant({ role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool, sources: bubble.sources, links: bubble.links, followUps: bubble.followUps });
     setTurns((prev) => [...prev, bubble].slice(-80));
   };
 
   const resetStudio = () => {
     stopRef.current = true;
     setIsTyping(false);
+    setStopped(false);
+    setPageOpen(false);
     clearAssistant();
     setTurns([]);
     setInputText('');
@@ -158,6 +164,7 @@ export default function ChatWidget() {
   const stop = () => {
     stopRef.current = true;
     setIsTyping(false);
+    setStopped(true);
   };
 
   const pinPerson = (name: string) => {
@@ -165,12 +172,13 @@ export default function ChatWidget() {
     setInputText('');
   };
 
-  const copyText = async (text: string) => {
+  const copyText = async (id: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(bothText('Copied', 'Αντιγράφηκε'));
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 2000);
     } catch {
-      toast.info(bothText('Copy this reply from the bubble', 'Αντίγραψε την απάντηση από τη φούσκα'));
+      toast.info(t('Copy this reply from the bubble', 'Αντίγραψε την απάντηση από τη φούσκα'));
     }
   };
 
@@ -178,6 +186,8 @@ export default function ChatWidget() {
     const text = raw.trim();
     if (!text || isTyping) return;
     setInputText('');
+    setStopped(false);
+    setPageOpen(false);
     if (/^\/(clear|new)\b/i.test(text)) {
       resetStudio();
       return;
@@ -196,10 +206,16 @@ export default function ChatWidget() {
       try {
         const context = `${agent.role}. On ${page.en}. ${assistantContextBlock(viewerFromAuth(profile))}`;
         const response = await AIService.chat(payload, context);
-        if (stopRef.current) return;
+        if (stopRef.current) {
+          setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
+          return;
+        }
         setAgentTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: response.text, at: new Date().toISOString() }]);
       } catch {
-        if (stopRef.current) return;
+        if (stopRef.current) {
+          setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
+          return;
+        }
         const fallback = runAssistant(payload, viewerFromAuth(profile));
         setAgentTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: speak(fallback), href: fallback.href, links: fallback.links, followUps: fallback.followUps, tool: fallback.tool, at: new Date().toISOString() }]);
       } finally {
@@ -220,6 +236,7 @@ export default function ChatWidget() {
       links: result.links,
       followUps: result.followUps,
       tool: result.tool,
+      sources: result.sources,
       at: new Date().toISOString(),
     });
     if (result.tool === 'navigate' && result.href) navigate(result.href);
@@ -285,10 +302,10 @@ export default function ChatWidget() {
                 <button type="button" onClick={resetStudio} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={bothText('New conversation', 'Νέα συνομιλία')}>
                   <SquarePen className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-white/10 rounded-md" aria-label="Minimize">
+                <button type="button" onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Minimize', 'Ελαχιστοποίηση')}>
                   <Minimize2 className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/10 rounded-md" aria-label="Close">
+                <button type="button" onClick={() => { setIsOpen(false); setPageOpen(false); }} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Close', 'Κλείσιμο')}>
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -334,7 +351,7 @@ export default function ChatWidget() {
                 <>
                   {agent && (
                     <div className="p-3 bg-white border-b border-stone-100 flex items-center gap-2 shrink-0">
-                      <button type="button" onClick={() => { setAgentId(null); setAgentTurns([]); }} className="p-1 hover:bg-stone-100 rounded-md" aria-label="Back">
+                      <button type="button" onClick={() => { setAgentId(null); setAgentTurns([]); }} className="p-1 hover:bg-stone-100 rounded-md" aria-label={t('Back', 'Πίσω')}>
                         <ChevronRight className="w-4 h-4 rotate-180" />
                       </button>
                       <span className="text-xs font-medium text-stone-900">{agent.name}</span>
@@ -367,10 +384,34 @@ export default function ChatWidget() {
                                 {msg.tool ? ` · ${msg.tool}` : ''}
                               </span>
                             )}
-                            <button type="button" onClick={() => copyText(msg.text)} className="text-[10px] font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={bothText('Copy', 'Αντιγραφή')}>
-                              <Copy className="w-3 h-3" />
+                            <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-[10px] font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
+                              {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </button>
                           </div>
+                        )}
+                        {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                          <details className="w-full">
+                            <summary className="cursor-pointer text-[10px] font-medium text-stone-500 hover:text-stone-900">
+                              {t(`Read from (${msg.sources.length})`, `Ανάγνωση από (${msg.sources.length})`)}
+                            </summary>
+                            <ul className="mt-1 flex flex-col gap-0.5">
+                              {msg.sources.map((source, sourceIndex) => (
+                                <li key={`${source.kind}-${sourceIndex}`}>
+                                  {source.href ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => { navigate(source.href!); setIsMinimized(true); }}
+                                      className="text-[10px] font-medium text-stone-600 hover:text-stone-900 hover:underline"
+                                    >
+                                      {bothText(source.en, source.el)}
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-stone-500">{bothText(source.en, source.el)}</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
                         )}
                         {msg.links && msg.links.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
@@ -418,18 +459,46 @@ export default function ChatWidget() {
                         </div>
                       </div>
                     )}
+                    {stopped && !isTyping && (
+                      <p className="studio-label">{t('Stopped', 'Διακόπηκε')}</p>
+                    )}
                   </div>
                   <div className="p-3 bg-white border-t border-stone-100 shrink-0">
                     {!agent && (
-                      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                        <span className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-[10px] font-medium text-stone-500">
-                          {bothText(page.en, page.el)}
-                        </span>
-                        {pinnedContext && (
-                          <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-[10px] font-medium inline-flex items-center gap-1">
-                            {pinnedContext}
-                            <X className="w-3 h-3" />
+                      <div className="mb-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPageOpen((open) => !open)}
+                            className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-[10px] font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
+                            aria-expanded={pageOpen}
+                            aria-label={t('Page this chat is on', 'Σελίδα αυτής της συνομιλίας')}
+                          >
+                            {bothText(page.en, page.el)}
                           </button>
+                          {pinnedContext && (
+                            <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-[10px] font-medium inline-flex items-center gap-1">
+                              {pinnedContext}
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        {pageOpen && (
+                          <div className="mt-1.5 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+                            {ASSISTANT_PAGES.map((item) => (
+                              <button
+                                key={item.href}
+                                type="button"
+                                onClick={() => { navigate(item.href); setPageOpen(false); }}
+                                className={cn(
+                                  'w-full px-3 py-2 text-left text-xs hover:bg-stone-50',
+                                  item.href === page.href ? 'font-medium text-stone-900' : 'text-stone-600',
+                                )}
+                              >
+                                {bothText(item.en, item.el)}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </div>
                     )}
@@ -461,7 +530,7 @@ export default function ChatWidget() {
                             className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
                           >
                             <span className="text-xs font-medium text-stone-900">{person.fullName}</span>
-                            <span className="text-[10px] text-stone-400 truncate">{person.role}</span>
+                            <span className="text-[10px] text-stone-400 truncate">{labelOf(person.role)}</span>
                           </button>
                         ))}
                       </div>
@@ -502,7 +571,7 @@ export default function ChatWidget() {
                           onClick={() => run(inputText)}
                           disabled={!inputText.trim()}
                           className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
-                          aria-label="Send"
+                          aria-label={t('Send', 'Αποστολή')}
                         >
                           <Send className="w-3.5 h-3.5" />
                         </button>

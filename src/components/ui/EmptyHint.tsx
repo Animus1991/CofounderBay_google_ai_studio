@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
 
 /** Compact empty copy that still points the user at the studio assistant. */
@@ -24,18 +25,20 @@ export default function EmptyHint({
 
 export function AskLink({
   prompt,
-  children = 'Ask assistant',
+  children,
 }: {
   prompt: string;
   children?: ReactNode;
 }) {
+  const t = useT();
+  const label = children ?? t('Ask assistant', 'Ρώτα τον βοηθό');
   return (
     <button
       type="button"
       className="text-xs font-medium text-stone-900 hover:underline"
       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }))}
     >
-      {children}
+      {label}
     </button>
   );
 }

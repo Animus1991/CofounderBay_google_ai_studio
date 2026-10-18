@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Outlet } from 'react-router-dom';
 import { Both } from '../lib/both';
-import { LanguageToggle, useLanguage } from '../lib/language';
+import { LanguageToggle, useLanguage, useT } from '../lib/language';
 import Sidebar from './layout/Sidebar';
 import ChatWidget from './ChatWidget';
 import { useAuth } from '../App';
@@ -19,11 +19,12 @@ export default function Layout() {
  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
  const [showDemoHint, setShowDemoHint] = useState(false);
  useLanguage();
+ const t = useT();
 
  // Build a minimal user object for the Sidebar
  const sidebarUser = {
   id: user?.uid || profile?.uid || 'demo-user',
-  fullName: profile?.fullName || user?.displayName || 'Demo User',
+  fullName: profile?.fullName || user?.displayName || t('Demo User', 'Χρήστης δείγματος'),
   email: user?.email || 'demo@cofounderbay.com',
   roles: profile?.roles || [UserRole.FOUNDER],
   avatarUrl: (profile as any)?.avatarUrl || profile?.profile?.profilePhoto || user?.photoURL || '',
@@ -54,13 +55,13 @@ export default function Layout() {
     href="#main-content"
     className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[110] focus:px-4 focus:py-2 focus:bg-stone-900 focus:text-white focus:rounded-lg focus:text-xs focus:font-medium"
    >
-    Skip to content
+    {t('Skip to content', 'Μετάβαση στο περιεχόμενο')}
    </a>
    <header className="z-[80] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-stone-50 px-3 lg:hidden">
     <button
      type="button"
      onClick={toggleMobileSidebar}
-     aria-label="Menu"
+     aria-label={t('Menu', 'Μενού')}
      className="flex h-11 w-11 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
     >
      <Menu className="w-5 h-5" />

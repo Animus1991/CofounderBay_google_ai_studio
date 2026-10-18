@@ -27,13 +27,15 @@ import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { useStored } from '../lib/useStored';
 import { useAuth } from '../App';
 import { rememberPerson } from '../lib/people';
-import { bothText } from '../lib/labels';
-import { useLanguage } from '../lib/language';
+import { bothText, labelOf } from '../lib/labels';
+import { useLanguage, useT } from '../lib/language';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import PersonHovercard from '../components/ui/PersonHovercard';
 import { useToast } from '../context/ToastContext';
+import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from '../lib/searchQualifiers';
 
 function directoryProfiles(): UserProfile[] {
  return CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate').map((person) => ({
@@ -56,11 +58,12 @@ function directoryProfiles(): UserProfile[] {
 const DIRECTORY = directoryProfiles();
 
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
-const ROLES = ['Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
+const ROLES = ['Founder', 'Co-Founder Candidate', 'Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
 const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 
 export default function MatchDiscovery() {
  useLanguage();
+ const t = useT();
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
@@ -78,14 +81,16 @@ export default function MatchDiscovery() {
   location: storedFilters.location
  });
 
- const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string }) => {
+ const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string; skill?: string; industry?: string }) => {
+  const parsed = parseQualifiers(next.q ?? searchQuery);
   writeMatchFilters({
    q: next.q ?? searchQuery,
-   role: next.role ?? filters.role,
-   stage: next.stage ?? filters.stage,
+   role: next.role ?? parsed.filters.role ?? filters.role,
+   stage: next.stage ?? parsed.filters.stage ?? filters.stage,
    commitment: next.commitment ?? filters.commitment,
-   location: next.location ?? filters.location,
-   skill: storedFilters.skill,
+   location: next.location ?? parsed.filters.location ?? filters.location,
+   skill: next.skill ?? parsed.filters.skill ?? storedFilters.skill,
+   industry: next.industry ?? parsed.filters.industry ?? storedFilters.industry,
   });
  };
 
@@ -104,9 +109,9 @@ export default function MatchDiscovery() {
     status: 'pending',
    });
    logActivity({ kind: 'request', title: `Requested ${profile.fullName}`, titleEl: `Αίτημα προς ${profile.fullName}`, href: `/profile/${profile.uid}` });
-   toastSuccess('Request sent!', 'Your connection request has been sent.');
+   toastSuccess(t('Request sent!', 'Το αίτημα στάλθηκε.'), t('Your connection request has been sent.', 'Το αίτημα σύνδεσης στάλθηκε.'));
   } catch (error) {
-   toastError('Failed to send request', 'Please try again.');
+   toastError(t('Failed to send request', 'Αποτυχία αποστολής'), t('Please try again.', 'Δοκίμασε ξανά.'));
   } finally {
    setConnecting(null);
   }
@@ -132,7 +137,7 @@ export default function MatchDiscovery() {
  };
 
  const loadMore = () => {
-  toastInfo('Loading more', 'Fetching additional profiles...');
+  toastInfo(t('Loading more', 'Φόρτωση περισσότερων'), t('Fetching additional profiles...', 'Φέρνω επιπλέον προφίλ…'));
  };
 
  useEffect(() => {
@@ -167,32 +172,38 @@ export default function MatchDiscovery() {
  }, [currentUser, isDemoMode]);
 
  const viewer = fromProfile(viewerProfile);
+ const parsedSearch = parseQualifiers(searchQuery);
  const filteredProfiles = profiles.filter(profile => {
-  const haystack = `${profile.fullName} ${profile.headline} ${profile.bio} ${(profile.skills || []).join(' ')}`.toLowerCase();
-  const matchesSearch = !searchQuery || haystack.includes(searchQuery.toLowerCase());
-  const matchesStage = !filters.stage || profile.stage === filters.stage;
-  const matchesRole = !filters.role || profile.role === filters.role;
+  const haystack = `${profile.fullName} ${profile.headline} ${profile.bio} ${(profile.skills || []).join(' ')} ${profile.industry || ''}`.toLowerCase();
+  const freeText = parsedSearch.text.toLowerCase();
+  const matchesSearch = !freeText || haystack.includes(freeText);
+  const matchesStage = !(parsedSearch.filters.stage || filters.stage) || (profile.stage || '').toLowerCase().includes((parsedSearch.filters.stage || filters.stage).toLowerCase());
+  const matchesRole = !(parsedSearch.filters.role || filters.role) || (profile.role || '').toLowerCase().includes((parsedSearch.filters.role || filters.role).toLowerCase()) || (profile.headline || '').toLowerCase().includes((parsedSearch.filters.role || filters.role).toLowerCase());
   const matchesCommitment = !filters.commitment || profile.commitment === filters.commitment;
-  const matchesLocation = !filters.location || (profile.location || '').toLowerCase().includes(filters.location.toLowerCase());
+  const matchesLocation = !(parsedSearch.filters.location || filters.location) || (profile.location || '').toLowerCase().includes((parsedSearch.filters.location || filters.location).toLowerCase());
+  const matchesSkill = !parsedSearch.filters.skill || (profile.skills || []).some((skill) => skill.toLowerCase().includes(parsedSearch.filters.skill!.toLowerCase()));
+  const matchesIndustry = !parsedSearch.filters.industry || (profile.industry || '').toLowerCase().includes(parsedSearch.filters.industry.toLowerCase());
 
-  return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation;
+  return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation && matchesSkill && matchesIndustry;
  }).slice().sort((a, b) => {
   const sa = compatibility(viewer, fromCast({ skills: a.skills, lookingFor: a.lookingFor, interests: a.interests, industry: a.industry, stage: a.stage, commitment: a.commitment, city: a.location?.split(',')[0], timezone: a.timezone })).score ?? -1;
   const sb = compatibility(viewer, fromCast({ skills: b.skills, lookingFor: b.lookingFor, interests: b.interests, industry: b.industry, stage: b.stage, commitment: b.commitment, city: b.location?.split(',')[0], timezone: b.timezone })).score ?? -1;
   return sb - sa;
  });
  const filterCause = [
-  searchQuery.trim() && `search “${searchQuery.trim()}”`,
-  filters.stage && `stage ${filters.stage}`,
-  filters.role && `role ${filters.role}`,
-  filters.commitment && `commitment ${filters.commitment}`,
-  filters.location && `location ${filters.location}`,
+  parsedSearch.text && t(`search “${parsedSearch.text}”`, `αναζήτηση «${parsedSearch.text}»`),
+  (parsedSearch.filters.stage || filters.stage) && `${t('stage', 'στάδιο')} ${labelOf(parsedSearch.filters.stage || filters.stage)}`,
+  (parsedSearch.filters.role || filters.role) && `${t('role', 'ρόλος')} ${labelOf(parsedSearch.filters.role || filters.role)}`,
+  filters.commitment && `${t('commitment', 'δέσμευση')} ${labelOf(filters.commitment)}`,
+  (parsedSearch.filters.location || filters.location) && `${t('location', 'τόπος')} ${parsedSearch.filters.location || filters.location}`,
+  parsedSearch.filters.skill && `${t('skill', 'δεξιότητα')} ${parsedSearch.filters.skill}`,
+  parsedSearch.filters.industry && `${t('industry', 'κλάδος')} ${parsedSearch.filters.industry}`,
  ].filter(Boolean).join(', ');
 
  return (
   <PageShell
-   title="Discover Co-Founders"
-   description="Find entrepreneurs and builders who complement your skills."
+   title={t('Discover Co-Founders', 'Ανακάλυψε συνιδρυτές')}
+   description={t('Find entrepreneurs and builders who complement your skills.', 'Βρες ιδρυτές και builders που συμπληρώνουν τις δεξιότητές σου.')}
   >
    <div className="space-y-5">
     {/* Search & Filters */}
@@ -203,7 +214,7 @@ export default function MatchDiscovery() {
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
       <input 
        type="text"
-       placeholder="Search by skills, interests, or headline..."
+       placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, headline, ή ${QUALIFIER_HINT_EL}`)}
        value={searchQuery}
        onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); }}
        className="w-full pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
@@ -219,7 +230,7 @@ export default function MatchDiscovery() {
       )}
      >
       <SlidersHorizontal className="w-3.5 h-3.5" />
-      Filters
+      {t('Filters', 'Φίλτρα')}
       {Object.values(filters).filter(Boolean).length > 0 && (
        <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-[10px] font-semibold">
         {Object.values(filters).filter(Boolean).length}
@@ -228,7 +239,7 @@ export default function MatchDiscovery() {
      </button>
     </div>
     {searchQuery.trim().length > 1 && (
-     <p className="text-xs text-stone-400">Will search names, headlines, and skills for “{searchQuery.trim()}”.</p>
+     <p className="text-xs text-stone-400">{t(`Names, headlines, and skills for “${searchQuery.trim()}”. Keys: ${QUALIFIER_HINT_EN}.`, `Ονόματα, headlines και δεξιότητες για «${searchQuery.trim()}». Κλειδιά: ${QUALIFIER_HINT_EL}.`)}</p>
     )}
 
     <AnimatePresence>
@@ -239,7 +250,7 @@ export default function MatchDiscovery() {
        exit={{ opacity: 0, y: -8 }}
        className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3"
       >
-       {[{ label: 'Stage', key: 'stage', opts: STAGES }, { label: 'Role', key: 'role', opts: ROLES }, { label: 'Commitment', key: 'commitment', opts: COMMITMENTS }].map(({ label, key, opts }) => (
+       {[{ label: t('Stage', 'Στάδιο'), key: 'stage', opts: STAGES }, { label: t('Role', 'Ρόλος'), key: 'role', opts: ROLES }, { label: t('Commitment', 'Δέσμευση'), key: 'commitment', opts: COMMITMENTS }].map(({ label, key, opts }) => (
         <div key={key} className="space-y-1.5">
          <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{label}</label>
          <select 
@@ -247,17 +258,27 @@ export default function MatchDiscovery() {
           onChange={(e) => { const next = {...filters, [key]: e.target.value}; setFilters(next); persistFilters(next); }}
           className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900"
          >
-          <option value="">All</option>
-          {opts.map(o => <option key={o} value={o}>{o}</option>)}
+          <option value="">{t('All', 'Όλα')}</option>
+          {opts.map(o => <option key={o} value={o}>{labelOf(o)}</option>)}
          </select>
         </div>
        ))}
-       <div className="flex items-end">
+       <div className="space-y-1.5">
+        <label className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Location', 'Τόπος')}</label>
+        <input
+         type="text"
+         value={filters.location}
+         onChange={(e) => { const next = { ...filters, location: e.target.value }; setFilters(next); persistFilters(next); }}
+         placeholder={t('City or country', 'Πόλη ή χώρα')}
+         className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900 placeholder:text-stone-400"
+        />
+       </div>
+       <div className="col-span-2 lg:col-span-4 flex items-end">
         <button 
-         onClick={() => setFilters({ stage: '', role: '', commitment: '', location: '' })}
+         onClick={() => { const next = { stage: '', role: '', commitment: '', location: '' }; setFilters(next); persistFilters({ ...next, q: searchQuery, skill: '', industry: '' }); }}
          className="w-full py-2 text-xs font-medium text-stone-400 hover:text-stone-900 border border-stone-200 rounded-lg transition-colors bg-white"
         >
-         Reset
+         {t('Reset', 'Επαναφορά')}
         </button>
        </div>
       </motion.div>
@@ -314,9 +335,11 @@ export default function MatchDiscovery() {
           className="w-11 h-11"
          />
          <div>
-          <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
-           {profile.fullName || profile.headline?.split(' at ')[0] || 'Founder'}
-          </p>
+          <PersonHovercard person={profile.uid || profile.fullName}>
+           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700">
+            {profile.fullName || profile.headline?.split(' at ')[0] || t('Founder', 'Ιδρυτής')}
+           </p>
+          </PersonHovercard>
           <p className="text-xs text-stone-400 line-clamp-1">{profile.headline}</p>
           {explained.headline && <p className="text-xs text-stone-500">{bothText(explained.headline.en, explained.headline.el)}</p>}
          </div>
@@ -328,7 +351,7 @@ export default function MatchDiscovery() {
         {profile.bio || 'Passionate founder looking for the right partner.'}
        </p>
 
-       <FactLine className="mb-4" items={[profile.stage, profile.commitment, profile.location]} label="Profile facts" />
+       <FactLine className="mb-4" items={[labelOf(profile.stage), labelOf(profile.commitment), profile.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />
 
        <div className="flex items-center gap-2">
         <button
@@ -339,7 +362,7 @@ export default function MatchDiscovery() {
          }}
          className="px-2 py-2 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100 text-xs font-medium"
         >
-         Ask
+         {t('Ask', 'Ρώτα')}
         </button>
         <button 
          onClick={(e) => handleConnect(e, profile)}
@@ -347,7 +370,7 @@ export default function MatchDiscovery() {
          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-all disabled:opacity-50"
         >
          <UserPlus className="w-3.5 h-3.5" />
-         {connecting === profile.uid ? 'Sending...' : 'Connect'}
+         {connecting === profile.uid ? t('Sending...', 'Αποστολή…') : t('Connect', 'Σύνδεση')}
         </button>
         <button 
          onClick={(e) => handleMessage(e, profile.uid)}
@@ -367,13 +390,13 @@ export default function MatchDiscovery() {
       );
      })
     ) : (
-     <EmptyHint className="col-span-full" title={filterCause ? `No founders match ${filterCause}.` : 'No founders found'} detail="Clear that filter, or ask the studio assistant who still ranks on this profile.">
+     <EmptyHint className="col-span-full" title={filterCause ? t(`No founders match ${filterCause}.`, `Κανείς ιδρυτής δεν ταιριάζει σε ${filterCause}.`) : t('No founders found', 'Δεν βρέθηκαν ιδρυτές')} detail={t('Clear that filter, or ask the studio assistant who still ranks on this profile.', 'Καθάρισε το φίλτρο, ή ρώτα τον βοηθό που βαθμολογεί στο ίδιο προφίλ.')}>
        <button 
         type="button"
-        onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); }}
+        onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); }}
         className="text-xs font-medium text-stone-900 hover:underline"
        >
-        Clear filters
+        {t('Clear filters', 'Καθαρισμός φίλτρων')}
        </button>
        <AskLink prompt="who is my best match" />
      </EmptyHint>
@@ -386,7 +409,7 @@ export default function MatchDiscovery() {
       onClick={loadMore}
       className="px-4 py-2 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-300 transition-all flex items-center gap-2"
      >
-      Load more founders <ChevronDown className="w-3.5 h-3.5" />
+      {t('Load more founders', 'Περισσότεροι ιδρυτές')} <ChevronDown className="w-3.5 h-3.5" />
      </button>
     </div>
    )}

@@ -9,8 +9,16 @@ import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
+import { useT } from "../lib/language";
+import { labelOf } from "../lib/labels";
 import { addSession, eventListKeys, logActivity, readIds, removeSession, toggleId } from "../lib/localLists";
 import { User } from "../types";
+
+const TAB_EL: Record<string, string> = {
+ Upcoming: 'Επερχόμενες',
+ 'My Events': 'Οι εκδηλώσεις μου',
+ Past: 'Παλαιότερες',
+};
 
 interface EventsProps {
  user: User;
@@ -21,7 +29,9 @@ interface Event {
  title: string;
  description: string;
  date: string;
+ dateEl: string;
  time: string;
+ timeEl: string;
  location: string;
  type: 'Workshop' | 'Networking' | 'Pitch Night' | 'Webinar' | 'Conference';
  attendees: number;
@@ -31,6 +41,7 @@ interface Event {
 }
 
 export default function Events({ user }: EventsProps) {
+ const t = useT();
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
  const categoryType: Record<string, Event['type']> = {
@@ -75,7 +86,9 @@ export default function Events({ user }: EventsProps) {
    title: "Startup Founders Networking Night",
    description: "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.",
    date: "March 28, 2026",
+   dateEl: "28 Μαρτίου 2026",
    time: "6:00 PM - 9:00 PM",
+   timeEl: "18:00 - 21:00",
    location: "Tech Hub, London",
    type: 'Networking',
    attendees: 124,
@@ -88,7 +101,9 @@ export default function Events({ user }: EventsProps) {
    title: "Mastering the Seed Round Pitch",
    description: "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.",
    date: "April 02, 2026",
+   dateEl: "2 Απριλίου 2026",
    time: "2:00 PM - 4:00 PM",
+   timeEl: "14:00 - 16:00",
    location: "Zoom / Online",
    type: 'Workshop',
    attendees: 450,
@@ -101,7 +116,9 @@ export default function Events({ user }: EventsProps) {
    title: "FinTech Demo Day Q2",
    description: "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.",
    date: "April 15, 2026",
+   dateEl: "15 Απριλίου 2026",
    time: "10:00 AM - 1:00 PM",
+   timeEl: "10:00 - 13:00",
    location: "Innovation Center, NY",
    type: 'Pitch Night',
    attendees: 85,
@@ -114,8 +131,8 @@ export default function Events({ user }: EventsProps) {
 
  return (
   <PageShell
-   title="Events"
-   description="Discover workshops, networking nights, and pitch events designed to accelerate your growth."
+   title={t("Events", "Εκδηλώσεις")}
+   description={t("Discover workshops, networking nights, and pitch events designed to accelerate your growth.", "Ανακάλυψε εργαστήρια, βραδιές δικτύωσης και εκδηλώσεις pitch που επιταχύνουν την ανάπτυξή σου.")}
    actions={
     <div className="flex flex-wrap items-center gap-2">
      <button 
@@ -123,14 +140,14 @@ export default function Events({ user }: EventsProps) {
       onClick={() => setShowTypes((open) => !open)}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-white text-stone-600 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all border border-stone-200"
      >
-      <Filter className="w-3.5 h-3.5" /> {typeFilter === 'All' ? 'Filter' : typeFilter}
+      <Filter className="w-3.5 h-3.5" /> {typeFilter === 'All' ? t('Filter', 'Φίλτρο') : labelOf(typeFilter)}
      </button>
      <button 
       type="button"
       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
      >
-      <Plus className="w-3.5 h-3.5" /> Host Event
+      <Plus className="w-3.5 h-3.5" /> {t('Host Event', 'Διοργάνωση εκδήλωσης')}
      </button>
     </div>
    }
@@ -151,7 +168,7 @@ export default function Events({ user }: EventsProps) {
           : "text-stone-400 hover:text-stone-900 hover:bg-white"
         )}
        >
-        {tab}
+        {t(tab, TAB_EL[tab])}
        </button>
       ))}
      </div>
@@ -168,7 +185,7 @@ export default function Events({ user }: EventsProps) {
           typeFilter === type ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-500 border-stone-200 hover:text-stone-900"
          )}
         >
-         {type}
+         {type === 'All' ? t('All', 'Όλα') : labelOf(type)}
         </button>
        ))}
       </div>
@@ -176,8 +193,8 @@ export default function Events({ user }: EventsProps) {
 
      <div id="event-list" className="space-y-4">
       {(visibleEvents.length === 0) && (
-       <EmptyHint title="No events in this category yet." detail="Ask the studio assistant to host one.">
-        <AskLink prompt="Schedule a new event on my calendar" />
+       <EmptyHint title={t("No events in this category yet.", "Δεν υπάρχουν ακόμη εκδηλώσεις σε αυτή την κατηγορία.")} detail={t("Ask the studio assistant to host one.", "Ζήτα από τον βοηθό του στούντιο να διοργανώσει μία.")}>
+        <AskLink prompt="Schedule a new event on my calendar">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
        </EmptyHint>
       )}
       {visibleEvents.map((event) => (
@@ -191,7 +208,7 @@ export default function Events({ user }: EventsProps) {
            referrerPolicy="no-referrer"
           />
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold tracking-wider shadow border border-white/20">
-           {event.type}
+           {labelOf(event.type)}
           </div>
          </div>
          <div className="flex-1 p-5 flex flex-col justify-between gap-4">
@@ -199,7 +216,7 @@ export default function Events({ user }: EventsProps) {
            <div className="flex items-start justify-between gap-3 mb-2">
             <div>
              <h3 className="text-base font-semibold text-stone-900 leading-snug">{event.title}</h3>
-             <p className="text-xs text-stone-400 mt-0.5 tracking-wider">by {event.organizer}</p>
+             <p className="text-xs text-stone-400 mt-0.5 tracking-wider">{t(`by ${event.organizer}`, `Διοργάνωση: ${event.organizer}`)}</p>
             </div>
             <div className="flex gap-1 shrink-0">
              <button type="button" onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
@@ -216,11 +233,11 @@ export default function Events({ user }: EventsProps) {
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-stone-500">
            <div className="flex items-center gap-1.5">
             <CalendarIcon className="w-3.5 h-3.5 text-stone-400" />
-            <span>{event.date}</span>
+            <span>{t(event.date, event.dateEl)}</span>
            </div>
            <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-stone-400" />
-            <span>{event.time}</span>
+            <span>{t(event.time, event.timeEl)}</span>
            </div>
            <div className="flex items-center gap-1.5">
             {event.isOnline ? <Video className="w-3.5 h-3.5 text-stone-400" /> : <MapPin className="w-3.5 h-3.5 text-stone-400" />}
@@ -228,7 +245,7 @@ export default function Events({ user }: EventsProps) {
            </div>
            <div className="flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5 text-stone-400" />
-            <span>{event.attendees} attending</span>
+            <span>{event.attendees} {t('attending', 'συμμετέχουν')}</span>
            </div>
           </div>
 
@@ -236,7 +253,7 @@ export default function Events({ user }: EventsProps) {
            <div className="flex -space-x-2">
             {[1, 2, 3, 4].map((i) => (
              <div key={i} className="w-7 h-7 rounded-lg border-2 border-white bg-stone-100 overflow-hidden shadow-sm">
-              <img src={`https://picsum.photos/seed/att${i}/100/100`} alt="Attendee" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              <img src={`https://picsum.photos/seed/att${i}/100/100`} alt={t("Attendee", "Άτομο που συμμετέχει")} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
              </div>
             ))}
             <div className="w-7 h-7 rounded-lg border-2 border-white bg-stone-900 flex items-center justify-center text-xs font-medium text-white shadow">
@@ -252,7 +269,7 @@ export default function Events({ user }: EventsProps) {
               : "bg-stone-900 text-white hover:bg-stone-800"
             )}
            >
-            {registeredEvents.includes(event.id) ? "✓ Registered" : "Register Now"}
+            {registeredEvents.includes(event.id) ? t("✓ Registered", "✓ Εγγράφηκες") : t("Register Now", "Εγγραφή")}
            </button>
           </div>
          </div>
@@ -266,17 +283,17 @@ export default function Events({ user }: EventsProps) {
     <aside className="lg:col-span-4 space-y-4">
      {/* Featured Event */}
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
-      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">Featured Event</p>
+      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
       <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3">
        <img 
         src="https://picsum.photos/seed/featured/600/400" 
-        alt="Featured" 
+        alt={t("Featured", "Επιλεγμένη εκδήλωση")} 
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
         referrerPolicy="no-referrer"
        />
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
-        <span className="text-[10px] font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">Recommended</span>
+        <span className="text-[10px] font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
         <p className="text-white text-sm font-semibold leading-tight">Global Startup Summit 2026</p>
        </div>
       </div>
@@ -288,27 +305,27 @@ export default function Events({ user }: EventsProps) {
        onClick={() => document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' })}
        className="w-full py-2 rounded-lg text-sm font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all"
       >
-       Learn More
+       {t('Learn More', 'Περισσότερα')}
       </button>
      </div>
 
      {/* Categories */}
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
-      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">Event Categories</p>
+      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Event Categories', 'Κατηγορίες εκδηλώσεων')}</p>
       <div className="space-y-1">
        {[
-        { name: "Workshops", count: 12, icon: Rocket },
-        { name: "Networking", count: 8, icon: Users },
-        { name: "Pitch Nights", count: 5, icon: Zap },
-        { name: "Webinars", count: 15, icon: Video },
-        { name: "Conferences", count: 3, icon: Globe }
+        { name: "Workshops", nameEl: "Εργαστήρια", count: 12, icon: Rocket },
+        { name: "Networking", nameEl: "Δικτύωση", count: 8, icon: Users },
+        { name: "Pitch Nights", nameEl: "Βραδιές pitch", count: 5, icon: Zap },
+        { name: "Webinars", nameEl: "Διαδικτυακά σεμινάρια", count: 15, icon: Video },
+        { name: "Conferences", nameEl: "Συνέδρια", count: 3, icon: Globe }
        ].map((cat) => (
         <button key={cat.name} type="button" onClick={() => { setTypeFilter(categoryType[cat.name] ?? 'All'); setShowTypes(true); document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' }); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-50 transition-all group">
          <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-stone-50 flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
            <cat.icon className="w-3.5 h-3.5" />
           </div>
-          <span className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{cat.name}</span>
+          <span className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{t(cat.name, cat.nameEl)}</span>
          </div>
          <span className="text-xs font-semibold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">{cat.count}</span>
         </button>
@@ -322,9 +339,9 @@ export default function Events({ user }: EventsProps) {
        <Rocket className="w-4 h-4 text-emerald-600" />
       </div>
       <div>
-       <p className="text-sm font-semibold text-stone-900">Host Your Own Event</p>
+       <p className="text-sm font-semibold text-stone-900">{t('Host Your Own Event', 'Διοργάνωσε τη δική σου εκδήλωση')}</p>
        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-        Share your expertise or host a networking session for the community.
+        {t('Share your expertise or host a networking session for the community.', 'Μοιράσου την εμπειρία σου ή διοργάνωσε μια συνάντηση δικτύωσης για την κοινότητα.')}
        </p>
       </div>
       <button
@@ -332,7 +349,7 @@ export default function Events({ user }: EventsProps) {
        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
        className="w-full py-2 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-all text-sm font-semibold"
       >
-       Create Event
+       {t('Create Event', 'Δημιουργία εκδήλωσης')}
       </button>
      </div>
     </aside>

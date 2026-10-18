@@ -1,23 +1,26 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { formatDate } from './dates';
+import { getLang } from './language';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Compact relative clock for activity rows (GitHub-style “2 hours ago”). */
+/** Compact relative clock for activity rows (GitHub-style “2 hours ago”), in the active language. */
 export function formatRelativeTime(iso: string, now = Date.now()): string {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return iso;
+  const el = getLang() === 'el';
   const sec = Math.round((now - then) / 1000);
-  if (sec < 45) return 'just now';
-  if (sec < 90) return '1 min ago';
-  if (sec < 3600) return `${Math.round(sec / 60)} min ago`;
-  if (sec < 5400) return '1 hour ago';
-  if (sec < 86400) return `${Math.round(sec / 3600)} hours ago`;
-  if (sec < 172800) return '1 day ago';
-  if (sec < 604800) return `${Math.round(sec / 86400)} days ago`;
-  return new Date(then).toLocaleDateString();
+  if (sec < 45) return el ? 'μόλις τώρα' : 'just now';
+  if (sec < 90) return el ? 'πριν από 1 λεπτό' : '1 min ago';
+  if (sec < 3600) return el ? `πριν από ${Math.round(sec / 60)} λεπτά` : `${Math.round(sec / 60)} min ago`;
+  if (sec < 5400) return el ? 'πριν από 1 ώρα' : '1 hour ago';
+  if (sec < 86400) return el ? `πριν από ${Math.round(sec / 3600)} ώρες` : `${Math.round(sec / 3600)} hours ago`;
+  if (sec < 172800) return el ? 'πριν από 1 ημέρα' : '1 day ago';
+  if (sec < 604800) return el ? `πριν από ${Math.round(sec / 86400)} ημέρες` : `${Math.round(sec / 86400)} days ago`;
+  return formatDate(then);
 }
 
 export enum OperationType {

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import Button from './Button';
+import { useT } from '../../lib/language';
 
 interface ModalProps {
  open: boolean;
@@ -22,6 +23,7 @@ const sizeClasses = {
 };
 
 export default function Modal({ open, onClose, title, description, children, size = 'md', showClose = true }: ModalProps) {
+ const t = useT();
  const overlayRef = useRef<HTMLDivElement>(null);
 
  useEffect(() => {
@@ -70,7 +72,7 @@ export default function Modal({ open, onClose, title, description, children, siz
          {description && <p className="text-sm text-stone-500 mt-1">{description}</p>}
         </div>
         {showClose && (
-         <button type="button" onClick={onClose} aria-label="Close" className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center hover:bg-stone-100 rounded-xl transition-colors text-stone-400 hover:text-stone-900">
+         <button type="button" onClick={onClose} aria-label={t('Close', 'Κλείσιμο')} className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center hover:bg-stone-100 rounded-xl transition-colors text-stone-400 hover:text-stone-900">
           <X className="w-5 h-5" />
          </button>
         )}
@@ -99,18 +101,19 @@ interface ConfirmDialogProps {
  loading?: boolean;
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel = 'Confirm', cancelLabel = 'Cancel', variant = 'default', loading }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel, cancelLabel, variant = 'default', loading }: ConfirmDialogProps) {
+ const t = useT();
  return (
   <Modal open={open} onClose={onClose} title={title} description={description} size="sm" showClose={false}>
    <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 mt-4">
-    <Button variant="ghost" onClick={onClose} disabled={loading} className="w-full sm:w-auto">{cancelLabel}</Button>
+    <Button variant="ghost" onClick={onClose} disabled={loading} className="w-full sm:w-auto">{cancelLabel ?? t('Cancel', 'Άκυρο')}</Button>
     <Button 
      variant={variant === 'danger' ? 'primary' : 'primary'} 
      onClick={onConfirm}
      disabled={loading}
      className={cn("w-full sm:w-auto", variant === 'danger' && 'bg-red-600 hover:bg-red-700 shadow-red-600/20')}
     >
-     {loading ? 'Processing...' : confirmLabel}
+     {loading ? t('Processing...', 'Επεξεργασία…') : (confirmLabel ?? t('Confirm', 'Επιβεβαίωση'))}
     </Button>
    </div>
   </Modal>

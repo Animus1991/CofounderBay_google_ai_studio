@@ -5,11 +5,11 @@ import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
-import { bothText } from '../lib/labels';
-import { LanguageToggle } from '../lib/language';
+import { LanguageToggle, useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
 
 export default function LoginPage() {
+ const t = useT();
  const [email, setEmail] = useState('');
  const [password, setPassword] = useState('');
  const [error, setError] = useState('');
@@ -22,17 +22,17 @@ export default function LoginPage() {
 
  const friendlyError = (code: string): string => {
   const map: Record<string, string> = {
-   'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Please use Demo Mode or Google sign-in.',
-   'auth/user-not-found': 'No account found with this email. Did you mean to sign up?',
-   'auth/wrong-password': 'Incorrect password. Please try again.',
-   'auth/invalid-credential': 'Invalid email or password.',
-   'auth/invalid-email': 'Please enter a valid email address.',
-   'auth/user-disabled': 'This account has been disabled. Contact support.',
-   'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
-   'auth/network-request-failed': 'Network error. Please check your connection.',
-   'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+   'auth/operation-not-allowed': t('Email/password sign-in is not enabled. Please use Demo Mode or Google sign-in.', 'Η είσοδος με email/κωδικό δεν είναι ενεργή. Χρησιμοποίησε τη δοκιμή με δείγμα ή την είσοδο με Google.'),
+   'auth/user-not-found': t('No account found with this email. Did you mean to sign up?', 'Δεν βρέθηκε λογαριασμός με αυτό το email. Ήθελες εγγραφή;'),
+   'auth/wrong-password': t('Incorrect password. Please try again.', 'Λάθος κωδικός. Δοκίμασε ξανά.'),
+   'auth/invalid-credential': t('Invalid email or password.', 'Λάθος email ή κωδικός.'),
+   'auth/invalid-email': t('Please enter a valid email address.', 'Βάλε μια έγκυρη διεύθυνση email.'),
+   'auth/user-disabled': t('This account has been disabled. Contact support.', 'Αυτός ο λογαριασμός έχει απενεργοποιηθεί. Επικοινώνησε με την υποστήριξη.'),
+   'auth/popup-closed-by-user': t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'),
+   'auth/network-request-failed': t('Network error. Please check your connection.', 'Σφάλμα δικτύου. Έλεγξε τη σύνδεσή σου.'),
+   'auth/too-many-requests': t('Too many attempts. Please wait a moment and try again.', 'Πολλές προσπάθειες. Περίμενε λίγο και δοκίμασε ξανά.'),
   };
-  return map[code] || 'Something went wrong. Please try again.';
+  return map[code] || t('Something went wrong. Please try again.', 'Κάτι πήγε στραβά. Δοκίμασε ξανά.');
  };
 
  const handleEmailLogin = async (e: React.FormEvent) => {
@@ -63,11 +63,11 @@ export default function LoginPage() {
    console.error('Google Auth Error:', err);
    // Better error handling for Google Auth issues
    if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
-    setError(bothText('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
+    setError(t('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
    } else if (err.code === 'auth/popup-closed-by-user') {
-    setError('Sign-in popup was closed. Please try again.');
+    setError(t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'));
    } else if (err.code === 'auth/popup-blocked') {
-    setError('Popup was blocked. Please allow popups for this site.');
+    setError(t('Popup was blocked. Please allow popups for this site.', 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επίτρεψε τα αναδυόμενα για αυτό τον ιστότοπο.'));
    } else {
     setError(friendlyError(err.code));
    }
@@ -89,13 +89,13 @@ export default function LoginPage() {
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
     <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
-     <Both en="Welcome back" el="Καλώς ήρθατε ξανά" />
+     <Both en="Welcome back" el="Καλώς ήρθες ξανά" />
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">
      <Both en="After sign-in: dashboard, matches, and the studio assistant on the same lists." el="Μετά την είσοδο: πίνακας, αντιστοιχίσεις, και ο βοηθός στις ίδιες λίστες." />
     </p>
     <p className="mt-2 text-center text-sm text-stone-500">
-     <Both en="Don't have an account?" el="Δεν έχετε λογαριασμό;" />{' '}
+     <Both en="Don't have an account?" el="Δεν έχεις λογαριασμό;" />{' '}
      <NavLink to="/signup" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
       <Both en="Sign up for free" el="Εγγραφή δωρεάν" />
      </NavLink>
@@ -161,7 +161,7 @@ export default function LoginPage() {
          type="checkbox"
          className="h-5 w-5 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
         />
-        <Both en="Remember me" el="Να με θυμάται" />
+        <Both en="Remember me" el="Να με θυμάσαι" />
        </label>
 
        <div className="text-sm">
@@ -170,18 +170,18 @@ export default function LoginPage() {
          className="inline-flex min-h-11 items-center font-medium text-stone-600 hover:text-stone-900 transition-colors"
          onClick={async () => {
           if (!email) {
-           setError(bothText('Enter your email first, then try again.', 'Βάλτε πρώτα το email.'));
+           setError(t('Enter your email first, then try again.', 'Βάλε πρώτα το email σου.'));
            return;
           }
           try {
            await sendPasswordResetEmail(auth, email);
-           toastInfo('Reset email sent.', 'Check that inbox, then sign in.');
+           toastInfo(t('Reset email sent.', 'Στάλθηκε email επαναφοράς.'), t('Check that inbox, then sign in.', 'Έλεγξε τα εισερχόμενα και μετά κάνε είσοδο.'));
           } catch (err: any) {
            setError(friendlyError(err.code));
           }
          }}
         >
-         <Both en="Forgot your password?" el="Ξεχάσατε τον κωδικό;" />
+         <Both en="Forgot your password?" el="Ξέχασες τον κωδικό;" />
         </button>
        </div>
       </div>
@@ -210,7 +210,7 @@ export default function LoginPage() {
         <div className="w-full border-t border-stone-200" />
        </div>
        <div className="relative flex justify-center text-sm">
-        <span className="px-2 bg-white text-stone-500"><Both en="Or continue with" el="Ή συνεχίστε με" /></span>
+        <span className="px-2 bg-white text-stone-500"><Both en="Or continue with" el="Ή συνέχισε με" /></span>
        </div>
       </div>
 
@@ -224,7 +224,7 @@ export default function LoginPage() {
        </button>
        <button
         type="button"
-        onClick={() => toastInfo('GitHub sign-in is not available here.', 'Use email, Google, or Demo Mode.')}
+        onClick={() => toastInfo(t('GitHub sign-in is not available here.', 'Η είσοδος με GitHub δεν είναι διαθέσιμη εδώ.'), t('Use email, Google, or Demo Mode.', 'Χρησιμοποίησε email, Google ή δοκιμή με δείγμα.'))}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
@@ -244,7 +244,7 @@ export default function LoginPage() {
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
        >
         <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
-        <Both en="Try Demo Mode" el="Δοκιμή δείγματος" />
+        <Both en="Try Demo Mode" el="Δοκιμή με δείγμα" />
        </button>
        <p className="mt-2 text-center text-xs text-stone-400">
         <Both en="Skip login and explore with sample data" el="Χωρίς είσοδο, με δεδομένα δείγματος" />

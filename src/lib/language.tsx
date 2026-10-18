@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Languages } from 'lucide-react';
 
 export type LangMode = 'en' | 'el';
@@ -29,6 +29,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<LangMode>(current);
   current = mode;
 
+  useEffect(() => {
+    document.documentElement.lang = mode;
+  }, [mode]);
+
   const apply = (next: LangMode) => {
     current = next;
     try { localStorage.setItem(KEY, next); } catch { /* the choice still applies this visit */ }
@@ -48,6 +52,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLanguage() {
   return useContext(LanguageContext);
+}
+
+/** `t(en, el)` in the active language. The calling component re-renders when the language changes. */
+export function useT() {
+  const { mode } = useLanguage();
+  return useCallback((en: string, el?: string) => (mode === 'el' ? el || en : en), [mode]);
 }
 
 const hint: Record<LangMode, string> = {

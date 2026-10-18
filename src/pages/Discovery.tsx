@@ -39,14 +39,17 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { User } from "../types";
 import { useAuth } from "../App";
 import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
 import { cn } from "../lib/utils";
 import { explainMatch } from "../lib/matchReason";
-import { bothText } from "../lib/labels";
-import { useLanguage } from "../lib/language";
+import { bothText, labelOf } from "../lib/labels";
+import { useLanguage, useT } from "../lib/language";
 import { rememberPerson } from "../lib/people";
+import PersonHovercard from "../components/ui/PersonHovercard";
+import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from "../lib/searchQualifiers";
 
 interface DiscoveryProps {
  user: User;
@@ -56,6 +59,7 @@ type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Event
 
 export default function Discovery({ user }: DiscoveryProps) {
  useLanguage();
+ const t = useT();
  const { profile: authProfile } = useAuth();
  const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
  const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
@@ -141,8 +145,17 @@ export default function Discovery({ user }: DiscoveryProps) {
  };
 
  const filteredUsers = useMemo(() => {
+  const parsed = parseQualifiers(searchQuery);
+  const skillList = (person: any) => (person.skills || []).map((s: any) => s?.name || s).filter(Boolean);
+  const industryOf = (person: any) => Array.isArray(person.profile?.industry) ? person.profile.industry.join(' ') : (person.profile?.industry || '');
   return users.filter(u => {
-   if (!searchQuery) {
+   const qualifierOk = (!parsed.filters.role || String(u.role || '').toLowerCase().includes(parsed.filters.role.toLowerCase()))
+    && (!parsed.filters.location || String(u.profile?.location || '').toLowerCase().includes(parsed.filters.location.toLowerCase()))
+    && (!parsed.filters.skill || skillList(u).some((name: string) => name.toLowerCase().includes(parsed.filters.skill!.toLowerCase())))
+    && (!parsed.filters.industry || industryOf(u).toLowerCase().includes(parsed.filters.industry.toLowerCase()))
+    && (!parsed.filters.stage || String(u.profile?.stage || '').toLowerCase().includes(parsed.filters.stage.toLowerCase()));
+   if (!qualifierOk) return false;
+   if (!parsed.text && !searchQuery) {
     const matchesSkills = selectedSkills.length === 0 || 
                selectedSkills.some(s => u.skills?.some((us: any) => us.name === s));
     const matchesIndustries = selectedIndustries.length === 0 ||
@@ -154,8 +167,8 @@ export default function Discovery({ user }: DiscoveryProps) {
     return matchesSkills && matchesIndustries && matchesStages && matchesLocations;
    }
 
-   const q = searchQuery.toLowerCase();
-   const matchesSearch = u.name.toLowerCase().includes(q) || 
+   const q = parsed.text.toLowerCase();
+   const matchesSearch = !q || u.name.toLowerCase().includes(q) || 
               (u.profile?.headline || '').toLowerCase().includes(q) ||
               (u.profile?.bio || '').toLowerCase().includes(q) ||
               (u.skills || []).some((s: any) => s.name.toLowerCase().includes(q)) ||
@@ -245,8 +258,8 @@ export default function Discovery({ user }: DiscoveryProps) {
       >
        <div className="flex items-center justify-between mb-16">
         <div className="space-y-2">
-         <h3 className="text-sm font-medium tracking-wider text-stone-400">Refine Search</h3>
-         <p className="text-xl font-medium text-stone-900">Advanced Filters</p>
+         <h3 className="text-sm font-medium tracking-wider text-stone-400">{t('Refine search', 'Στένεψε την αναζήτηση')}</h3>
+         <p className="text-xl font-medium text-stone-900">{t('Advanced filters', 'Προχωρημένα φίλτρα')}</p>
         </div>
         <button 
          onClick={() => setIsFilterOpen(false)}
@@ -259,7 +272,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        <div className="space-y-16">
         {/* Filter Groups */}
         <div className="space-y-8">
-         <p className="text-sm font-medium text-stone-900 tracking-wider">Expertise & Skills</p>
+         <p className="text-sm font-medium text-stone-900 tracking-wider">{t('Expertise & skills', 'Εξειδίκευση και δεξιότητες')}</p>
          <div className="flex flex-wrap gap-3">
           {availableSkills.map(skill => (
            <button 
@@ -279,7 +292,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         </div>
 
         <div className="space-y-8">
-         <p className="text-sm font-medium text-stone-900 tracking-wider">Industry</p>
+         <p className="text-sm font-medium text-stone-900 tracking-wider">{t('Industry', 'Κλάδος')}</p>
          <div className="flex flex-wrap gap-3">
           {["SaaS", "AI/ML", "Fintech", "Healthtech", "Sustainability", "Web3", "E-commerce"].map(ind => (
            <button 
@@ -299,7 +312,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         </div>
 
         <div className="space-y-8">
-         <p className="text-sm font-medium text-stone-900 tracking-wider">Stage</p>
+         <p className="text-sm font-medium text-stone-900 tracking-wider">{t('Stage', 'Στάδιο')}</p>
          <div className="flex flex-wrap gap-3">
           {["Pre-seed", "Seed", "Series A", "Series B+"].map(stage => (
            <button 
@@ -312,14 +325,14 @@ export default function Discovery({ user }: DiscoveryProps) {
               : "border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900"
             )}
            >
-            {stage}
+            {labelOf(stage)}
            </button>
           ))}
          </div>
         </div>
 
         <div className="space-y-8">
-         <p className="text-sm font-medium text-stone-900 tracking-wider">Location</p>
+         <p className="text-sm font-medium text-stone-900 tracking-wider">{t('Location', 'Τόπος')}</p>
          <div className="flex flex-wrap gap-3">
           {["Remote", "San Francisco", "New York", "London", "Berlin", "Global"].map(loc => (
            <button 
@@ -340,10 +353,10 @@ export default function Discovery({ user }: DiscoveryProps) {
 
         <div className="pt-12 border-t border-stone-100 flex gap-4">
          <Button onClick={() => setIsFilterOpen(false)} className="flex-1 rounded-2xl h-16 bg-stone-900 text-white font-medium text-base tracking-wider">
-          Apply Filters
+          {t('Apply filters', 'Εφαρμογή φίλτρων')}
          </Button>
          <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="flex-1 rounded-2xl h-16 border-stone-200 text-stone-500 font-medium text-base tracking-wider">
-          Reset
+          {t('Reset', 'Επαναφορά')}
          </Button>
         </div>
        </div>
@@ -358,7 +371,7 @@ export default function Discovery({ user }: DiscoveryProps) {
      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
      <input
       type="text"
-      placeholder="Search by skill, industry, or name..."
+      placeholder={t(`Skill, industry, name, or ${QUALIFIER_HINT_EN}`, `Δεξιότητα, κλάδος, όνομα, ή ${QUALIFIER_HINT_EL}`)}
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
       onFocus={() => searchQuery.length > 1 && setShowSuggestions(true)}
@@ -394,11 +407,11 @@ export default function Discovery({ user }: DiscoveryProps) {
      )}
      onClick={() => setIsFilterOpen(!isFilterOpen)}
     >
-     <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+     <SlidersHorizontal className="w-3.5 h-3.5" /> {t('Filters', 'Φίλτρα')}
     </Button>
    </div>
    {searchQuery.trim().length > 1 && (
-    <p className="text-xs text-stone-400 -mt-1">Will search names, skills, and industries for “{searchQuery.trim()}”.</p>
+    <p className="text-xs text-stone-400 -mt-1">{t(`Names, skills, and industries for “${searchQuery.trim()}”.`, `Ονόματα, δεξιότητες και κλάδοι για «${searchQuery.trim()}».`)}</p>
    )}
 
    {/* Category Tabs */}
@@ -413,7 +426,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         activeCategory === cat ? "text-stone-900" : "text-stone-400 hover:text-stone-600"
        )}
       >
-       {cat}
+       {labelOf(cat)}
        {activeCategory === cat && (
         <motion.div layoutId="activeCategory" className="absolute bottom-0 left-0 right-0 h-[2px] bg-stone-900 rounded-full" />
        )}
@@ -421,10 +434,10 @@ export default function Discovery({ user }: DiscoveryProps) {
      ))}
     </div>
     <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
-     <button type="button" aria-label="Grid view" onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label={t('Grid view', 'Προβολή πλέγματος')} onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
       <Grid className="w-4 h-4" />
      </button>
-     <button type="button" aria-label="List view" onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label={t('List view', 'Προβολή λίστας')} onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
       <ListIcon className="w-4 h-4" />
      </button>
     </div>
@@ -438,12 +451,12 @@ export default function Discovery({ user }: DiscoveryProps) {
       <section className="space-y-4">
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-xs font-semibold tracking-wider text-stone-400">Expertise & Talent</p>
-         <h3 className="text-base font-semibold text-stone-900">Founders & Mentors</h3>
+         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Expertise & talent', 'Εξειδίκευση')}</p>
+         <h3 className="text-base font-semibold text-stone-900">{t('Founders & mentors', 'Ιδρυτές και μέντορες')}</h3>
         </div>
         <Link to="/matches">
          <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
-          View All <ArrowRight className="ml-1.5 w-3 h-3" />
+          {t('View all', 'Όλα')} <ArrowRight className="ml-1.5 w-3 h-3" />
          </Button>
         </Link>
        </div>
@@ -473,14 +486,20 @@ export default function Discovery({ user }: DiscoveryProps) {
              </div>
              <div className="flex items-center gap-1 px-2 py-1 bg-stone-50 rounded-lg border border-stone-100">
               <ShieldCheck className={`w-3 h-3 ${user.profileCompletionScore > 90 && user.emailVerified ? 'text-emerald-500' : 'text-stone-300'}`} />
-              <span className="text-xs text-stone-500">{user.profileCompletionScore > 90 && user.emailVerified ? 'Verified' : 'Pending'}</span>
+              <span className="text-xs text-stone-500">{user.profileCompletionScore > 90 && user.emailVerified ? t('Verified', 'Επαληθευμένο') : t('Pending', 'Σε αναμονή')}</span>
              </div>
             </div>
             <div>
-             <h4 className="text-base font-semibold text-stone-900">{user.name}</h4>
+             <PersonHovercard person={user.id || user.name}>
+              <h4 className="text-base font-semibold text-stone-900">{user.name}</h4>
+             </PersonHovercard>
              <p className="text-sm text-stone-500 line-clamp-1 mt-0.5">{user.profile?.headline}</p>
             </div>
-            <FactLine items={(user.skills ?? []).slice(0, 3).map((skill: { name?: string } | string) => typeof skill === 'string' ? skill : skill.name)} label="Skills" />
+            <FactLine
+             items={[labelOf(user.role), Array.isArray(user.profile?.industry) ? user.profile.industry[0] : user.profile?.industry, user.profile?.location]}
+             label={t('Profile facts', 'Στοιχεία προφίλ')}
+            />
+            <FactLine items={(user.skills ?? []).slice(0, 3).map((skill: { name?: string } | string) => typeof skill === 'string' ? skill : skill.name)} label={t('Skills', 'Δεξιότητες')} />
             <div className="pt-2 border-t border-stone-50 flex items-center justify-between">
              <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -489,11 +508,11 @@ export default function Discovery({ user }: DiscoveryProps) {
              <div className="flex items-center gap-1.5">
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
                onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); ask(`Why do I match with ${user.name}?`); }}>
-               Ask
+               {t('Ask', 'Ρώτα')}
               </Button>
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
                onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/messages?userId=${user.id}`); }}>
-               Message
+               {t('Message', 'Μήνυμα')}
               </Button>
              </div>
             </div>
@@ -503,14 +522,10 @@ export default function Discovery({ user }: DiscoveryProps) {
          })}
         </div>
        ) : (
-        <div className="h-32 flex flex-col items-center justify-center bg-stone-50 rounded-2xl border border-dashed border-stone-200">
-         <Search className="w-8 h-8 text-stone-300 mb-2" />
-         <p className="text-sm text-stone-400">{bothText("No matches found for your criteria", "Καμία αντιστοίχιση με αυτά τα κριτήρια")}</p>
-         <div className="mt-2 flex items-center gap-3">
-          <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="text-xs font-medium text-stone-900 hover:underline">Clear filters</button>
-          <button type="button" onClick={() => ask('who is my best match')} className="text-xs font-medium text-stone-900 hover:underline">Ask assistant</button>
-         </div>
-        </div>
+        <EmptyHint title={t('No matches for these filters', 'Καμία αντιστοίχιση με αυτά τα κριτήρια')} detail={t('Clear the filters, or ask who still ranks on this profile.', 'Καθάρισε τα φίλτρα, ή ρώτα ποιον βαθμολογεί ακόμα αυτό το προφίλ.')}>
+          <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="text-xs font-medium text-stone-900 hover:underline">{t('Clear filters', 'Καθαρισμός φίλτρων')}</button>
+          <AskLink prompt="who is my best match" />
+        </EmptyHint>
        )}
       </section>
      )}
@@ -518,8 +533,8 @@ export default function Discovery({ user }: DiscoveryProps) {
      {/* Featured Section */}
      <section className="space-y-4">
        <div>
-        <p className="text-xs font-semibold tracking-wider text-stone-400">Featured</p>
-        <h3 className="text-base font-semibold text-stone-900">Curated Opportunities</h3>
+        <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Featured', 'Προτεινόμενα')}</p>
+        <h3 className="text-base font-semibold text-stone-900">{t('Curated opportunities', 'Επιλεγμένες ευκαιρίες')}</h3>
        </div>
       <div className={cn(
        "grid gap-4",
@@ -548,7 +563,7 @@ export default function Discovery({ user }: DiscoveryProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
           <div className="absolute top-3 left-3">
            <span className="bg-white/80 backdrop-blur-sm text-stone-700 text-xs font-semibold tracking-wider px-2 py-0.5 rounded-md">
-            {opp.type}
+            {labelOf(opp.type)}
            </span>
           </div>
           <div className="absolute bottom-3 left-3 flex items-center gap-1">
@@ -562,15 +577,13 @@ export default function Discovery({ user }: DiscoveryProps) {
           {viewMode === "list" && (
            <p className="text-sm text-stone-500 line-clamp-2">{opp.description}</p>
           )}
-          <p className="text-xs text-stone-400 flex items-center gap-1">
-           <MapPin className="w-3 h-3" /> {opp.location}
-          </p>
-          <FactLine items={opp.tags} label="Tags" />
+          <FactLine items={[labelOf(opp.type), opp.location]} label={t('Opportunity facts', 'Στοιχεία ευκαιρίας')} />
+          <FactLine items={opp.tags} label={t('Tags', 'Ετικέτες')} />
          </div>
          {viewMode === "list" && (
           <div className="px-12 pb-8 md:pb-0 md:pr-12">
            <Button type="button" variant="outline" className="rounded-full h-11 px-8 text-sm font-medium tracking-wider border-stone-200 group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 transition-all" onClick={(e: React.MouseEvent) => { e.stopPropagation(); ask(`Tell me about ${opp.title}`); }}>
-             Details
+             {t('Details', 'Λεπτομέρειες')}
             </Button>
           </div>
          )}
@@ -583,12 +596,12 @@ export default function Discovery({ user }: DiscoveryProps) {
      <section className="space-y-4">
       <div className="flex items-center justify-between">
        <div>
-        <p className="text-xs font-semibold tracking-wider text-stone-400">Communities</p>
-        <h3 className="text-base font-semibold text-stone-900">Strategic Hubs</h3>
+        <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Communities', 'Κοινότητες')}</p>
+        <h3 className="text-base font-semibold text-stone-900">{t('Strategic hubs', 'Στρατηγικοί κόμβοι')}</h3>
        </div>
        <Link to="/communities">
         <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
-         Explore All <ArrowRight className="ml-1.5 w-3 h-3" />
+         {t('Explore all', 'Όλες')} <ArrowRight className="ml-1.5 w-3 h-3" />
         </Button>
        </Link>
       </div>
@@ -613,14 +626,14 @@ export default function Discovery({ user }: DiscoveryProps) {
              comm.status === "ACTIVE" ? "text-emerald-600 border-transparent" :
              comm.status === "STABLE" ? "text-blue-600 border-transparent" :
              "text-amber-600 border-transparent"
-            )}>{comm.status}</span>
+            )}>{labelOf(comm.status)}</span>
            </div>
            <p className="text-sm text-stone-500 line-clamp-1">{comm.description}</p>
           </div>
           <div className="flex items-center gap-4 shrink-0">
            <div className="text-right">
             <p className="text-sm font-semibold text-stone-900">{comm.members}</p>
-            <p className="text-xs text-stone-400">members</p>
+            <p className="text-xs text-stone-400">{t('members', 'μέλη')}</p>
            </div>
            <Link to={`/communities/${comm.id}`}>
             <ArrowRight className="w-4 h-4 text-stone-300 group-hover:text-stone-600 transition-colors" />
@@ -638,7 +651,7 @@ export default function Discovery({ user }: DiscoveryProps) {
      {/* Trending Topics */}
      <section className="bg-white border border-stone-100 rounded-2xl p-4 space-y-4">
       <div className="flex items-center justify-between">
-       <h3 className="text-xs font-semibold tracking-wider text-stone-400">Trending Intelligence</h3>
+       <h3 className="text-xs font-semibold tracking-wider text-stone-400">{t('Trending intelligence', 'Τάσεις')}</h3>
        <Activity className="w-3.5 h-3.5 text-stone-400 animate-pulse" />
       </div>
 
@@ -648,25 +661,25 @@ export default function Discovery({ user }: DiscoveryProps) {
         { topic: "Sustainable Tech", growth: "+85%", count: "180 posts", trend: [20, 15, 35, 40, 55, 70, 80] },
         { topic: "Remote Work 2.0", growth: "+42%", count: "120 posts", trend: [50, 45, 40, 42, 45, 48, 52] },
         { topic: "Fintech Regulation", growth: "+30%", count: "95 posts", trend: [10, 12, 15, 18, 22, 25, 30] },
-       ].map((t) => (
-        <div key={t.topic} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${t.topic}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${t.topic}`); }} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
+       ].map((trend) => (
+        <div key={trend.topic} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${trend.topic}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${trend.topic}`); }} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
          <div>
-          <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{t.topic}</p>
-          <p className="text-xs text-stone-400">{t.count}</p>
+          <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{trend.topic}</p>
+          <p className="text-xs text-stone-400">{trend.count}</p>
          </div>
          <div className="flex items-center gap-2">
           <svg className="w-12 h-5 overflow-visible">
            <polyline fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
             className="text-stone-300"
-            points={t.trend.map((val, i) => `${(i / (t.trend.length - 1)) * 48},${20 - (val / 100) * 20}`).join(' ')} />
+            points={trend.trend.map((val, i) => `${(i / (trend.trend.length - 1)) * 48},${20 - (val / 100) * 20}`).join(' ')} />
           </svg>
-          <span className="text-sm font-semibold text-emerald-600">{t.growth}</span>
+          <span className="text-sm font-semibold text-emerald-600">{trend.growth}</span>
          </div>
         </div>
        ))}
       </div>
       <Button type="button" variant="outline" onClick={() => navigate('/communities')} className="w-full h-7 rounded-lg text-sm border-stone-100">
-       View All Topics
+       {t('View all topics', 'Όλα τα θέματα')}
       </Button>
      </section>
 
@@ -674,12 +687,12 @@ export default function Discovery({ user }: DiscoveryProps) {
      <section className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between mb-1">
        <div>
-        <p className="text-xs font-semibold tracking-wider text-stone-400">Ecosystem Events</p>
-        <h3 className="text-sm font-semibold text-stone-900">Upcoming Sessions</h3>
+        <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
+        <h3 className="text-sm font-semibold text-stone-900">{t('Upcoming sessions', 'Επερχόμενες συναντήσεις')}</h3>
        </div>
        <div className="flex items-center gap-1.5">
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-xs text-stone-400">Live Now</span>
+        <span className="text-xs text-stone-400">{t('Live now', 'Ζωντανά τώρα')}</span>
        </div>
       </div>
       <div className="space-y-2">
@@ -695,13 +708,13 @@ export default function Discovery({ user }: DiscoveryProps) {
          </div>
          <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-stone-900 truncate">{event.title}</h4>
-          <p className="text-xs text-stone-400">{event.time} · {event.type}</p>
+          <p className="text-xs text-stone-400">{event.time} · {t(event.type, event.type === 'Virtual' ? 'Εικονικά' : 'Δια ζώσης')}</p>
           <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden mt-1">
            <motion.div initial={{ width: 0 }} animate={{ width: event.capacity }}
             className={cn("h-full", event.status === "LAST_CALL" ? "bg-amber-400" : "bg-stone-300")} />
           </div>
          </div>
-         <span className={cn("text-xs font-semibold shrink-0", event.status === "LAST_CALL" ? "text-amber-600" : "text-stone-400")}>{event.status}</span>
+         <span className={cn("text-xs font-semibold shrink-0", event.status === "LAST_CALL" ? "text-amber-600" : "text-stone-400")}>{labelOf(event.status)}</span>
         </div>
        ))}
       </div>
@@ -714,17 +727,17 @@ export default function Discovery({ user }: DiscoveryProps) {
         <MessageSquare className="w-4 h-4 text-stone-500" />
        </div>
        <div>
-        <h4 className="text-sm font-semibold text-stone-900">Weekly Briefing</h4>
-        <p className="text-xs text-stone-400">Ecosystem news & funding alerts</p>
+        <h4 className="text-sm font-semibold text-stone-900">{t('Weekly briefing', 'Εβδομαδιαίο briefing')}</h4>
+        <p className="text-xs text-stone-400">{t('Ecosystem news & funding alerts', 'Νέα οικοσυστήματος και χρηματοδότηση')}</p>
        </div>
       </div>
       <input
        type="email"
-       placeholder="Enter your email"
+       placeholder={t('Enter your email', 'Το email σου')}
        className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
       />
       <Button type="button" onClick={() => ask('what should I do today')} className="w-full rounded-lg h-8 bg-stone-900 text-white text-sm hover:bg-stone-800 transition-all">
-       Subscribe Now
+       {t('Subscribe now', 'Εγγραφή')}
       </Button>
      </section>
     </div>

@@ -13,6 +13,9 @@ import { cn } from "../lib/utils";
 import { keys, readSessions } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { motion } from "framer-motion";
+import { useT } from "../lib/language";
+import { labelOf } from "../lib/labels";
+import { formatDate, formatWhen } from "../lib/dates";
 
 interface Event {
  id: string;
@@ -27,17 +30,32 @@ interface Event {
 }
 
 export default function Calendar() {
+ const t = useT();
  const [currentMonth, setCurrentMonth] = useState("March 2026");
  const [view, setView] = useState('Month');
  const [searchQuery, setSearchQuery] = useState('');
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const monthLabel = (value: string) =>
+  value === "February 2026" ? t("February 2026", "Φεβρουάριος 2026")
+   : value === "April 2026" ? t("April 2026", "Απρίλιος 2026")
+    : t("March 2026", "Μάρτιος 2026");
+ const viewLabel = (value: string) =>
+  value === "Week" ? t("Week", "Εβδομάδα")
+   : value === "Day" ? t("Day", "Ημέρα")
+    : t("Month", "Μήνας");
+ const clockOf = (time: string) => {
+  if (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith("Z")) return formatWhen(time);
+  return time;
+ };
+ const durationOf = (duration: string) => duration === "All Day" ? t("All Day", "Όλη την ημέρα") : duration;
+ const peopleOf = (people?: string[]) => people?.map((person) => person === "120+ attendees" ? t("120+ attendees", "120+ συμμετέχοντες") : person);
 
  const starterEvents: Event[] = [
   {
    id: "1",
    title: "Co-founder Sync",
    type: 'Meeting',
-   time: "10:00 AM",
+   time: "10:00",
    duration: "45m",
    location: "Google Meet",
    participants: ["Sarah Chen", "Alex Rivera"],
@@ -47,7 +65,7 @@ export default function Calendar() {
    id: "2",
    title: "MVP Beta Deadline",
    type: 'Deadline',
-   time: "11:59 PM",
+   time: "23:59",
    duration: "All Day",
    priority: 'High'
   },
@@ -55,7 +73,7 @@ export default function Calendar() {
    id: "3",
    title: "Startup Networking Event",
    type: 'Event',
-   time: "06:00 PM",
+   time: "18:00",
    duration: "2h",
    location: "Tech Hub, London",
    participants: ["120+ attendees"],
@@ -65,7 +83,7 @@ export default function Calendar() {
    id: "4",
    title: "Mentorship Session",
    type: 'Mentorship',
-   time: "02:00 PM",
+   time: "14:00",
    duration: "1h",
    location: "Zoom",
    participants: ["David Miller"],
@@ -78,12 +96,20 @@ export default function Calendar() {
   return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
  });
 
- const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+ const weekDays = [
+  t("Sun", "Κυρ"),
+  t("Mon", "Δευ"),
+  t("Tue", "Τρί"),
+  t("Wed", "Τετ"),
+  t("Thu", "Πέμ"),
+  t("Fri", "Παρ"),
+  t("Sat", "Σάβ"),
+ ];
 
  return (
   <PageShell
-   title="Schedule"
-   description="Manage meetings, track deadlines, and stay aligned with your objectives."
+   title={t("Schedule", "Πρόγραμμα")}
+   description={t("Manage meetings, track deadlines, and stay aligned with your objectives.", "Διαχειρίσου συναντήσεις και προθεσμίες. Μείνε στον ρυθμό των στόχων σου.")}
    actions={
     <div className="flex items-center gap-2">
      <div className="relative">
@@ -92,12 +118,12 @@ export default function Calendar() {
        type="text"
        value={searchQuery}
        onChange={(e) => setSearchQuery(e.target.value)}
-       placeholder="Search events..."
+       placeholder={t("Search events...", "Αναζήτηση εκδηλώσεων...")}
        className="pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 w-36 transition-all"
       />
      </div>
      <Button type="button" onClick={() => ask('Schedule a meeting on my calendar')} className="h-8 px-3 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-sm">
-      <Plus className="w-3.5 h-3.5 mr-1.5" /> Schedule
+      <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("Schedule", "Προγραμματισμός")}
      </Button>
     </div>
    }
@@ -108,12 +134,12 @@ export default function Calendar() {
      <Card noPadding className="rounded-2xl border-stone-100 overflow-hidden bg-white">
       <div className="px-3 py-4 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:px-5">
        <div className="flex items-center gap-3">
-        <h3 className="text-base font-semibold text-stone-900">{currentMonth}</h3>
+        <h3 className="text-base font-semibold text-stone-900">{monthLabel(currentMonth)}</h3>
         <div className="flex items-center gap-1">
-         <Button type="button" variant="ghost" size="icon" aria-label="Previous month" className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'March 2026' ? 'February 2026' : prev === 'April 2026' ? 'March 2026' : 'February 2026')}>
+         <Button type="button" variant="ghost" size="icon" aria-label={t("Previous month", "Προηγούμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'March 2026' ? 'February 2026' : prev === 'April 2026' ? 'March 2026' : 'February 2026')}>
           <ChevronLeft className="w-4 h-4" />
          </Button>
-         <Button variant="ghost" size="icon" aria-label="Next month" className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'February 2026' ? 'March 2026' : prev === 'March 2026' ? 'April 2026' : 'April 2026')}>
+         <Button variant="ghost" size="icon" aria-label={t("Next month", "Επόμενος μήνας")} className="rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => setCurrentMonth((prev) => prev === 'February 2026' ? 'March 2026' : prev === 'March 2026' ? 'April 2026' : 'April 2026')}>
           <ChevronRight className="w-4 h-4" />
          </Button>
         </div>
@@ -128,7 +154,7 @@ export default function Calendar() {
            view === v ? "bg-white text-stone-900 shadow-sm border border-stone-200" : "text-stone-400 hover:text-stone-600"
           )}
          >
-          {v}
+          {viewLabel(v)}
          </button>
         ))}
        </div>
@@ -178,7 +204,7 @@ export default function Calendar() {
             </div>
            )}
 
-           <button type="button" className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={() => ask('Schedule a meeting on my calendar')}>
+           <button type="button" aria-label={t("Schedule", "Προγραμματισμός")} className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={() => ask('Schedule a meeting on my calendar')}>
             <Plus className="w-3 h-3" />
            </button>
           </div>
@@ -194,16 +220,16 @@ export default function Calendar() {
      <Card className="rounded-2xl border-stone-100 p-4 bg-white">
       <div className="flex items-center justify-between mb-4">
        <div>
-        <h4 className="text-sm font-semibold text-stone-900">Upcoming Today</h4>
-        <p className="text-xs text-stone-400 mt-0.5">Thursday, March 26</p>
+        <h4 className="text-sm font-semibold text-stone-900">{t("Upcoming Today", "Επερχόμενα σήμερα")}</h4>
+        <p className="text-xs text-stone-400 mt-0.5">{formatDate(new Date(2026, 2, 26), { weekday: "long", month: "long", day: "numeric" })}</p>
        </div>
        <Button type="button" variant="outline" className="h-7 px-3 text-sm rounded-lg border-stone-200" onClick={() => ask('what events are coming')}>
-        Full Agenda
+        {t("Full Agenda", "Πλήρες πρόγραμμα")}
        </Button>
       </div>
       <div className="space-y-2">
        {events.length === 0 && (
-        <EmptyHint title="No events match this search." detail="Ask the studio assistant to schedule one, or clear the search.">
+        <EmptyHint title={t("No events match this search.", "Δεν υπάρχουν εκδηλώσεις για αυτή την αναζήτηση.")} detail={t("Ask the studio assistant to schedule one, or clear the search.", "Ρώτα τον βοηθό του studio να προγραμματίσει μία, ή καθάρισε την αναζήτηση.")}>
          <AskLink prompt="Schedule a meeting on my calendar" />
         </EmptyHint>
        )}
@@ -224,15 +250,15 @@ export default function Calendar() {
             event.type === 'Mentorship' ? "bg-purple-500" :
             "bg-emerald-500"
            )} />
-           <span className="text-xs font-semibold text-stone-400 tracking-wider">{event.type}</span>
+           <span className="text-xs font-semibold text-stone-400 tracking-wider">{labelOf(event.type)}</span>
           </div>
-          <button className="text-stone-300 hover:text-stone-600 transition-colors opacity-0 group-hover:opacity-100">
+          <button type="button" aria-label={t("More", "Περισσότερα")} className="text-stone-300 hover:text-stone-600 transition-colors opacity-0 group-hover:opacity-100">
            <MoreVertical className="w-3.5 h-3.5" />
           </button>
          </div>
 
          <h4 className="text-sm font-semibold text-stone-900 mb-2 leading-tight">{event.title}</h4>
-         <FactLine items={[`${event.time} · ${event.duration}`, event.location, event.participants?.join(', ')]} label="When and where" />
+         <FactLine items={[clockOf(event.time), durationOf(event.duration), event.location, peopleOf(event.participants)?.join(', ')]} label={t("When and where", "Πότε και πού")} />
         </motion.div>
        ))}
       </div>
@@ -245,12 +271,12 @@ export default function Calendar() {
         <Bell className="w-4 h-4" />
        </div>
        <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-semibold text-stone-900 mb-1">Event Reminders</h4>
+        <h4 className="text-sm font-semibold text-stone-900 mb-1">{t("Event Reminders", "Υπενθυμίσεις εκδηλώσεων")}</h4>
         <p className="text-xs text-stone-500 leading-relaxed mb-3">
-         3 events scheduled for tomorrow. Enable morning briefings?
+         {t("3 events scheduled for tomorrow. Enable morning briefings?", "3 εκδηλώσεις είναι προγραμματισμένες για αύριο. Να ενεργοποιηθούν οι πρωινές ενημερώσεις;")}
         </p>
         <Button type="button" onClick={() => ask('what should I do today')} className="w-full h-7 rounded-lg bg-stone-900 text-white hover:bg-stone-800 text-sm">
-         Enable Briefing
+         {t("Enable Briefing", "Ενεργοποίηση ενημέρωσης")}
         </Button>
        </div>
       </div>

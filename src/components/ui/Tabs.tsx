@@ -1,11 +1,14 @@
 import { cn } from '../../lib/utils';
 import { motion } from 'motion/react';
+import Counter from './Counter';
 
 interface Tab {
  id: string;
  label: string;
  icon?: React.ElementType;
  count?: number;
+ /** The count waits on you (unread, to answer). */
+ attention?: boolean;
 }
 
 interface TabsProps {
@@ -35,12 +38,7 @@ export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', siz
       <span className="relative z-10 flex items-center gap-2">
        {tab.icon && <tab.icon className="w-4 h-4" />}
        {tab.label}
-       {tab.count !== undefined && (
-        <span className={cn(
-         "px-1.5 py-0.5 text-xs rounded-full font-semibold",
-         tab.id === activeTab ? "bg-stone-100 text-stone-700" : "bg-stone-200/60 text-stone-500"
-        )}>{tab.count}</span>
-       )}
+       {tab.count !== undefined && <Counter value={tab.count} tone={tab.attention && tab.count > 0 ? 'attention' : 'neutral'} />}
       </span>
      </button>
     ))}
@@ -63,9 +61,7 @@ export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', siz
      >
       {tab.icon && <tab.icon className="w-4 h-4" />}
       {tab.label}
-      {tab.count !== undefined && (
-       <span className="px-1.5 py-0.5 text-xs bg-stone-100 rounded-full font-semibold">{tab.count}</span>
-      )}
+      {tab.count !== undefined && <Counter value={tab.count} tone={tab.attention && tab.count > 0 ? 'attention' : 'neutral'} />}
       {tab.id === activeTab && (
        <motion.div
         layoutId="tab-underline"
@@ -96,10 +92,7 @@ export default function Tabs({ tabs, activeTab, onChange, variant = 'pills', siz
      {tab.icon && <tab.icon className="w-4 h-4" />}
      {tab.label}
      {tab.count !== undefined && (
-      <span className={cn(
-       "px-1.5 py-0.5 text-xs rounded-full font-semibold",
-       tab.id === activeTab ? "bg-white/20 text-white" : "bg-stone-200 text-stone-600"
-      )}>{tab.count}</span>
+      <Counter value={tab.count} tone={tab.id === activeTab ? 'inverse' : tab.attention && tab.count > 0 ? 'attention' : 'neutral'} />
      )}
     </button>
    ))}
