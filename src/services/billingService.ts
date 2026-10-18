@@ -1,4 +1,22 @@
 import { BillingPlan, Subscription, Invoice, UserRole } from "../types";
+import { readPlan } from "../lib/localLists";
+
+function isDemoBilling() {
+  try {
+    return localStorage.getItem("demo_mode") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function planIdForAccount(type: "user" | "tenant"): string {
+  if (type === "tenant") return "organization-standard";
+  if (isDemoBilling()) return "premium-individual";
+  const plan = readPlan();
+  if (plan === "pro") return "premium-individual";
+  if (plan === "studio") return "organization-standard";
+  return "free-individual";
+}
 
 // --- Mock Data ---
 
@@ -159,22 +177,23 @@ export const billingService = {
   },
 
   getSubscription: async (id: string, type: 'user' | 'tenant'): Promise<Subscription | null> => {
-    // Mock subscription
+    const planId = planIdForAccount(type);
     return {
-      id: "sub_123",
+      id: type === "user" ? `sub-${id}` : "sub_tenant",
       userId: type === 'user' ? id : undefined,
       tenantId: type === 'tenant' ? id : "default_tenant",
-      planId: type === 'user' ? "premium-individual" : "organization-standard",
+      planId,
       billingCycle: "Annual",
       status: "Active",
-      renewalDate: "2025-01-01T00:00:00Z",
+      renewalDate: "2027-01-01T00:00:00Z",
       seatLimit: type === 'tenant' ? 50 : 1,
       activeSeatCount: type === 'tenant' ? 12 : 1,
-      currentPeriodEnd: "2025-01-01T00:00:00Z",
+      currentPeriodEnd: "2027-01-01T00:00:00Z",
     };
   },
 
   getInvoices: async (id: string, type: 'user' | 'tenant'): Promise<Invoice[]> => {
+    if (type === 'user' && planIdForAccount('user') === 'free-individual') return [];
     return [
       {
         id: "inv_001",

@@ -67,7 +67,7 @@ export default function MatchDiscovery() {
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
- const [profiles, setProfiles] = useState<UserProfile[]>(DIRECTORY);
+ const [profiles, setProfiles] = useState<UserProfile[]>(isDemoMode ? DIRECTORY : []);
  const [loading, setLoading] = useState(true);
  const [connecting, setConnecting] = useState<string | null>(null);
  const storedFilters = useStored(readMatchFilters, ['cfb.matchFilters']);
@@ -142,7 +142,7 @@ export default function MatchDiscovery() {
 
  useEffect(() => {
   const fetchProfiles = async () => {
-   setProfiles(DIRECTORY);
+   setProfiles(isDemoMode ? DIRECTORY : []);
    setLoading(!isDemoMode);
    if (isDemoMode) {
     setLoading(false);
@@ -158,11 +158,10 @@ export default function MatchDiscovery() {
      .map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile))
      .filter(p => p.uid !== currentUser?.uid);
 
-    if (fetchedProfiles.length > 0) setProfiles(fetchedProfiles);
-    else setProfiles(DIRECTORY);
+    setProfiles(fetchedProfiles);
    } catch (error) {
     console.error('Error fetching profiles:', error);
-    setProfiles(DIRECTORY);
+    setProfiles([]);
    } finally {
     setLoading(false);
    }

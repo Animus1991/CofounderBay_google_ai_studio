@@ -18,11 +18,12 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { readNotificationPrefs, readSaved, writeNotificationPrefs, writeOpenTo, type NotificationPrefs, type OpenToKind } from "../lib/localLists";
+import { readNotificationPrefs, readPlan, readSaved, resetAllLists, writeNotificationPrefs, writeOpenTo, writePlan, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
 import { AskLink } from "../components/ui/EmptyHint";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { auth } from "../firebase";
+import { changeAccountPassword, deleteAccount, persistAccount } from "../lib/account";
 
 const FORM_KEY = "cfb.accountForm";
 const SWITCH_KEY = "cfb.accountSwitches";
@@ -202,22 +203,32 @@ export default function Settings() {
   const [notifications, setNotifications] = useState<NotificationPrefs>(readNotificationPrefs);
   const [cards, setCards] = useState<PayCard[]>(() => {
     const stored = readStored<PayCard[]>(CARDS_KEY, []);
-    return Array.isArray(stored) && stored.length
-      ? stored
-      : [{ id: "visa-4242", brand: "Visa", last4: "4242", expiry: "12/28" }];
+    if (Array.isArray(stored) && stored.length) return stored;
+    return isDemoMode ? [{ id: "visa-4242", brand: "Visa", last4: "4242", expiry: "12/28" }] : [];
   });
+  const [plan, setPlan] = useState<PlanId>(() => (isDemoMode ? "pro" : readPlan()));
   const [addingCard, setAddingCard] = useState(false);
   const [cardDraft, setCardDraft] = useState({ brand: "Visa", last4: "", expiry: "" });
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [password, setPassword] = useState({ next: "", confirm: "" });
-  const [passwordWhen, setPasswordWhen] = useState(t("3 months ago", "πριν από 3 μήνες"));
+  const [passwordWhen, setPasswordWhen] = useState(isDemoMode ? t("3 months ago", "πριν από 3 μήνες") : t("Not recorded yet", "Δεν έχει καταγραφεί ακόμη"));
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteText, setDeleteText] = useState("");
 
   const setField = (key: keyof AccountForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const saveForm = () => {
+  const saveForm = async () => {
     localStorage.setItem(FORM_KEY, JSON.stringify(form));
+    if (!isDemoMode && user) {
+      try {
+        await persistAccount(user.uid, form);
+        success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details are on your profile.", "Τα στοιχεία είναι στο προφίλ σου."));
+        return;
+      } catch {
+        success(t("Saved on this device", "Αποθηκεύτηκε σε αυτή τη συσκευή"), t("The server could not be reached. They stay in this browser until you are back online.", "Ο διακομιστής δεν απάντησε. Μένουν σε αυτόν τον browser μέχρι να επανέλθεις."));
+        return;
+      }
+    }
     success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details stay in this browser.", "Τα στοιχεία μένουν σε αυτόν τον browser."));
   };
 
@@ -661,9 +672,11 @@ export default function Settings() {
                   <div>
                     <p className="text-sm font-semibold text-stone-900">{t("Two-factor authentication", "Έλεγχος δύο βημάτων")}</p>
                     <p className="mt-1 text-sm text-stone-500">
-                      {switches.twoFactor
-                        ? t("On for this browser.", "Ενεργό σε αυτόν τον browser.")
-                        : t("Off. A code would be asked at the next sign-in.", "Κλειστό. Στην επόμενη είσοδο θα ζητηθεί κωδικός.")}
+                      {isDemoMode
+                        ? (switches.twoFactor
+                          ? t("On for this browser.", "Ενεργό σε αυτόν τον browser.")
+                          : t("Off. A code would be asked at the next sign-in.", "Κλειστό. Στην επόμενη είσοδο θα ζητηθεί κωδικός."))
+                        : t("Saved as a preference on this device. Firebase MFA is not enabled on this project yet.", "Αποθηκεύεται ως προτίμηση σε αυτή τη συσκευή. Το Firebase MFA δεν είναι ενεργό ακόμη σε αυτό το project.")}
                     </p>
                   </div>
                 </div>
@@ -683,15 +696,32 @@ export default function Settings() {
                 <div className="sm:col-span-2">
                   <Button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (password.next.length < 8 || password.next !== password.confirm) {
                         info(t("Check the password", "Έλεγξε τον κωδικό"), t("Use 8 or more characters and matching fields.", "Τουλάχιστον 8 χαρακτήρες και ίδια πεδία."));
                         return;
                       }
-                      setPassword({ next: "", confirm: "" });
-                      setPasswordOpen(false);
-                      setPasswordWhen(t("just now", "μόλις τώρα"));
-                      success(t("Password updated on this device", "Ο κωδικός ενημερώθηκε σε αυτή τη συσκευή"));
+                      if (isDemoMode) {
+                        setPassword({ next: "", confirm: "" });
+                        setPasswordOpen(false);
+                        setPasswordWhen(t("just now", "μόλις τώρα"));
+                        success(t("Password updated on this device", "Ο κωδικός ενημερώθηκε σε αυτή τη συσκευή"));
+                        return;
+                      }
+                      try {
+                        await changeAccountPassword(password.next);
+                        setPassword({ next: "", confirm: "" });
+                        setPasswordOpen(false);
+                        setPasswordWhen(t("just now", "μόλις τώρα"));
+                        success(t("Password updated", "Ο κωδικός ενημερώθηκε"));
+                      } catch (err: unknown) {
+                        const code = typeof err === "object" && err && "code" in err ? String((err as { code: string }).code) : "";
+                        if (code === "auth/requires-recent-login") {
+                          info(t("Sign in again", "Ξανασυνδέσου"), t("Firebase asks for a recent sign-in before changing the password.", "Το Firebase ζητά πρόσφατη είσοδο πριν αλλάξει ο κωδικός."));
+                        } else {
+                          info(t("Could not update password", "Ο κωδικός δεν άλλαξε"), t("If you sign in with Google, add an email password after a fresh sign-in.", "Αν μπαίνεις με Google, πρόσθεσε κωδικό email μετά από νέα είσοδο."));
+                        }
+                      }
                     }}
                   >
                     {t("Save password", "Αποθήκευση κωδικού")}
@@ -736,11 +766,16 @@ export default function Settings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    [t("This browser", "Αυτός ο browser"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
-                    ["Safari · iPhone", "Athens", t("2 hours ago", "πριν από 2 ώρες"), false],
-                    ["Chrome · Mac", "London", t("Yesterday", "Χθες"), false],
-                  ].map(([device, where, when, current]) => (
+                  {(isDemoMode
+                    ? [
+                        [t("This browser", "Αυτός ο browser"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
+                        ["Safari · iPhone", "Athens", t("2 hours ago", "πριν από 2 ώρες"), false],
+                        ["Chrome · Mac", "London", t("Yesterday", "Χθες"), false],
+                      ]
+                    : [
+                        [t("This browser", "Αυτός ο browser"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
+                      ]
+                  ).map(([device, where, when, current]) => (
                     <tr key={String(device)} className="border-b border-stone-50">
                       <td className="py-3 pr-4 font-medium text-stone-900">{device}</td>
                       <td className="py-3 pr-4 text-stone-500">{where}</td>
@@ -774,7 +809,7 @@ export default function Settings() {
                 <Trash2 className="h-4 w-4 shrink-0 text-red-600" />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold leading-snug text-red-700">{t("Delete account", "Διαγραφή λογαριασμού")}</span>
-                  <span className="mt-0.5 block text-sm leading-snug text-stone-500">{t("Signs you out of this browser.", "Σε αποσυνδέει από αυτόν τον browser.")}</span>
+                  <span className="mt-0.5 block text-sm leading-snug text-stone-500">{t("Removes your profile and this account.", "Διαγράφει το προφίλ και αυτόν τον λογαριασμό.")}</span>
                 </span>
               </button>
             </div>
@@ -790,7 +825,24 @@ export default function Settings() {
                     type="button"
                     className="bg-red-700 hover:bg-red-800"
                     disabled={deleteText !== "DELETE"}
-                    onClick={() => { void leave(); }}
+                    onClick={async () => {
+                      if (isDemoMode) {
+                        void leave();
+                        return;
+                      }
+                      try {
+                        await deleteAccount();
+                        resetAllLists();
+                        navigate("/");
+                      } catch (err: unknown) {
+                        const code = typeof err === "object" && err && "code" in err ? String((err as { code: string }).code) : "";
+                        if (code === "auth/requires-recent-login") {
+                          info(t("Sign in again to delete", "Ξανασυνδέσου για διαγραφή"), t("Firebase needs a recent sign-in before deleting an account.", "Το Firebase ζητά πρόσφατη είσοδο πριν διαγράψει λογαριασμό."));
+                        } else {
+                          info(t("Could not delete the account", "Ο λογαριασμός δεν διαγράφηκε"), t("Try again after a fresh sign-in.", "Δοκίμασε ξανά μετά από νέα είσοδο."));
+                        }
+                      }
+                    }}
                   >
                     {t("Delete and sign out", "Διαγραφή και έξοδος")}
                   </Button>
@@ -812,22 +864,30 @@ export default function Settings() {
 
       {activeTab === "billing" && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <Card className="xl:col-span-3" title={t("Current plan", "Τρέχον πλάνο")} subtitle={t("Pro Founder, billed once a year.", "Pro Founder, ετήσια χρέωση.")}>
+          <Card className="xl:col-span-3" title={t("Current plan", "Τρέχον πλάνο")} subtitle={plan === "pro" ? t("Pro Founder, billed once a year.", "Pro Founder, ετήσια χρέωση.") : plan === "studio" ? t("Studio workspace.", "Χώρος Studio.") : t("Starter. No charge until you upgrade.", "Starter. Χωρίς χρέωση μέχρι να αναβαθμίσεις.")}>
             <div className="rounded-xl bg-stone-900 p-5 text-white sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-lg font-semibold">Pro Founder</p>
-                  <p className="mt-1 text-sm text-white/70">{form.currency === "USD" ? "$240" : form.currency === "GBP" ? "£190" : "€220"} · {t("per year", "τον χρόνο")}</p>
+                  <p className="text-lg font-semibold">{plan === "pro" ? "Pro Founder" : plan === "studio" ? "Studio" : "Starter"}</p>
+                  <p className="mt-1 text-sm text-white/70">{plan === "starter" ? t("Free", "Δωρεάν") : plan === "studio" ? t("Talk to us", "Επικοινώνησε") : (form.currency === "USD" ? "$240" : form.currency === "GBP" ? "£190" : "€220") + " · " + t("per year", "τον χρόνο")}</p>
                 </div>
                 <span className="inline-flex min-h-8 items-center rounded-full border border-white/15 px-3 text-xs font-semibold">{t("Active", "Ενεργό")}</span>
               </div>
               <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {[
-                  [t("Matches", "Αντιστοιχίσεις"), t("Unlimited", "Απεριόριστες")],
-                  [t("Mentor sessions", "Συνεδρίες μεντόρων"), "5 / " + t("month", "μήνα")],
-                  [t("Communities", "Κοινότητες"), t("All", "Όλες")],
-                  [t("Perks", "Παροχές"), "€50k"],
-                ].map(([label, value]) => (
+                {(plan === "starter"
+                  ? [
+                      [t("Matches", "Αντιστοιχίσεις"), t("Open directory", "Ανοιχτός κατάλογος")],
+                      [t("Mentor sessions", "Συνεδρίες μεντόρων"), t("On request", "Κατόπιν αιτήματος")],
+                      [t("Communities", "Κοινότητες"), t("Public", "Δημόσιες")],
+                      [t("Perks", "Παροχές"), t("None yet", "Καμία ακόμη")],
+                    ]
+                  : [
+                      [t("Matches", "Αντιστοιχίσεις"), t("Unlimited", "Απεριόριστες")],
+                      [t("Mentor sessions", "Συνεδρίες μεντόρων"), "5 / " + t("month", "μήνα")],
+                      [t("Communities", "Κοινότητες"), t("All", "Όλες")],
+                      [t("Perks", "Παροχές"), "€50k"],
+                    ]
+                ).map(([label, value]) => (
                   <div key={label}>
                     <p className="text-xs text-white/50">{label}</p>
                     <p className="mt-1 text-sm font-semibold">{value}</p>
@@ -843,12 +903,20 @@ export default function Settings() {
 
           <Card className="xl:col-span-3" title={t("Usage this month", "Χρήση αυτού του μήνα")} subtitle={t("Resets on the first of the month.", "Μηδενίζει την πρώτη του μήνα.")}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                [t("Intro requests", "Αιτήματα γνωριμίας"), "12", "40"],
-                [t("Mentor sessions", "Συνεδρίες μεντόρων"), "2", "5"],
-                [t("Data room files", "Αρχεία data room"), "8", "50"],
-                [t("Tracked applications", "Αιτήσεις"), "4", "20"],
-              ].map(([label, used, max]) => (
+              {(isDemoMode
+                ? [
+                    [t("Intro requests", "Αιτήματα γνωριμίας"), "12", "40"],
+                    [t("Mentor sessions", "Συνεδρίες μεντόρων"), "2", "5"],
+                    [t("Data room files", "Αρχεία data room"), "8", "50"],
+                    [t("Tracked applications", "Αιτήσεις"), "4", "20"],
+                  ]
+                : [
+                    [t("Intro requests", "Αιτήματα γνωριμίας"), "0", "10"],
+                    [t("Mentor sessions", "Συνεδρίες μεντόρων"), "0", "1"],
+                    [t("Data room files", "Αρχεία data room"), "0", "5"],
+                    [t("Tracked applications", "Αιτήσεις"), "0", "5"],
+                  ]
+              ).map(([label, used, max]) => (
                 <div key={label} className="rounded-xl border border-stone-100 p-4">
                   <p className="text-sm text-stone-500">{label}</p>
                   <p className="mt-2 text-lg font-semibold text-stone-900">{used}<span className="text-sm font-medium text-stone-400"> / {max}</span></p>
@@ -941,11 +1009,21 @@ export default function Settings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {([
-                    ["12 Mar 2026", "Pro Founder · annual", form.currency === "USD" ? "$240.00" : "€220.00", t("Paid", "Πληρωμένο")],
-                    ["12 Mar 2025", "Pro Founder · annual", "€220.00", t("Paid", "Πληρωμένο")],
-                    ["12 Mar 2024", "Starter · annual", "€0.00", t("Paid", "Πληρωμένο")],
-                  ] as [string, string, string, string][]).map(([date, description, amount, status]) => (
+                  {!isDemoMode && (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-sm text-stone-500">
+                        {t("No invoices yet. Starter has no charge.", "Δεν υπάρχουν τιμολόγια. Το Starter δεν έχει χρέωση.")}
+                      </td>
+                    </tr>
+                  )}
+                  {(isDemoMode
+                    ? ([
+                        ["12 Mar 2026", "Pro Founder · annual", form.currency === "USD" ? "$240.00" : "€220.00", t("Paid", "Πληρωμένο")],
+                        ["12 Mar 2025", "Pro Founder · annual", "€220.00", t("Paid", "Πληρωμένο")],
+                        ["12 Mar 2024", "Starter · annual", "€0.00", t("Paid", "Πληρωμένο")],
+                      ] as [string, string, string, string][])
+                    : []
+                  ).map(([date, description, amount, status]) => (
                     <tr key={date} className="border-b border-stone-50">
                       <td className="py-3 pr-4 text-stone-700">{date}</td>
                       <td className="py-3 pr-4 font-medium text-stone-900">{description}</td>
@@ -977,12 +1055,28 @@ export default function Settings() {
 
           <Card className="xl:col-span-3" title={t("Plans", "Πλάνα")} subtitle={t("You can change plan from the pricing page.", "Η αλλαγή πλάνου γίνεται από τη σελίδα τιμών.")}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              {[
-                [t("Starter", "Starter"), "€0", t("Profile, discovery, and communities.", "Προφίλ, εξερεύνηση και κοινότητες."), false],
-                [t("Pro Founder", "Pro Founder"), "€220", t("Matches, mentors, data room, and perks.", "Αντιστοιχίσεις, μέντορες, data room και παροχές."), true],
-                [t("Studio", "Studio"), t("Talk to us", "Επικοινώνησε"), t("A private workspace for a team.", "Ιδιωτικός χώρος για ομάδα."), false],
-              ].map(([name, price, desc, current]) => (
-                <div key={String(name)} className={cn("flex flex-col rounded-xl border p-4", current ? "border-stone-900" : "border-stone-200")}>
+              {([
+                ["starter", t("Starter", "Starter"), "€0", t("Profile, discovery, and communities.", "Προφίλ, εξερεύνηση και κοινότητες.")] as const,
+                ["pro", t("Pro Founder", "Pro Founder"), "€220", t("Matches, mentors, data room, and perks.", "Αντιστοιχίσεις, μέντορες, data room και παροχές.")] as const,
+                ["studio", t("Studio", "Studio"), t("Talk to us", "Επικοινώνησε"), t("A private workspace for a team.", "Ιδιωτικός χώρος για ομάδα.")] as const,
+              ]).map(([id, name, price, desc]) => {
+                const current = plan === id;
+                return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setPlan(id);
+                    writePlan(id);
+                    success(
+                      t("Plan selected", "Επιλέχθηκε πλάνο"),
+                      id === "starter"
+                        ? t("Starter is live. Checkout is not required.", "Το Starter είναι ενεργό. Δεν χρειάζεται πληρωμή.")
+                        : t("Saved on this account. Paid checkout is not live yet, so Starter stays until billing is connected.", "Αποθηκεύτηκε σε αυτόν τον λογαριασμό. Η πληρωμή δεν είναι ζωντανή ακόμη, οπότε μένεις στο Starter μέχρι να συνδεθεί χρέωση."),
+                    );
+                  }}
+                  className={cn("flex flex-col rounded-xl border p-4 text-left", current ? "border-stone-900" : "border-stone-200")}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-stone-900">{name}</p>
                     {current ? <span className="text-xs font-semibold text-stone-500">{t("Current", "Τρέχον")}</span> : null}
@@ -991,10 +1085,11 @@ export default function Settings() {
                   <p className="mt-2 flex-1 text-sm text-stone-500">{desc}</p>
                   <div className="mt-4 flex items-center gap-2 text-sm text-stone-500">
                     <Globe className="h-4 w-4" />
-                    {current ? t("Renews 12 Mar 2027", "Ανανέωση 12 Μαρ 2027") : t("Available on the pricing page", "Διαθέσιμο στη σελίδα τιμών")}
+                    {current && id !== "starter" ? t("Renews after checkout", "Ανανέωση μετά την πληρωμή") : t("Available on this account", "Διαθέσιμο σε αυτόν τον λογαριασμό")}
                   </div>
-                </div>
-              ))}
+                </button>
+                );
+              })}
             </div>
           </Card>
         </div>

@@ -140,7 +140,7 @@ function toAppUser(id: string, profile: UserProfile | null, firebaseUser: Fireba
     verificationStatus: profile?.verificationStatus ?? VerificationStatus.UNVERIFIED,
     profileCompletionScore: profile?.profileCompletionScore ?? 0,
     accountStatus: profile?.accountStatus ?? AccountStatus.ACTIVE,
-    onboardingCompleted: !!profile,
+    onboardingCompleted: !!profile?.onboardingCompleted,
     createdAt: profile?.createdAt || now,
     updatedAt: profile?.updatedAt || now,
   };
@@ -163,7 +163,7 @@ const ProtectedRoute = ({ children, requireOnboarding = true }: { children: Reac
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!isDemoMode && requireOnboarding && !profile && location.pathname !== '/onboarding') {
+  if (!isDemoMode && requireOnboarding && !profile?.onboardingCompleted && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -190,8 +190,8 @@ function TenantBillingRoute() {
 
 /** One messaging state for the whole app, so the assistant and every page see the same conversations. */
 function AppMessaging({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  return <MessagingProvider userId={user?.uid || ''}>{children}</MessagingProvider>;
+  const { user, isDemoMode } = useAuth();
+  return <MessagingProvider userId={user?.uid || (isDemoMode ? 'demo-user' : '')} isDemo={isDemoMode}>{children}</MessagingProvider>;
 }
 
 export default function App() {

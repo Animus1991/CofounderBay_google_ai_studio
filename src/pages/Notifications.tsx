@@ -8,6 +8,7 @@ import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import RelTime from '../components/ui/RelTime';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
+import { useAuth } from '../App';
 import { clearActivity, keys, markActivityRead, readActivity, type ActivityKind } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 
@@ -35,10 +36,11 @@ const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600_000).toIS
 
 export default function Notifications() {
   const t = useT();
+  const { isDemoMode } = useAuth();
   const navigate = useNavigate();
   const activity = useStored(readActivity, [keys.activity]);
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
-  const [seed, setSeed] = useState<Notification[]>([
+  const [seed, setSeed] = useState<Notification[]>(() => isDemoMode ? [
     {
       id: '1',
       type: 'match',
@@ -81,7 +83,7 @@ export default function Notifications() {
       time: hoursAgo(48),
       read: true,
     },
-  ]);
+  ] : []);
 
   const studioNotes: Notification[] = useMemo(() => activity.map((item) => ({
     id: item.id,

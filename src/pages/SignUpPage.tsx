@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome, User, FlaskConical } from 'lucide-react';
 import { auth } from '../firebase';
 import { useAuth } from '../App';
@@ -43,7 +44,8 @@ export default function SignUpPage() {
   setLoading(true);
   setError('');
   try {
-   await createUserWithEmailAndPassword(auth, email, password);
+   const created = await createUserWithEmailAndPassword(auth, email, password);
+   await bootstrapAccount(created.user, fullName);
    navigate('/onboarding');
   } catch (err: any) {
    setError(friendlyError(err.code));
@@ -59,7 +61,8 @@ export default function SignUpPage() {
    const provider = new GoogleAuthProvider();
    provider.addScope('profile');
    provider.addScope('email');
-   await signInWithPopup(auth, provider);
+   const result = await signInWithPopup(auth, provider);
+   await bootstrapAccount(result.user, result.user.displayName || fullName);
    navigate('/onboarding');
   } catch (err: any) {
    console.error('Google Auth Error:', err);

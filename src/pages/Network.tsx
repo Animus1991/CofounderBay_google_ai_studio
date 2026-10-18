@@ -41,6 +41,7 @@ import PersonHovercard from '../components/ui/PersonHovercard';
 import { avatarFor } from '../data/cast';
 import { User, Endorsement, UserRole } from '../types';
 import { cn } from '../lib/utils';
+import { useAuth } from '../App';
 
 interface NetworkProps {
   user: User;
@@ -62,6 +63,7 @@ function isTab(value: string | null): value is NetworkTab {
 
 export default function Network({ user }: NetworkProps) {
   const t = useT();
+  const { isDemoMode } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const activeTab: NetworkTab = isTab(params.get('tab')) ? params.get('tab') as NetworkTab : 'connections';
@@ -81,13 +83,14 @@ export default function Network({ user }: NetworkProps) {
   const [draft, setDraft] = useState({ exists: '', outcome: '', missing: '', offer: '' });
   const [editing, setEditing] = useState<string | null>(null);
 
-  const mockConnections = [
+  const mockConnections = isDemoMode ? [
     { id: 'sarah-chen', fullName: 'Sarah Chen', role: UserRole.FOUNDER, industry: 'FinTech', status: 'Connected', location: 'New York' },
     { id: 'alex-rivera', fullName: 'Alex Rivera', role: UserRole.FOUNDER, industry: 'AI', status: 'Connected', location: 'San Francisco' },
     { id: 'james-wilson', fullName: 'James Wilson', role: UserRole.ADVISOR, industry: 'SaaS', status: 'Pending', location: 'London' },
     { id: 'elena-rodriguez', fullName: 'Elena Rodriguez', role: UserRole.CO_FOUNDER_CANDIDATE, industry: 'CleanTech', status: 'Connected', location: 'Barcelona' },
-  ];
-  const visibleConnections = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))].filter((conn) => {
+  ] : [];
+  const connectionPool = [...mockConnections, ...requests.filter((item) => !mockConnections.some((conn) => conn.id === item.id))];
+  const visibleConnections = connectionPool.filter((conn) => {
     const q = networkQuery.trim().toLowerCase();
     const matchesQuery = !q || conn.fullName.toLowerCase().includes(q) || String(conn.role).toLowerCase().includes(q) || String(conn.industry ?? '').toLowerCase().includes(q);
     const status = 'status' in conn ? String(conn.status) : 'Pending';
@@ -95,10 +98,10 @@ export default function Network({ user }: NetworkProps) {
     return matchesQuery && matchesStatus;
   });
 
-  const mockEndorsements: Endorsement[] = [
+  const mockEndorsements: Endorsement[] = isDemoMode ? [
     { id: 'e1', endorserId: 'sarah-chen', recipientId: user.id, skillId: 'Product Strategy', comment: "One of the most focused founders I've worked with.", createdAt: '2026-03-15' },
     { id: 'e2', endorserId: 'alex-rivera', recipientId: user.id, skillId: 'Full-Stack Dev', comment: 'Incredible technical depth and speed.', createdAt: '2026-03-20' },
-  ];
+  ] : [];
 
   const openNeeds = needs.filter((item) => item.status === 'open').length;
   const tabItems = [
@@ -188,7 +191,7 @@ export default function Network({ user }: NetworkProps) {
                         </div>
                         <div className={cn(
                           'absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white',
-                          conn.status === 'Connected' ? 'bg-emerald-500' : 'bg-amber-400',
+                          ('status' in conn ? String(conn.status) : '') === 'Connected' ? 'bg-emerald-500' : 'bg-amber-400',
                         )} />
                       </div>
                       <div className="space-y-1">
@@ -353,7 +356,7 @@ export default function Network({ user }: NetworkProps) {
               </div>
               <div className="flex items-center justify-center gap-4">
                 {[0, 1, 2].map((i) => {
-                  const person = mockConnections.find((conn) => conn.id === picked[i]);
+                  const person = connectionPool.find((conn) => conn.id === picked[i]);
                   return (
                     <button
                       key={i}
@@ -364,7 +367,7 @@ export default function Network({ user }: NetworkProps) {
                           setPicked((prev) => prev.filter((id) => id !== person.id));
                           return;
                         }
-                        const next = mockConnections.find((conn) => !picked.includes(conn.id));
+                        const next = connectionPool.find((conn) => !picked.includes(conn.id));
                         if (next) setPicked((prev) => [...prev, next.id]);
                       }}
                       className="w-24 h-24 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center text-stone-300 hover:border-stone-400 hover:text-stone-500 transition-all cursor-pointer group"
@@ -380,7 +383,7 @@ export default function Network({ user }: NetworkProps) {
               {compared && picked.length >= 2 && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
                   {picked.map((id) => {
-                    const person = mockConnections.find((conn) => conn.id === id);
+                    const person = connectionPool.find((conn) => conn.id === id);
                     if (!person) return null;
                     return (
                       <div key={id} className="rounded-xl border border-stone-100 p-3 space-y-1">

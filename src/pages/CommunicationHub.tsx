@@ -242,7 +242,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    : date === "Apr 25" ? t("Apr 25", "25 Απρ")
     : date === "Apr 22" ? t("Apr 22", "22 Απρ")
      : date;
- const { user: authUser, profile } = useAuth();
+ const { user: authUser, profile, isDemoMode } = useAuth();
  const user = {
   ...(routeUser ?? {}),
   id: authUser?.uid || profile?.id || 'demo-user',
@@ -271,17 +271,18 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  const studioRequests = useStored(readRequests, [keys.requests]);
  const [dismissedIntroIds, setDismissedIntroIds] = useState<string[]>([]);
  const connectionRequests = useMemo<ConnectionRequest[]>(() => {
+  const sample = isDemoMode ? MOCK_CONNECTION_REQUESTS : [];
   const extras = studioRequests
-   .filter((item) => !MOCK_CONNECTION_REQUESTS.some((mock) => mock.from.id === item.id || mock.id === item.id))
+   .filter((item) => !sample.some((mock) => mock.from.id === item.id || mock.id === item.id))
    .map((item) => ({
     id: item.id,
     from: { id: item.id, fullName: item.fullName, headline: item.note || item.role, avatar: avatarFor(item.id), role: item.role },
     message: item.message,
     createdAt: item.sentAt || new Date().toISOString(),
    }));
-  return [...MOCK_CONNECTION_REQUESTS, ...extras].filter((item) => !dismissedIntroIds.includes(item.id));
- }, [studioRequests, dismissedIntroIds]);
- const [pinnedConvIds, setPinnedConvIds] = useState<Set<string>>(new Set(["conv-1"]));
+  return [...sample, ...extras].filter((item) => !dismissedIntroIds.includes(item.id));
+ }, [studioRequests, dismissedIntroIds, isDemoMode]);
+ const [pinnedConvIds, setPinnedConvIds] = useState<Set<string>>(() => isDemoMode ? new Set(["conv-1"]) : new Set());
  const [isRecipientTyping, setIsRecipientTyping] = useState(false);
  const [reportBlockModal, setReportBlockModal] = useState<{ open: boolean; mode: 'report' | 'block' }>({ open: false, mode: 'report' });
  const [showEmojiDropdown, setShowEmojiDropdown] = useState(false);
@@ -1298,7 +1299,10 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div className="p-3 border-b border-stone-100">
       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Media", "Κοινόχρηστα μέσα")}</h4>
       <div className="grid grid-cols-3 gap-1.5">
-       {SHARED_MEDIA_MOCK.map(i => (
+       {(isDemoMode ? SHARED_MEDIA_MOCK : []).length === 0 && (
+        <p className="col-span-3 text-xs text-stone-400">{t("No shared media yet.", "Δεν υπάρχουν κοινόχρηστα μέσα ακόμη.")}</p>
+       )}
+       {(isDemoMode ? SHARED_MEDIA_MOCK : []).map(i => (
         <div key={i} className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 cursor-pointer transition-opacity">
          <img src={`https://picsum.photos/seed/media-${i}/100/100`} alt={t("Media", "Μέσο")} className="w-full h-full object-cover" />
         </div>
@@ -1310,7 +1314,10 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div className="p-3 border-b border-stone-100">
       <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared Files", "Κοινόχρηστα αρχεία")}</h4>
       <div className="space-y-1.5">
-       {SHARED_FILES_MOCK.map(({ name, size, icon: Icon, date }) => (
+       {(isDemoMode ? SHARED_FILES_MOCK : []).length === 0 && (
+        <p className="text-xs text-stone-400">{t("No shared files yet.", "Δεν υπάρχουν κοινόχρηστα αρχεία ακόμη.")}</p>
+       )}
+       {(isDemoMode ? SHARED_FILES_MOCK : []).map(({ name, size, icon: Icon, date }) => (
         <div key={name} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 cursor-pointer group">
          <div className="w-9 h-9 bg-stone-100 rounded-lg flex items-center justify-center group-hover:bg-stone-200 transition-colors shrink-0">
           <Icon className="w-3.5 h-3.5 text-stone-500" />

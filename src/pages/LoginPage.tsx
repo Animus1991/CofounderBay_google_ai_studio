@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
@@ -57,7 +58,8 @@ export default function LoginPage() {
    // Add scopes for better user info
    provider.addScope('profile');
    provider.addScope('email');
-   await signInWithPopup(auth, provider);
+   const result = await signInWithPopup(auth, provider);
+   await bootstrapAccount(result.user, result.user.displayName || undefined);
    navigate(from, { replace: true });
   } catch (err: any) {
    console.error('Google Auth Error:', err);

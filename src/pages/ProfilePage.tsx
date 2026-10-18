@@ -199,7 +199,7 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
 export default function ProfilePage() {
  const t = useT();
  const { id } = useParams();
- const { user: currentUser } = useAuth();
+ const { user: currentUser, isDemoMode } = useAuth();
  const navigate = useNavigate();
  const [profile, setProfile] = useState<UserProfile | null>(null);
  const [endorsements, setEndorsements] = useState<Endorsement[]>([]);
@@ -217,8 +217,13 @@ export default function ProfilePage() {
  const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
  const profileId = id || currentUser?.uid;
  // ── Derived display data (always show sections, fallback to mock) ──
- const displayEndorsements = endorsements.length > 0 ? endorsements : MOCK_ENDORSEMENTS;
- const displayReadiness = readiness || MOCK_READINESS;
+ const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
+ const displayReadiness = readiness || (isDemoMode ? MOCK_READINESS : null);
+ const insightScore = isDemoMode ? 84 : Math.round(([
+  profile?.fullName, profile?.headline, profile?.bio, profile?.location, profile?.role,
+  profile?.stage, profile?.industry, profile?.linkedinUrl,
+  (profile?.skills || []).length, (profile?.lookingFor || []).length,
+ ].filter(Boolean).length / 10) * 100);
 
  useEffect(() => {
   if (isEditing && profile) {
@@ -290,6 +295,7 @@ export default function ProfilePage() {
   setIsEndorsing(true);
   try {
    const newEndorsement = {
+    authorId: currentUser.uid,
     endorserId: currentUser.uid,
     recipientId: profileId,
     skillId: selectedSkillForEndorsement,
@@ -917,16 +923,18 @@ export default function ProfilePage() {
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
           <span className="text-stone-400">{isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
-          <span className="text-white font-semibold">84%</span>
+          <span className="text-white font-semibold">{insightScore}%</span>
          </div>
          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
           <motion.div
            initial={{ width: 0 }}
-           animate={{ width: '84%' }}
+           animate={{ width: `${insightScore}%` }}
            transition={{ duration: 1.5 }}
            className="h-full bg-white rounded-full"
           />
          </div>
+         {isDemoMode ? (
+         <>
          <div className="grid grid-cols-3 gap-2 pt-2">
           {[
            { label: 'Skills', labelEl: 'Δεξιότητες', pct: 92 },
@@ -945,11 +953,17 @@ export default function ProfilePage() {
            : t('"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."', '«Συμπληρωματικές δεξιότητες σε διαχείριση προϊόντος και μηχανική. Ισχυρή ευθυγράμμιση σε εγχειρήματα με αποστολή και σε ρυθμό startup.»')
           }
          </p>
+         </>
+         ) : (
+          <p className="text-xs text-stone-400 leading-relaxed pt-1">
+           {t('This number is how complete this profile is, from the fields on the page. Match scores appear when both of you have enough in common.', 'Αυτός ο αριθμός είναι πόσο συμπληρωμένο είναι το προφίλ, από τα πεδία της σελίδας. Τα σκορ αντιστοίχισης εμφανίζονται όταν έχετε αρκετά κοινά.')}
+          </p>
+         )}
         </div>
        </div>
       </div>
 {/* Readiness Score Section */}
-      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
+      {displayReadiness && <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
        <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
         <TrendingUp className="w-5 h-5 text-stone-400" />
@@ -1003,7 +1017,7 @@ export default function ProfilePage() {
          </div>
         ))}
        </div>
-      </div>
+      </div>}
 {/* Profile Stats — Enhanced */}
      <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 space-y-4">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
@@ -1012,20 +1026,25 @@ export default function ProfilePage() {
       </h3>
       <div className="grid grid-cols-2 gap-3">
        {[
-        { label: 'Views', labelEl: 'Προβολές', value: '1.2k', delta: '+18%', up: true },
-        { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: '48', delta: '+6', up: true },
-        { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), delta: '+3', up: true },
-        { label: 'Connections', labelEl: 'Συνδέσεις', value: '67', delta: '+9', up: true },
+        { label: 'Views', labelEl: 'Προβολές', value: isDemoMode ? '1.2k' : '0', delta: isDemoMode ? '+18%' : '—', up: true },
+        { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: isDemoMode ? '48' : '0', delta: isDemoMode ? '+6' : '—', up: true },
+        { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), delta: isDemoMode ? '+3' : '—', up: true },
+        { label: 'Connections', labelEl: 'Συνδέσεις', value: isDemoMode ? '67' : '0', delta: isDemoMode ? '+9' : '—', up: true },
        ].map(stat => (
         <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
          <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
          <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
+         {isDemoMode ? (
          <div className={cn("text-[10px] font-semibold", stat.up ? "text-emerald-600" : "text-red-500")}>
           {stat.delta} {t('this week', 'αυτή την εβδομάδα')}
          </div>
+         ) : (
+          <div className="text-[10px] font-semibold text-stone-400">{t('No traffic yet', 'Δεν υπάρχει κίνηση ακόμη')}</div>
+         )}
         </div>
        ))}
       </div>
+      {isDemoMode && (
       <div className="pt-2 border-t border-stone-200/60">
        <div className="flex items-center justify-between text-xs text-stone-400">
         <span>{t('Profile rank', 'Κατάταξη προφίλ')}</span>
@@ -1040,6 +1059,7 @@ export default function ProfilePage() {
         />
        </div>
       </div>
+      )}
      </div>
 {/* Connections / Mutual Connections */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
@@ -1048,7 +1068,8 @@ export default function ProfilePage() {
         {isOwnProfile ? t('Top Connections', 'Κορυφαίες συνδέσεις') : t('Mutual Connections', 'Κοινές συνδέσεις')}
        </h3>
        <div className="space-y-2">
-        {MUTUAL_CONNECTIONS.map(conn => (
+         {!isDemoMode && <p className="text-sm text-stone-500">{t('Connections appear here after you accept an intro.', 'Οι συνδέσεις εμφανίζονται εδώ αφού αποδεχτείς μια γνωριμία.')}</p>}
+        {(isDemoMode ? MUTUAL_CONNECTIONS : []).map(conn => (
          <div key={conn.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
           <img
            src={avatarFor(conn.id, 80)}
@@ -1074,7 +1095,8 @@ export default function ProfilePage() {
        {t('People Also Viewed', 'Τα μέλη είδαν επίσης')}
       </h3>
       <div className="space-y-2">
-       {ALSO_VIEWED.map(person => (
+       {!isDemoMode && <p className="text-sm text-stone-500">{t('Suggestions appear as more founders join.', 'Οι προτάσεις εμφανίζονται όσο μπαίνουν περισσότεροι ιδρυτές.')}</p>}
+       {(isDemoMode ? ALSO_VIEWED : []).map(person => (
         <div key={person.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors cursor-pointer group">
          <img
           src={avatarFor(person.id, 80)}

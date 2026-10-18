@@ -140,6 +140,8 @@ export const keys = {
   invites: 'cfb.founderInvites',
   needs: 'cfb.needCards',
   openTo: 'cfb.openTo',
+  inbox: 'cfb.inbox',
+  plan: 'cfb.plan',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -380,8 +382,8 @@ const seedTasks = (): StudioTask[] => [
 
 export function readTasks(): StudioTask[] {
   const stored = readJson<StudioTask[] | null>(keys.tasks, null);
-  if (!stored) return seedTasks();
-  return Array.isArray(stored) ? stored : seedTasks();
+  if (!stored) return isDemo() ? seedTasks() : [];
+  return Array.isArray(stored) ? stored : (isDemo() ? seedTasks() : []);
 }
 
 export function writeTasks(items: StudioTask[]): StudioTask[] {
@@ -872,4 +874,34 @@ export function writeOpenTo(kinds: OpenToKind[]): OpenToKind[] {
   const next = [...new Set(kinds.filter((item): item is OpenToKind => item === 'cofounder' || item === 'investor' || item === 'advisor'))];
   writeJson(keys.openTo, next);
   return next;
+}
+
+export type InboxStore = {
+  conversations: unknown[];
+  messages: unknown[];
+};
+
+export function readInbox(): InboxStore {
+  const stored = readJson<Partial<InboxStore> | null>(keys.inbox, null);
+  return {
+    conversations: Array.isArray(stored?.conversations) ? stored.conversations : [],
+    messages: Array.isArray(stored?.messages) ? stored.messages : [],
+  };
+}
+
+export function writeInbox(store: InboxStore): InboxStore {
+  writeJson(keys.inbox, store);
+  return store;
+}
+
+export type PlanId = 'starter' | 'pro' | 'studio';
+
+export function readPlan(): PlanId {
+  const stored = readJson<PlanId | null>(keys.plan, null);
+  return stored === 'pro' || stored === 'studio' || stored === 'starter' ? stored : 'starter';
+}
+
+export function writePlan(plan: PlanId): PlanId {
+  writeJson(keys.plan, plan);
+  return plan;
 }

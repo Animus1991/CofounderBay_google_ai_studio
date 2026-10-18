@@ -393,7 +393,7 @@ export default function DashboardPage() {
   };
 
   const rankedCircles = useMemo(() => circlesFromCast(profile), [profile]);
-  const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? rankedCircles);
+  const circles = isDemoMode ? rankedCircles : (live.recentMatches ?? []);
   const leadMatch = circles[0];
   const firstName = user?.displayName?.split(' ')[0] || 'Founder';
   const activityPosts: FeedPost[] = activity.slice(0, 8).map((item) => ({

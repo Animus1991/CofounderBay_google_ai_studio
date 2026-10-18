@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { avatarFor, findCast } from '../data/cast';
 import { MOCK_AGENTS } from '../services/aiService';
+import { readInbox, writeInbox } from '../lib/localLists';
 import { useT } from '../lib/language';
 
 export interface Reaction {
@@ -88,12 +89,13 @@ function conversationFromCast(
   lastMessageTime: string,
   unreadCount: number,
   extras: { isOnline?: boolean; isAI?: boolean; roles?: string[] } = {},
+  ownerId = 'demo-user',
 ): Conversation {
   const person = findCast(id);
   const agent = MOCK_AGENTS.find((item) => item.id === id);
   return {
     id: convId,
-    participants: ['demo-user', id],
+    participants: [ownerId, id],
     status: 'Active',
     createdAt: new Date().toISOString(),
     otherParticipant: {
@@ -288,11 +290,16 @@ const MessagingContext = createContext<{
   createConversation: (participants: string[]) => Promise<any>;
 } | null>(null);
 
-export function MessagingProvider({ children, userId }: { children: React.ReactNode; userId: string }) {
+function emptyMessaging(): MessagingState {
+  return { conversations: [], activeConversationId: null, messages: [], loading: false, error: null };
+}
+
+export function MessagingProvider({ children, userId, isDemo = false }: { children: React.ReactNode; userId: string; isDemo?: boolean }) {
   const t = useT();
-  const [state, dispatch] = useReducer(messagingReducer, initialState);
+  const [state, dispatch] = useReducer(messagingReducer, isDemo ? initialState : emptyMessaging());
   const socketRef = useRef<Socket | null>(null);
   const activeConversationIdRef = useRef<string | null>(null);
+  const [inboxReady, setInboxReady] = useState(isDemo);
   const relDemo = (value: string) => {
     if (value === '2m ago') return t('2m ago', 'πριν από 2 λ.');
     if (value === '1h ago') return t('1h ago', 'πριν από 1 ώ.');
@@ -323,6 +330,22 @@ export function MessagingProvider({ children, userId }: { children: React.ReactN
   useEffect(() => {
     activeConversationIdRef.current = state.activeConversationId;
   }, [state.activeConversationId]);
+
+  useEffect(() => {
+    if (isDemo) {
+      setInboxReady(true);
+      return;
+    }
+    const stored = readInbox();
+    dispatch({ type: 'SET_CONVERSATIONS', payload: Array.isArray(stored.conversations) ? stored.conversations as Conversation[] : [] });
+    dispatch({ type: 'SET_MESSAGES', payload: Array.isArray(stored.messages) ? stored.messages as Message[] : [] });
+    setInboxReady(true);
+  }, [userId, isDemo]);
+
+  useEffect(() => {
+    if (isDemo || !userId || !inboxReady) return;
+    writeInbox({ conversations: state.conversations, messages: state.messages });
+  }, [isDemo, userId, inboxReady, state.conversations, state.messages]);
 
   useEffect(() => {
     if (!userId) return;
@@ -373,9 +396,8 @@ export function MessagingProvider({ children, userId }: { children: React.ReactN
         if (Array.isArray(data) && data.length > 0) {
           dispatch({ type: 'SET_CONVERSATIONS', payload: data });
         }
-        // If API returns empty array, keep mock data
       } catch {
-        // API not available — keep initialState mock data (no overwrite)
+        // API not available — demo keeps sample threads, a signed-in account keeps its inbox
       }
     };
 
@@ -492,7 +514,7 @@ export function MessagingProvider({ children, userId }: { children: React.ReactN
         return existingConv;
       }
       if (!otherId) return null;
-      const created = conversationFromCast(`conv-${otherId}`, otherId, '', 'now', 0, { isOnline: true });
+      const created = conversationFromCast(`conv-${otherId}`, otherId, '', 'now', 0, { isOnline: true }, userId || 'demo-user');
       dispatch({ type: 'SET_CONVERSATIONS', payload: [...state.conversations, created] });
       dispatch({ type: 'SET_ACTIVE_CONVERSATION', payload: created.id });
       return created;

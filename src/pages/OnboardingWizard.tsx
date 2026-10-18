@@ -240,7 +240,7 @@ export default function OnboardingWizard() {
    const userUpdateData: any = {
     id: user.uid,
     email: user.email,
-    fullName: user.displayName || (user.email?.split('@')[0]) || 'User',
+    fullName: user.displayName || (user.email?.split('@')[0]) || 'Founder',
     roles: [formData.role],
     profileStatus: ProfileStatus.PUBLISHED,
     verificationStatus: VerificationStatus.UNVERIFIED,
@@ -264,6 +264,8 @@ export default function OnboardingWizard() {
 
    const profileUpdateData: any = {
     userId: user.uid,
+    fullName: user.displayName || (user.email?.split('@')[0]) || 'Founder',
+    role: formData.role,
     stage: formData.stage,
     commitment: formData.commitment,
     profileCompletionScore: 80,
