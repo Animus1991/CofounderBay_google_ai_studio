@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
-import { Zap, Mail, Lock, ArrowRight, Github, Chrome, User, FlaskConical } from 'lucide-react';
+import { Zap, Mail, Lock, ArrowRight, Chrome, User, FlaskConical } from 'lucide-react';
 import { auth } from '../firebase';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import { LanguageToggle, useT } from '../lib/language';
-import { useToast } from '../context/ToastContext';
 
 export default function SignUpPage() {
  const t = useT();
@@ -18,7 +17,6 @@ export default function SignUpPage() {
  const [loading, setLoading] = useState(false);
  const navigate = useNavigate();
  const { toggleDemoMode } = useAuth();
- const { info: toastInfo } = useToast();
 
  const handleDemoMode = () => {
   toggleDemoMode(true);
@@ -44,6 +42,7 @@ export default function SignUpPage() {
   setLoading(true);
   setError('');
   try {
+   toggleDemoMode(false);
    const created = await createUserWithEmailAndPassword(auth, email, password);
    await bootstrapAccount(created.user, fullName);
    navigate('/onboarding');
@@ -61,6 +60,7 @@ export default function SignUpPage() {
    const provider = new GoogleAuthProvider();
    provider.addScope('profile');
    provider.addScope('email');
+   toggleDemoMode(false);
    const result = await signInWithPopup(auth, provider);
    await bootstrapAccount(result.user, result.user.displayName || fullName);
    navigate('/onboarding');
@@ -202,21 +202,13 @@ export default function SignUpPage() {
        </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className="mt-6">
        <button
         onClick={handleGoogleSignUp}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
-       </button>
-       <button
-        type="button"
-        onClick={() => toastInfo(t('GitHub sign-in is not available here.', 'Η είσοδος με GitHub δεν είναι διαθέσιμη εδώ.'), t('Use email, Google, or Demo Mode.', 'Χρησιμοποίησε email, Google ή δοκιμή με δείγμα.'))}
-        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
-       >
-        <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
-        GitHub
        </button>
       </div>
      </div>

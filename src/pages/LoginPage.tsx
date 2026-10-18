@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
-import { Zap, Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
+import { Zap, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { LanguageToggle, useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../App';
 
 export default function LoginPage() {
  const t = useT();
@@ -18,6 +19,7 @@ export default function LoginPage() {
  const navigate = useNavigate();
  const location = useLocation();
  const { info: toastInfo } = useToast();
+ const { toggleDemoMode } = useAuth();
 
  const from = location.state?.from?.pathname || '/dashboard';
 
@@ -41,6 +43,7 @@ export default function LoginPage() {
   setLoading(true);
   setError('');
   try {
+   toggleDemoMode(false);
    await signInWithEmailAndPassword(auth, email, password);
    navigate(from, { replace: true });
   } catch (err: any) {
@@ -58,6 +61,7 @@ export default function LoginPage() {
    // Add scopes for better user info
    provider.addScope('profile');
    provider.addScope('email');
+   toggleDemoMode(false);
    const result = await signInWithPopup(auth, provider);
    await bootstrapAccount(result.user, result.user.displayName || undefined);
    navigate(from, { replace: true });
@@ -216,21 +220,13 @@ export default function LoginPage() {
        </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className="mt-6">
        <button
         onClick={handleGoogleLogin}
         className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
        >
         <Chrome className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
         Google
-       </button>
-       <button
-        type="button"
-        onClick={() => toastInfo(t('GitHub sign-in is not available here.', 'Η είσοδος με GitHub δεν είναι διαθέσιμη εδώ.'), t('Use email, Google, or Demo Mode.', 'Χρησιμοποίησε email, Google ή δοκιμή με δείγμα.'))}
-        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-all"
-       >
-        <Github className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
-        GitHub
        </button>
       </div>
 

@@ -50,6 +50,8 @@ import { useLanguage, useT } from "../lib/language";
 import { rememberPerson } from "../lib/people";
 import PersonHovercard from "../components/ui/PersonHovercard";
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from "../lib/searchQualifiers";
+import { collection, getDocs, limit, query } from "firebase/firestore";
+import { db } from "../firebase";
 
 interface DiscoveryProps {
  user: User;
@@ -60,7 +62,7 @@ type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Event
 export default function Discovery({ user }: DiscoveryProps) {
  useLanguage();
  const t = useT();
- const { profile: authProfile } = useAuth();
+ const { profile: authProfile, isDemoMode, user: authUser } = useAuth();
  const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
  const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
@@ -103,6 +105,34 @@ export default function Discovery({ user }: DiscoveryProps) {
  useEffect(() => {
   const fetchData = async () => {
    try {
+    if (!isDemoMode) {
+     const snap = await getDocs(query(collection(db, "profiles"), limit(40)));
+     const live = snap.docs
+      .filter((docSnap) => docSnap.id !== authUser?.uid)
+      .map((docSnap) => {
+       const data = docSnap.data() as Record<string, any>;
+       const skills = Array.isArray(data.skills)
+        ? data.skills.map((skill: any) => (typeof skill === "string" ? { name: skill } : skill))
+        : [];
+       const industry = Array.isArray(data.industry) ? data.industry : data.industry ? [data.industry] : [];
+       return {
+        id: docSnap.id,
+        name: data.fullName || data.displayName || "Founder",
+        role: data.role,
+        skills,
+        profile: {
+         headline: data.headline,
+         bio: data.bio,
+         industry,
+         location: data.location,
+         stage: data.stage,
+         profilePhoto: data.avatarUrl || data.profilePhoto,
+        },
+       };
+      });
+     setUsers(live);
+     return;
+    }
     const res = await fetch("/api/users");
     const data = await res.json();
     const usersWithProfiles = await Promise.all(data.map(async (u: any) => {
@@ -113,12 +143,13 @@ export default function Discovery({ user }: DiscoveryProps) {
     setUsers(usersWithProfiles);
    } catch (err) {
     console.error("Error fetching data", err);
+    if (!isDemoMode) setUsers([]);
    } finally {
     setLoading(false);
    }
   };
   fetchData();
- }, []);
+ }, [isDemoMode, authUser?.uid]);
 
  const toggleSkill = (skill: string) => {
   setSelectedSkills(prev => 

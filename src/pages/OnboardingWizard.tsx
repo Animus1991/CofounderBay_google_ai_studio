@@ -122,8 +122,16 @@ export default function OnboardingWizard() {
   }
  }, [profile, isDemoMode, navigate]);
 
+ useEffect(() => {
+  if (!user) return;
+  const name = user.displayName || user.email?.split('@')[0] || '';
+  if (!name) return;
+  setFormData((prev) => (prev.fullName ? prev : { ...prev, fullName: name }));
+ }, [user]);
+
  const [formData, setFormData] = useState({
   role: UserRole.FOUNDER,
+  fullName: '',
   headline: '',
   bio: '',
   stage: FounderStage.IDEA,
@@ -240,7 +248,7 @@ export default function OnboardingWizard() {
    const userUpdateData: any = {
     id: user.uid,
     email: user.email,
-    fullName: user.displayName || (user.email?.split('@')[0]) || 'Founder',
+    fullName: formData.fullName.trim() || user.displayName || (user.email?.split('@')[0]) || 'Founder',
     roles: [formData.role],
     profileStatus: ProfileStatus.PUBLISHED,
     verificationStatus: VerificationStatus.UNVERIFIED,
@@ -264,7 +272,7 @@ export default function OnboardingWizard() {
 
    const profileUpdateData: any = {
     userId: user.uid,
-    fullName: user.displayName || (user.email?.split('@')[0]) || 'Founder',
+    fullName: formData.fullName.trim() || user.displayName || (user.email?.split('@')[0]) || 'Founder',
     role: formData.role,
     stage: formData.stage,
     commitment: formData.commitment,
@@ -370,6 +378,16 @@ export default function OnboardingWizard() {
        <p className="text-stone-500">{t('This helps us match you with the right opportunities.', 'Έτσι σε αντιστοιχίζουμε με τις σωστές ευκαιρίες.')}</p>
       </div>
       <div className="space-y-4">
+       <div>
+        <label className="block text-sm font-medium text-stone-700 mb-1">{t('Full name', 'Ονοματεπώνυμο')}</label>
+        <input
+         type="text"
+         value={formData.fullName}
+         onChange={(e) => updateFormData({ fullName: e.target.value })}
+         placeholder={t('How your name should appear', 'Πώς θέλεις να φαίνεται το όνομά σου')}
+         className="w-full px-4 py-3 rounded-xl border border-stone-200 outline-none transition-all focus:ring-stone-900 focus:border-stone-900"
+        />
+       </div>
        <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">{t('Professional Headline', 'Επαγγελματικός τίτλος')}</label>
         <input

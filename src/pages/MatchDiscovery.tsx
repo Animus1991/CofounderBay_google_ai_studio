@@ -17,7 +17,7 @@ import {
  ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, query, getDocs, where, limit } from 'firebase/firestore';
+import { collection, query, getDocs, limit, startAfter, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile } from '../types';
 import { cn } from '../lib/utils';
@@ -66,9 +66,11 @@ export default function MatchDiscovery() {
  const t = useT();
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const navigate = useNavigate();
- const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+ const { success: toastSuccess, error: toastError } = useToast();
  const [profiles, setProfiles] = useState<UserProfile[]>(isDemoMode ? DIRECTORY : []);
  const [loading, setLoading] = useState(true);
+ const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+ const [hasMore, setHasMore] = useState(false);
  const [connecting, setConnecting] = useState<string | null>(null);
  const storedFilters = useStored(readMatchFilters, ['cfb.matchFilters']);
  const [searchQuery, setSearchQuery] = useState(() => storedFilters.q);
@@ -136,29 +138,38 @@ export default function MatchDiscovery() {
   navigate(`/messages?user=${targetUid}`);
  };
 
- const loadMore = () => {
-  toastInfo(t('Loading more', 'Φόρτωση περισσότερων'), t('Fetching additional profiles...', 'Φέρνω επιπλέον προφίλ…'));
+ const PAGE = 20;
+ const mapProfiles = (docs: QueryDocumentSnapshot<DocumentData>[]) =>
+  docs.map((item) => ({ ...item.data(), uid: item.id } as UserProfile)).filter((p) => p.uid !== currentUser?.uid);
+
+ const loadMore = async () => {
+  if (isDemoMode || !cursor || !hasMore) return;
+  try {
+   const snap = await getDocs(query(collection(db, 'profiles'), startAfter(cursor), limit(PAGE)));
+   setProfiles((prev) => [...prev, ...mapProfiles(snap.docs)]);
+   setCursor(snap.docs[snap.docs.length - 1] ?? null);
+   setHasMore(snap.docs.length === PAGE);
+  } catch (error) {
+   console.error('Error fetching profiles:', error);
+   toastError(t('Could not load more founders', 'Δεν φόρτωσαν περισσότεροι ιδρυτές'));
+  }
  };
 
  useEffect(() => {
   const fetchProfiles = async () => {
    setProfiles(isDemoMode ? DIRECTORY : []);
+   setCursor(null);
+   setHasMore(false);
    setLoading(!isDemoMode);
    if (isDemoMode) {
     setLoading(false);
     return;
    }
    try {
-    const q = query(
-     collection(db, 'profiles'),
-     limit(20)
-    );
-    const querySnapshot = await getDocs(q);
-    const fetchedProfiles = querySnapshot.docs
-     .map(doc => ({ ...doc.data(), uid: doc.id } as UserProfile))
-     .filter(p => p.uid !== currentUser?.uid);
-
-    setProfiles(fetchedProfiles);
+    const querySnapshot = await getDocs(query(collection(db, 'profiles'), limit(PAGE)));
+    setProfiles(mapProfiles(querySnapshot.docs));
+    setCursor(querySnapshot.docs[querySnapshot.docs.length - 1] ?? null);
+    setHasMore(querySnapshot.docs.length === PAGE);
    } catch (error) {
     console.error('Error fetching profiles:', error);
     setProfiles([]);
@@ -402,7 +413,7 @@ export default function MatchDiscovery() {
     )}
    </div>
 
-   {!loading && !isDemoMode && filteredProfiles.length > 0 && (
+   {!loading && !isDemoMode && hasMore && filteredProfiles.length > 0 && (
     <div className="flex justify-center">
      <button 
       onClick={loadMore}

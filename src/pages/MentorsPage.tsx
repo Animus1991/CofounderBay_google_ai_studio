@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addSession, listKeys, logActivity, readIds, toggleId } from '../lib/localLists';
 import { 
@@ -25,8 +25,26 @@ import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { avatarFor, castByRole } from '../data/cast';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../App';
 
-const MENTORS = castByRole('Mentor').map((person) => ({
+type MentorCard = {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  expertise: string[];
+  rating: number;
+  reviews: number;
+  availability: string;
+  avatar: string;
+  verified: boolean;
+  detailedBio: string;
+  achievements: string[];
+};
+
+const SAMPLE_MENTORS: MentorCard[] = castByRole('Mentor').map((person) => ({
   id: person.id,
   name: person.fullName,
   role: person.headline,
@@ -41,6 +59,11 @@ const MENTORS = castByRole('Mentor').map((person) => ({
   achievements: person.achievements || [],
 }));
 
+function isMentorRole(value: unknown) {
+  const text = Array.isArray(value) ? value.join(' ') : String(value || '');
+  return text.toLowerCase().includes('mentor');
+}
+
 const AVAILABILITY_EL: Record<string, string> = {
  Immediate: 'Άμεσα',
  Flexible: 'Ευέλικτα',
@@ -49,6 +72,8 @@ const AVAILABILITY_EL: Record<string, string> = {
 
 export default function MentorsPage() {
  const t = useT();
+ const { isDemoMode } = useAuth();
+ const [mentors, setMentors] = useState<MentorCard[]>(isDemoMode ? SAMPLE_MENTORS : []);
  const [searchQuery, setSearchQuery] = useState('');
  const [availabilityFilter, setAvailabilityFilter] = useState('All');
  const [expertiseFilter, setExpertiseFilter] = useState('All');
@@ -63,7 +88,44 @@ export default function MentorsPage() {
  const availableFilters = ['All', 'Immediate', 'Flexible', '1 month notice'];
  const expertiseFilters = ['All', 'Product', 'Growth', 'Fundraising', 'Engineering', 'Marketing'];
 
- const filteredMentors = MENTORS.filter(mentor => {
+ useEffect(() => {
+  if (isDemoMode) {
+   setMentors(SAMPLE_MENTORS);
+   return;
+  }
+  let cancelled = false;
+  (async () => {
+   try {
+    const snap = await getDocs(query(collection(db, 'profiles'), limit(50)));
+    if (cancelled) return;
+    const live = snap.docs.flatMap((docSnap) => {
+     const data = docSnap.data() as Record<string, unknown>;
+     if (!isMentorRole(data.role) && !isMentorRole(data.roles)) return [];
+     const skills = Array.isArray(data.skills) ? data.skills.filter((item): item is string => typeof item === 'string') : [];
+     return [{
+      id: docSnap.id,
+      name: String(data.fullName || data.displayName || 'Mentor'),
+      role: String(data.headline || data.role || 'Mentor'),
+      company: String(data.company || ''),
+      expertise: skills,
+      rating: Number(data.rating || 0),
+      reviews: Number(data.reviews || 0),
+      availability: String(data.availability || 'Flexible'),
+      avatar: String(data.avatarUrl || data.profilePhoto || avatarFor(docSnap.id, 200)),
+      verified: data.verificationStatus === 'Verified',
+      detailedBio: String(data.bio || ''),
+      achievements: Array.isArray(data.achievements) ? data.achievements.map(String) : [],
+     } satisfies MentorCard];
+    });
+    setMentors(live);
+   } catch {
+    if (!cancelled) setMentors([]);
+   }
+  })();
+  return () => { cancelled = true; };
+ }, [isDemoMode]);
+
+ const filteredMentors = mentors.filter(mentor => {
   const matchesSearch = mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
              mentor.expertise.some(e => e.toLowerCase().includes(searchQuery.toLowerCase())) ||
              mentor.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -279,7 +341,7 @@ export default function MentorsPage() {
     </div>
    </div>
    <div className="grid grid-cols-2 gap-3">
-    {MENTORS.slice(0, 4).map((mentor, i) => (
+    {mentors.slice(0, 4).map((mentor, i) => (
      <img 
       key={mentor.id}
       src={mentor.avatar} 

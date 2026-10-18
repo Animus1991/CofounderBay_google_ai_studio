@@ -33,6 +33,12 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
  const [isProfileOpen, setIsProfileOpen] = useState(false);
  const { user, isAdmin, profile, isDemoMode, toggleDemoMode } = useAuth();
  const navigate = useNavigate();
+ const photo = (profile as { avatarUrl?: string; profilePhoto?: string } | null)?.avatarUrl
+  || (profile as { profile?: { profilePhoto?: string } } | null)?.profile?.profilePhoto
+  || user?.photoURL
+  || (isDemoMode ? `https://picsum.photos/seed/${user?.uid || 'demo'}/100/100` : '');
+ const firstName = user?.displayName?.split(' ')[0] || profile?.fullName?.split(' ')[0] || labelOf('Founder');
+ const initial = firstName.slice(0, 1).toUpperCase();
 
  const handleLogout = async () => {
   try {
@@ -124,13 +130,17 @@ export default function Navbar({ onMenuToggle }: NavbarProps) {
           onClick={() => setIsProfileOpen(!isProfileOpen)}
           className="flex items-center gap-2 p-1.5 pr-3 bg-stone-50 rounded-2xl hover:bg-stone-100 transition-all border border-stone-100"
          >
-          <img 
-           src={`https://picsum.photos/seed/${user.uid}/100/100`} 
-           alt={user.displayName || t('User', 'Χρήστης')} 
-           className="w-8 h-8 rounded-xl object-cover shadow-sm"
-           referrerPolicy="no-referrer"
-          />
-          <span className="text-sm font-medium text-stone-900">{user.displayName?.split(' ')[0] || labelOf('Founder')}</span>
+          {photo ? (
+           <img
+            src={photo}
+            alt={user.displayName || t('User', 'Χρήστης')}
+            className="w-8 h-8 rounded-xl object-cover shadow-sm"
+            referrerPolicy="no-referrer"
+           />
+          ) : (
+           <span className="w-8 h-8 rounded-xl bg-stone-200 text-stone-700 text-xs font-semibold flex items-center justify-center">{initial}</span>
+          )}
+          <span className="text-sm font-medium text-stone-900">{firstName}</span>
          </button>
 
          {/* Profile Dropdown */}

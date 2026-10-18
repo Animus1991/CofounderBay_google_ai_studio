@@ -14,6 +14,7 @@ import { keys, readSessions } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { motion } from "framer-motion";
 import { useT } from "../lib/language";
+import { useAuth } from "../App";
 import { labelOf } from "../lib/labels";
 import { formatDate, formatWhen } from "../lib/dates";
 
@@ -31,6 +32,7 @@ interface Event {
 
 export default function Calendar() {
  const t = useT();
+ const { isDemoMode } = useAuth();
  const [currentMonth, setCurrentMonth] = useState("March 2026");
  const [view, setView] = useState('Month');
  const [searchQuery, setSearchQuery] = useState('');
@@ -91,7 +93,7 @@ export default function Calendar() {
   }
  ];
  const storedSessions = useStored(readSessions, [keys.sessions]);
- const events: Event[] = [...storedSessions, ...starterEvents].filter((event) => {
+ const events: Event[] = [...storedSessions, ...(isDemoMode ? starterEvents : [])].filter((event) => {
   const q = searchQuery.trim().toLowerCase();
   return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
  });

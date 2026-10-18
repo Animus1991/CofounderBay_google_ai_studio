@@ -209,9 +209,11 @@ export default function App() {
       localStorage.setItem('demo_mode', 'true');
     } else {
       localStorage.removeItem('demo_mode');
-      setUser(null);
-      setProfile(null);
       setIsAdmin(false);
+      if (!auth.currentUser) {
+        setUser(null);
+        setProfile(null);
+      }
     }
   };
 
@@ -220,7 +222,12 @@ export default function App() {
     let unsubscribeUser: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (isDemoMode) {
+      if (firebaseUser) {
+        if (localStorage.getItem('demo_mode') === 'true') {
+          localStorage.removeItem('demo_mode');
+          setIsDemoMode(false);
+        }
+      } else if (isDemoMode) {
         setLoading(false);
         return;
       }
