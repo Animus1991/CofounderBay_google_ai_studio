@@ -18,7 +18,8 @@ import { TenantProvider, useTenant } from './context/TenantContext';
 import { MessagingProvider } from './context/MessagingContext';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
-import { setDataScope } from './lib/localLists';
+import { keys, readProfileLocal, setDataScope } from './lib/localLists';
+import { useStored } from './lib/useStored';
 import { startCloudSync, stopCloudSync } from './lib/cloudSync';
 import { startDirectory, stopDirectory } from './lib/directory';
 import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, stopSocial } from './lib/social';
@@ -394,18 +395,19 @@ export default function App() {
     };
   }, [isDemoMode]);
 
+  const profileLocal = useStored(readProfileLocal, [keys.profileLocal]);
   const demo = useMemo(() => {
     if (!isDemoMode) return null;
     return {
       user: {
         uid: DEMO_USER_ID,
         email: 'demo@cofounderbay.com',
-        displayName: 'Demo User',
+        displayName: profileLocal.fullName ?? 'Demo User',
         photoURL: coverFor('demo-account', ['aegean'], 200, 200),
       } as FirebaseUser,
-      profile: demoProfile(),
+      profile: { ...demoProfile(), ...profileLocal },
     };
-  }, [isDemoMode]);
+  }, [isDemoMode, profileLocal]);
 
   const activeUser = demo ? demo.user : user;
   const activeProfile = demo ? demo.profile : profile;

@@ -20,7 +20,7 @@ export const PAGE_STARTERS: Record<string, { en: string; el: string }[]> = {
   '/milestones': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }],
   '/calendar': [{ en: 'What events are coming?', el: 'Ποιες εκδηλώσεις έρχονται;' }],
   '/insights': [{ en: 'Tell me about readiness score', el: 'Πες μου για το readiness score' }],
-  '/profile': [{ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' }],
+  '/profile': [{ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' }, { en: 'Change my headline to Building Aegean', el: 'Άλλαξε την επικεφαλίδα μου σε Building Aegean' }],
   '/network': [{ en: 'Draft a need card for a co-founder', el: 'Γράψε κάρτα ανάγκης για συνιδρυτή' }, { en: 'Invite 3 founders', el: 'Προσκάλεσε 3 ιδρυτές' }],
   '/workspace': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }, { en: 'Give me a 7-day match plan', el: 'Δώσε μου πλάνο 7 ημερών' }],
   '/dashboard': [{ en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' }, { en: 'Who should I meet this week?', el: 'Ποιον να γνωρίσω αυτή την εβδομάδα;' }],
@@ -29,8 +29,8 @@ export const PAGE_STARTERS: Record<string, { en: string; el: string }[]> = {
   '/messages': [{ en: 'Search my messages for intro', el: 'Ψάξε στα μηνύματα για intro' }, { en: 'How do I start a voice call?', el: 'Πώς ξεκινάω φωνητική κλήση;' }],
   '/communities': [{ en: 'How do I create a community?', el: 'Πώς δημιουργώ κοινότητα;' }],
   '/founder-tools': [{ en: 'How do I export my pitch deck?', el: 'Πώς εξάγω το pitch;' }],
-  '/notifications': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }],
-  '/settings': [{ en: 'What am I marked open to?', el: 'Σε τι είμαι ανοιχτός;' }],
+  '/notifications': [{ en: 'Mark all notifications read', el: 'Σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες' }, { en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }],
+  '/settings': [{ en: 'Hide my email', el: 'Κρύψε το email μου' }, { en: 'What am I marked open to?', el: 'Σε τι είμαι ανοιχτός;' }],
   '/quiz': [{ en: 'What is my fit check?', el: 'Ποιο είναι το fit check μου;' }],
 };
 

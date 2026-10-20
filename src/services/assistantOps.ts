@@ -47,14 +47,22 @@ import {
   writeMatchFilters,
   writeNeeds,
   writeRound,
+  readNotificationPrefs,
+  writeNotificationPrefs,
+  writeProfileLocal,
   type ActivityKind,
   type NeedCard,
   type NeedField,
+  type NotificationPrefs,
   type Round,
   type OpenToKind,
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
+import { applySwitches, readSwitches, type Switches } from '../lib/privacySwitches';
+import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notificationFeed';
+import { persistProfilePatch } from '../lib/account';
+import type { UserProfile } from '../types';
 import { milestoneService } from './milestoneService';
 import { readFitCheck } from '../lib/fitCheck';
 import { roundMetrics } from '../lib/roundMetrics';
@@ -65,6 +73,7 @@ import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
 export type AssistantProfile = CompatibilityInput & {
   fullName?: string;
   headline?: string;
+  bio?: string;
   location?: string | null;
 };
 
@@ -154,6 +163,9 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   pipeline: [SOURCE.round],
   'record-investment': [SOURCE.round],
   'round-set': [SOURCE.round],
+  'settings-set': [SOURCE.openTo],
+  'profile-set': [SOURCE.profile],
+  'notifications-read': [SOURCE.activity],
   activity: [SOURCE.activity],
   events: [SOURCE.events],
   'session-add': [SOURCE.calendar],
@@ -1162,6 +1174,279 @@ function roundSetResult(set: RoundSet, propose: boolean): AssistantResult {
   );
 }
 
+// ── Settings / profile / notification writes — same functions the pages use ─
+
+type SettingsSet =
+  | { kind: 'switch'; patch: Partial<Switches>; labelEn: string; labelEl: string }
+  | { kind: 'notify'; key: keyof NotificationPrefs; on: boolean; labelEn: string; labelEl: string };
+
+const NOTIFY_ROWS: { key: keyof NotificationPrefs; words: RegExp; en: string; el: string }[] = [
+  { key: 'matches', words: /match|ταιριασ/, en: 'Match notifications', el: 'Ειδοποιήσεις ταιριασμάτων' },
+  { key: 'messages', words: /messag|μηνυμ/, en: 'Message notifications', el: 'Ειδοποιήσεις μηνυμάτων' },
+  { key: 'community', words: /communit|κοινοτ/, en: 'Community notifications', el: 'Ειδοποιήσεις κοινότητας' },
+  { key: 'news', words: /\bnews\b|\bνεα\b/, en: 'News notifications', el: 'Ειδοποιήσεις νέων' },
+  { key: 'events', words: /event|εκδηλωσ/, en: 'Event notifications', el: 'Ειδοποιήσεις εκδηλώσεων' },
+  { key: 'mentors', words: /mentor|μεντορ/, en: 'Mentor notifications', el: 'Ειδοποιήσεις μεντόρων' },
+  { key: 'fundraising', words: /fundrais|χρηματοδοτ/, en: 'Fundraising notifications', el: 'Ειδοποιήσεις χρηματοδότησης' },
+  { key: 'mentions', words: /mention|αναφορ/, en: 'Mention notifications', el: 'Ειδοποιήσεις αναφορών' },
+];
+
+/** "hide my email" / «μηνύματα μόνο από συνδέσεις» / "turn off event notifications" → a Settings write, or null. */
+function parseSettingsSet(query: string): SettingsSet | null {
+  const f = fold(query);
+  if (/notification|ειδοποιησ/.test(f)) {
+    const off = /\b(off|disable|mute|stop)\b|απενεργοποι|κλεισ|σταματ/.test(f);
+    const on = !off && (/\b(on|enable|unmute|start)\b|ενεργοποι|ανοιξ/.test(f));
+    const row = NOTIFY_ROWS.find((item) => item.words.test(f));
+    if (row && (off || on)) return { kind: 'notify', key: row.key, on, labelEn: row.en, labelEl: row.el };
+    return null;
+  }
+  const sw = (patch: Partial<Switches>, labelEn: string, labelEl: string): SettingsSet => ({ kind: 'switch', patch, labelEn, labelEl });
+  if (/messages from anyone|let anyone message|απο οποιονδηποτε/.test(f)) return sw({ messagesFrom: 'anyone' }, 'Messages from', 'Μηνύματα από');
+  if (/messages from connections|only connections can message|μονο απο συνδεσει/.test(f)) return sw({ messagesFrom: 'connections' }, 'Messages from', 'Μηνύματα από');
+  if (/close new chats|no one can message|κλεισε τα νεα μηνυματα|κανεις να μη|κανεις.{0,20}στελν/.test(f)) return sw({ messagesFrom: 'none' }, 'Messages from', 'Μηνύματα από');
+  if (/hide me from (discovery|search|matches)|κρυψε με/.test(f)) return sw({ discoverable: false }, 'Discoverable', 'Ορατότητα στην εξερεύνηση');
+  if (/show me in discovery|εμφανισε με/.test(f)) return sw({ discoverable: true }, 'Discoverable', 'Ορατότητα στην εξερεύνηση');
+  if ((/stop sharing/.test(f) && /presence|online/.test(f)) || (/μην δειχνεις/.test(f) && /ποτε ειμαι|online/.test(f))) return sw({ sharePresence: false }, 'Share my presence', 'Κοινοποίηση παρουσίας');
+  if (/share my presence|δειξε ποτε ειμαι/.test(f)) return sw({ sharePresence: true }, 'Share my presence', 'Κοινοποίηση παρουσίας');
+  if (/hide my email|κρυψε το email/.test(f)) return sw({ showEmail: false }, 'Show my email', 'Εμφάνιση του email μου');
+  if (/show my email|δειξε το email/.test(f)) return sw({ showEmail: true }, 'Show my email', 'Εμφάνιση του email μου');
+  if (/open to mentoring|accept mentor requests|δεχομαι.{0,20}καθοδηγησ/.test(f)) return sw({ mentorAvailability: true }, 'Mentoring requests', 'Αιτήματα καθοδήγησης');
+  if (/close mentoring|stop mentor requests|κλεισε.{0,20}καθοδηγησ/.test(f)) return sw({ mentorAvailability: false }, 'Mentoring requests', 'Αιτήματα καθοδήγησης');
+  if (/make my profile public|προφιλ.{0,10}δημοσιο|δημοσιο.{0,10}προφιλ/.test(f)) return sw({ publicProfile: true }, 'Public profile', 'Δημόσιο προφίλ');
+  if (/make my profile private|προφιλ.{0,10}ιδιωτικο|ιδιωτικο.{0,10}προφιλ/.test(f)) return sw({ publicProfile: false }, 'Public profile', 'Δημόσιο προφίλ');
+  return null;
+}
+
+const fmtSwitch = (field: keyof Switches, value: unknown, el: boolean): string => {
+  if (field === 'messagesFrom') {
+    const labels: Record<string, [string, string]> = { anyone: ['anyone', 'οποιοσδήποτε'], connections: ['connections only', 'μόνο συνδέσεις'], none: ['nobody', 'κανείς'] };
+    const pair = labels[value as string] ?? [String(value), String(value)];
+    return el ? pair[1] : pair[0];
+  }
+  if (typeof value === 'boolean') return value ? (el ? 'ενεργό' : 'on') : el ? 'ανενεργό' : 'off';
+  return String(value ?? '—');
+};
+
+function settingsSetResult(set: SettingsSet, propose: boolean): AssistantResult {
+  const ctx = () => ({ uid: dataScope() || null, demo: isDemoData() });
+  const links: AssistantLink[] = [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }];
+  let logged: LoggedWrite | null = null;
+  if (set.kind === 'notify') {
+    const previous = readNotificationPrefs();
+    const next = { ...previous, [set.key]: set.on };
+    const state = (on: boolean, el = false) => (on ? (el ? 'ενεργές' : 'on') : el ? 'ανενεργές' : 'off');
+    const apply = (): AssistantResult => {
+      writeNotificationPrefs(next);
+      logged = {
+        kind: 'settings',
+        title: `${set.labelEn}: ${state(previous[set.key])} → ${state(set.on)}`,
+        titleEl: `${set.labelEl}: ${state(previous[set.key], true)} → ${state(set.on, true)}`,
+        href: '/settings',
+      };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'settings-set',
+        en: `${set.labelEn}: ${state(previous[set.key])} → ${state(set.on)}. Same toggle as Settings → Notifications.`,
+        el: `${set.labelEl}: ${state(previous[set.key], true)} → ${state(set.on, true)}. Ο ίδιος διακόπτης με Ρυθμίσεις → Ειδοποιήσεις.`,
+        href: '/settings',
+        links,
+      };
+    };
+    if (!propose) return apply();
+    return proposalResult(
+      {
+        summary: { en: `${set.labelEn}: ${state(previous[set.key])} → ${state(set.on)}?`, el: `${set.labelEl}: ${state(previous[set.key], true)} → ${state(set.on, true)};` },
+        reversal: 'full',
+        apply,
+        undo: () => { writeNotificationPrefs(previous); logUndo(logged); },
+      },
+      { tool: 'settings-set', href: '/settings', links },
+    );
+  }
+  const previous = readSwitches();
+  const field = Object.keys(set.patch)[0] as keyof Switches;
+  const before = fmtSwitch(field, previous[field], false);
+  const after = fmtSwitch(field, set.patch[field], false);
+  const beforeEl = fmtSwitch(field, previous[field], true);
+  const afterEl = fmtSwitch(field, set.patch[field], true);
+  const apply = (): AssistantResult => {
+    applySwitches(set.patch, ctx());
+    logged = { kind: 'settings', title: `${set.labelEn}: ${before} → ${after}`, titleEl: `${set.labelEl}: ${beforeEl} → ${afterEl}`, href: '/settings' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'settings-set',
+      en: `${set.labelEn}: ${before} → ${after}. The same function the Settings switch uses — the page shows it without a reload.`,
+      el: `${set.labelEl}: ${beforeEl} → ${afterEl}. Η ίδια συνάρτηση με τον διακόπτη στις Ρυθμίσεις — η σελίδα το δείχνει χωρίς ανανέωση.`,
+      href: '/settings',
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `${set.labelEn}: ${before} → ${after}?`, el: `${set.labelEl}: ${beforeEl} → ${afterEl};` },
+      reversal: 'full',
+      apply,
+      undo: () => { applySwitches(previous, ctx()); logUndo(logged); },
+    },
+    { tool: 'settings-set', href: '/settings', links },
+  );
+}
+
+type ProfileSet =
+  | { field: 'headline' | 'bio' | 'location'; value: string; en: string; el: string }
+  | { field: 'skills'; value: string; add: boolean; en: string; el: string };
+
+const PROFILE_MAX = { headline: 160, bio: 600, location: 80, skill: 40 } as const;
+
+/** "change my headline to …" / «όρισε την τοποθεσία μου σε …» / "add skill X" → a profile write, or null. */
+function parseProfileSet(query: string): ProfileSet | null {
+  const f = fold(query);
+  // fold() keeps indices 1:1, so the raw remainder is the tail of the query.
+  const tail = (m: RegExpMatchArray): string => {
+    const raw = query.slice(query.length - m[1]!.length).trim();
+    return raw.length > 1 && /^["'«»“”]/.test(raw) && /["'«»“”]$/.test(raw) ? raw.slice(1, -1).trim() : raw;
+  };
+  let m = f.match(/(?:change|set|update)\s+my\s+headline\s+to\s+(.+)$/)
+    ?? f.match(/(?:αλλαξε|ορισε)\s+(?:την\s+)?επικεφαλιδα(?:\s+μου)?\s+σε\s+(.+)$/);
+  if (m?.[1]) return { field: 'headline', value: tail(m), en: 'Headline', el: 'Επικεφαλίδα' };
+  m = f.match(/(?:change|set|update)\s+my\s+bio\s+to\s+(.+)$/)
+    ?? f.match(/(?:αλλαξε|ορισε)\s+το\s+bio(?:\s+μου)?\s+σε\s+(.+)$/);
+  if (m?.[1]) return { field: 'bio', value: tail(m), en: 'Bio', el: 'Bio' };
+  m = f.match(/(?:change|set|update)\s+my\s+location\s+to\s+(.+)$/)
+    ?? f.match(/(?:αλλαξε|ορισε)\s+(?:την\s+)?τοποθεσια(?:\s+μου)?\s+σε\s+(.+)$/);
+  if (m?.[1]) return { field: 'location', value: tail(m), en: 'Location', el: 'Τοποθεσία' };
+  m = f.match(/add\s+(?:the\s+)?skill\s+(.+)$/)
+    ?? f.match(/προσθεσε\s+δεξιοτητ\S*\s+(.+)$/);
+  if (m?.[1]) return { field: 'skills', value: tail(m), add: true, en: 'Skills', el: 'Δεξιότητες' };
+  m = f.match(/(?:remove|delete|drop)\s+(?:the\s+)?skill\s+(.+)$/)
+    ?? f.match(/αφαιρεσε\s+δεξιοτητ\S*\s+(.+)$/);
+  if (m?.[1]) return { field: 'skills', value: tail(m), add: false, en: 'Skills', el: 'Δεξιότητες' };
+  return null;
+}
+
+function profileSetResult(set: ProfileSet, profile: AssistantProfile | null, propose: boolean): AssistantResult {
+  const links: AssistantLink[] = [{ href: '/profile', en: 'Open profile', el: 'Άνοιγμα προφίλ' }];
+  const demo = isDemoData();
+  const uid = dataScope() || null;
+  if (!demo && !uid) {
+    return { tool: 'profile-set', en: 'Sign in to update your profile.', el: 'Συνδέσου για να ενημερώσεις το προφίλ σου.', links };
+  }
+  const limit = set.field === 'skills' ? PROFILE_MAX.skill : PROFILE_MAX[set.field];
+  if (!set.value || set.value.length > limit) {
+    return { tool: 'profile-set', en: `${set.en} accepts up to ${limit} characters — that one is ${set.value.length}.`, el: `${set.el}: όριο ${limit} χαρακτήρες — αυτό έχει ${set.value.length}.`, links };
+  }
+  const skills = (profile?.skills as string[] | undefined) ?? [];
+  let patch: Partial<UserProfile>;
+  let prevPatch: Partial<UserProfile>;
+  let summaryEn: string;
+  let summaryEl: string;
+  if (set.field === 'skills') {
+    const exists = skills.some((skill) => skill.toLowerCase() === set.value.toLowerCase());
+    if (set.add && exists) return { tool: 'profile-set', en: `“${set.value}” is already in your skills.`, el: `«${set.value}» είναι ήδη στις δεξιότητές σου.`, links };
+    if (!set.add && !exists) return { tool: 'profile-set', en: `“${set.value}” is not in your skills.`, el: `«${set.value}» δεν είναι στις δεξιότητές σου.`, links };
+    patch = { skills: set.add ? [...skills, set.value] : skills.filter((skill) => skill.toLowerCase() !== set.value.toLowerCase()) };
+    prevPatch = { skills };
+    summaryEn = `Skills: ${set.add ? `add “${set.value}”` : `remove “${set.value}”`}?`;
+    summaryEl = `Δεξιότητες: ${set.add ? `προσθήκη «${set.value}»` : `αφαίρεση «${set.value}»`};`;
+  } else {
+    const before = profile?.[set.field] ?? '—';
+    patch = { [set.field]: set.value } as Partial<UserProfile>;
+    prevPatch = { [set.field]: profile?.[set.field] } as Partial<UserProfile>;
+    summaryEn = `${set.en}: “${before}” → “${set.value}”?`;
+    summaryEl = `${set.el}: «${before}» → «${set.value}»;`;
+  }
+  const write = async (p: Partial<UserProfile>): Promise<boolean> => {
+    if (demo || !uid) {
+      writeProfileLocal(p);
+      return true;
+    }
+    try {
+      await persistProfilePatch(uid, p);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let logged: LoggedWrite | null = null;
+  const apply = async (): Promise<AssistantResult> => {
+    const ok = await write(patch);
+    if (!ok) {
+      return { tool: 'profile-set', en: 'The profile write did not go through — nothing changed.', el: 'Η αποθήκευση στο προφίλ απέτυχε — τίποτα δεν άλλαξε.', links };
+    }
+    logged = { kind: 'settings', title: `Profile ${set.en.toLowerCase()} updated`, titleEl: `Προφίλ: ενημερώθηκε ${set.el.toLowerCase()}`, href: '/profile' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'profile-set',
+      en: `${set.en} updated — the same write Profile → Edit does.`,
+      el: `${set.el} ενημερώθηκε — η ίδια αποθήκευση με Προφίλ → Επεξεργασία.`,
+      href: '/profile',
+      links,
+    };
+  };
+  const undo = async () => {
+    await write(prevPatch);
+    logUndo(logged);
+  };
+  if (!propose) {
+    void apply();
+    return {
+      tool: 'profile-set',
+      en: `${set.en} updated — the same write Profile → Edit does.`,
+      el: `${set.el} ενημερώθηκε — η ίδια αποθήκευση με Προφίλ → Επεξεργασία.`,
+      href: '/profile',
+      links,
+    };
+  }
+  return proposalResult(
+    { summary: { en: summaryEn, el: summaryEl }, reversal: 'full', apply, undo },
+    { tool: 'profile-set', href: '/profile', links },
+  );
+}
+
+/** "mark all notifications read" / «καθάρισε τις ειδοποιήσεις». */
+function parseNotificationsRead(query: string): boolean {
+  const f = fold(query);
+  if (/\bmark all notifications(?: as)? read\b/.test(f)) return true;
+  return hasStem(f, 'ειδοποιησ') && hasStem(f, 'αναγνωσμεν', 'καθαρισε', 'σημανε', 'διαβασμεν');
+}
+
+function notificationsReadResult(propose: boolean): AssistantResult {
+  const links: AssistantLink[] = [{ href: '/notifications', en: 'Open notifications', el: 'Άνοιγμα ειδοποιήσεων' }];
+  const cloudTouched = cloudNotificationsUnread() > 0;
+  let restore: (() => void) | null = null;
+  const apply = (): AssistantResult => {
+    const done = markAllNotificationsRead();
+    restore = done.restore;
+    // Logged already-read: the audit trail exists without resurrecting the badge.
+    logActivity({ kind: 'settings', title: 'Marked all notifications read', titleEl: 'Σήμανση όλων των ειδοποιήσεων ως αναγνωσμένων', href: '/notifications', byAssistant: true, read: true });
+    return {
+      tool: 'notifications-read',
+      en: 'All notifications marked as read.',
+      el: 'Όλες οι ειδοποιήσεις σημειώθηκαν ως αναγνωσμένες.',
+      href: '/notifications',
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: 'Mark all notifications as read?', el: 'Σήμανση όλων των ειδοποιήσεων ως αναγνωσμένων;' },
+      reversal: cloudTouched ? 'partial' : 'full',
+      reversalNote: cloudTouched
+        ? { en: 'Notifications already synced to your account stay read', el: 'Οι ειδοποιήσεις που έχουν ήδη συγχρονιστεί με τον λογαριασμό παραμένουν αναγνωσμένες' }
+        : undefined,
+      apply,
+      undo: () => {
+        restore?.();
+        logActivity({ kind: 'settings', title: 'Undid: marked all notifications read', titleEl: 'Αναιρέθηκε: σήμανση όλων των ειδοποιήσεων ως αναγνωσμένων', href: '/notifications', byAssistant: true, read: true });
+      },
+    },
+    { tool: 'notifications-read', href: '/notifications', links },
+  );
+}
+
 function roundResult(): AssistantResult {
   const round = readRound();
   const metrics = roundMetrics(round);
@@ -1826,8 +2111,8 @@ function fitCheckResult(): AssistantResult {
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, “set monthly burn to 18k”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
+    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, “set monthly burn to 18k”, “hide my email”, “change my headline to …”, “mark all notifications read”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», «κρύψε το email μου», «όρισε την τοποθεσία μου σε …», «σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
@@ -1875,6 +2160,14 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
 
   const roundSet = parseRoundSet(query);
   if (roundSet) return roundSetResult(roundSet, propose);
+
+  const settingsSet = parseSettingsSet(query);
+  if (settingsSet) return settingsSetResult(settingsSet, propose);
+
+  const profileSet = parseProfileSet(query);
+  if (profileSet) return profileSetResult(profileSet, profile, propose);
+
+  if (parseNotificationsRead(query)) return notificationsReadResult(propose);
 
   const person = namedPerson(query);
   if (person && /\b(why|γιατι)\b/.test(folded) && /\b(match|ταιριαζ)\b/.test(folded)) return matchDetailResult(profile, person);

@@ -10,6 +10,7 @@ vi.mock('./social', () => ({
   markNotificationsRead: vi.fn(() => Promise.resolve()),
   deleteNotification: vi.fn(() => Promise.resolve()),
   clearNotifications: vi.fn(() => Promise.resolve()),
+  unreadNotificationCount: () => cloudItems.filter((item) => !item.read).length,
 }));
 
 beforeEach(() => {

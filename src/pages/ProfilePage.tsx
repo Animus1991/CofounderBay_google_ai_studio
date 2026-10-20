@@ -51,7 +51,7 @@ import { cn } from '../lib/utils';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
-import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, type OpenToKind } from '../lib/localLists';
+import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, writeProfileLocal, type OpenToKind } from '../lib/localLists';
 import RelTime from '../components/ui/RelTime';
 import { useStored } from '../lib/useStored';
 import { applyOpenTo } from '../lib/openTo';
@@ -531,7 +531,8 @@ export default function ProfilePage() {
    toast.error(t('Links must start with http:// or https://', 'Οι σύνδεσμοι πρέπει να ξεκινούν με http:// ή https://'));
   }
   if (!real) {
-   // Demo edits update the in-memory profile only — nothing hits Firestore.
+   // Demo edits persist in this browser — nothing hits Firestore.
+   writeProfileLocal(clean);
    setProfile(prev => prev ? { ...prev, ...clean } : null);
    setIsEditing(false);
    return;

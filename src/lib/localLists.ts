@@ -6,7 +6,7 @@
  * once. The demo account uses the original unscoped keys; a signed-in
  * account gets `key@uid`, so demo data never shows up in a real account.
  */
-import type { Milestone } from '../types';
+import type { Milestone, UserProfile } from '../types';
 import { findCast } from '../data/cast';
 import { seedMilestones } from '../data/seeds';
 
@@ -244,6 +244,7 @@ export const keys = {
   accountForm: 'cfb.accountForm',
   accountSwitches: 'cfb.accountSwitches',
   paymentCards: 'cfb.paymentCards',
+  profileLocal: 'cfb.profileLocal',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -844,6 +845,12 @@ export function markActivityRead(ids: string[] | 'all'): ActivityItem[] {
   return next;
 }
 
+export function markActivityUnread(ids: string[]): ActivityItem[] {
+  const next = readActivity().map((item) => (ids.includes(item.id) ? { ...item, read: false } : item));
+  writeJson(keys.activity, next);
+  return next;
+}
+
 export function clearActivity(): ActivityItem[] {
   writeJson(keys.activity, []);
   return [];
@@ -1122,4 +1129,25 @@ export function readPlan(): PlanId {
 export function writePlan(plan: PlanId): PlanId {
   writeJson(keys.plan, plan);
   return plan;
+}
+
+// ── Local profile overrides ────────────────────────────────────────────────
+// The demo account has no Firestore profile, so its edits land here under the
+// demo scope. Real accounts keep their profile in Firestore and this key stays
+// empty (it is excluded from list sync — the profile doc is the sync target).
+
+export function readProfileLocal(): Partial<UserProfile> {
+  const stored = readJson<Partial<UserProfile> | null>(keys.profileLocal, null);
+  return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+}
+
+export function writeProfileLocal(patch: Partial<UserProfile>): Partial<UserProfile> {
+  const next = { ...readProfileLocal(), ...patch };
+  writeJson(keys.profileLocal, next);
+  return next;
+}
+
+export function clearProfileLocal(): Partial<UserProfile> {
+  writeJson(keys.profileLocal, {});
+  return {};
 }

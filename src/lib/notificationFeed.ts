@@ -6,6 +6,7 @@ import {
   isDemoData,
   keys,
   markActivityRead,
+  markActivityUnread,
   readActivity,
   readValue,
   scopedKey,
@@ -16,6 +17,7 @@ import {
   clearNotifications as clearCloudNotifications,
   deleteNotification as deleteCloudNotification,
   markNotificationsRead as markCloudNotificationsRead,
+  unreadNotificationCount,
 } from './social';
 
 export type FeedNoteType =
@@ -160,6 +162,36 @@ function writeHiddenNotes(ids: string[]) {
   writeValue(keys.hiddenNotes, ids);
 }
 
+/**
+ * Marks every notification read — activity, the demo seed and the cloud feed —
+ * through the same writers the page and the assistant share. Returns a
+ * `restore()` that un-reads exactly what was unread before; cloud entries
+ * cannot be un-read, so `cloudTouched` reports whether any were open.
+ */
+export function markAllNotificationsRead(): { restore: () => void; cloudTouched: boolean } {
+  const activityUnread = readActivity().filter((item) => !item.read).map((item) => item.id);
+  const seed = readSeed();
+  const seedUnread = new Set(seed.filter((note) => !note.read).map((note) => note.id));
+  const cloudTouched = unreadNotificationCount() > 0;
+  markActivityRead('all');
+  void markCloudNotificationsRead('all');
+  if (seedUnread.size) writeSeed(seed.map((note) => ({ ...note, read: true })));
+  return {
+    cloudTouched,
+    restore: () => {
+      if (activityUnread.length) markActivityUnread(activityUnread);
+      if (seedUnread.size) {
+        writeSeed(readSeed().map((note) => (seedUnread.has(note.id) ? { ...note, read: false } : note)));
+      }
+    },
+  };
+}
+
+/** Unread cloud notifications — once marked read they cannot be un-read. */
+export function cloudNotificationsUnread(): number {
+  return unreadNotificationCount();
+}
+
 function activityNotes(): FeedNote[] {
   return readActivity().map((item) => ({
     id: item.id,
@@ -214,9 +246,7 @@ export function useNotificationFeed(): {
   const unread = items.filter((item) => !item.read).length;
 
   const markAllRead = () => {
-    markActivityRead('all');
-    void markCloudNotificationsRead('all');
-    if (seed.some((note) => !note.read)) writeSeed(seed.map((note) => ({ ...note, read: true })));
+    markAllNotificationsRead();
   };
 
   const markRead = (id: string) => {

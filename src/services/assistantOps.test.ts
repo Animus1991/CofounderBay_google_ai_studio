@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { listKeys, logActivity, readIds, readInvites, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists, upsertNeed } from '../lib/localLists';
+import { keys, listKeys, logActivity, readIds, readInvites, readMilestones, readNotificationPrefs, readOpenTo, readProfileLocal, readRound, readSaved, readSessions, readTasks, readTracked, readValue, resetAllLists, unreadActivityCount, upsertNeed } from '../lib/localLists';
+import { readSwitches } from '../lib/privacySwitches';
 import { runAssistant } from './assistantOps';
 
 const demo = {
@@ -353,3 +354,176 @@ describe('proposals', () => {
     }
   });
 });
+
+describe('settings-set', () => {
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  const runSwitch = async (phrase: string, read: () => unknown, expected: unknown) => {
+    const before = read();
+    const result = runAssistant(phrase, demo, { propose: true });
+    expect(result.tool, phrase).toBe('settings-set');
+    expect(result.proposal, phrase).toBeTruthy();
+    expect(result.proposal!.reversal, phrase).toBe('full');
+    expect(read(), phrase).toEqual(before);
+    await result.proposal!.apply();
+    expect(read(), phrase).toEqual(expected);
+    await result.proposal!.undo!();
+    expect(read(), phrase).toEqual(before);
+  };
+
+  it('routes who-can-message phrases', async () => {
+    await runSwitch('messages from connections only', () => readSwitches().messagesFrom, 'connections');
+    await runSwitch('only connections can message me', () => readSwitches().messagesFrom, 'connections');
+    await runSwitch('let anyone message me', () => readSwitches().messagesFrom, 'anyone');
+    await runSwitch('messages from anyone', () => readSwitches().messagesFrom, 'anyone');
+    await runSwitch('close new chats', () => readSwitches().messagesFrom, 'none');
+    await runSwitch('no one can message me', () => readSwitches().messagesFrom, 'none');
+    await runSwitch('μηνύματα μόνο από συνδέσεις', () => readSwitches().messagesFrom, 'connections');
+    await runSwitch('μηνύματα από οποιονδήποτε', () => readSwitches().messagesFrom, 'anyone');
+    await runSwitch('κλείσε τα νέα μηνύματα', () => readSwitches().messagesFrom, 'none');
+    await runSwitch('κανείς να μη μου στέλνει', () => readSwitches().messagesFrom, 'none');
+  });
+
+  it('routes privacy switches', async () => {
+    await runSwitch('hide my email', () => readSwitches().showEmail, false);
+    await runSwitch('show my email', () => readSwitches().showEmail, true);
+    await runSwitch('κρύψε το email μου', () => readSwitches().showEmail, false);
+    await runSwitch('δείξε το email μου', () => readSwitches().showEmail, true);
+    await runSwitch('hide me from discovery', () => readSwitches().discoverable, false);
+    await runSwitch('show me in discovery', () => readSwitches().discoverable, true);
+    await runSwitch('κρύψε με από την εξερεύνηση', () => readSwitches().discoverable, false);
+    await runSwitch('εμφάνισέ με στην εξερεύνηση', () => readSwitches().discoverable, true);
+    await runSwitch('stop sharing my presence', () => readSwitches().sharePresence, false);
+    await runSwitch('share my presence', () => readSwitches().sharePresence, true);
+    await runSwitch('μην δείχνεις πότε είμαι online', () => readSwitches().sharePresence, false);
+    await runSwitch('δείξε πότε είμαι online', () => readSwitches().sharePresence, true);
+    await runSwitch('make my profile public', () => readSwitches().publicProfile, true);
+    await runSwitch('make my profile private', () => readSwitches().publicProfile, false);
+    await runSwitch('κάνε το προφίλ μου δημόσιο', () => readSwitches().publicProfile, true);
+    await runSwitch('κάνε το προφίλ μου ιδιωτικό', () => readSwitches().publicProfile, false);
+  });
+
+  it('routes mentoring availability through to the open-to list', async () => {
+    await runSwitch('open to mentoring', () => readSwitches().mentorAvailability, true);
+    await runSwitch('close mentoring', () => readSwitches().mentorAvailability, false);
+    await runSwitch('δέχομαι αιτήματα καθοδήγησης', () => readSwitches().mentorAvailability, true);
+    await runSwitch('κλείσε την καθοδήγηση', () => readSwitches().mentorAvailability, false);
+    const result = runAssistant('accept mentor requests', demo, { propose: true });
+    await result.proposal!.apply();
+    expect(readOpenTo()).toContain('mentoring');
+  });
+
+  it('routes notification preference toggles', async () => {
+    const runNotify = async (phrase: string, key: keyof ReturnType<typeof readNotificationPrefs>, on: boolean) => {
+      const before = readNotificationPrefs();
+      const result = runAssistant(phrase, demo, { propose: true });
+      expect(result.tool, phrase).toBe('settings-set');
+      expect(result.proposal?.reversal, phrase).toBe('full');
+      await result.proposal!.apply();
+      expect(readNotificationPrefs()[key], phrase).toBe(on);
+      await result.proposal!.undo!();
+      expect(readNotificationPrefs(), phrase).toEqual(before);
+    };
+    await runNotify('turn off event notifications', 'events', false);
+    await runNotify('turn on event notifications', 'events', true);
+    await runNotify('turn off match notifications', 'matches', false);
+    await runNotify('turn on fundraising notifications', 'fundraising', true);
+    await runNotify('απενεργοποίησε τις ειδοποιήσεις για εκδηλώσεις', 'events', false);
+    await runNotify('ενεργοποίησε τις ειδοποιήσεις για μέντορες', 'mentors', true);
+  });
+});
+
+describe('profile-set', () => {
+  const viewer = { ...demo, headline: 'Old headline', bio: 'Old bio', location: 'Athens', skills: ['React'] };
+
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  const runProfile = async (phrase: string, expectPatch: Record<string, unknown>) => {
+    const result = runAssistant(phrase, viewer, { propose: true });
+    expect(result.tool, phrase).toBe('profile-set');
+    expect(result.proposal?.reversal, phrase).toBe('full');
+    await result.proposal!.apply();
+    expect(readProfileLocal(), phrase).toMatchObject(expectPatch);
+    return result;
+  };
+
+  it('updates headline, bio and location through profile-local in demo', async () => {
+    let result = await runProfile('change my headline to Building Aegean', { headline: 'Building Aegean' });
+    await result.proposal!.undo!();
+    expect(readProfileLocal().headline).toBe('Old headline');
+    result = await runProfile('set my headline to Quoted "thing"', { headline: 'Quoted "thing"' });
+    await result.proposal!.undo!();
+    await runProfile('set my bio to Coffee first', { bio: 'Coffee first' });
+    await runProfile('set my location to Berlin', { location: 'Berlin' });
+    await runProfile('άλλαξε την επικεφαλίδα μου σε Νέα επικεφαλίδα', { headline: 'Νέα επικεφαλίδα' });
+    await runProfile('όρισε την επικεφαλίδα μου σε Build', { headline: 'Build' });
+    result = await runProfile('όρισε το bio μου σε Καλημέρα', { bio: 'Καλημέρα' });
+    await result.proposal!.undo!();
+    expect(readProfileLocal().bio).toBe('Old bio');
+    await runProfile('όρισε την τοποθεσία μου σε Θεσσαλονίκη', { location: 'Θεσσαλονίκη' });
+  });
+
+  it('merges skills case-insensitively without duplicates', async () => {
+    const result = await runProfile('add skill GraphQL', { skills: ['React', 'GraphQL'] });
+    await result.proposal!.undo!();
+    expect(readProfileLocal().skills).toEqual(['React']);
+    await runProfile('πρόσθεσε δεξιότητα Kubernetes', { skills: ['React', 'Kubernetes'] });
+    await runProfile('remove skill React', { skills: [] });
+    const gone = await runProfile('αφαίρεσε δεξιότητα React', { skills: [] });
+    await gone.proposal!.undo!();
+    expect(readProfileLocal().skills).toEqual(['React']);
+    const dupe = runAssistant('add skill react', viewer, { propose: true });
+    expect(dupe.tool).toBe('profile-set');
+    expect(dupe.proposal).toBeUndefined();
+    expect(dupe.en).toMatch(/already/);
+  });
+
+  it('rejects over-limit values without writing', () => {
+    const long = 'x'.repeat(700);
+    const result = runAssistant(`set my bio to ${long}`, viewer, { propose: true });
+    expect(result.tool).toBe('profile-set');
+    expect(result.proposal).toBeUndefined();
+    expect(readProfileLocal().bio).toBeUndefined();
+  });
+});
+
+describe('notifications-read', () => {
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  it('proposes, zeroes the unread feed, and undo restores it', async () => {
+    logActivity({ kind: 'profile', title: 'first' });
+    logActivity({ kind: 'profile', title: 'second' });
+    const beforeUnread = unreadActivityCount();
+    expect(beforeUnread).toBe(2);
+    const result = runAssistant('mark all notifications read', demo, { propose: true });
+    expect(result.tool).toBe('notifications-read');
+    expect(result.proposal?.reversal).toBe('full');
+    await result.proposal!.apply();
+    // The apply writes its own audit entry as already-read: unread stays zero.
+    expect(unreadActivityCount()).toBe(0);
+    const seed = readValue<{ read: boolean }[]>(keys.demoNotes, []);
+    expect(seed.length).toBeGreaterThan(0);
+    expect(seed.every((note) => note.read)).toBe(true);
+    await result.proposal!.undo!();
+    expect(unreadActivityCount()).toBe(beforeUnread);
+    const restored = readValue<{ id: string; read: boolean }[]>(keys.demoNotes, []);
+    expect(restored.find((note) => note.id === 'demo-1')?.read).toBe(false);
+    expect(restored.find((note) => note.id === 'demo-2')?.read).toBe(false);
+  });
+
+  it('routes the Greek phrases too', () => {
+    expect(runAssistant('σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες', demo, { propose: true }).tool).toBe('notifications-read');
+    expect(runAssistant('καθάρισε τις ειδοποιήσεις', demo, { propose: true }).tool).toBe('notifications-read');
+    expect(runAssistant('mark all notifications as read', demo, { propose: true }).tool).toBe('notifications-read');
+  });
+});
+

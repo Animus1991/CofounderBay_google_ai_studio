@@ -18,8 +18,9 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { keys, readNotificationPrefs, readOpenTo, readPlan, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeValue, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
-import { applyOpenTo } from "../lib/openTo";
+import { keys, readNotificationPrefs, readPlan, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeProfileLocal, writeValue, type NotificationPrefs, type PlanId } from "../lib/localLists";
+import { applySwitches, readSwitches, seedSwitchesFromProfile, type Switches } from "../lib/privacySwitches";
+import { useStored } from "../lib/useStored";
 import { safeWebUrl } from "../lib/webUrl";
 import { useBlocks, unblockPerson } from "../lib/social";
 import { useSyncStatus } from "../lib/cloudSync";
@@ -55,31 +56,6 @@ type AccountForm = {
   photo: string;
 };
 
-type Switches = {
-  publicProfile: boolean;
-  mentorAvailability: boolean;
-  openToCofounder: boolean;
-  openToInvestors: boolean;
-  openToAdvisors: boolean;
-  showEmail: boolean;
-  showLocation: boolean;
-  showStartup: boolean;
-  discoverable: boolean;
-  sharePresence: boolean;
-  twoFactor: boolean;
-  pushMatches: boolean;
-  pushMessages: boolean;
-  pushEvents: boolean;
-  pushMentors: boolean;
-  productUpdates: boolean;
-  weeklyDigest: boolean;
-  quietHours: boolean;
-  messagesFrom: "anyone" | "connections" | "none";
-  digest: "instant" | "daily" | "weekly" | "off";
-  quietStart: string;
-  quietEnd: string;
-};
-
 type PayCard = { id: string; brand: string; last4: string; expiry: string };
 
 const emptyForm = (): AccountForm => ({
@@ -100,31 +76,6 @@ const emptyForm = (): AccountForm => ({
   timezone: "Europe/Athens",
   currency: "EUR",
   photo: "",
-});
-
-const defaultSwitches = (): Switches => ({
-  publicProfile: true,
-  mentorAvailability: false,
-  openToCofounder: true,
-  openToInvestors: false,
-  openToAdvisors: true,
-  showEmail: false,
-  showLocation: true,
-  showStartup: true,
-  discoverable: true,
-  sharePresence: true,
-  twoFactor: false,
-  pushMatches: true,
-  pushMessages: true,
-  pushEvents: true,
-  pushMentors: false,
-  productUpdates: true,
-  weeklyDigest: true,
-  quietHours: false,
-  messagesFrom: "connections",
-  digest: "daily",
-  quietStart: "22:00",
-  quietEnd: "08:00",
 });
 
 function readStored<T>(key: string, fallback: T): T {
@@ -227,31 +178,27 @@ export default function Settings() {
   }, [profile, user]);
   const blocks = useBlocks();
   const syncStatus = useSyncStatus();
-  const [switches, setSwitches] = useState<Switches>(() => {
-    const stored = readStored(SWITCH_KEY, defaultSwitches());
-    // A real account seeds from what is already saved on the profile, so two devices agree.
-    const remote = profile as unknown as { discoverable?: boolean; messagesFrom?: Switches["messagesFrom"]; showEmail?: boolean; sharePresence?: boolean; openTo?: string[]; mentorAvailability?: boolean; profileVisibility?: string } | null;
-    if (isDemoMode || !remote) return stored;
-    return {
-      ...stored,
-      discoverable: remote.discoverable ?? stored.discoverable,
-      messagesFrom: remote.messagesFrom ?? stored.messagesFrom,
-      showEmail: remote.showEmail ?? stored.showEmail,
-      sharePresence: remote.sharePresence ?? stored.sharePresence,
-      publicProfile: remote.profileVisibility ? remote.profileVisibility === "Public" : stored.publicProfile,
-      mentorAvailability: remote.mentorAvailability ?? (Array.isArray(remote.openTo) ? remote.openTo.includes("mentoring") : stored.mentorAvailability),
-      openToCofounder: Array.isArray(remote.openTo) ? remote.openTo.includes("cofounder") : stored.openToCofounder,
-      openToInvestors: Array.isArray(remote.openTo) ? remote.openTo.includes("investor") : stored.openToInvestors,
-      openToAdvisors: Array.isArray(remote.openTo) ? remote.openTo.includes("advisor") : stored.openToAdvisors,
-    };
-  });
-  const [notifications, setNotifications] = useState<NotificationPrefs>(readNotificationPrefs);
-  const [cards, setCards] = useState<PayCard[]>(() => {
-    const stored = readStored<PayCard[]>(CARDS_KEY, []);
-    if (Array.isArray(stored) && stored.length) return stored;
-    return isDemoMode ? [{ id: "visa-4242", brand: "Visa", last4: "4242", expiry: "12/28" }] : [];
-  });
-  const [plan, setPlan] = useState<PlanId>(() => (isDemoMode ? "pro" : readPlan()));
+  const switches = useStored(readSwitches, [SWITCH_KEY]);
+  // A real account seeds the switches from what is already saved on the profile, so two devices agree.
+  useEffect(() => {
+    if (isDemoMode || !profile) return;
+    const stored = readSwitches();
+    const merged = seedSwitchesFromProfile(profile as Parameters<typeof seedSwitchesFromProfile>[0], stored);
+    const differs = (Object.keys(merged) as (keyof Switches)[]).some((key) => merged[key] !== stored[key]);
+    if (differs) writeValue(SWITCH_KEY, merged);
+  }, [profile, isDemoMode]);
+  const notifications = useStored(readNotificationPrefs, [keys.notificationPrefs]);
+  const cards = useStored<PayCard[]>(() => readValue<PayCard[]>(CARDS_KEY, []), [CARDS_KEY]);
+  // The demo sample card is written once, only while the key has never been set.
+  useEffect(() => {
+    if (isDemoMode && cards.length === 0 && readValue<PayCard[] | null>(CARDS_KEY, null) == null) {
+      writeValue<PayCard[]>(CARDS_KEY, [{ id: "visa-4242", brand: "Visa", last4: "4242", expiry: "12/28" }]);
+    }
+  }, [isDemoMode, cards.length]);
+  const plan = useStored<PlanId>(() => {
+    if (isDemoMode && readValue<PlanId | null>(keys.plan, null) == null) return "pro";
+    return readPlan();
+  }, [keys.plan]);
   const [addingCard, setAddingCard] = useState(false);
   const [cardDraft, setCardDraft] = useState({ brand: "Visa", last4: "", expiry: "" });
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -289,42 +236,44 @@ export default function Settings() {
         return;
       }
     }
+    if (isDemoMode) {
+      // Mirror of persistAccount's mapping, minus photo (a data URL does not
+      // belong in localStorage) and email (the demo identity keeps its own).
+      const linkedin = saved.linkedin.trim() ? (/^https?:\/\//i.test(saved.linkedin.trim()) ? saved.linkedin.trim() : `https://${saved.linkedin.trim()}`) : "";
+      const github = saved.github.trim() ? (/^https?:\/\//i.test(saved.github.trim()) ? saved.github.trim() : `https://${saved.github.trim()}`) : "";
+      const website = saved.website.trim() ? (/^https?:\/\//i.test(saved.website.trim()) ? saved.website.trim() : `https://${saved.website.trim()}`) : "";
+      writeProfileLocal({
+        fullName: saved.fullName,
+        headline: saved.headline,
+        bio: saved.bio,
+        location: saved.location,
+        role: saved.role,
+        stage: saved.stage,
+        industry: saved.industry,
+        commitment: saved.commitment,
+        company: saved.company,
+        timezone: saved.timezone,
+        linkedinUrl: linkedin,
+        githubUrl: github,
+        socialLinks: {
+          ...(linkedin ? { linkedin } : {}),
+          ...(github ? { github } : {}),
+          ...(website ? { website } : {}),
+        },
+      });
+    }
     success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details stay in this browser.", "Τα στοιχεία μένουν σε αυτόν τον browser."));
   };
 
   const patchSwitches = (patch: Partial<Switches>) => {
-    const next = { ...switches, ...patch };
-    setSwitches(next);
-    writeValue(SWITCH_KEY, next);
-    const kinds: OpenToKind[] = readOpenTo().filter((kind) => kind === "speaking");
-    if (next.openToCofounder) kinds.push("cofounder");
-    if (next.openToInvestors) kinds.push("investor");
-    if (next.openToAdvisors) kinds.push("advisor");
-    if (next.mentorAvailability) kinds.push("mentoring");
-    // Shared helper: list + switch snapshot + profile privacy in one remote write.
-    applyOpenTo(kinds, {
-      uid: user?.uid ?? null,
-      demo: isDemoMode,
-      privacy: {
-        discoverable: next.discoverable && next.publicProfile,
-        messagesFrom: next.messagesFrom,
-        showEmail: next.showEmail,
-        visibility: next.publicProfile ? "Public" : "Connections Only",
-        sharePresence: next.sharePresence,
-      },
-    });
+    applySwitches(patch, { uid: user?.uid ?? null, demo: isDemoMode });
   };
 
   const toggleNotification = (key: keyof NotificationPrefs) => {
-    setNotifications((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      writeNotificationPrefs(next);
-      return next;
-    });
+    writeNotificationPrefs({ ...notifications, [key]: !notifications[key] });
   };
 
   const saveCards = (next: PayCard[]) => {
-    setCards(next);
     writeValue(CARDS_KEY, next);
   };
 
@@ -1159,7 +1108,6 @@ export default function Settings() {
                   key={id}
                   type="button"
                   onClick={() => {
-                    setPlan(id);
                     writePlan(id);
                     success(
                       t("Plan selected", "Επιλέχθηκε πλάνο"),

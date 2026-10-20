@@ -32,6 +32,7 @@ function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
     ? {
         fullName: profile.fullName,
         headline: profile.headline,
+        bio: profile.bio,
         skills: profile.skills,
         lookingFor: profile.lookingFor,
         interests: profile.interests,
