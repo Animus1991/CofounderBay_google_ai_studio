@@ -37,6 +37,12 @@ function ahead(days: number): string {
  return d.toISOString();
 }
 
+const PROGRAM_TITLE_EL: Record<string, string> = {
+ "1": "Επιταχυντής FinTech Q3 2026",
+ "2": "Επιχορήγηση Καινοτομίας CleanTech",
+ "3": "Bootcamp Ανάπτυξης SaaS",
+};
+
 const PROGRAM_DESC_EL: Record<string, string> = {
  "1": "Εντατικό πρόγραμμα 3 μηνών για fintech startups σε πρώιμο στάδιο. Περιλαμβάνει χρηματοδότηση $120k και καθοδήγηση από κορυφαίους ειδικούς του κλάδου.",
  "2": "Χρηματοδότηση χωρίς αραίωση μετοχών για startups με καινοτόμες λύσεις καθαρής ενέργειας. Έμφαση στην κλιμάκωση και τον αντίκτυπο.",
@@ -168,7 +174,7 @@ export default function Programs({ user }: ProgramsProps) {
   ];
 
  return (
-  <PageShell title={t("Programs", "Προγράμματα")} description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}>
+  <PageShell sample={isDemoMode} title={t("Programs", "Προγράμματα")} description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}>
    <div className="space-y-6">
     <div className="flex flex-wrap items-center gap-2">
      <Button type="button" variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5" onClick={() => {
@@ -237,7 +243,7 @@ export default function Programs({ user }: ProgramsProps) {
           <div className="flex-1 p-4 space-y-3">
            <div className="flex items-start justify-between gap-2">
             <div className="space-y-0.5">
-             <h3 className="text-sm font-semibold text-stone-900 leading-snug">{program.title}</h3>
+             <h3 className="text-sm font-semibold text-stone-900 leading-snug">{t(program.title, PROGRAM_TITLE_EL[program.id] ?? program.title)}</h3>
              <p className="text-xs text-stone-400">{t(`by ${program.organizer}`, `Διοργάνωση: ${program.organizer}`)}</p>
             </div>
             <button

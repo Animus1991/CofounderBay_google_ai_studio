@@ -135,7 +135,7 @@ export default function MentorsPage() {
  });
 
  return (
-  <PageShell title={t('Mentors', 'Μέντορες')} description={t('Connect with world-class mentors who have built and scaled successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει και αναπτύξει επιτυχημένες startups.')}>
+  <PageShell sample={isDemoMode} title={t('Mentors', 'Μέντορες')} description={t('Connect with world-class mentors who have built and scaled successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει και αναπτύξει επιτυχημένες startups.')}>
   <div className="space-y-6">
    {/* Hero Section */}
    <div className="bg-stone-900 rounded-xl p-6 sm:p-8 relative overflow-hidden">

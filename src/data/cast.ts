@@ -7,6 +7,7 @@
  * on every page. This module has no browser dependencies: `server.ts` imports
  * it too.
  */
+import { portraitFor } from './photos';
 
 export type CastRole = 'Founder' | 'Co-Founder Candidate' | 'Mentor' | 'Investor' | 'Advisor';
 
@@ -404,9 +405,8 @@ export function castByRole(...roles: CastRole[]): CastMember[] {
   return CAST.filter((person) => roles.includes(person.role));
 }
 
-// No stock faces for demo people: initials everywhere (see photos.ts).
-export function avatarFor(_id: string, _size = 100): string {
-  return '';
+export function avatarFor(id: string, size = 100): string {
+  return portraitFor(castId(id), findCast(id)?.fullName ?? id, size);
 }
 
 export function placeOf(person: Pick<CastMember, 'city' | 'country'>): string {

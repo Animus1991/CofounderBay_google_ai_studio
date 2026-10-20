@@ -24,6 +24,7 @@ import { startDirectory, stopDirectory } from './lib/directory';
 import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, stopSocial } from './lib/social';
 import { getLang } from './lib/language';
 import { markEmailVerified } from './lib/account';
+import { coverFor } from './data/photos';
 
 // Lazy-loaded pages (code-splitting)
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -122,7 +123,7 @@ function demoProfile(): UserProfile {
     stage: 'Pre-seed',
     role: 'Founder',
     commitment: 'Full-time',
-    avatarUrl: '',
+    avatarUrl: coverFor('demo-account', ['aegean'], 200, 200),
     profileStatus: ProfileStatus.PUBLISHED,
     verificationStatus: VerificationStatus.VERIFIED,
     profileCompletionScore: 100,
@@ -400,7 +401,7 @@ export default function App() {
         uid: DEMO_USER_ID,
         email: 'demo@cofounderbay.com',
         displayName: 'Demo User',
-        photoURL: '',
+        photoURL: coverFor('demo-account', ['aegean'], 200, 200),
       } as FirebaseUser,
       profile: demoProfile(),
     };

@@ -33,12 +33,15 @@ interface EventsProps {
 interface Event {
  id: string;
  title: string;
+ titleEl?: string;
  description: string;
+ descriptionEl?: string;
  date: string;
  dateEl: string;
  time: string;
  timeEl: string;
  location: string;
+ locationEl?: string;
  type: 'Workshop' | 'Networking' | 'Pitch Night' | 'Webinar' | 'Conference';
  attendees: number;
  image: string;
@@ -134,23 +137,23 @@ export default function Events(_props: EventsProps = {}) {
    d.setHours(hour, 0, 0, 0);
    return d;
   };
-  const mk = (id: string, title: string, description: string, start: Date, endHour: number, location: string, type: Event['type'], attendees: number, image: string, isOnline: boolean, organizer: string): Event => {
+  const mk = (id: string, title: string, titleEl: string, description: string, descriptionEl: string, start: Date, endHour: number, location: string, locationEl: string, type: Event['type'], attendees: number, image: string, isOnline: boolean, organizer: string): Event => {
    const end = new Date(start.getTime());
    end.setHours(endHour, 0, 0, 0);
    const dateLabel = formatDate(start, { day: 'numeric', month: 'long', year: 'numeric' });
    const timeLabel = `${formatTime(start)} - ${formatTime(end)}`;
    return {
-    id, title, description,
+    id, title, titleEl, description, descriptionEl,
     date: dateLabel, dateEl: dateLabel,
     time: timeLabel, timeEl: timeLabel,
-    location, type, attendees, image, isOnline, organizer,
+    location, locationEl, type, attendees, image, isOnline, organizer,
     startsAt: start.getTime(),
    };
   };
   return [
-   mk("1", "Startup Founders Networking Night", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", at(7, 18), 21, "Tech Hub, London", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
-   mk("2", "Mastering the Seed Round Pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", at(12, 14), 16, "Zoom / Online", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
-   mk("3", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", at(25, 10), 13, "Innovation Center, NY", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
+   mk("1", "Startup Founders Networking Night", "Βραδιά δικτύωσης ιδρυτών startup", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", "Γνώρισε συνιδρυτές, μοιράσου εμπειρίες και βρες πιθανούς συνεργάτες σε χαλαρό περιβάλλον.", at(7, 18), 21, "Tech Hub, London", "Tech Hub, Λονδίνο", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
+   mk("2", "Mastering the Seed Round Pitch", "Πώς να πετύχεις το seed round pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", "Μάθε τα μυστικά ενός επιτυχημένου seed round pitch από επενδυτές κεφαλαίου και έμπειρα ιδρυτικά μέλη.", at(12, 14), 16, "Zoom / Online", "Zoom / Διαδικτυακά", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
+   mk("3", "FinTech Demo Day Q2", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", "Δες τα πιο πολλά υποσχόμενα fintech startups του οικοσυστήματος να κάνουν pitch σε κορυφαίους επενδυτές.", at(25, 10), 13, "Innovation Center, NY", "Innovation Center, Νέα Υόρκη", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
   ];
  };
  const mockEvents = useMemo(() => buildMockEvents(), []);
@@ -199,6 +202,7 @@ export default function Events(_props: EventsProps = {}) {
 
  return (
   <PageShell
+   sample={isDemoMode}
    title={t("Events", "Εκδηλώσεις")}
    description={t("Discover workshops, networking nights, and pitch events designed to accelerate your growth.", "Ανακάλυψε εργαστήρια, βραδιές δικτύωσης και εκδηλώσεις pitch που επιταχύνουν την ανάπτυξή σου.")}
    actions={
@@ -289,7 +293,7 @@ export default function Events(_props: EventsProps = {}) {
           <div>
            <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-             <h3 className="text-base font-semibold text-stone-900 leading-snug">{event.title}</h3>
+             <h3 className="text-base font-semibold text-stone-900 leading-snug">{t(event.title, event.titleEl ?? event.title)}</h3>
              <p className="text-xs text-stone-400 mt-0.5 tracking-wider">{t(`by ${event.organizer}`, `Διοργάνωση: ${event.organizer}`)}</p>
             </div>
             <div className="flex gap-1 shrink-0">
@@ -311,7 +315,7 @@ export default function Events(_props: EventsProps = {}) {
              </button>
             </div>
            </div>
-           <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{event.description}</p>
+           <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(event.description, event.descriptionEl ?? event.description)}</p>
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-stone-500">
@@ -325,7 +329,7 @@ export default function Events(_props: EventsProps = {}) {
            </div>
            <div className="flex items-center gap-1.5">
             {event.isOnline ? <Video className="w-3.5 h-3.5 text-stone-400" /> : <MapPin className="w-3.5 h-3.5 text-stone-400" />}
-            <span className="truncate max-w-[140px]">{event.location}</span>
+            <span className="truncate max-w-[140px]">{t(event.location, event.locationEl ?? event.location)}</span>
            </div>
           </div>
 
@@ -336,7 +340,7 @@ export default function Events(_props: EventsProps = {}) {
              {event.attendees} {t('going', 'θα πάνε')}
             </span>
            ) : (
-            <span className="text-xs text-stone-300">{t('Be the first to register', 'Γίνε ο πρώτος που θα εγγραφεί')}</span>
+            <span className="text-xs text-stone-300">{t('Be the first to register', 'Κάνε την πρώτη εγγραφή')}</span>
            )}
            <button
             onClick={() => toggleRegistration(event.id)}
@@ -379,11 +383,11 @@ export default function Events(_props: EventsProps = {}) {
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
         <span className="text-xs font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
-        <p className="text-white text-sm font-semibold leading-tight">{featured.title}</p>
+        <p className="text-white text-sm font-semibold leading-tight">{t(featured.title, featured.titleEl ?? featured.title)}</p>
        </div>
       </div>
       <p className="text-sm text-stone-500 leading-relaxed mb-3">
-       {featured.description}
+       {t(featured.description, featured.descriptionEl ?? featured.description)}
       </p>
       <button
        type="button"

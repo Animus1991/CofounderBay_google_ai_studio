@@ -86,6 +86,15 @@ const EL_TITLES: Record<string, string> = {
   '/settings': 'Ρυθμίσεις',
   '/settings/billing': 'Χρέωση',
   '/pricing': 'Τιμές',
+  '/admin': 'Πίνακας διαχείρισης',
+  '/admin/users': 'Διαχείριση μελών',
+  '/admin/automation': 'Αυτοματισμοί',
+  '/admin/branding': 'Ταυτότητα οργανισμού',
+  '/admin/sso': 'Ρυθμίσεις SSO',
+  '/admin/taxonomy': 'Ταξινομίες πλατφόρμας',
+  '/admin/domains': 'Τομείς',
+  '/admin/billing': 'Χρέωση',
+  '/admin/billing-oversight': 'Εποπτεία χρέωσης',
 };
 
 export function titleForPath(pathname: string): string {

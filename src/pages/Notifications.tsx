@@ -78,6 +78,7 @@ export default function Notifications() {
 
   return (
     <PageShell
+      sample={isDemoMode}
       title={t('Notifications', 'Ειδοποιήσεις')}
       description={t('Requests, messages and endorsements from members, plus your own activity.', 'Αιτήματα, μηνύματα και συστάσεις από μέλη, μαζί με τη δική σου δραστηριότητα.')}
       actions={

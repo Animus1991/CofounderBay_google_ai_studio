@@ -17,6 +17,7 @@ import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { toMillis } from "../../lib/peopleSource";
+import { useAuth } from "../../App";
 
 interface AdminProps {
  user: User;
@@ -72,10 +73,13 @@ export default function UserManagement({ user }: AdminProps) {
  const [loading, setLoading] = useState(true);
  const [searchQuery, setSearchQuery] = useState("");
  const [selectedTab, setSelectedTab] = useState("All Users");
+ const { isDemoMode } = useAuth();
  const [busy, setBusy] = useState<string | null>(null);
 
  // Members come straight from Firestore — this app has no /api backend.
  useEffect(() => {
+  // Sample account: member documents deny signed-out reads — show the empty state.
+  if (isDemoMode) { setUsers([]); setLoading(false); return; }
   let cancelled = false;
   void (async () => {
    try {
@@ -110,10 +114,11 @@ export default function UserManagement({ user }: AdminProps) {
    }
   })();
   return () => { cancelled = true; };
- }, []);
+ }, [isDemoMode]);
 
  // Live moderation queue from the reports collection.
  useEffect(() => {
+  if (isDemoMode) { setReports([]); return; }
   let unsub: (() => void) | undefined;
   let cancelled = false;
   void (async () => {
@@ -146,9 +151,10 @@ export default function UserManagement({ user }: AdminProps) {
    } catch { if (!cancelled) setReports([]); }
   })();
   return () => { cancelled = true; unsub?.(); };
- }, []);
+ }, [isDemoMode]);
 
  const setUserStatus = async (id: string, status: 'Active' | 'Suspended') => {
+  if (isDemoMode) return;
   setBusy(id);
   try {
    const { db } = await import('../../firebase');
@@ -160,6 +166,7 @@ export default function UserManagement({ user }: AdminProps) {
  };
 
  const setReportStatus = async (id: string, status: 'dismissed' | 'reviewing') => {
+  if (isDemoMode) return;
   setBusy(id);
   try {
    const { db } = await import('../../firebase');
@@ -222,8 +229,9 @@ export default function UserManagement({ user }: AdminProps) {
         <Users className="w-7 h-7 text-stone-900" />
        </div>
        <div>
-        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h2>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h1>
         <p className="text-stone-400 text-xs font-medium tracking-wider mt-1">{t("Orchestrate your ecosystem's member base", 'Οργάνωσε τη βάση μελών του οικοσυστήματος')}</p>
+        {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — member data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα μελών εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
        </div>
       </motion.div>
      </div>

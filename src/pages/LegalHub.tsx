@@ -129,7 +129,7 @@ export default function LegalHub() {
  };
 
  return (
-  <PageShell title={t("Legal Hub", "Νομικά")} description={t("Protect your startup with verified templates and legal resources.", "Προστάτεψε το startup σου με επαληθευμένα πρότυπα και νομικούς πόρους.")}>
+  <PageShell sample={isDemoMode} title={t("Legal Hub", "Νομικά")} description={t("Protect your startup with verified templates and legal resources.", "Προστάτεψε το startup σου με επαληθευμένα πρότυπα και νομικούς πόρους.")}>
    <div className="space-y-6">
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {categories.map((cat) => (

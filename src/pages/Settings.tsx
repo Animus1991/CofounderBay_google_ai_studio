@@ -18,7 +18,7 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { keys, readNotificationPrefs, readOpenTo, readPlan, readSaved, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeValue, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
+import { keys, readNotificationPrefs, readOpenTo, readPlan, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeValue, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
 import { applyOpenTo } from "../lib/openTo";
 import { safeWebUrl } from "../lib/webUrl";
 import { useBlocks, unblockPerson } from "../lib/social";
@@ -29,6 +29,7 @@ import { AskLink } from "../components/ui/EmptyHint";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
+import { exportMyData } from "../lib/dataExport";
 
 const FORM_KEY = keys.accountForm;
 const SWITCH_KEY = keys.accountSwitches;
@@ -176,6 +177,7 @@ function SwitchRow({ title, desc, on, onClick }: { title: string; desc: string; 
 
 export default function Settings() {
   const { user, profile, isDemoMode, toggleDemoMode } = useAuth();
+  const isGuest = !user && !isDemoMode;
   const { mode, setMode } = useLanguage();
   const { success, info, error: toastError } = useToast();
   const navigate = useNavigate();
@@ -327,22 +329,8 @@ export default function Settings() {
   };
 
   const downloadMyData = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      account: user ? { uid: user.uid, email: user.email, name: user.displayName } : null,
-      profile: profile ?? null,
-      form,
-      switches,
-      notifications,
-      savedProfiles: readSaved(),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "cofounderbay-data.json";
-    link.click();
-    URL.revokeObjectURL(url);
+    if (isGuest) return;
+    exportMyData(profile ?? null);
     success(t("Download started", "Η λήψη ξεκίνησε"));
   };
 
@@ -517,7 +505,7 @@ export default function Settings() {
             </div>
           </Card>
 
-          <Card className="lg:col-span-2" title={t("Startup", "Startup")} subtitle={t("Used by discovery, matches, and fundraising.", "Χρησιμοποιείται στην εξερεύνηση, τις αντιστοιχίσεις και τη χρηματοδότηση.")}>
+          <Card className="lg:col-span-2" title={t("Startup", "Νεοφυής επιχείρηση")} subtitle={t("Used by discovery, matches, and fundraising.", "Χρησιμοποιείται στην εξερεύνηση, τις αντιστοιχίσεις και τη χρηματοδότηση.")}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label={t("Company", "Εταιρεία")}>
                 <input className={inputClass} value={form.company} onChange={(e) => setField("company", e.target.value)} />
@@ -872,10 +860,16 @@ export default function Settings() {
 
           <Card className="xl:col-span-2" title={t("Your data", "Τα δεδομένα σου")} subtitle={t("A file of what this browser has stored for you.", "Αρχείο με ό,τι έχει κρατήσει αυτός ο browser.")}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button type="button" onClick={downloadMyData} className="flex min-h-16 items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left hover:bg-stone-50">
+              <button
+                type="button"
+                onClick={downloadMyData}
+                disabled={isGuest}
+                title={isGuest ? t("Sign in or open the demo to export your data.", "Συνδέσου ή άνοιξε τη δοκιμαστική λειτουργία για εξαγωγή.") : undefined}
+                className="flex min-h-16 items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <FileText className="h-4 w-4 shrink-0 text-stone-500" />
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold leading-snug text-stone-900">{t("Download my data", "Λήψη δεδομένων")}</span>
+                  <span className="block text-sm font-semibold leading-snug text-stone-900">{t("Export my data", "Εξαγωγή των δεδομένων μου")}</span>
                   <span className="mt-0.5 block text-sm leading-snug text-stone-500">JSON</span>
                 </span>
               </button>
@@ -887,6 +881,9 @@ export default function Settings() {
                 </span>
               </button>
             </div>
+            <p className="mt-3 text-sm text-stone-500">
+              {t("The export contains your profile and every list this browser stores for you — matches, requests, settings and drafts — as one JSON file.", "Η εξαγωγή περιέχει το προφίλ σου και κάθε λίστα που κρατά αυτός ο browser — αντιστοιχίσεις, αιτήματα, ρυθμίσεις και πρόχειρα — σε ένα αρχείο JSON.")}
+            </p>
             {deleteOpen && (
               <div className="mt-4 space-y-3 rounded-xl border border-red-100 bg-red-50 p-4">
                 <p className="text-sm text-red-800">

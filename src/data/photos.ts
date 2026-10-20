@@ -1,9 +1,8 @@
 /**
  * Demo photos — topical covers for events, programs and courses.
  *
- * People do not get stock photos: a face that does not match the person is
- * worse than initials, so `portraitFor` returns '' and the Avatar component
- * renders the name's initials everywhere.
+ * Demo people get a fixed, gender-matched face portrait; names the gender
+ * sets do not know still fall back to initials (an empty string).
  *
  * Covers: the title/type/tags pick a theme ("pitch" → a speaker on stage,
  * "coffee" → cups, "energy" → turbines, "Athens" → the Acropolis), the seed
@@ -15,12 +14,92 @@
 
 const UNSPLASH = 'https://images.unsplash.com/photo-';
 
+/* --------------------------------------------------------------- portraits */
+
+export const WOMEN_IDS = [
+ '1567532939604-b6b5b0db2604', '1573497019236-17f8177b81e8', '1580489944761-15a19d654956', '1607746882042-944635dfe10e',
+ '1544005313-94ddf0286df2', '1494790108377-be9c29b29330', '1573496359142-b8d87734a5a2', '1438761681033-6461ffad8d80',
+ '1614644147724-2d4785d69962', '1594744803329-e58b31de8bf5', '1508214751196-bcfd4ca60f91', '1531123897727-8f129e1688ce',
+ '1499952127939-9bbf5af6c51c', '1609505848912-b7c3b8b4beda', '1619895862022-09114b41f16f', '1573497019940-1c28c88b4f3e',
+ '1592621385612-4d7129426394', '1548142813-c348350df52b', '1573496799652-408c2ac9fe98', '1611432579699-484f7990b127',
+ '1525134479668-1bee5c7c6845', '1554151228-14d9def656e4', '1618835962148-cf177563c6c0', '1601412436009-d964bd02edbc',
+ '1534528741775-53994a69daeb', '1489424731084-a5d8b219a5bb', '1546961329-78bef0414d7c', '1488426862026-3ee34a7d66df',
+ '1566616213894-2d4e1baee5d8', '1598550874175-4d0ef436c909', '1557555187-23d685287bc3', '1586297135537-94bc9ba060aa',
+ '1487412720507-e7ab37603c6f', '1567336273898-ebbf9eb3c3bf', '1542206395-9feb3edaa68d', '1544725176-7c40e5a71c5e',
+] as const;
+
+export const MEN_IDS = [
+ '1611403119860-57c4937ef987', '1560250097-0b93528c311a', '1547425260-76bcadfb4f2c', '1545167622-3a6ac756afa4',
+ '1507003211169-0a1dd7228f2d', '1618077360395-f3068be8e001', '1500648767791-00dcc994a43e', '1633332755192-727a05c4013d',
+ '1531427186611-ecfd6d936c79', '1506794778202-cad84cf45f1d', '1599566150163-29194dcaad36', '1570295999919-56ceb5ecca61',
+ '1590086782957-93c06ef21604', '1590086782792-42dd2350140d', '1527980965255-d3b416303d12', '1535713875002-d1d0cf377fde',
+ '1566492031773-4f4e44671857', '1600180758890-6b94519a8ba6', '1629425733761-caae3b5f2e50', '1472099645785-5658abf4ff4e',
+ '1557862921-37829c790f19', '1474176857210-7287d38d27c6', '1568602471122-7832951cc4c5', '1615109398623-88346a601842',
+ '1504257432389-52343af06ae3', '1519085360753-af0119f7cbe7', '1552058544-f2b08422138a', '1528892952291-009c663ce843',
+ '1584999734482-0361aecad844', '1463453091185-61582044d556', '1595152772835-219674b2a8a6', '1539571696357-5a69c17a67c6',
+ '1564564321837-a57b7070ac4f', '1541647376583-8934aaf3448a', '1558203728-00f45181dd84', '1492562080023-ab3db95bfbce',
+] as const;
+
+/** One fixed face per cast member, matched by name and gender — all distinct. */
+const CAST_PORTRAITS: Record<string, string> = {
+ 'sarah-chen': '1614644147724-2d4785d69962',
+ 'alex-rivera': '1500648767791-00dcc994a43e',
+ 'marcus-thorne': '1611403119860-57c4937ef987',
+ 'elena-rodriguez': '1567532939604-b6b5b0db2604',
+ 'david-park': '1568602471122-7832951cc4c5',
+ 'emma-kim': '1554151228-14d9def656e4',
+ 'jordan-taylor': '1527980965255-d3b416303d12',
+ 'priya-sharma': '1488426862026-3ee34a7d66df',
+ 'mia-kovacs': '1598550874175-4d0ef436c909',
+ 'james-wilson': '1506794778202-cad84cf45f1d',
+ 'leila-hassan': '1557555187-23d685287bc3',
+ 'david-hoffman': '1615109398623-88346a601842',
+ 'elena-rossi': '1601412436009-d964bd02edbc',
+ 'samir-patel': '1633332755192-727a05c4013d',
+ 'jessica-wu': '1548142813-c348350df52b',
+ 'daniel-weiss': '1552058544-f2b08422138a',
+};
+
+const WOMEN_NAMES = new Set([
+ 'anna', 'maria', 'elena', 'eleni', 'helena', 'helen', 'sofia', 'sophia', 'katerina', 'catherine', 'christina', 'ioanna',
+ 'joanna', 'irini', 'eirini', 'irene', 'lydia', 'chrysa', 'vasso', 'vasiliki', 'georgia', 'dimitra', 'despina', 'athena',
+ 'penelope', 'zoe', 'nefeli', 'danae', 'sarah', 'sara', 'jane', 'emma', 'lisa', 'priya', 'andreea', 'olivia', 'emily',
+ 'laura', 'julia', 'anastasia', 'natalia', 'alexandra', 'eva', 'mia', 'marina', 'theodora', 'angeliki', 'konstantina',
+ 'panagiota', 'fotini', 'stella', 'rena', 'niki', 'kalliopi', 'effie', 'myrto', 'artemis', 'evi', 'kate', 'rachel',
+ 'jessica', 'amanda', 'linda', 'susan', 'karen', 'nancy', 'amy', 'ana', 'lucia', 'chloe', 'grace',
+ 'αννα', 'μαρια', 'ελενα', 'ελενη', 'σοφια', 'κατερινα', 'χριστινα', 'ιωαννα', 'ειρηνη', 'λυδια', 'χρυσα', 'βασω',
+ 'γεωργια', 'δημητρα', 'δεσποινα', 'αθηνα', 'πηνελοπη', 'ζωη', 'νεφελη', 'δαναη', 'σταυρουλα', 'μυρτω', 'φωτεινη',
+]);
+
+const MEN_NAMES = new Set([
+ 'marcus', 'nikos', 'nick', 'nicholas', 'nikolas', 'yannis', 'giannis', 'john', 'james', 'dimitris', 'giorgos', 'george',
+ 'thanos', 'athanasios', 'stavros', 'spyros', 'petros', 'peter', 'mike', 'michael', 'michalis', 'kostas', 'konstantinos',
+ 'fotis', 'david', 'andreas', 'andrew', 'tom', 'thomas', 'klaus', 'alexis', 'alexandros', 'christos', 'vasilis', 'panagiotis',
+ 'manolis', 'antonis', 'stelios', 'lefteris', 'sotiris', 'ilias', 'elias', 'aris', 'haris', 'pavlos', 'paul', 'mark',
+ 'daniel', 'robert', 'richard', 'william', 'joseph', 'charles', 'matthew', 'ben', 'jack', 'ryan', 'kevin', 'brian',
+ 'jason', 'eric', 'steven', 'raj', 'arjun', 'omar', 'ali', 'lukas', 'jonas', 'felix', 'leo', 'max',
+ 'νικος', 'γιαννης', 'δημητρης', 'γιωργος', 'θανος', 'σταυρος', 'σπυρος', 'πετρος', 'κωστας', 'φωτης', 'ανδρεας',
+ 'μιχαλης', 'αλεξης', 'χρηστος', 'βασιλης', 'παναγιωτης', 'μανωλης', 'αντωνης', 'στελιος', 'ηλιας', 'αρης', 'παυλος',
+]);
+
+const CAST_FACES = new Set(Object.values(CAST_PORTRAITS));
+const FREE_WOMEN = WOMEN_IDS.filter((id) => !CAST_FACES.has(id));
+const FREE_MEN = MEN_IDS.filter((id) => !CAST_FACES.has(id));
+
 /**
- * No generated faces: demo people render initials instead of a stranger's
- * photo. Kept for API compatibility with `avatarFor`.
+ * A face portrait for a demo/sample person. Cast members keep a fixed,
+ * matched face; any other known first name picks deterministically from the
+ * faces no cast member uses. Unknown or non-person names get '' so the
+ * Avatar shows initials instead of a stranger.
  */
-export function portraitFor(_id: string, _fullName: string, _size = 200): string {
- return '';
+export function portraitFor(id: string, fullName: string, size = 200): string {
+ const photoId = CAST_PORTRAITS[id] ?? (() => {
+  const first = plain(fullName).split(/[^a-zα-ω]+/u).filter(Boolean)[0] ?? '';
+  if (WOMEN_NAMES.has(first)) return pick(FREE_WOMEN, id);
+  if (MEN_NAMES.has(first)) return pick(FREE_MEN, id);
+  return '';
+ })();
+ return photoId ? `${UNSPLASH}${photoId}?w=${size}&h=${size}&fit=crop&crop=faces&auto=format&q=75` : '';
 }
 
 /* ----------------------------------------------------------------- covers */

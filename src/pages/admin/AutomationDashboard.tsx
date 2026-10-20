@@ -35,6 +35,7 @@ import { cn } from "../../lib/utils";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDateTime, formatTime } from "../../lib/dates";
+import { useAuth } from "../../App";
 
 interface AutomationDashboardProps {
  user: User;
@@ -53,9 +54,12 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
  const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Inactive'>('All');
  const [selectedRule, setSelectedRule] = useState<string | null>(null);
  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+ const { isDemoMode } = useAuth();
 
  useEffect(() => {
   const fetchData = async () => {
+   // Sample account: automation collections deny signed-out reads — show the empty state.
+   if (isDemoMode) { setLoading(false); return; }
    setLoading(true);
    try {
     const [rulesData, execsData, logsData, emailTemplatesData, notificationTemplatesData] = await Promise.all([
@@ -77,9 +81,10 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
    }
   };
   fetchData();
- }, []);
+ }, [isDemoMode]);
 
  const handleToggleRule = async (ruleId: string) => {
+  if (isDemoMode) return;
   try {
    const updatedRule = await automationService.toggleRule(ruleId);
    setRules(rules.map(r => r.id === ruleId ? updatedRule : r));
@@ -89,6 +94,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
  };
 
  const handleRunNow = async (ruleId: string) => {
+  if (isDemoMode) return;
   try {
    await automationService.triggerRuleManually(ruleId, "user_demo_" + Math.floor(Math.random() * 1000));
    const updatedExecs = await automationService.getExecutions();
@@ -100,6 +106,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
  };
 
  const handleDeleteRule = async (ruleId: string) => {
+  if (isDemoMode) return;
   try {
    await automationService.deleteRule(ruleId);
    setRules(rules.filter(r => r.id !== ruleId));
@@ -220,9 +227,10 @@ const logMessage = (message: string) => {
       <div className="p-1.5 bg-stone-900 text-white rounded-lg">
        <Zap className="w-4 h-4" />
       </div>
-      <h2 className="section-header">{t('Automation Engine', 'Αυτοματισμοί')}</h2>
+      <h1 className="section-header">{t('Automation Engine', 'Αυτοματισμοί')}</h1>
      </div>
      <p className="text-sm text-stone-500">{t('Orchestrate intelligent workflows and event-driven logic across the platform.', 'Οργάνωσε έξυπνες ροές και λογική με βάση γεγονότα σε όλη την πλατφόρμα.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — automation data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα αυτοματισμών εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-2">
      <Button variant="outline" className="gap-2 h-9 px-4 text-xs font-medium">

@@ -10,6 +10,7 @@ import { useTenant } from "../../context/TenantContext";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { useAuth } from "../../App";
 
 interface SSOSettingsProps {
  user: User;
@@ -33,6 +34,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
  const t = useT();
  const { tenant } = useTenant();
  const tenantName = tenant?.name || 'CoFounderBay';
+ const { isDemoMode } = useAuth();
  const configDocId = `sso-${tenant?.id || 'default'}`;
  const [activeTab, setActiveTab] = useState<'config' | 'mapping' | 'audit'>('config');
  const [ssoEnabled, setSsoEnabled] = useState(false);
@@ -52,7 +54,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
  const [success, setSuccess] = useState(false);
 
  useEffect(() => {
-  if (loaded) return;
+  // Sample account: config documents deny signed-out reads — keep the defaults.
+  if (loaded || isDemoMode) { setLoaded(true); return; }
   getDoc(doc(db, 'systemConfig', configDocId)).then((snap) => {
    if (snap.exists()) {
     const cfg = snap.data() as SsoConfig;
@@ -69,17 +72,19 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
    }
    setLoaded(true);
   }).catch(() => setLoaded(true));
- }, [configDocId, loaded, tenantName]);
+ }, [configDocId, loaded, tenantName, isDemoMode]);
 
  useEffect(() => {
+  if (isDemoMode) return;
   const q = query(collection(db, 'ssoAuditLog'), orderBy('createdAt', 'desc'), qLimit(50));
   const unsub = onSnapshot(q, (snap) => {
    setAuditLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   }, () => {});
   return () => unsub();
- }, []);
+ }, [isDemoMode]);
 
  const handleSave = async () => {
+  if (isDemoMode) return;
   setLoading(true);
   try {
    await setDoc(doc(db, 'systemConfig', configDocId), {
@@ -122,9 +127,10 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
       <div className="p-1.5 bg-stone-900 text-white rounded-lg">
        <ShieldCheck className="w-5 h-5" />
       </div>
-      <h2 className="section-header">{t('SSO & Identity', 'SSO και ταυτότητα')}</h2>
+      <h1 className="section-header">{t('SSO & Identity', 'SSO και ταυτότητα')}</h1>
      </div>
      <p className="text-stone-500 text-xs font-medium">{t('Configure enterprise Single Sign-On for your organization.', 'Ρύθμισε το SSO του οργανισμού.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — SSO settings apply to real accounts.', 'Δοκιμαστικός λογαριασμός — οι ρυθμίσεις SSO ισχύουν για πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-2">
      <Button variant="outline" className="gap-1.5 h-9 px-4 text-xs font-medium" onClick={() => setActiveTab('audit')}>
@@ -593,14 +599,14 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
      <Card title={t('Service Provider Info', 'Στοιχεία παρόχου υπηρεσίας')} className="p-5">
       <div className="space-y-4">
        <div className="space-y-1.5">
-        <label className="text-micro">{t('Assertion Consumer Service (ACS)', 'Assertion Consumer Service (ACS)')}</label>
+        <label className="text-micro">{t('Assertion Consumer Service (ACS)', 'Υπηρεσία λήψης δήλωσης (ACS)')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/api/auth/sso/callback</code>
          <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/api/auth/sso/callback').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
         </div>
        </div>
        <div className="space-y-1.5">
-        <label className="text-micro">{t('Entity ID', 'Entity ID')}</label>
+        <label className="text-micro">{t('Entity ID', 'Αναγνωριστικό οντότητας')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/auth/sp</code>
          <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/auth/sp').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>

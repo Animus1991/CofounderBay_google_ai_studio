@@ -193,7 +193,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
 
  return (
-  <PageShell title={t("Insights", "Αναλυτικά στοιχεία")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
+  <PageShell sample={isDemoMode} title={t("Insights", "Αναλυτικά στοιχεία")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}

@@ -399,7 +399,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  return (
   <>
-  <PageShell title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")} maxWidth="full">
+  <PageShell sample={isDemoMode} title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")} maxWidth="full">
    <div className="space-y-5">
 
     {/* Tab Bar */}

@@ -68,6 +68,19 @@ const SERVICE_NAME_EL: Record<string, string> = {
  "Cloud Infrastructure Audit": "Έλεγχος υποδομής cloud",
 };
 
+const COURSE_TITLE_EL: Record<string, string> = {
+ "Foundations of Fundraising": "Βασικές αρχές χρηματοδότησης",
+ "Building a Scalable Sales Engine": "Δημιουργία κλιμακούμενης μηχανής πωλήσεων",
+ "Legal Essentials for Startups": "Νομικά βασικά για startups",
+ "Product-Market Fit Workshop": "Εργαστήριο product-market fit",
+};
+
+const JOB_TITLE_EL: Record<string, string> = {
+ "Lead Full-Stack Engineer": "Επικεφαλής ανάπτυξης full-stack",
+ "Growth Marketing Manager": "Manager growth marketing",
+ "Product Design Intern": "Πρακτική σε product design",
+};
+
 interface ResourcesProps {
  user: User;
 }
@@ -162,7 +175,7 @@ export default function Resources({ user }: ResourcesProps) {
  };
 
  return (
-  <PageShell title={t("Resources", "Πόροι")} description={t("Curated learning materials, professional services, and strategic growth tools.", "Επιλεγμένο εκπαιδευτικό υλικό, επαγγελματικές υπηρεσίες και εργαλεία στρατηγικής ανάπτυξης.")}>
+  <PageShell sample={isDemoMode} title={t("Resources", "Πόροι")} description={t("Curated learning materials, professional services, and strategic growth tools.", "Επιλεγμένο εκπαιδευτικό υλικό, επαγγελματικές υπηρεσίες και εργαλεία στρατηγικής ανάπτυξης.")}>
    <div className="space-y-6">
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {(['learning', 'services', 'jobs', 'support'] as const).map((tab) => (
@@ -261,7 +274,7 @@ export default function Resources({ user }: ResourcesProps) {
          </div>
          <div className="space-y-4 flex-1 px-2">
           <div className="space-y-1">
-           <h4 className="font-medium text-base leading-tight text-stone-900 group-hover:text-stone-900 transition-colors">{course.title}</h4>
+           <h4 className="font-medium text-base leading-tight text-stone-900 group-hover:text-stone-900 transition-colors">{t(course.title, COURSE_TITLE_EL[course.title] ?? course.title)}</h4>
            <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-stone-400 tracking-wide">{t('Instructor', 'Εισηγητής')}</span>
             <span className="text-sm text-stone-600 font-medium">{course.instructor}</span>
@@ -388,11 +401,11 @@ export default function Resources({ user }: ResourcesProps) {
             <Briefcase className="w-8 h-8" />
            </div>
            <div className="space-y-1">
-            <h4 className="font-semibold text-base tracking-tight text-stone-900">{job.title}</h4>
+            <h4 className="font-semibold text-base tracking-tight text-stone-900">{t(job.title, JOB_TITLE_EL[job.title] ?? job.title)}</h4>
             <div className="flex items-center gap-3">
              <span className="text-base text-stone-600 font-medium">{job.company}</span>
              <div className="w-1 h-1 rounded-full bg-stone-200"></div>
-             <span className="text-base text-stone-400 font-light">{job.location}</span>
+             <span className="text-base text-stone-400 font-light">{labelOf(job.location)}</span>
             </div>
            </div>
           </div>

@@ -9,10 +9,12 @@ import { db } from "../../firebase";
 import { useTenant } from "../../context/TenantContext";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
+import { useAuth } from "../../App";
 
 export default function DomainSettings() {
  const t = useT();
  const { tenant } = useTenant();
+ const { isDemoMode } = useAuth();
  const [domains, setDomains] = useState<TenantDomain[]>([]);
  const [loading, setLoading] = useState(true);
  const [showAddModal, setShowAddModal] = useState(false);
@@ -21,7 +23,8 @@ export default function DomainSettings() {
  const [copiedId, setCopiedId] = useState<string | null>(null);
 
  useEffect(() => {
-  if (!tenant?.id) return;
+  // Sample account: domain documents deny signed-out reads — show the empty state.
+  if (!tenant?.id || isDemoMode) { setLoading(false); return; }
   setLoading(true);
   const q = query(collection(db, 'tenantDomains'), where('tenantId', '==', tenant.id));
   const unsub = onSnapshot(q, (snap) => {
@@ -29,10 +32,10 @@ export default function DomainSettings() {
    setLoading(false);
   }, () => setLoading(false));
   return () => unsub();
- }, [tenant?.id]);
+ }, [tenant?.id, isDemoMode]);
 
  const handleAddDomain = async () => {
-  if (!newDomain || !tenant?.id) return;
+  if (!newDomain || !tenant?.id || isDemoMode) return;
   const domain: Omit<TenantDomain, 'id'> = {
    tenantId: tenant.id,
    domain: domainType === 'Subdomain' ? `${newDomain}.cofounderbay.com` : newDomain,
@@ -54,6 +57,7 @@ export default function DomainSettings() {
  };
 
  const handleVerify = async (id: string) => {
+  if (isDemoMode) return;
   // Manual confirmation until automated DNS checks exist — records who marked it.
   await updateDoc(doc(db, 'tenantDomains', id), {
    verificationStatus: 'Verified', sslStatus: 'Active', isActive: true, status: 'Verified',
@@ -62,10 +66,12 @@ export default function DomainSettings() {
  };
 
  const handleDelete = async (id: string) => {
+  if (isDemoMode) return;
   await deleteDoc(doc(db, 'tenantDomains', id)).catch((e) => console.error('Delete domain failed:', e));
  };
 
  const handleSetPrimary = async (id: string) => {
+  if (isDemoMode) return;
   await Promise.all(domains.map((d) =>
    updateDoc(doc(db, 'tenantDomains', d.id), { isPrimary: d.id === id, updatedAt: new Date().toISOString() })
   )).catch((e) => console.error('Set primary failed:', e));
@@ -82,8 +88,9 @@ export default function DomainSettings() {
   <div className="space-y-6 max-w-5xl mx-auto">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="section-header">{t('Domain Management', 'Τομείς')}</h2>
+     <h1 className="section-header">{t('Domain Management', 'Τομείς')}</h1>
      <p className="text-sm text-stone-500 mt-1">{t('Configure how users access your ecosystem via subdomains or custom domains.', 'Ρύθμισε πώς τα μέλη μπαίνουν στο οικοσύστημα μέσω υποτομέων ή προσαρμοσμένων τομέων.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — domains appear for real accounts.', 'Δοκιμαστικός λογαριασμός — οι τομείς εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <Button onClick={() => setShowAddModal(true)} className="gap-2 h-10 px-5 text-xs font-medium">
      <Plus className="w-3.5 h-3.5" /> {t('Add Domain', 'Προσθήκη τομέα')}

@@ -180,7 +180,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
         animate={{ opacity: 1, x: 0 }}
         className="flex flex-col whitespace-nowrap"
        >
-        <h1 className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</h1>
+        <p className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</p>
         <span className="text-xs font-medium text-stone-400 tracking-wide mt-1">{withEl("Ecosystem Hub")}</span>
        </motion.div>
       )}

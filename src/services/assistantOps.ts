@@ -34,6 +34,7 @@ import {
   removeStudioTask,
   saveProfile,
   saveRequest,
+  readChat,
   searchChat,
   setId,
   trackApplication,
@@ -649,9 +650,38 @@ function needResult(query: string, propose: boolean): AssistantResult {
 }
 
 function inboxResult(query: string): AssistantResult {
+  const folded = fold(query);
   const needle = query
     .replace(/^(please\s+)?(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ(ατα)?)\s*(for|για)?\s*/i, '')
     .trim();
+  const wasSearch = needle !== query.trim();
+  const wantsUnread = /\bunread\b/.test(folded) || folded.includes('αδιαβαστ');
+  const question = wantsUnread || (!wasSearch && /\b(which|what|who)\b|ποια|ποιος|ποιες/.test(folded));
+  if (question) {
+    const all = readChat().messages;
+    const list = (wantsUnread ? all.filter((item) => !item.readStatus) : all).slice(-8);
+    if (!list.length) {
+      return {
+        tool: 'inbox',
+        en: wantsUnread
+          ? 'No unread messages in this browser’s store. Open Messages to read the latest threads.'
+          : 'No messages stored in this browser yet. Open Messages, then ask me to search a word in the thread.',
+        el: wantsUnread
+          ? 'Κανένα αδιάβαστο μήνυμα σε αυτόν τον browser. Άνοιξε τα Μηνύματα για τα τελευταία νήματα.'
+          : 'Δεν υπάρχουν μηνύματα σε αυτόν τον browser. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
+        href: '/messages',
+        links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
+      };
+    }
+    const lines = list.map((item) => `${item.senderName || item.senderId}: ${item.body.slice(0, 120)}`);
+    return {
+      tool: 'inbox',
+      en: wantsUnread ? `Unread in this browser's store:\n${lines.join('\n')}` : `Latest messages in this browser's store:\n${lines.join('\n')}`,
+      el: wantsUnread ? `Αδιάβαστα σε αυτόν τον browser:\n${lines.join('\n')}` : `Τελευταία μηνύματα σε αυτόν τον browser:\n${lines.join('\n')}`,
+      href: '/messages',
+      links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
+    };
+  }
   const hits = searchChat(needle || query);
   if (hits.length === 0) {
     return {
@@ -1768,16 +1798,19 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (person && /\b(save|watch|αποθηκ)\b/.test(folded)) return saveOrConnect('save', person, propose);
   if (person && /\b(connect|request|intro|συνδεσ|αιτημ)\b/.test(folded)) return saveOrConnect('connect', person, propose);
   if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person, propose);
-  if (/\b(still lack|team lack|founding team|τι λειπ|τι χρειάζεται η ομάδα)\b/.test(folded)) return teamGapResult(profile);
-  if (/\b(propose|scout|do not send|μην στειλ|προτειν)\b/.test(folded) && /\b(people|three|3|τρεις|συνιδρυτ|match)\b/.test(folded)) return scoutResult(profile);
+  if (/\b(still lack|team lack|founding team)\b/.test(folded) || hasStem(folded, 'τι λειπ', 'τι χρειαζεται η ομαδα')) return teamGapResult(profile);
+  if ((/\b(propose|scout|do not send)\b/.test(folded) || hasStem(folded, 'προτειν', 'μην στειλ'))
+    && (/\b(people|three|3|match)\b/.test(folded) || hasStem(folded, 'τρεις', 'συνιδρυτ', 'αντιστοιχ'))) return scoutResult(profile);
   if (hasStem(folded, 'need card', 'καρτα αναγκ', 'draft a need') || (hasStem(folded, 'need', 'καρτα', 'αναγκ') && hasStem(folded, 'draft', 'write', 'close', 'change', 'list', 'γραψ', 'κλεισ', 'αλλαξ'))) return needResult(query, propose);
-  if (/\b(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ)\b/.test(folded)) return inboxResult(query);
-  if (/\b(open to (a )?(co-?founder|investor|advisor)|ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ))\b/.test(folded)) return openToResult(query, propose);
-  if (/\b(what should i do first|next step|τι να κανω πρωτα)\b/.test(folded)) return nextStepAssistant(profile);
-  if (/\b(7-day|seven-day|playbook|match plan|πλανο 7|πλάνο 7)\b/.test(folded)) return playbookResult(propose);
-  if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three|προσκαλεσ.{0,8}3|προσκάλεσ.{0,8}3)\b/.test(folded)) return inviteResult(propose);
-  if (/\b(meet this week|who should i meet|ποιον .{0,20}εβδομαδ|αυτη την εβδομαδα)\b/.test(folded)) return weekMeetResult(profile);
-  if (/\b(fit check|archetype|quiz|τι ειδους|τι είδους συνιδρυτ)\b/.test(folded)) return fitCheckResult();
+  if (/\bsearch( my)? (messages?|inbox|thread)\b|\bunread\b.{0,30}\bmessages?\b|\bmessages?\b.{0,30}\bunread\b/.test(folded)
+    || hasStem(folded, 'ψαξε') && hasStem(folded, 'μηνυμ')
+    || hasStem(folded, 'αδιαβαστ') && hasStem(folded, 'μηνυμ')) return inboxResult(query);
+  if (/\bopen to (a )?(co-?founder|investor|advisor)\b/.test(folded) || /ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ)|ειμαι ανοιχτ/.test(folded)) return openToResult(query, propose);
+  if (/\b(what should i do first|next step)\b/.test(folded) || hasStem(folded, 'τι να κανω')) return nextStepAssistant(profile);
+  if (/\b(7-day|seven-day|playbook|match plan)\b/.test(folded) || hasStem(folded, 'πλανο 7')) return playbookResult(propose);
+  if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three)\b/.test(folded) || (hasStem(folded, 'προσκαλεσ') && /\b3\b|τρεις/.test(folded))) return inviteResult(propose);
+  if (/\b(meet this week|who should i meet)\b/.test(folded) || /ποιον.{0,20}εβδομαδ|αυτη την εβδομαδα/.test(folded)) return weekMeetResult(profile);
+  if (/\b(fit check|archetype|quiz)\b/.test(folded) || hasStem(folded, 'τι ειδους')) return fitCheckResult();
 
   if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query, propose);
   if (/\bclaim\b/.test(folded) && /\b(perk|aws|stripe|hubspot|notion|google cloud|gcp|intercom|slack|mercury|amazon web|παροχ)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) {
@@ -1792,27 +1825,28 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   const nav = navigateResult(query);
   if (nav) return nav;
 
-  if (/\b(best match|who (should|can) i|find .{0,20}(co-?founder|match)|καλυτερ.{0,12}αντιστοιχ|ποιος .{0,20}συνιδρυτ)\b/.test(folded)
-    || (/\b(match|co-?founder|συνιδρυτ|αντιστοιχ)\b/.test(folded) && !/\bopen|ανοιξ/.test(folded))
-    || (hasStem(folded, 'αντιστοιχ', 'συνιδρυτ') && !hasStem(folded, 'ανοιξ', 'ανοιγμα'))
+  if (/\b(best match|who (should|can) i|find .{0,20}(co-?founder|match))\b/.test(folded)
+    || /καλυτερ.{0,12}αντιστοιχ|ποιος.{0,20}συνιδρυτ/.test(folded)
+    || (/\b(match|co-?founder)\b/.test(folded) && !/\bopen/.test(folded) && !hasStem(folded, 'ανοιξ'))
+    || (hasStem(folded, 'αντιστοιχ', 'συνιδρυτ', 'ταιριαζ', 'ιδρυτικ') && !hasStem(folded, 'ανοιξ', 'ανοιγμα'))
     || Object.keys(parseQualifiers(query).filters).length > 0) {
     return matchesResult(profile, query);
   }
-  if (/\b(become|how do i|πως γιν|γινω)\b/.test(folded) && /\b(mentor|μεντορ)\b/.test(folded)) return becomeMentorResult();
-  if (/\b(mentor|μεντορ)\b/.test(folded)) return mentorsResult(query);
-  if (/\b(activity|history|notification|τι εγινε)\b/.test(folded)) return activityResult();
+  if ((/\b(become|how do i)\b/.test(folded) || hasStem(folded, 'πως γιν', 'γινω')) && /\bmentor\b|μεντορ/.test(folded)) return becomeMentorResult();
+  if (/\bmentor\b/.test(folded) || hasStem(folded, 'μεντορ')) return mentorsResult(query);
+  if (/\b(activity|history|notifications?|requests?|watchlist)\b/.test(folded) || hasStem(folded, 'τι εγινε', 'τι αλλαξε', 'τι νεο', 'ειδοποι', 'αιτημ')) return activityResult();
   if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded)) return sessionAddResult(query, propose);
-  if (/\b(events?|meetups?|εκδηλ|διοργανωσ)\b/.test(folded)) return eventsResult(query, propose);
-  if (/\b(communities|community|κοινοτ)/.test(folded)) return communitiesResult(query, propose);
-  if (/\b(programs?|accelerator|bootcamp|προγραμ)\b/.test(folded)) return programsResult();
-  if (/\b(perks?|credits|παροχ)\b/.test(folded)) return perksResult();
-  if (/\b(legal|template|nda|νομικ)\b/.test(folded)) return legalResult();
-  if (/\b(courses?|learning|resources?|μαθημ|πορο)\b/.test(folded)) return resourcesResult();
-  if (/\b(milestone|οροσημ|overdue|εκπροθεσμ|due)\b/.test(folded)) return milestonesResult(query, propose);
+  if (/\b(events?|meetups?|sessions?)\b/.test(folded) || hasStem(folded, 'εκδηλ', 'διοργανωσ', 'συνεδρ')) return eventsResult(query, propose);
+  if (/\b(communities|community)\b/.test(folded) || hasStem(folded, 'κοινοτ')) return communitiesResult(query, propose);
+  if (/\b(programs?|accelerator|bootcamp)\b/.test(folded) || hasStem(folded, 'προγραμ')) return programsResult();
+  if (/\b(perks?|credits)\b/.test(folded) || hasStem(folded, 'παροχ')) return perksResult();
+  if (/\b(legal|template|nda)\b/.test(folded) || hasStem(folded, 'νομικ')) return legalResult();
+  if (/\b(courses?|learning|resources?)\b/.test(folded) || hasStem(folded, 'μαθημ', 'πορο')) return resourcesResult();
+  if (/\b(milestones?|overdue|due)\b/.test(folded) || hasStem(folded, 'οροσημ', 'εκπροθεσμ')) return milestonesResult(query, propose);
   if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return pipelineResult();
-  if (/\b(round|raise|runway|valuation|γυρ|χρηματοδ|επενδυτ)\b/.test(folded)) return roundResult();
-  if (/\b(today|status|brief|next|τι να κανω|τι εκκρεμ|επομεν)\b/.test(folded)) return briefingResult(profile);
-  if (/\b(help|τι μπορεις|what can you)\b/.test(folded)) return helpResult();
+  if (/\b(rounds?|raise|runway|valuation)\b/.test(folded) || hasStem(folded, 'γυρο', 'χρηματοδ', 'επενδυτ')) return roundResult();
+  if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν')) return briefingResult(profile);
+  if (/\b(help|what can you)\b/.test(folded) || hasStem(folded, 'τι μπορεις')) return helpResult();
 
   return briefingResult(profile);
 }

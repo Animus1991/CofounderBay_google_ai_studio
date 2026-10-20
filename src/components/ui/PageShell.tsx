@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
+import { Both } from '../../lib/both';
 
 interface PageShellProps {
  title?: string;
@@ -9,6 +10,16 @@ interface PageShellProps {
  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl' | 'full';
  noPadding?: boolean;
  className?: string;
+ sample?: boolean;
+}
+
+/** The shared demo pill — identical markup the Dashboard header used. */
+export function SamplePill() {
+ return (
+  <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
+   <Both en="Demo — sample data" el="Demo — δοκιμαστικά δεδομένα" />
+  </span>
+ );
 }
 
 const maxWidthClass = {
@@ -29,6 +40,7 @@ export default function PageShell({
  maxWidth = 'full',
  noPadding = false,
  className,
+ sample = false,
 }: PageShellProps) {
  return (
   <div className={cn(
@@ -37,7 +49,7 @@ export default function PageShell({
    className
   )}>
    <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
-    {(title || actions) && (
+    {(title || actions || sample) && (
      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 lg:pr-56">
       <div className="min-w-0">
        {title && (
@@ -47,8 +59,11 @@ export default function PageShell({
         <p className="text-sm text-stone-500 mt-1 max-w-2xl">{description}</p>
        )}
       </div>
-      {actions && (
-       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">{actions}</div>
+      {(actions || sample) && (
+       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">
+        {sample && <SamplePill />}
+        {actions}
+       </div>
       )}
      </div>
     )}

@@ -7,6 +7,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, updateDoc } fr
 import { db } from '../../firebase';
 import { useT } from '../../lib/language';
 import { labelOf } from '../../lib/labels';
+import { useAuth } from '../../App';
 
 type TaxonomyKind = 'skill' | 'industry' | 'role' | 'tag';
 
@@ -53,6 +54,7 @@ interface TaxonomySettingsProps {
 
 export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
  const t = useT();
+ const { isDemoMode } = useAuth();
  const [activeTab, setActiveTab] = useState<TaxonomyKind>('skill');
  const [searchQuery, setSearchQuery] = useState('');
  const [items, setItems] = useState<TaxonomyItem[]>([]);
@@ -62,6 +64,13 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
+  // Sample account: the taxonomies collection denies signed-out reads — show the
+  // platform starter vocabulary read-only.
+  if (isDemoMode) {
+   setItems(SEED_TAXONOMY.map((item, i) => ({ ...item, id: `seed-${item.kind}-${i}` })));
+   setLoading(false);
+   return;
+  }
   const unsub = onSnapshot(collection(db, 'taxonomies'), async (snap) => {
    if (snap.empty) {
     // Seed the platform vocabulary once; merge writes keep it idempotent.
@@ -76,11 +85,11 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
    setLoading(false);
   }, () => setLoading(false));
   return () => unsub();
- }, []);
+ }, [isDemoMode]);
 
  // Real usage counts: profiles listing the term in their skills/roles/industry text.
  useEffect(() => {
-  if (items.length === 0) return;
+  if (items.length === 0 || isDemoMode) return;
   getDocs(collection(db, 'profiles')).then((snap) => {
    const counts: Record<string, number> = {};
    snap.docs.forEach((d) => {
@@ -93,7 +102,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
    });
    setUsage(counts);
   }).catch(() => {});
- }, [items]);
+ }, [items, isDemoMode]);
 
  const filtered = useMemo(() => items.filter((item) =>
   item.kind === activeTab &&
@@ -106,7 +115,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
 
  const save = async () => {
   const name = draft.name.trim();
-  if (!name) return;
+  if (!name || isDemoMode) return;
   if (editing) {
    await updateDoc(doc(db, 'taxonomies', editing.id), { name, category: draft.category, description: draft.description }).catch((e) => console.error(e));
   } else {
@@ -117,6 +126,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
  };
 
  const remove = async (id: string) => {
+  if (isDemoMode) return;
   if (window.confirm(t('Delete this taxonomy term?', 'Διαγραφή αυτού του όρου;'))) {
    await deleteDoc(doc(db, 'taxonomies', id)).catch((e) => console.error(e));
   }
@@ -130,6 +140,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
     <div>
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Platform Taxonomies', 'Ταξινομίες πλατφόρμας')}</h1>
      <p className="text-stone-500 mt-1">{t('Manage the structured data that powers matching and discovery.', 'Διαχειρίσου τα δομημένα δεδομένα που τροφοδοτούν την αντιστοίχιση και την εξερεύνηση.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — starter taxonomy shown read-only; edits apply to real accounts.', 'Δοκιμαστικός λογαριασμός — η αρχική ταξινόμηση εμφανίζεται μόνο για ανάγνωση.')}</p>}
     </div>
     <Button size="sm" onClick={openAdd}>
      <Plus className="w-4 h-4" />

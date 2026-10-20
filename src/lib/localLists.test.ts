@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { keys, onDataChange, resetAllLists, writeValue } from './localLists';
+import { keys, onDataChange, readAssistantFeedback, resetAllLists, writeAssistantFeedback, writeValue } from './localLists';
 import { NOT_SYNCED } from './cloudSync';
 
 vi.mock('../firebase', () => ({ db: {} }));
@@ -34,5 +34,26 @@ describe('notification feed keys', () => {
     off();
     expect(seen).toContain(keys.demoNotes);
     expect(seen).toContain(keys.hiddenNotes);
+  });
+});
+
+describe('assistant feedback', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetAllLists();
+  });
+
+  it('stores { turnId, value, at } per turn and announces the write', () => {
+    const seen: string[] = [];
+    const off = onDataChange((key) => seen.push(key));
+    writeAssistantFeedback('a-1', 'up');
+    writeAssistantFeedback('a-2', 'down');
+    writeAssistantFeedback('a-1', 'down');
+    off();
+    expect(seen).toContain(keys.assistantFeedback);
+    const stored = readAssistantFeedback();
+    expect(stored).toHaveLength(2);
+    expect(stored.find((item) => item.turnId === 'a-1')).toMatchObject({ value: 'down' });
+    expect(stored.every((item) => item.turnId && item.value && item.at)).toBe(true);
   });
 });

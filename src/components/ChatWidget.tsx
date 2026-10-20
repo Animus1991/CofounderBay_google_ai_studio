@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bot, Check, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, X } from 'lucide-react';
+import { Bot, Check, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { bothText, labelOf } from '../lib/labels';
 import { useLanguage, useT } from '../lib/language';
-import { appendAssistant, clearAssistant, readAssistant, updateAssistantTurn, type AssistantTurn } from '../lib/localLists';
+import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeedback, updateAssistantTurn, writeAssistantFeedback, type AssistantTurn } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
-import { startersFor } from '../lib/assistantStarters';
+import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { directoryPeople } from '../lib/peopleSource';
 import { useAuth } from '../App';
@@ -76,16 +77,28 @@ export default function ChatWidget() {
   const agent = MOCK_AGENTS.find((item) => item.id === agentId);
   const page = useMemo(() => pageContext(location.pathname), [location.pathname]);
   const pageControls = useSyncExternalStore(onPageControlsChange, readPageControls);
-  const pageStarters = useMemo(() => startersFor(location.pathname), [location.pathname]);
-  const slashQuery = inputText.startsWith('/') ? inputText.trim().toLowerCase() : '';
-  const slashHits = slashQuery && !slashQuery.includes(' ')
-    ? [
-        { cmd: '/new', en: 'Start a new conversation', el: 'Ξεκίνα νέα συνομιλία' },
-        { cmd: '/clear', en: 'Start a new conversation', el: 'Ξεκίνα νέα συνομιλία' },
-        { cmd: '/compact', en: 'Keep the last few turns', el: 'Κράτα τις τελευταίες στροφές' },
-        ...SLASH_COMMANDS,
-      ].filter((item) => slashQuery === '/' || item.cmd.startsWith(slashQuery))
-    : [];
+  const pageStarters = useMemo(() => startersFor(location.pathname, profile?.role ?? profile?.roles?.[0]), [location.pathname, profile]);
+  const feedback = useStored(readAssistantFeedback, [keys.assistantFeedback]);
+  const feedbackMap = useMemo(() => new Map(feedback.map((item) => [item.turnId, item.value])), [feedback]);
+
+  const rate = (turnId: string, value: 'up' | 'down') => {
+    writeAssistantFeedback(turnId, value);
+    if (user && !isDemoMode) {
+      void import('../firebase').then(async ({ db }) => {
+        const { collection, addDoc } = await import('firebase/firestore');
+        await addDoc(collection(db, 'aiUsage'), { userId: user.uid, kind: 'feedback', value, at: new Date().toISOString() });
+      }).catch(() => undefined);
+    }
+  };
+  const slashHits = filterSlash(
+    [
+      { cmd: '/new', en: 'Start a new conversation', el: 'Ξεκίνα νέα συνομιλία' },
+      { cmd: '/clear', en: 'Start a new conversation', el: 'Ξεκίνα νέα συνομιλία' },
+      { cmd: '/compact', en: 'Keep the last few turns', el: 'Κράτα τις τελευταίες στροφές' },
+      ...SLASH_COMMANDS,
+    ],
+    inputText,
+  );
   const atQuery = inputText.startsWith('@') && !inputText.includes(' ') ? inputText.slice(1).toLowerCase() : null;
   const atHits = atQuery === null
     ? []
@@ -466,6 +479,28 @@ export default function ChatWidget() {
                             <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
                               {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </button>
+                            {feedbackMap.has(msg.id) ? (
+                              <span className="text-xs text-stone-400">{t('Thanks', 'Ευχαριστούμε')}</span>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => rate(msg.id, 'up')}
+                                  className="text-stone-400 hover:text-stone-900 inline-flex items-center"
+                                  aria-label={t('Helpful answer', 'Χρήσιμη απάντηση')}
+                                >
+                                  <ThumbsUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => rate(msg.id, 'down')}
+                                  className="text-stone-400 hover:text-stone-900 inline-flex items-center"
+                                  aria-label={t('Unhelpful answer', 'Μη χρήσιμη απάντηση')}
+                                >
+                                  <ThumbsDown className="w-3 h-3" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                         {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (

@@ -21,7 +21,7 @@ import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
-import { readActivity, saveRequest } from '../lib/localLists';
+import { keys, readActivity, readRequests, saveRequest } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
@@ -29,12 +29,13 @@ import { ReadinessScore, Streak } from '../types';
 import { CAST, avatarFor } from '../data/cast';
 import { usePeople } from '../lib/directory';
 import { avatarOf, cofounderPool, type Person } from '../lib/peopleSource';
-import { profileViews as loadProfileViews, sendConnectionRequest } from '../lib/social';
+import { profileViews as loadProfileViews, sendConnectionRequest, useConnections } from '../lib/social';
 import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { greetingFor, formatWhen } from '../lib/dates';
-import { PAGE_STARTERS } from '../lib/assistantStarters';
+import { filterSlash, startersFor } from '../lib/assistantStarters';
+import { useNotificationFeed } from '../lib/notificationFeed';
 import { useT } from '../lib/language';
 import NextMove from '../components/ui/NextMove';
 import PersonHovercard from '../components/ui/PersonHovercard';
@@ -121,15 +122,6 @@ const DEMO_POSTS = [
     likedBy: [] as string[],
   },
 ];
-
-const ACTION_EL: Record<string, string> = {
-  'complete-profile': 'Συμπλήρωσε το προφίλ σου για καλύτερες αντιστοιχίσεις.',
-  'send-connection': 'Στείλε αίτημα σύνδεσης σε πιθανό συνιδρυτή.',
-  'request-review': 'Ζήτα έλεγχο του pitch deck από ειδικό.',
-  'apply-feedback': 'Εφάρμοσε τα σχόλια του μέντορα.',
-  'resume-research': 'Συνέχισε την έρευνα για την υπόθεση αγοράς.',
-  'daily-discovery': 'Δες 5 νέα προφίλ ιδρυτών σήμερα.',
-};
 
 const MISSING_EL: Record<string, string> = {
   'Basic Info': 'Βασικά στοιχεία',
@@ -290,6 +282,7 @@ export default function DashboardPage() {
   const [, setReadiness] = useState<ReadinessScore | null>(null);
   const [, setUserStats] = useState({ totalXP: 0, level: 1 });
   const [searchQuery, setSearchQuery] = useState('');
+  const [slashIndex, setSlashIndex] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [live, setLive] = useState<LiveUser>(EMPTY_LIVE);
   const [feed, setFeed] = useState<FeedPost[]>([]);
@@ -299,6 +292,9 @@ export default function DashboardPage() {
   const activity = useStored(readActivity, ['cfb.activity']);
   const { people } = usePeople(user?.uid);
   const messaging = useOptionalMessaging();
+  const localRequests = useStored(readRequests, [keys.requests]);
+  const connections = useConnections();
+  const noteFeed = useNotificationFeed();
   const [viewCount, setViewCount] = useState<number | null>(null);
 
   // Who opened your profile in the last 30 days (real accounts).
@@ -432,7 +428,7 @@ export default function DashboardPage() {
   };
 
   const greeting = greetingFor(new Date().getHours());
-  const dashStarters = PAGE_STARTERS['/dashboard'] ?? [];
+  const dashStarters = startersFor('/dashboard', profile?.role ?? profile?.roles?.[0]);
   const sendAsk = () => {
     const prompt = searchQuery.trim();
     if (!prompt) return;
@@ -467,6 +463,28 @@ export default function DashboardPage() {
   const profileViews = isDemoMode ? 124 : (viewCount ?? live.profileViews);
   const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
   const unread = isDemoMode ? 3 : (messaging?.totalUnread ?? live.unreadMessages);
+  const pendingRequests = isDemoMode
+    ? localRequests.filter((item) => item.status === 'pending').length
+    : connections.incoming.length;
+  const nowChips = [
+    { count: pendingRequests, en: 'Requests', el: 'Αιτήματα', askEn: 'What needs me in my requests?', askEl: 'Τι με χρειάζεται στα αιτήματα;' },
+    { count: unread ?? 0, en: 'Messages', el: 'Μηνύματα', askEn: 'Which messages are unread?', askEl: 'Ποια μηνύματα είναι αδιάβαστα;' },
+    { count: noteFeed.unread, en: 'Notifications', el: 'Ειδοποιήσεις', askEn: 'What is new in my notifications?', askEl: 'Τι νέο στις ειδοποιήσεις;' },
+  ].filter((chip) => chip.count > 0).slice(0, 3);
+
+  const slashItems: { en: string; el: string; kind: 'ask' | 'control' }[] = [
+    ...dashStarters.map((item) => ({ ...item, kind: 'ask' as const })),
+    { en: 'Search people in Discovery', el: 'Αναζήτηση ατόμων στην Εξερεύνηση', kind: 'control' },
+    { en: 'Filters', el: 'Φίλτρα', kind: 'control' },
+  ];
+  const slashHits = filterSlash(slashItems, searchQuery);
+  const slashActive = Math.min(slashIndex, Math.max(0, slashHits.length - 1));
+  const runSlashItem = (item: (typeof slashItems)[number]) => {
+    setSearchQuery('');
+    setSlashIndex(0);
+    if (item.kind === 'control') { navigate('/discovery'); return; }
+    window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: t(item.en, item.el) } }));
+  };
 
   const toggleLike = async (post: FeedPost) => {
     if (isDemoMode) {
@@ -505,11 +523,7 @@ export default function DashboardPage() {
     <PageShell
       title={bothText(`${greeting.en}, ${firstName}`, `${greeting.el}, ${firstName}`)}
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
-      actions={isDemoMode ? (
-        <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
-          <Both en="Demo — sample data" el="Demo — δοκιμαστικά δεδομένα" />
-        </span>
-      ) : undefined}
+      sample={isDemoMode}
     >
       <div className="space-y-8">
         <div>
@@ -519,15 +533,28 @@ export default function DashboardPage() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
+                setSlashIndex(0);
                 e.target.style.height = 'auto';
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 76)}px`;
               }}
               onKeyDown={(e) => {
+                if (slashHits.length > 0) {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex((i) => Math.min(i + 1, slashHits.length - 1)); return; }
+                  if (e.key === 'ArrowUp') { e.preventDefault(); setSlashIndex((i) => Math.max(i - 1, 0)); return; }
+                  if (e.key === 'Escape') { e.preventDefault(); setSearchQuery(''); setSlashIndex(0); return; }
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    const item = slashHits[slashActive];
+                    if (item) { runSlashItem(item); return; }
+                  }
+                }
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   sendAsk();
                 }
               }}
+              aria-controls="dash-slash-list"
+              aria-activedescendant={slashHits.length ? `dash-slash-${slashActive}` : undefined}
               className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
               placeholder={bothText('Ask anything…', 'Ρώτα οτιδήποτε…')}
             />
@@ -542,7 +569,36 @@ export default function DashboardPage() {
               <Sparkles className="w-4 h-4" />
             </button>
           </div>
+          {slashHits.length > 0 && (
+            <div id="dash-slash-list" role="listbox" className="mt-1.5 max-h-44 overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-sm">
+              {slashHits.map((item, index) => (
+                <button
+                  key={item.en}
+                  id={`dash-slash-${index}`}
+                  role="option"
+                  aria-selected={index === slashActive}
+                  type="button"
+                  onMouseEnter={() => setSlashIndex(index)}
+                  onClick={() => runSlashItem(item)}
+                  className={cn('w-full px-3 py-2 text-left flex items-baseline gap-2', index === slashActive ? 'bg-stone-50' : '')}
+                >
+                  <span className="text-xs font-medium text-stone-900">{bothText(item.en, item.el)}</span>
+                  {item.kind === 'control' ? <span className="text-xs text-stone-400">{bothText('page action', 'ενέργεια σελίδας')}</span> : null}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {nowChips.map((chip) => (
+              <button
+                key={chip.en}
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: t(chip.askEn, chip.askEl) } }))}
+                className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+              >
+                {t(chip.en, chip.el)} · {chip.count}
+              </button>
+            ))}
             {dashStarters.map((prompt) => (
               <button
                 key={prompt.en}

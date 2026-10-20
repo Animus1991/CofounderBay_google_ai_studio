@@ -56,9 +56,17 @@ export function initErrorTracking(customProvider?: ErrorTrackingProvider): void 
     log.debug('error tracking running in console mode');
   }
 
-  // Route logger warn/error through the active provider.
+  // Route logger warn/error through the active provider. The console provider
+  // itself logs errors — without a guard the sink would recurse into itself.
+  let inSink = false;
   setLoggerSink((level, message, context) => {
-    if (level === 'error') provider.captureMessage(message, 'error', context);
+    if (level !== 'error' || inSink) return;
+    inSink = true;
+    try {
+      provider.captureMessage(message, 'error', context);
+    } finally {
+      inSink = false;
+    }
   });
 
   // Global safety nets.

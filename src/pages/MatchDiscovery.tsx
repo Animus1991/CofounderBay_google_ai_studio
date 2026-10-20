@@ -170,6 +170,7 @@ export default function MatchDiscovery() {
 
  return (
   <PageShell
+   sample={isDemoMode}
    title={t('Find co-founders', 'Βρες συνιδρυτές')}
    description={t('Members ranked by how well they complement your skills, stage, commitment and working hours — every score explained.', 'Μέλη ταξινομημένα κατά το πόσο συμπληρώνουν τις δεξιότητες, το στάδιο, τη δέσμευση και τις ώρες εργασίας σου — κάθε σκορ με εξήγηση.')}
   >

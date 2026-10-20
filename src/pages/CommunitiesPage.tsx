@@ -230,6 +230,7 @@ export default function CommunitiesPage() {
 
  return (
   <PageShell
+   sample={isDemoMode}
    title={t('Communities', 'Κοινότητες')}
    description={t('Connect with like-minded founders. Share insights, ask questions, and grow together.', 'Συνδέσου με ιδρυτές που σκέφτονται σαν εσένα. Μοιράσου γνώσεις, κάνε ερωτήσεις και εξελίξου μαζί τους.')}
    actions={

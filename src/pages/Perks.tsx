@@ -36,6 +36,17 @@ const PERK_VALUE_EL: Record<string, string> = {
  "$500 Bonus": "$500 μπόνους",
 };
 
+const PERK_DESC_EL: Record<string, string> = {
+ aws: "Το AWS Activate παρέχει σε startups τους πόρους που χρειάζονται για να ξεκινήσουν στο AWS.",
+ stripe: "Διεκπεραίωσε τα πρώτα $20,000 πληρωμών με μηδενικές προμήθειες μέσω Stripe Atlas.",
+ hubspot: "90% έκπτωση στη growth suite του HubSpot για τον πρώτο χρόνο.",
+ notion: "Απεριόριστα AI και ομαδικά χαρακτηριστικά για 6 μήνες, για να οργανώσεις το startup σου.",
+ gcp: "Το Google for Startups Cloud Program προσφέρει έως $200k σε πιστώσεις μέσα σε 2 χρόνια.",
+ intercom: "Η κορυφαία πλατφόρμα εξυπηρέτησης πελατών με μόνο $65/μήνα για τον πρώτο χρόνο.",
+ slack: "Φέρε την ομάδα σου κοντά με 80% έκπτωση στα πλάνα Pro ή Business+ του Slack.",
+ mercury: "Άνοιξε λογαριασμό Mercury και κέρδισε $500 με κατάθεση $50,000.",
+};
+
 type PerkCard = {
  id: string;
  name: string;
@@ -127,7 +138,7 @@ export default function Perks() {
  const featured = perks.find((perk) => perk.featured) ?? (isDemoMode ? perks.find((p) => p.id === 'aws') : undefined);
 
  return (
-  <PageShell title={t("Perks", "Παροχές")} description={isDemoMode
+  <PageShell sample={isDemoMode} title={t("Perks", "Παροχές")} description={isDemoMode
    ? t("Exclusive discounts and credits from our ecosystem partners.", "Αποκλειστικές εκπτώσεις και πιστώσεις από τους συνεργάτες του οικοσυστήματος.")
    : t("Founder programs published for members — apply on each provider's site.", "Προγράμματα ιδρυτών που δημοσιεύει η πλατφόρμα — αίτηση στο site του κάθε παρόχου.")}>
    <div className="space-y-6">
@@ -211,7 +222,7 @@ export default function Perks() {
         <FactLine items={[labelOf(perk.category)]} label={t('Category', 'Κατηγορία')} />
        </div>
        {perk.value ? <p className="text-sm font-medium text-stone-900">{t(perk.value, PERK_VALUE_EL[perk.value] ?? perk.value)}</p> : null}
-       <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{perk.description}</p>
+       <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(perk.description, PERK_DESC_EL[perk.id] ?? perk.description)}</p>
       </div>
       <div className="mt-6 pt-4 border-t border-stone-100">
        {isDemoMode ? (
@@ -240,7 +251,7 @@ export default function Perks() {
       {featured.logo}
      </div>
      <div className="flex-1 text-center md:text-left space-y-2">
-      <h3 className="text-md font-medium text-stone-900">{isDemoMode ? 'AWS Activate for CoFounderBay' : featured.name}</h3>
+      <h3 className="text-md font-medium text-stone-900">{isDemoMode ? t('AWS Activate for CoFounderBay', 'AWS Activate για το CoFounderBay') : featured.name}</h3>
       <p className="text-stone-500 max-w-2xl">{isDemoMode
        ? t('Get exclusive access to the AWS Activate program through our partnership. Includes $100,000 in credits, technical support, and training resources.', 'Αποκλειστική πρόσβαση στο πρόγραμμα AWS Activate μέσω της συνεργασίας μας. Περιλαμβάνει $100,000 πιστώσεις, τεχνική υποστήριξη και εκπαιδευτικούς πόρους.')
        : featured.description}</p>

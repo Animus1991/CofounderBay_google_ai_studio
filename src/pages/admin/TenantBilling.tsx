@@ -10,6 +10,7 @@ import { db } from "../../firebase";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { useAuth } from "../../App";
 
 interface TenantBillingProps {
  tenant: Tenant;
@@ -23,6 +24,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
  const [requestState, setRequestState] = useState<string>('');
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'overview' | 'seats' | 'history'>('overview');
+ const { isDemoMode } = useAuth();
 
  useEffect(() => {
   async function loadBillingData() {
@@ -30,7 +32,8 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
     const [sub, invs, memberSnap] = await Promise.all([
      billingService.getSubscription(tenant.id, 'tenant'),
      billingService.getInvoices(tenant.id, 'tenant'),
-     getDocs(query(collection(db, 'users'), where('tenantId', '==', tenant.id))).catch(() => null),
+     // Sample account: member documents deny signed-out reads.
+     isDemoMode ? Promise.resolve(null) : getDocs(query(collection(db, 'users'), where('tenantId', '==', tenant.id))).catch(() => null),
     ]);
     setSubscription(sub);
     setInvoices(invs);
@@ -42,14 +45,18 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
    }
   }
   loadBillingData();
- }, [tenant.id]);
+ }, [tenant.id, isDemoMode]);
 
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
 
  const requestBilling = async (kind: 'upgrade' | 'seats', label: string) => {
   if (!subscription) return;
-  await billingService.requestChange(kind, { subscriptionId: subscription.id, tenantId: tenant.id }).catch(() => {});
-  setRequestState(label);
+  try {
+   await billingService.requestChange(kind, { subscriptionId: subscription.id, tenantId: tenant.id });
+   setRequestState(label);
+  } catch {
+   setRequestState(t('Sign in to send a billing request.', 'Συνδέσου για να στείλεις αίτημα χρέωσης.'));
+  }
   setTimeout(() => setRequestState(''), 2500);
  };
 
@@ -84,8 +91,9 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
   <div className="space-y-8 max-w-6xl mx-auto">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Organization Billing', 'Χρέωση οργανισμού')}</h2>
+     <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Organization Billing', 'Χρέωση οργανισμού')}</h1>
      <p className="text-stone-500">{t('Manage subscriptions, seat allocations, and billing for', 'Διαχειρίσου συνδρομές, θέσεις και χρέωση για')} {tenant.name}.</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — billing data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα χρέωσης εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-3">
      {requestState && <span className="self-center text-xs font-medium text-green-700 bg-green-50 px-3 py-2 rounded-xl">{requestState}</span>}

@@ -336,7 +336,7 @@ export default function BrandingSettings({ user }: BrandingSettingsProps) {
      <Card title={t('Organization Info', 'Στοιχεία οργανισμού')}>
       <div className="space-y-4">
        <div>
-        <label className="text-micro">{t('Slug', 'Slug')}</label>
+        <label className="text-micro">{t('Slug', 'Αναγνωριστικό')}</label>
         <p className="text-sm font-mono text-stone-900 bg-stone-50 p-2 rounded border border-stone-100 mt-1">{tenant.slug}</p>
        </div>
        <div>

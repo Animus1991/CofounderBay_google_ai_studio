@@ -10,6 +10,7 @@ import { keys, readIds, readSessions, readValue, writeValue } from "../../lib/lo
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { useAuth } from "../../App";
 
 type PayCard = { id: string; brand: string; last4: string; expiry: string };
 
@@ -29,6 +30,7 @@ export default function Billing({ user }: BillingProps) {
  const [requestNote, setRequestNote] = useState('');
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'plan' | 'payment' | 'history'>('plan');
+ const { isDemoMode } = useAuth();
 
  useEffect(() => {
   async function loadBillingData() {
@@ -109,8 +111,9 @@ export default function Billing({ user }: BillingProps) {
   <div className="space-y-8 max-w-4xl mx-auto">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing & Subscription', 'Χρέωση και συνδρομή')}</h2>
+     <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing & Subscription', 'Χρέωση και συνδρομή')}</h1>
      <p className="text-stone-500">{t('Manage your plan, payment methods, and billing history.', 'Διαχείριση πακέτου, μεθόδων πληρωμής και ιστορικού χρέωσης.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — billing data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα χρέωσης εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
    </div>
 

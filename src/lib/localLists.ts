@@ -203,6 +203,7 @@ export const keys = {
   activity: 'cfb.activity',
   chat: 'cfb.chat',
   assistant: 'cfb.assistant',
+  assistantFeedback: 'cfb.assistantFeedback',
   tasks: 'cfb.workspaceTasks',
   invites: 'cfb.founderInvites',
   needs: 'cfb.needCards',
@@ -947,6 +948,20 @@ export function updateAssistantTurn(id: string, patch: Partial<Pick<AssistantTur
 export function clearAssistant(): AssistantTurn[] {
   writeJson(keys.assistant, []);
   return [];
+}
+
+export type AssistantFeedback = { turnId: string; value: 'up' | 'down'; at: string };
+
+export function readAssistantFeedback(): AssistantFeedback[] {
+  const stored = readJson<AssistantFeedback[] | null>(keys.assistantFeedback, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function writeAssistantFeedback(turnId: string, value: 'up' | 'down'): AssistantFeedback[] {
+  const entry: AssistantFeedback = { turnId, value, at: new Date().toISOString() };
+  const next = [...readAssistantFeedback().filter((item) => item.turnId !== turnId), entry].slice(-100);
+  writeJson(keys.assistantFeedback, next);
+  return next;
 }
 
 /** Search bodies the Messages page already stores. */

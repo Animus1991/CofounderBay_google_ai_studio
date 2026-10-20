@@ -325,7 +325,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  const filteredCommunities = isDemoMode ? demoCommunities : (liveCommunities ?? []);
 
  return (
-  <PageShell title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Explore founders, communities, opportunities and events in your ecosystem.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις.")} noPadding={false}>
+  <PageShell sample={isDemoMode} title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Explore founders, communities, opportunities and events in your ecosystem.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις.")} noPadding={false}>
   <div className="space-y-8">
    {/* Filter Overlay */}
    <AnimatePresence>

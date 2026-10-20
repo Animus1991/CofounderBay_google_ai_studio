@@ -265,6 +265,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
  return (
   <PageShell
+   sample={isDemoMode}
    title={t("Venture Builder", "Χώρος εργασίας")}
    description={t("Your startup's central workspace — tasks, canvas, milestones, and calendar.", "Ο κεντρικός χώρος εργασίας του startup — εργασίες, canvas, ορόσημα και ημερολόγιο.")}
    maxWidth="full"

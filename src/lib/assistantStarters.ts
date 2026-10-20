@@ -34,9 +34,57 @@ export const PAGE_STARTERS: Record<string, { en: string; el: string }[]> = {
   '/quiz': [{ en: 'What is my fit check?', el: 'Ποιο είναι το fit check μου;' }],
 };
 
-export function startersFor(pathname: string): { en: string; el: string }[] {
+export type Starter = { en: string; el: string };
+
+/** Mentor also serves Advisor accounts; Founder keeps the default set. */
+const ROLE_STARTERS: Record<'mentor' | 'investor', Starter[]> = {
+  mentor: [
+    { en: 'Who booked a session with me?', el: 'Ποιος έκλεισε συνεδρία μαζί μου;' },
+    { en: 'What should I prepare for my next session?', el: 'Τι να ετοιμάσω για την επόμενη συνεδρία;' },
+    { en: 'Which founders match my expertise?', el: 'Ποια ιδρυτικά μέλη ταιριάζουν στην εμπειρία μου;' },
+  ],
+  investor: [
+    { en: 'Which founders match my thesis?', el: 'Ποια ιδρυτικά μέλη ταιριάζουν στη θέση μου;' },
+    { en: 'What changed in my watchlist?', el: 'Τι άλλαξε στη λίστα παρακολούθησης;' },
+    { en: 'Which rounds are open now?', el: 'Ποιοι γύροι είναι ανοιχτοί τώρα;' },
+  ],
+};
+
+export function roleStarters(role?: string | null): Starter[] {
+  const key = (role || '').toLowerCase();
+  if (key.includes('investor')) return ROLE_STARTERS.investor;
+  if (key.includes('mentor') || key.includes('advisor')) return ROLE_STARTERS.mentor;
+  return [];
+}
+
+export function startersFor(pathname: string, role?: string | null): { en: string; el: string }[] {
   const path = pathname.split('?')[0]?.replace(/\/+$/, '') || '/dashboard';
   const page = PAGE_STARTERS[path] ?? PAGE_STARTERS[path.split('/').slice(0, 2).join('/')] ?? [];
-  const rest = STARTERS.filter((item) => !page.some((p) => p.en === item.en));
-  return [...page, ...rest].slice(0, 4);
+  const roleList = roleStarters(role);
+  const rest = STARTERS.filter((item) => !page.some((p) => p.en === item.en) && !roleList.some((r) => r.en === item.en));
+  return [...roleList, ...page, ...rest].slice(0, 4);
+}
+
+const foldText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** The slash-menu query: a leading '/', a single token, lower-cased. */
+export function slashQuery(input: string): string {
+  const query = input.startsWith('/') ? input.trim().toLowerCase() : '';
+  return query && !query.includes(' ') ? query : '';
+}
+
+/**
+ * Accent-insensitive slash filtering shared by the chat input and the
+ * dashboard ask box: '/' alone lists everything, otherwise the token must
+ * prefix the command or appear in the EN/EL label.
+ */
+export function filterSlash<T extends { cmd?: string; en: string; el: string }>(items: T[], input: string): T[] {
+  const query = slashQuery(input);
+  if (!query) return [];
+  if (query === '/') return items;
+  const needle = foldText(query.slice(1));
+  return items.filter((item) =>
+    (item.cmd ? item.cmd.startsWith(query) : false)
+    || foldText(item.en).includes(needle)
+    || foldText(item.el).includes(needle));
 }

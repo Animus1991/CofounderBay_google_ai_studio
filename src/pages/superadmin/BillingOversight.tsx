@@ -11,6 +11,7 @@ import { db } from "../../firebase";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { useAuth } from "../../App";
 
 const CHART_COLORS = ['#292524', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4'];
 
@@ -23,10 +24,17 @@ export default function BillingOversight() {
  const [subSearch, setSubSearch] = useState('');
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'metrics' | 'plans' | 'subscriptions' | 'invoices'>('metrics');
+ const { isDemoMode } = useAuth();
 
  useEffect(() => {
   let mounted = true;
   billingService.getPlans().then((p) => { if (mounted) setPlans(p); }).catch(() => {});
+  // Sample account: billing collections deny signed-out reads, so the page shows
+  // its honest empty states instead of opening denied listeners.
+  if (isDemoMode) {
+   setLoading(false);
+   return () => { mounted = false; };
+  }
   const unSub = onSnapshot(collection(db, 'subscriptions'), (snap) => {
    if (!mounted) return;
    setSubscriptions(snap.docs.map((d) => ({ ...(d.data() as Subscription), id: d.id })));
@@ -42,7 +50,7 @@ export default function BillingOversight() {
    setUserNames(names);
   }).catch(() => {});
   return () => { mounted = false; unSub(); unInv(); };
- }, []);
+ }, [isDemoMode]);
 
  const priceOf = (planId?: string, cycle?: string) => {
   const plan = plans.find((p) => p.id === planId);
@@ -110,8 +118,9 @@ export default function BillingOversight() {
   <div className="space-y-8">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing Oversight', 'Εποπτεία χρέωσης')}</h2>
+     <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing Oversight', 'Εποπτεία χρέωσης')}</h1>
      <p className="text-stone-500">{t('Global platform billing metrics, plan management, and subscription monitoring.', 'Καθολικά μεγέθη χρέωσης, διαχείριση πλάνων και παρακολούθηση συνδρομών.')}</p>
+     {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — billing data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα χρέωσης εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-3">
      <Button variant="outline" className="gap-2" onClick={exportCsv}>

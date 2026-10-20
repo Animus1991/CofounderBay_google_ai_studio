@@ -286,7 +286,7 @@ export default function Network({ user }: NetworkProps) {
   const compareRows = picked.map((id) => comparePool.find((conn) => conn.id === id)).filter((conn): conn is NetworkConnection => Boolean(conn));
 
   return (
-    <PageShell title={t('Network', 'Δίκτυο')} description={t('Your connections, saved people, endorsements and need cards.', 'Οι συνδέσεις σου, αποθηκευμένες επαφές, συστάσεις και κάρτες ανάγκης.')}>
+    <PageShell sample={isDemoMode} title={t('Network', 'Δίκτυο')} description={t('Your connections, saved people, endorsements and need cards.', 'Οι συνδέσεις σου, αποθηκευμένες επαφές, συστάσεις και κάρτες ανάγκης.')}>
       <div className="space-y-6">
         <button
           type="button"
@@ -339,7 +339,7 @@ export default function Network({ user }: NetworkProps) {
                 <motion.div key={conn.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05, duration: 0.4 }}>
                   <Card className={cn('group hover:border-stone-300 hover:shadow-md transition-all p-5 border-stone-100 h-full', conn.status === 'Incoming' && 'border-stone-900/20 bg-stone-50/40')}>
                     <div className="flex flex-col items-center text-center space-y-4 h-full">
-                      <button type="button" className="relative block mb-3" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
+                      <button type="button" className="relative flex flex-col items-center mb-3 shrink-0" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
                         <Avatar src={conn.avatar} fallback={conn.fullName} size="xl" className="rounded-2xl" />
                         <div className={cn('absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white', conn.status === 'Connected' ? (isOnline(conn.person) ? 'bg-emerald-500' : 'bg-stone-300') : 'bg-amber-400')} />
                       </button>

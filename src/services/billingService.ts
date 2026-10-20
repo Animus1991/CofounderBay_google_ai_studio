@@ -185,11 +185,15 @@ export const billingService = {
 
   getSubscription: async (id: string, type: 'user' | 'tenant'): Promise<Subscription | null> => {
     const docId = `${type}-${id}`;
-    try {
-      const snap = await getDoc(doc(db, 'subscriptions', docId));
-      if (snap.exists()) return { ...(snap.data() as Subscription), id: snap.id };
-    } catch (error) {
-      console.error('Error reading subscription:', error);
+    // Signed-out sessions (incl. demo mode) cannot read billing docs — skip the
+    // denied read and derive the view below.
+    if (auth.currentUser) {
+      try {
+        const snap = await getDoc(doc(db, 'subscriptions', docId));
+        if (snap.exists()) return { ...(snap.data() as Subscription), id: snap.id };
+      } catch (error) {
+        console.error('Error reading subscription:', error);
+      }
     }
     // No billing record yet: derive an honest view from the plan the account actually chose.
     const planId = planIdForAccount(type);
@@ -206,6 +210,7 @@ export const billingService = {
   },
 
   getInvoices: async (id: string, type: 'user' | 'tenant'): Promise<Invoice[]> => {
+    if (!auth.currentUser) return [];
     try {
       const field = type === 'user' ? 'userId' : 'tenantId';
       const snap = await getDocs(query(collection(db, 'invoices'), where(field, '==', id)));

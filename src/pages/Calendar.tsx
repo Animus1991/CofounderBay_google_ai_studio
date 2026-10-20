@@ -300,6 +300,7 @@ export default function Calendar() {
 
  return (
   <PageShell
+   sample={isDemoMode}
    title={t("Schedule", "Πρόγραμμα")}
    description={t("Manage meetings, track deadlines, and stay aligned with your objectives.", "Διαχειρίσου συναντήσεις και προθεσμίες και μείνε σε ευθυγράμμιση με τους στόχους σου.")}
    actions={
