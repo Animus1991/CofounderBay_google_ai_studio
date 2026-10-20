@@ -42,7 +42,7 @@ import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { User } from "../types";
 import { useAuth } from "../App";
-import { readDiscoveryFilters, writeDiscoveryFilters } from "../lib/localLists";
+import { readDiscoveryFilters, writeDiscoveryFilters, addSavedSearch, removeSavedSearch, readSavedSearches, keys } from "../lib/localLists";
 import { cn } from "../lib/utils";
 import { explainMatch } from "../lib/matchReason";
 import { bothText, labelOf } from "../lib/labels";
@@ -53,12 +53,19 @@ import { avatarOf, isOnline } from "../lib/peopleSource";
 import PersonHovercard from "../components/ui/PersonHovercard";
 import Avatar from "../components/ui/Avatar";
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from "../lib/searchQualifiers";
+import { formatDate, formatTime } from "../lib/dates";
+import { coverFor } from "../data/photos";
+import { usePageControls } from "../lib/pageControls";
+import { useStored } from "../lib/useStored";
 
 interface DiscoveryProps {
  user: User;
 }
 
 type CategoryType = "All" | "Matches" | "Communities" | "Opportunities" | "Events";
+
+const availableSkills = ["React", "Node.js", "Python", "AI/ML", "Product Management", "Growth Marketing", "UI/UX Design", "Blockchain", "Sales", "Strategy"];
+const availableIndustries = ["SaaS", "AI/ML", "Fintech", "Healthtech", "Sustainability", "Web3", "E-commerce"];
 
 export default function Discovery({ user }: DiscoveryProps) {
  useLanguage();
@@ -82,10 +89,40 @@ export default function Discovery({ user }: DiscoveryProps) {
   writeDiscoveryFilters({ q: searchQuery, skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations });
  }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const savedSearches = useStored(readSavedSearches, [keys.savedSearches]);
+ const hasActiveFilters = Boolean(searchQuery.trim() || selectedSkills.length || selectedIndustries.length || selectedStages.length || selectedLocations.length);
+
+ const clearFilters = () => {
+  setSearchQuery('');
+  setSelectedSkills([]);
+  setSelectedIndustries([]);
+  setSelectedStages([]);
+  setSelectedLocations([]);
+ };
+ const saveCurrentSearch = () => {
+  const parts = [searchQuery.trim(), ...selectedSkills, ...selectedIndustries, ...selectedStages, ...selectedLocations].filter(Boolean);
+  addSavedSearch(
+   { q: searchQuery.trim(), skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations },
+   parts.join(' · ').slice(0, 60) || 'Search',
+  );
+ };
+ const applySearch = (item: { q: string; skills: string[]; industries: string[]; stages: string[]; locations: string[] }) => {
+  setSearchQuery(item.q);
+  setSelectedSkills(item.skills);
+  setSelectedIndustries(item.industries);
+  setSelectedStages(item.stages);
+  setSelectedLocations(item.locations);
+ };
+
+ usePageControls(() => [
+  { id: 'open-filters', en: 'Open filters', el: 'Άνοιγμα φίλτρων', run: () => setIsFilterOpen(true) },
+  ...(hasActiveFilters ? [
+   { id: 'save-search', en: 'Save this search', el: 'Αποθήκευση αναζήτησης', run: saveCurrentSearch },
+   { id: 'clear-filters', en: 'Clear filters', el: 'Καθαρισμός φίλτρων', run: clearFilters },
+  ] : []),
+ ], [hasActiveFilters, searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
 
  const categories: CategoryType[] = ["All", "Matches", "Communities", "Opportunities", "Events"];
- const availableSkills = ["React", "Node.js", "Python", "AI/ML", "Product Management", "Growth Marketing", "UI/UX Design", "Blockchain", "Sales", "Strategy"];
- const availableIndustries = ["SaaS", "AI/ML", "Fintech", "Healthtech", "Sustainability", "Web3", "E-commerce"];
 
  useEffect(() => {
   if (searchQuery.length > 1) {
@@ -113,7 +150,9 @@ export default function Discovery({ user }: DiscoveryProps) {
   verified: person.verified,
   profile: {
    headline: person.headline,
+   headlineEl: person.headlineEl,
    bio: person.bio,
+   bioEl: person.bioEl,
    industry: person.industry ? [person.industry] : [],
    location: person.location,
    stage: person.stage,
@@ -225,17 +264,65 @@ export default function Discovery({ user }: DiscoveryProps) {
   });
  }, [users, searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations, user]);
 
- const filteredOpportunities = useMemo(() => [
-  { id: 1, title: "EcoSphere Accelerator", type: "Accelerator", location: "Remote", deadline: "Oct 30", tags: ["Sustainability", "Seed"], photo: "https://picsum.photos/seed/eco/800/600", description: "A 12-week program for early-stage startups building solutions for a sustainable future." },
-  { id: 2, title: "Web3 Founders Grant", type: "Grant", location: "Global", deadline: "Nov 15", tags: ["Crypto", "Infrastructure"], photo: "https://picsum.photos/seed/web3/800/600", description: "Equity-free funding for developers building core Web3 infrastructure and protocols." },
-  { id: 3, title: "AI Innovation Lab", type: "Incubator", location: "Berlin", deadline: "Dec 05", tags: ["AI", "Enterprise"], photo: "https://picsum.photos/seed/ai/800/600", description: "Deep-tech incubation for AI startups focusing on enterprise automation and efficiency." },
+ const demoOpportunities = useMemo(() => {
+  // Demo deadlines stay in the future relative to today.
+  const ahead = (days: number) => formatDate(new Date(Date.now() + days * 86_400_000), { month: 'short', day: 'numeric' });
+  return [
+   { id: 'd1', title: "EcoSphere Accelerator", type: "Accelerator", location: "Remote", deadline: ahead(9), tags: ["Sustainability", "Seed"], photo: coverFor('d1', ["EcoSphere Accelerator", "Accelerator", "Sustainability", "Seed"], 800, 600), description: "A 12-week program for early-stage startups building solutions for a sustainable future." },
+   { id: 'd2', title: "Web3 Founders Grant", type: "Grant", location: "Global", deadline: ahead(25), tags: ["Crypto", "Infrastructure"], photo: coverFor('d2', ["Web3 Founders Grant", "Grant", "Crypto", "Infrastructure"], 800, 600), description: "Equity-free funding for developers building core Web3 infrastructure and protocols." },
+   { id: 'd3', title: "AI Innovation Lab", type: "Incubator", location: "Berlin", deadline: ahead(45), tags: ["AI", "Enterprise"], photo: coverFor('d3', ["AI Innovation Lab", "Incubator", "AI", "Enterprise"], 800, 600), description: "Deep-tech incubation for AI startups focusing on enterprise automation and efficiency." },
+  ];
+ }, []);
+
+ const demoCommunities = useMemo(() => [
+  { id: 'dc1', name: "SaaS Founders Collective", members: "1.2k", description: "A private network for B2B SaaS founders to share insights and scale.", icon: Rocket, status: "ACTIVE" },
+  { id: 'dc2', name: "AI Builders Network", members: "850", description: "Connecting engineers and product managers building the next generation of AI.", icon: Zap, status: "STABLE" },
+  { id: 'dc3', name: "Impact Ventures Hub", members: "540", description: "Dedicated to startups solving global environmental and social challenges.", icon: Globe, status: "EMERGING" },
  ], []);
 
- const filteredCommunities = useMemo(() => [
-  { id: 1, name: "SaaS Founders Collective", members: "1.2k", activity: "High", description: "A private network for B2B SaaS founders to share insights and scale.", icon: Rocket, status: "ACTIVE", growth: "+12%" },
-  { id: 2, name: "AI Builders Network", members: "850", activity: "Very High", description: "Connecting engineers and product managers building the next generation of AI.", icon: Zap, status: "STABLE", growth: "+24%" },
-  { id: 3, name: "Impact Ventures Hub", members: "540", activity: "Medium", description: "Dedicated to startups solving global environmental and social challenges.", icon: Globe, status: "EMERGING", growth: "+8%" },
- ], []);
+ // Real accounts discover the platform-published programs and member communities.
+ const [liveOpportunities, setLiveOpportunities] = useState<typeof demoOpportunities | null>(null);
+ const [liveCommunities, setLiveCommunities] = useState<typeof demoCommunities | null>(null);
+ useEffect(() => {
+  if (isDemoMode) { setLiveOpportunities(null); setLiveCommunities(null); return; }
+  const stops: (() => void)[] = [];
+  let cancelled = false;
+  void (async () => {
+   try {
+    const { onCatalog, str, strList, toMillis } = await import('../lib/catalog');
+    const { onCommunities } = await import('../lib/communities');
+    const stop1 = await onCatalog('programs', (docs) => setLiveOpportunities(docs.map((doc) => {
+     const deadline = toMillis(doc.deadline);
+     return {
+      id: doc.id,
+      title: str(doc.title, 'Program'),
+      type: str(doc.type, 'Accelerator'),
+      location: str(doc.location, ''),
+      deadline: deadline ? formatDate(new Date(deadline), { month: 'short', day: 'numeric' }) : str(doc.deadline, ''),
+      tags: strList(doc.focus ?? doc.tags),
+      photo: str(doc.image ?? doc.imageUrl),
+      description: str(doc.description),
+     };
+    })), () => setLiveOpportunities([]));
+    if (cancelled) { stop1(); return; }
+    stops.push(stop1);
+    const stop2 = await onCommunities((docs) => setLiveCommunities(docs.map((doc) => ({
+     id: doc.id,
+     name: doc.name,
+     members: String(doc.memberIds.length),
+     description: doc.description,
+     icon: Users,
+     status: doc.postCount > 0 ? 'ACTIVE' : 'EMERGING',
+    }))), () => setLiveCommunities([]));
+    if (cancelled) { stop2(); return; }
+    stops.push(stop2);
+   } catch { if (!cancelled) { setLiveOpportunities([]); setLiveCommunities([]); } }
+  })();
+  return () => { cancelled = true; stops.forEach((stop) => stop()); };
+ }, [isDemoMode]);
+
+ const filteredOpportunities = isDemoMode ? demoOpportunities : (liveOpportunities ?? []);
+ const filteredCommunities = isDemoMode ? demoCommunities : (liveCommunities ?? []);
 
  return (
   <PageShell title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Explore founders, communities, opportunities and events in your ecosystem.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις.")} noPadding={false}>
@@ -411,7 +498,29 @@ export default function Discovery({ user }: DiscoveryProps) {
     >
      <SlidersHorizontal className="w-3.5 h-3.5" /> {t('Filters', 'Φίλτρα')}
     </Button>
+    <Button
+     variant="outline"
+     size="icon"
+     title={t('Save this search', 'Αποθήκευση αναζήτησης')}
+     aria-label={t('Save this search', 'Αποθήκευση αναζήτησης')}
+     disabled={!hasActiveFilters}
+     className="h-8 w-8 min-h-8 min-w-8 p-0 rounded-xl border-stone-200 flex items-center justify-center disabled:opacity-40"
+     onClick={saveCurrentSearch}
+    >
+     <Bookmark className="w-3.5 h-3.5" />
+    </Button>
    </div>
+   {savedSearches.length > 0 && (
+    <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+     <span className="text-xs text-stone-400">{t('Saved:', 'Αποθηκευμένες:')}</span>
+     {savedSearches.map((item) => (
+      <span key={item.id} className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-stone-50 border border-stone-100 text-xs font-medium text-stone-600">
+       <button type="button" onClick={() => applySearch(item)} className="hover:text-stone-900 max-w-48 truncate">{item.label}</button>
+       <button type="button" onClick={() => removeSavedSearch(item.id)} aria-label={t('Remove saved search', 'Διαγραφή αποθηκευμένης αναζήτησης')} className="p-0.5 rounded hover:bg-stone-200 text-stone-400 hover:text-stone-900"><X className="w-3 h-3" /></button>
+      </span>
+     ))}
+    </div>
+   )}
    {searchQuery.trim().length > 1 && (
     <p className="text-xs text-stone-400 -mt-1">{t(`Names, skills, and industries for “${searchQuery.trim()}”.`, `Ονόματα, δεξιότητες και κλάδοι για «${searchQuery.trim()}».`)}</p>
    )}
@@ -493,7 +602,7 @@ export default function Discovery({ user }: DiscoveryProps) {
              <PersonHovercard person={user.id || user.name}>
               <h4 className="text-base font-semibold text-stone-900">{user.name}</h4>
              </PersonHovercard>
-             <p className="text-sm text-stone-500 line-clamp-1 mt-0.5">{user.profile?.headline}</p>
+             <p className="text-sm text-stone-500 line-clamp-1 mt-0.5">{t(user.profile?.headline ?? '', user.profile?.headlineEl ?? user.profile?.headline ?? '')}</p>
             </div>
             <FactLine
              items={[labelOf(user.role), Array.isArray(user.profile?.industry) ? user.profile.industry[0] : user.profile?.industry, user.profile?.location]}
@@ -503,7 +612,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             <div className="pt-2 border-t border-stone-50 flex items-center justify-between">
              <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-xs text-stone-400">{bothText("Available", "Διαθέσιμος")}{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
+              <span className="text-xs text-stone-400">{bothText("Available", "Σε διάθεση")}{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
              </div>
              <div className="flex items-center gap-1.5">
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
@@ -541,6 +650,14 @@ export default function Discovery({ user }: DiscoveryProps) {
        "grid gap-4",
        viewMode === "grid" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
       )}>
+       {filteredOpportunities.length === 0 && (
+        <EmptyHint
+         title={t('No open opportunities yet.', 'Δεν υπάρχουν ακόμη ανοιχτές ευκαιρίες.')}
+         detail={t('New programs are published here as they open. Ask the assistant to watch for your stage.', 'Νέα προγράμματα δημοσιεύονται εδώ μόλις ανοίξουν. Ζήτα από τον βοηθό να σε ενημερώσει για το στάδιό σου.')}
+        >
+         <AskLink prompt="Notify me about new programs for my stage" />
+        </EmptyHint>
+       )}
        {filteredOpportunities.map((opp, i) => (
         <motion.div 
          key={opp.id}
@@ -560,7 +677,11 @@ export default function Discovery({ user }: DiscoveryProps) {
           "relative overflow-hidden shrink-0",
           viewMode === "grid" ? "h-40 w-full" : "h-32 w-full md:w-48"
          )}>
-          <img src={opp.photo} alt="" className="w-full h-full object-cover" />
+          {opp.photo ? (
+           <img src={opp.photo} alt="" className="w-full h-full object-cover" />
+          ) : (
+           <div className="w-full h-full bg-stone-800" aria-hidden />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
           <div className="absolute top-3 left-3">
            <span className="bg-white/80 backdrop-blur-sm text-stone-700 text-xs font-semibold tracking-wider px-2 py-0.5 rounded-md">
@@ -609,6 +730,9 @@ export default function Discovery({ user }: DiscoveryProps) {
        </Link>
       </div>
       <div className="border border-stone-100 rounded-2xl overflow-hidden divide-y divide-stone-100">
+       {filteredCommunities.length === 0 && (
+        <p className="p-6 text-sm text-stone-400 text-center">{t('No communities yet — create one on the Communities page.', 'Καμία κοινότητα ακόμη — δημιούργησε μία στη σελίδα Κοινότητες.')}</p>
+       )}
        {filteredCommunities.map((comm, i) => (
         <motion.div
          key={comm.id}
@@ -638,7 +762,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             <p className="text-sm font-semibold text-stone-900">{comm.members}</p>
             <p className="text-xs text-stone-400">{t('members', 'μέλη')}</p>
            </div>
-           <Link to={`/communities/${comm.id}`}>
+           <Link to="/communities" aria-label={t('Open communities', 'Άνοιγμα κοινοτήτων')}>
             <ArrowRight className="w-4 h-4 text-stone-300 group-hover:text-stone-600 transition-colors" />
            </Link>
           </div>
@@ -661,15 +785,15 @@ export default function Discovery({ user }: DiscoveryProps) {
 
       <div className="space-y-3">
        {[
-        { topic: "Generative AI", growth: "+140%", count: "240 posts", trend: [10, 25, 45, 30, 60, 85, 100] },
-        { topic: "Sustainable Tech", growth: "+85%", count: "180 posts", trend: [20, 15, 35, 40, 55, 70, 80] },
-        { topic: "Remote Work 2.0", growth: "+42%", count: "120 posts", trend: [50, 45, 40, 42, 45, 48, 52] },
-        { topic: "Fintech Regulation", growth: "+30%", count: "95 posts", trend: [10, 12, 15, 18, 22, 25, 30] },
+        { topic: "Generative AI", topicEl: "Γεννητική ΤΝ", growth: "+140%", count: 240, trend: [10, 25, 45, 30, 60, 85, 100] },
+        { topic: "Sustainable Tech", topicEl: "Βιώσιμη τεχνολογία", growth: "+85%", count: 180, trend: [20, 15, 35, 40, 55, 70, 80] },
+        { topic: "Remote Work 2.0", topicEl: "Απομακρυσμένη εργασία 2.0", growth: "+42%", count: 120, trend: [50, 45, 40, 42, 45, 48, 52] },
+        { topic: "Fintech Regulation", topicEl: "Ρύθμιση fintech", growth: "+30%", count: 95, trend: [10, 12, 15, 18, 22, 25, 30] },
        ].map((trend) => (
         <div key={trend.topic} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${trend.topic}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${trend.topic}`); }} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
          <div>
-          <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{trend.topic}</p>
-          <p className="text-xs text-stone-400">{trend.count}</p>
+          <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{t(trend.topic, trend.topicEl)}</p>
+          <p className="text-xs text-stone-400">{t(`${trend.count} posts`, `${trend.count} αναρτήσεις`)}</p>
          </div>
          <div className="flex items-center gap-2">
           <svg className="w-12 h-5 overflow-visible">
@@ -701,18 +825,18 @@ export default function Discovery({ user }: DiscoveryProps) {
       </div>
       <div className="space-y-2">
        {[
-        { title: "Founder Mixer SF", date: "Oct 18", time: "6:00 PM", type: "In-Person", capacity: "85%", status: "FILLING" },
-        { title: "AI Product Workshop", date: "Oct 20", time: "10:00 AM", type: "Virtual", capacity: "40%", status: "OPEN" },
-        { title: "Seed Funding Webinar", date: "Oct 25", time: "2:00 PM", type: "Virtual", capacity: "95%", status: "LAST_CALL" },
+        { title: "Founder Mixer SF", at: new Date(Date.now() + 2 * 86_400_000).setHours(18, 0, 0, 0), type: "In-Person", capacity: "85%", status: "FILLING" },
+        { title: "AI Product Workshop", at: new Date(Date.now() + 4 * 86_400_000).setHours(10, 0, 0, 0), type: "Virtual", capacity: "40%", status: "OPEN" },
+        { title: "Seed Funding Webinar", at: new Date(Date.now() + 9 * 86_400_000).setHours(14, 0, 0, 0), type: "Virtual", capacity: "95%", status: "LAST_CALL" },
        ].map((event) => (
         <div key={event.title} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-stone-50 hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
          <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 flex flex-col items-center justify-center shrink-0">
-          <span className="text-[8px] font-semibold text-stone-400">{event.date.split(' ')[0]}</span>
-          <span className="text-base font-bold text-stone-900">{event.date.split(' ')[1]}</span>
+          <span className="text-[8px] font-semibold text-stone-400">{formatDate(event.at, { month: 'short' })}</span>
+          <span className="text-base font-bold text-stone-900">{formatDate(event.at, { day: 'numeric' })}</span>
          </div>
          <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-stone-900 truncate">{event.title}</h4>
-          <p className="text-xs text-stone-400">{event.time} · {t(event.type, event.type === 'Virtual' ? 'Εικονικά' : 'Δια ζώσης')}</p>
+          <p className="text-xs text-stone-400">{formatTime(event.at)} · {t(event.type, event.type === 'Virtual' ? 'Εικονικά' : 'Δια ζώσης')}</p>
           <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden mt-1">
            <motion.div initial={{ width: 0 }} animate={{ width: event.capacity }}
             className={cn("h-full", event.status === "LAST_CALL" ? "bg-amber-400" : "bg-stone-300")} />

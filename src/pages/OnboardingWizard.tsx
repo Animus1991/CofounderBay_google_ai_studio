@@ -338,7 +338,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">{t('What brings you to CoFounderBay?', 'Τι σε φέρνει στο CoFounderBay;')}</h2>
+       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What brings you to CoFounderBay?', 'Τι σε φέρνει στο CoFounderBay;')}</h2>
        <p className="text-stone-500">{t('Select the role that best describes your current focus.', 'Διάλεξε τον ρόλο που περιγράφει καλύτερα την τρέχουσα εστίασή σου.')}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -362,7 +362,7 @@ export default function OnboardingWizard() {
           "w-8 h-8 mb-4",
           formData.role === role.id ? "text-white" : "text-stone-400 group-hover:text-stone-900"
          )} />
-         <h3 className="font-medium text-lg">{role.label}</h3>
+         <h3 className="font-semibold text-base">{role.label}</h3>
          <p className={cn(
           "text-sm mt-1",
           formData.role === role.id ? "text-stone-300" : "text-stone-500"
@@ -377,7 +377,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h2>
+       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h2>
        <p className="text-stone-500">{t('This helps us match you with the right opportunities.', 'Έτσι σε αντιστοιχίζουμε με τις σωστές ευκαιρίες.')}</p>
       </div>
       <div className="space-y-4">
@@ -499,7 +499,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">{t('What are your startup goals?', 'Ποιοι είναι οι στόχοι της startup σου;')}</h2>
+       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What are your startup goals?', 'Ποιοι είναι οι στόχοι της startup σου;')}</h2>
        <p className="text-stone-500">{t('Define your current stage and commitment level.', 'Όρισε το τρέχον στάδιο και το επίπεδο δέσμευσης.')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -583,7 +583,7 @@ export default function OnboardingWizard() {
        <Check className="w-5 h-5" />
       </div>
       <div className="space-y-2">
-       <h2 className="text-lg font-medium text-stone-900">{t("You're all set!", 'Όλα έτοιμα!')}</h2>
+       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t("You're all set!", 'Όλα έτοιμα!')}</h2>
        <p className="text-stone-500 max-w-sm mx-auto">
         {t("Your profile is ready. We'll now show you compatible co-founders and mentors based on your preferences.", 'Το προφίλ σου είναι έτοιμο. Θα σου δείξουμε συμβατούς συνιδρυτές και μέντορες με βάση τις προτιμήσεις σου.')}
        </p>

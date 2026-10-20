@@ -3,9 +3,9 @@
  * Settings already use. Demo mode never calls this.
  */
 import { deleteUser, updatePassword, updateProfile, type User as FirebaseUser } from 'firebase/auth';
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { deleteDoc, deleteField, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { AccountStatus, ProfileStatus, VerificationStatus } from '../types';
+import { AccountStatus, ProfileStatus, VerificationStatus, type UserProfile } from '../types';
 import { flushCloudSync } from './cloudSync';
 
 /** Sends any unsaved list changes to the cloud, then signs out. */
@@ -83,33 +83,32 @@ export async function bootstrapAccount(user: FirebaseUser, fullName?: string) {
 export async function persistAccount(uid: string, fields: AccountFields) {
   const now = serverTimestamp();
   const userPatch: Record<string, unknown> = { id: uid, uid, updatedAt: now };
-  if (fields.fullName) userPatch.fullName = fields.fullName;
-  if (fields.email) userPatch.email = fields.email;
-  if (fields.role) userPatch.role = fields.role;
+  if (fields.fullName !== undefined) userPatch.fullName = fields.fullName;
+  if (fields.email !== undefined) userPatch.email = fields.email;
+  if (fields.role !== undefined) userPatch.role = fields.role;
 
   const profilePatch: Record<string, unknown> = { userId: uid, updatedAt: now };
   if (fields.headline !== undefined) profilePatch.headline = fields.headline;
   if (fields.bio !== undefined) profilePatch.bio = fields.bio;
   if (fields.location !== undefined) profilePatch.location = fields.location;
-  if (fields.role) profilePatch.role = fields.role;
-  if (fields.stage) profilePatch.stage = fields.stage;
-  if (fields.industry) profilePatch.industry = fields.industry;
-  if (fields.commitment) profilePatch.commitment = fields.commitment;
+  if (fields.role !== undefined) profilePatch.role = fields.role;
+  if (fields.stage !== undefined) profilePatch.stage = fields.stage;
+  if (fields.industry !== undefined) profilePatch.industry = fields.industry;
+  if (fields.commitment !== undefined) profilePatch.commitment = fields.commitment;
   if (fields.company !== undefined) profilePatch.company = fields.company;
-  if (fields.timezone) profilePatch.timezone = fields.timezone;
-  if (fields.photo) profilePatch.avatarUrl = fields.photo;
+  if (fields.timezone !== undefined) profilePatch.timezone = fields.timezone;
+  if (fields.photo !== undefined) profilePatch.avatarUrl = fields.photo;
   const linkedin = withProtocol(fields.linkedin);
   const github = withProtocol(fields.github);
   const website = withProtocol(fields.website);
-  if (linkedin || github || website) {
-    profilePatch.socialLinks = {
-      ...(linkedin ? { linkedin } : {}),
-      ...(github ? { github } : {}),
-      ...(website ? { website } : {}),
-    };
-  }
-  if (linkedin) profilePatch.linkedinUrl = linkedin;
-  if (github) profilePatch.githubUrl = github;
+  profilePatch.socialLinks = {
+    ...(linkedin ? { linkedin } : {}),
+    ...(github ? { github } : {}),
+    ...(website ? { website } : {}),
+  };
+  // Cleared strings must clear the stored link, not leave the old one.
+  profilePatch.linkedinUrl = linkedin || deleteField();
+  profilePatch.githubUrl = github || deleteField();
 
   await Promise.all([
     setDoc(doc(db, 'users', uid), userPatch, { merge: true }),
@@ -118,6 +117,29 @@ export async function persistAccount(uid: string, fields: AccountFields) {
 
   if (fields.fullName && auth.currentUser) {
     await updateProfile(auth.currentUser, { displayName: fields.fullName, photoURL: fields.photo || auth.currentUser.photoURL });
+  }
+}
+
+/**
+ * The profile form's single write path: the profile document, the display
+ * fields other members read on `users/{uid}`, and Firebase Auth's own
+ * displayName/photoURL stay in step.
+ */
+export async function persistProfilePatch(uid: string, patch: Partial<UserProfile>) {
+  const now = serverTimestamp();
+  await setDoc(doc(db, 'profiles', uid), { userId: uid, ...patch, updatedAt: now }, { merge: true });
+  const userPatch: Record<string, unknown> = { updatedAt: now };
+  if (patch.fullName !== undefined) userPatch.fullName = patch.fullName;
+  if (patch.role !== undefined) userPatch.role = patch.role;
+  if (patch.avatarUrl !== undefined) userPatch.avatarUrl = patch.avatarUrl;
+  if (Object.keys(userPatch).length > 1) {
+    await setDoc(doc(db, 'users', uid), userPatch, { merge: true });
+  }
+  if (auth.currentUser && (patch.fullName !== undefined || patch.avatarUrl !== undefined)) {
+    await updateProfile(auth.currentUser, {
+      displayName: patch.fullName ?? auth.currentUser.displayName,
+      photoURL: patch.avatarUrl ?? auth.currentUser.photoURL,
+    });
   }
 }
 

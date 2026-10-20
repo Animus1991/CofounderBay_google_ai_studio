@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
-import { 
- Calendar as CalendarIcon, MapPin, Users, Video, 
- Plus, Filter, ChevronRight, 
- Clock, Share2, Bookmark, Rocket, Zap, Globe
+import { useEffect, useState, useMemo } from "react";
+import {
+ Calendar as CalendarIcon, MapPin, Users, Video,
+ Plus, Filter, ChevronRight,
+ Clock, Share2, Bookmark, Rocket, Zap, Globe, CalendarPlus
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -12,6 +12,12 @@ import { cn } from "../lib/utils";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { addSession, eventListKeys, logActivity, readIds, removeSession, toggleId } from "../lib/localLists";
+import { toMillis } from "../lib/peopleSource";
+import { formatDate, formatTime } from "../lib/dates";
+import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
+import { useToast } from "../context/ToastContext";
+import { coverFor } from "../data/photos";
+import { useAuth } from "../App";
 import { User } from "../types";
 
 const TAB_EL: Record<string, string> = {
@@ -38,19 +44,42 @@ interface Event {
  image: string;
  isOnline: boolean;
  organizer: string;
+ /** epoch millis when known — drives the Upcoming/Past split for real events. */
+ startsAt?: number | null;
+}
+
+const EVENT_TYPES: Event['type'][] = ['Workshop', 'Networking', 'Pitch Night', 'Webinar', 'Conference'];
+
+/** Maps a Firestore `events` document onto the card shape, tolerating partial fields. */
+function eventFromDoc(id: string, data: Record<string, unknown>): Event {
+ const startsAt = toMillis(data.startsAt ?? data.startAt ?? data.date);
+ const when = startsAt ? new Date(startsAt) : null;
+ const location = String(data.location ?? data.venue ?? '');
+ const type = EVENT_TYPES.includes(data.type as Event['type']) ? (data.type as Event['type']) : 'Networking';
+ return {
+  id,
+  title: String(data.title ?? data.name ?? 'Event'),
+  description: String(data.description ?? ''),
+  date: when ? when.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : String(data.date ?? ''),
+  dateEl: when ? when.toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+  time: when ? when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : String(data.time ?? ''),
+  timeEl: when ? when.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' }) : '',
+  location,
+  type,
+  attendees: typeof data.attendees === 'number' ? data.attendees : Array.isArray(data.attendeeIds) ? data.attendeeIds.length : typeof data.attending === 'number' ? data.attending : 0,
+  image: String(data.image ?? data.imageUrl ?? ''),
+  isOnline: data.isOnline === true || /online|zoom|meet|virtual/i.test(location),
+  organizer: String(data.organizer ?? data.organizerName ?? 'CoFounderBay'),
+  startsAt,
+ };
 }
 
 export default function Events(_props: EventsProps = {}) {
  const t = useT();
+ const { isDemoMode } = useAuth();
+ const toast = useToast();
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
- const categoryType: Record<string, Event['type']> = {
-  Workshops: 'Workshop',
-  Networking: 'Networking',
-  'Pitch Nights': 'Pitch Night',
-  Webinars: 'Webinar',
-  Conferences: 'Conference',
- };
  const [showTypes, setShowTypes] = useState(false);
  const [registeredEvents, setRegisteredEvents] = useState<string[]>(() => readIds(eventListKeys.registered));
  const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
@@ -58,14 +87,14 @@ export default function Events(_props: EventsProps = {}) {
  const toggleRegistration = (eventId: string) => {
   const next = toggleId(eventListKeys.registered, eventId);
   setRegisteredEvents(next);
-  const listed = mockEvents.find((item) => item.id === eventId);
+  const listed = allEvents.find((item) => item.id === eventId);
   if (!listed) return;
   if (next.includes(eventId)) {
    addSession({
     id: `evt-${eventId}`,
     title: listed.title,
     type: 'Event',
-    time: `${listed.date} ${listed.time}`,
+    time: listed.startsAt ? new Date(listed.startsAt).toISOString() : `${listed.date} ${listed.time}`,
     duration: listed.time,
     location: listed.location,
     participants: [listed.organizer],
@@ -80,59 +109,93 @@ export default function Events(_props: EventsProps = {}) {
   setBookmarkedEvents(toggleId(eventListKeys.bookmarked, eventId));
  };
 
- const mockEvents: Event[] = [
-  {
-   id: "1",
-   title: "Startup Founders Networking Night",
-   description: "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.",
-   date: "March 28, 2026",
-   dateEl: "28 Μαρτίου 2026",
-   time: "6:00 PM - 9:00 PM",
-   timeEl: "18:00 - 21:00",
-   location: "Tech Hub, London",
-   type: 'Networking',
-   attendees: 124,
-   image: "https://picsum.photos/seed/event1/800/400",
-   isOnline: false,
-   organizer: "CoFounderBay Team"
-  },
-  {
-   id: "2",
-   title: "Mastering the Seed Round Pitch",
-   description: "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.",
-   date: "April 02, 2026",
-   dateEl: "2 Απριλίου 2026",
-   time: "2:00 PM - 4:00 PM",
-   timeEl: "14:00 - 16:00",
-   location: "Zoom / Online",
-   type: 'Workshop',
-   attendees: 450,
-   image: "https://picsum.photos/seed/event2/800/400",
-   isOnline: true,
-   organizer: "Sarah Chen"
-  },
-  {
-   id: "3",
-   title: "FinTech Demo Day Q2",
-   description: "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.",
-   date: "April 15, 2026",
-   dateEl: "15 Απριλίου 2026",
-   time: "10:00 AM - 1:00 PM",
-   timeEl: "10:00 - 13:00",
-   location: "Innovation Center, NY",
-   type: 'Pitch Night',
-   attendees: 85,
-   image: "https://picsum.photos/seed/event3/800/400",
-   isOnline: false,
-   organizer: "Finly Ventures"
-  }
- ];
+ // One .ics file per card — disabled when the event has no real start time.
+ const exportEvent = (event: Event) => {
+  if (!event.startsAt) return;
+  const start = new Date(event.startsAt);
+  const entry: CalendarEntry = {
+   uid: `event-${event.id}`,
+   title: event.title,
+   start,
+   end: new Date(start.getTime() + 2 * 3_600_000),
+   description: event.description || undefined,
+   location: event.location || undefined,
+  };
+  downloadIcs(`${slugify(event.title)}.ics`, [entry]);
+  toast.success(t('Calendar file downloaded', 'Το αρχείο ημερολογίου κατέβηκε'));
+ };
+
+ // Demo events stay in the future relative to today (7 / 12 / 25 days out)
+ // and render through the shared 24-hour, language-aware date helpers.
+ const buildMockEvents = (): Event[] => {
+  const at = (days: number, hour: number) => {
+   const d = new Date();
+   d.setDate(d.getDate() + days);
+   d.setHours(hour, 0, 0, 0);
+   return d;
+  };
+  const mk = (id: string, title: string, description: string, start: Date, endHour: number, location: string, type: Event['type'], attendees: number, image: string, isOnline: boolean, organizer: string): Event => {
+   const end = new Date(start.getTime());
+   end.setHours(endHour, 0, 0, 0);
+   const dateLabel = formatDate(start, { day: 'numeric', month: 'long', year: 'numeric' });
+   const timeLabel = `${formatTime(start)} - ${formatTime(end)}`;
+   return {
+    id, title, description,
+    date: dateLabel, dateEl: dateLabel,
+    time: timeLabel, timeEl: timeLabel,
+    location, type, attendees, image, isOnline, organizer,
+    startsAt: start.getTime(),
+   };
+  };
+  return [
+   mk("1", "Startup Founders Networking Night", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", at(7, 18), 21, "Tech Hub, London", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
+   mk("2", "Mastering the Seed Round Pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", at(12, 14), 16, "Zoom / Online", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
+   mk("3", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", at(25, 10), 13, "Innovation Center, NY", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
+  ];
+ };
+ const mockEvents = useMemo(() => buildMockEvents(), []);
+
+ // Real accounts read the shared `events` collection; demo mode keeps the
+ // illustrative listings below.
+ const [liveEvents, setLiveEvents] = useState<Event[] | null>(null);
+ useEffect(() => {
+  if (isDemoMode) { setLiveEvents(null); return; }
+  let unsub: (() => void) | undefined;
+  let cancelled = false;
+  void (async () => {
+   try {
+    const { db } = await import('../firebase');
+    const { collection, onSnapshot, query, limit } = await import('firebase/firestore');
+    if (!db) { setLiveEvents([]); return; }
+    const stop = onSnapshot(
+     query(collection(db, 'events'), limit(50)),
+     (snapshot) => setLiveEvents(snapshot.docs.map((entry) => eventFromDoc(entry.id, entry.data()))),
+     () => setLiveEvents([]),
+    );
+    if (cancelled) { stop(); return; }
+    unsub = stop;
+   } catch { if (!cancelled) setLiveEvents([]); }
+  })();
+  return () => { cancelled = true; unsub?.(); };
+ }, [isDemoMode]);
+
+ const allEvents = useMemo(() => (isDemoMode ? mockEvents : (liveEvents ?? [])), [isDemoMode, mockEvents, liveEvents]);
+ const [now] = useState(() => Date.now());
+
  const visibleEvents = useMemo(() => {
-   let filtered = typeFilter === 'All' ? mockEvents : mockEvents.filter((e) => e.type === typeFilter);
+   let filtered = typeFilter === 'All' ? allEvents : allEvents.filter((e) => e.type === typeFilter);
    if (activeTab === 'My Events') filtered = filtered.filter((e) => registeredEvents.includes(e.id));
-   // For Past vs Upcoming, compare dates when real date parsing is available
+   if (activeTab === 'Past') filtered = filtered.filter((e) => e.startsAt != null && e.startsAt < now);
+   if (activeTab === 'Upcoming' && !isDemoMode) filtered = filtered.filter((e) => e.startsAt == null || e.startsAt >= now);
    return filtered;
-  }, [typeFilter, activeTab, registeredEvents]);
+  }, [allEvents, typeFilter, activeTab, registeredEvents, isDemoMode, now]);
+
+ const featured = allEvents[0] ?? null;
+ const typeCounts = useMemo(() => {
+  const counts = new Map<Event['type'], number>();
+  allEvents.forEach((event) => counts.set(event.type, (counts.get(event.type) ?? 0) + 1));
+  return counts;
+ }, [allEvents]);
 
  return (
   <PageShell
@@ -206,12 +269,18 @@ export default function Events(_props: EventsProps = {}) {
        <div key={event.id} className="bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl">
         <div className="flex flex-col md:flex-row">
          <div className="md:w-56 h-44 md:h-auto overflow-hidden relative shrink-0">
-          <img 
-           src={event.image} 
-           alt={event.title} 
-           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-           referrerPolicy="no-referrer"
-          />
+          {event.image ? (
+           <img
+            src={event.image}
+            alt={event.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            referrerPolicy="no-referrer"
+           />
+          ) : (
+           <div className="w-full h-full bg-stone-100 flex items-center justify-center" aria-hidden>
+            <CalendarIcon className="w-8 h-8 text-stone-300" />
+           </div>
+          )}
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold tracking-wider shadow border border-white/20">
            {labelOf(event.type)}
           </div>
@@ -226,6 +295,16 @@ export default function Events(_props: EventsProps = {}) {
             <div className="flex gap-1 shrink-0">
              <button type="button" onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
               <Bookmark className={cn("w-3.5 h-3.5", bookmarkedEvents.includes(event.id) && "fill-current")} />
+             </button>
+             <button
+              type="button"
+              aria-label={t('Add to my calendar', 'Προσθήκη στο ημερολόγιό μου')}
+              title={event.startsAt ? t('Add to my calendar', 'Προσθήκη στο ημερολόγιό μου') : t('Nothing to export yet', 'Δεν υπάρχει τίποτα για εξαγωγή ακόμη')}
+              disabled={!event.startsAt}
+              onClick={() => exportEvent(event)}
+              className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all disabled:opacity-40"
+             >
+              <CalendarPlus className="w-3.5 h-3.5" />
              </button>
              <button type="button" onClick={() => { void navigator.clipboard?.writeText(event.title); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
               <Share2 className="w-3.5 h-3.5" />
@@ -248,23 +327,17 @@ export default function Events(_props: EventsProps = {}) {
             {event.isOnline ? <Video className="w-3.5 h-3.5 text-stone-400" /> : <MapPin className="w-3.5 h-3.5 text-stone-400" />}
             <span className="truncate max-w-[140px]">{event.location}</span>
            </div>
-           <div className="flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-stone-400" />
-            <span>{event.attendees} {t('attending', 'συμμετέχουν')}</span>
-           </div>
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-stone-50">
-           <div className="flex -space-x-2">
-            {[1, 2, 3, 4].map((i) => (
-             <div key={i} className="w-7 h-7 rounded-lg border-2 border-white bg-stone-100 overflow-hidden shadow-sm">
-              <img src={`https://picsum.photos/seed/att${i}/100/100`} alt={t("Attendee", "Άτομο που συμμετέχει")} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-             </div>
-            ))}
-            <div className="w-7 h-7 rounded-lg border-2 border-white bg-stone-900 flex items-center justify-center text-xs font-medium text-white shadow">
-             +12
-            </div>
-           </div>
+           {event.attendees > 0 ? (
+            <span className="flex items-center gap-1.5 text-xs text-stone-400">
+             <Users className="w-3.5 h-3.5" />
+             {event.attendees} {t('going', 'θα πάνε')}
+            </span>
+           ) : (
+            <span className="text-xs text-stone-300">{t('Be the first to register', 'Γίνε ο πρώτος που θα εγγραφεί')}</span>
+           )}
            <button
             onClick={() => toggleRegistration(event.id)}
             className={cn(
@@ -274,7 +347,7 @@ export default function Events(_props: EventsProps = {}) {
               : "bg-stone-900 text-white hover:bg-stone-800"
             )}
            >
-            {registeredEvents.includes(event.id) ? t("✓ Registered", "✓ Εγγεγραμμένος/-η") : t("Register Now", "Εγγραφή")}
+            {registeredEvents.includes(event.id) ? t("✓ Registered", "✓ Εγγραφήκατε") : t("Register Now", "Εγγραφή")}
            </button>
           </div>
          </div>
@@ -286,26 +359,33 @@ export default function Events(_props: EventsProps = {}) {
 
     {/* Sidebar */}
     <aside className="lg:col-span-4 space-y-4">
-     {/* Featured Event */}
+     {/* Featured Event — the next real event, or the demo pick in demo mode */}
+     {featured && (
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
       <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
       <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3">
-       <img 
-        src="https://picsum.photos/seed/featured/600/400" 
-        alt={t("Featured", "Επιλεγμένη εκδήλωση")} 
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-        referrerPolicy="no-referrer"
-       />
+       {featured.image ? (
+        <img
+         src={featured.image}
+         alt={featured.title}
+         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+         referrerPolicy="no-referrer"
+        />
+       ) : (
+        <div className="w-full h-full bg-stone-900 flex items-center justify-center" aria-hidden>
+         <CalendarIcon className="w-8 h-8 text-stone-600" />
+        </div>
+       )}
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
-        <span className="text-[10px] font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
-        <p className="text-white text-sm font-semibold leading-tight">Global Startup Summit 2026</p>
+        <span className="text-xs font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
+        <p className="text-white text-sm font-semibold leading-tight">{featured.title}</p>
        </div>
       </div>
       <p className="text-sm text-stone-500 leading-relaxed mb-3">
-       {t('The biggest gathering of founders and investors in the ecosystem.', 'Η μεγαλύτερη συγκέντρωση ιδρυτών και επενδυτών στο οικοσύστημα.')}
+       {featured.description}
       </p>
-      <button 
+      <button
        type="button"
        onClick={() => document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' })}
        className="w-full py-2 rounded-lg text-sm font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all"
@@ -313,26 +393,27 @@ export default function Events(_props: EventsProps = {}) {
        {t('Learn More', 'Περισσότερα')}
       </button>
      </div>
+     )}
 
      {/* Categories */}
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
       <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Event Categories', 'Κατηγορίες εκδηλώσεων')}</p>
       <div className="space-y-1">
        {[
-        { name: "Workshops", nameEl: "Εργαστήρια", count: 12, icon: Rocket },
-        { name: "Networking", nameEl: "Δικτύωση", count: 8, icon: Users },
-        { name: "Pitch Nights", nameEl: "Βραδιές pitch", count: 5, icon: Zap },
-        { name: "Webinars", nameEl: "Διαδικτυακά σεμινάρια", count: 15, icon: Video },
-        { name: "Conferences", nameEl: "Συνέδρια", count: 3, icon: Globe }
+        { name: "Workshops", nameEl: "Εργαστήρια", type: 'Workshop' as const, icon: Rocket },
+        { name: "Networking", nameEl: "Δικτύωση", type: 'Networking' as const, icon: Users },
+        { name: "Pitch Nights", nameEl: "Βραδιές pitch", type: 'Pitch Night' as const, icon: Zap },
+        { name: "Webinars", nameEl: "Διαδικτυακά σεμινάρια", type: 'Webinar' as const, icon: Video },
+        { name: "Conferences", nameEl: "Συνέδρια", type: 'Conference' as const, icon: Globe }
        ].map((cat) => (
-        <button key={cat.name} type="button" onClick={() => { setTypeFilter(categoryType[cat.name] ?? 'All'); setShowTypes(true); document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' }); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-50 transition-all group">
+        <button key={cat.name} type="button" onClick={() => { setTypeFilter(cat.type); setShowTypes(true); document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' }); }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-50 transition-all group">
          <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-stone-50 flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
            <cat.icon className="w-3.5 h-3.5" />
           </div>
           <span className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{t(cat.name, cat.nameEl)}</span>
          </div>
-         <span className="text-xs font-semibold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">{cat.count}</span>
+         <span className="text-xs font-semibold text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">{typeCounts.get(cat.type) ?? 0}</span>
         </button>
        ))}
       </div>

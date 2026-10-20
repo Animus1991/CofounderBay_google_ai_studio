@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Sparkles } from 'lucide-react';
 import { useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
 
@@ -35,9 +36,10 @@ export function AskLink({
   return (
     <button
       type="button"
-      className="text-xs font-medium text-stone-900 hover:underline"
+      className="inline-flex items-center gap-1 text-xs font-medium text-stone-900 hover:underline"
       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }))}
     >
+      <Sparkles className="w-3 h-3 text-stone-400" aria-hidden="true" />
       {label}
     </button>
   );

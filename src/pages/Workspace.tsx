@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
  Layout, 
  CheckSquare, 
@@ -46,12 +46,17 @@ import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { User } from "../types";
 import { cn } from "../lib/utils";
-import { addStudioTask, keys, readTasks, type StudioTask } from "../lib/localLists";
+import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue, type StudioTask } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
+import { usePageControls } from "../lib/pageControls";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { formatDate } from "../lib/dates";
-import { FixedSizeList as VirtualList } from 'react-window';
+import { useAuth } from "../App";
+import { studioNextStep } from "../lib/nextStep";
+import { uploadFile, formatBytes, type UploadFolder } from "../lib/files";
+import { safeMediaUrl } from "../lib/webUrl";
+import type { Milestone } from "../types";
 
 interface WorkspaceProps {
  user: User;
@@ -63,8 +68,32 @@ type FocusMode = "work" | "shortBreak" | "longBreak";
 
 type Task = StudioTask;
 
+type FocusStats = { date: string; seconds: number; sessions: number };
+type CanvasDraft = Record<string, string>;
+type AssetRow = { name: string; size: string; url?: string; path?: string };
+
+const CANVAS_SECTIONS = [
+ { key: 'problem', title: 'Problem' },
+ { key: 'solution', title: 'Solution' },
+ { key: 'keyMetrics', title: 'Key Metrics' },
+ { key: 'uvp', title: 'Unique Value Prop' },
+ { key: 'advantage', title: 'Unfair Advantage' },
+] as const;
+
+// Demo-only canvas content — real members start from their own draft.
+const DEMO_CANVAS: CanvasDraft = {
+ problem: 'Existing solutions are too complex and expensive for early-stage startups.',
+ solution: 'A minimalist, AI-powered workspace designed specifically for founders.',
+ keyMetrics: 'Daily Active Users, Task Completion Rate, Retention.',
+ uvp: 'The only workspace that actively guides you through the startup lifecycle.',
+ advantage: 'Proprietary AI matching engine and exclusive mentor network.',
+};
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
 export default function Workspace({ user }: WorkspaceProps) {
  const t = useT();
+ const { profile, isDemoMode } = useAuth();
  const [activeTab, setActiveTab] = useState<TabType>("Dashboard");
  const [searchQuery, setSearchQuery] = useState("");
  const [taskView, setTaskView] = useState<TaskView>("list");
@@ -72,26 +101,74 @@ export default function Workspace({ user }: WorkspaceProps) {
  const [focusTimer, setFocusTimer] = useState(25 * 60); // 25 minutes in seconds
  const [focusState, setFocusState] = useState<FocusMode>("work");
  const [isTimerRunning, setIsTimerRunning] = useState(false);
+ const focusStats = useStored(() => {
+  const stats = readValue<FocusStats>(keys.focus, { date: todayKey(), seconds: 0, sessions: 0 });
+  return stats.date === todayKey() ? stats : { date: todayKey(), seconds: 0, sessions: 0 };
+ }, [keys.focus]);
  useEffect(() => {
   if (!isTimerRunning || focusTimer <= 0) return;
   const interval = setInterval(() => {
    setFocusTimer(prev => {
-    if (prev <= 1) { setIsTimerRunning(false); return 0; }
+    if (prev <= 1) {
+     setIsTimerRunning(false);
+     // A finished work block is a real recorded session.
+     if (focusState === 'work') {
+      const stats = focusStats.date === todayKey() ? focusStats : { date: todayKey(), seconds: 0, sessions: 0 };
+      writeValue(keys.focus, { date: todayKey(), seconds: stats.seconds + 25 * 60, sessions: stats.sessions + 1 });
+     }
+     return 0;
+    }
     return prev - 1;
    });
   }, 1000);
   return () => clearInterval(interval);
- }, [isTimerRunning, focusTimer]);
+ }, [isTimerRunning, focusTimer, focusState, focusStats]);
  const [activeTask, setActiveTask] = useState<string | null>(null);
  const [roadmapFilter, setRoadmapFilter] = useState<'All' | 'completed' | 'in-progress' | 'pending'>('All');
  const tasks = useStored(readTasks, [keys.tasks]);
- const roadmap = [
-  { name: "MVP Launch", category: "Product", start: 0, duration: 3, status: "completed" as const, color: "bg-emerald-400" },
-  { name: "Beta Testing", category: "Product", start: 2, duration: 4, status: "in-progress" as const, color: "bg-violet-400" },
-  { name: "Seed Funding", category: "Fundraising", start: 3, duration: 5, status: "in-progress" as const, color: "bg-amber-400" },
-  { name: "First 100 Users", category: "Growth", start: 5, duration: 3, status: "pending" as const, color: "bg-stone-300" },
-  { name: "Product Hunt Launch", category: "Marketing", start: 7, duration: 2, status: "pending" as const, color: "bg-blue-400" },
- ];
+ const milestones = useStored(readMilestones, [keys.milestones]);
+ const sessions = useStored(readSessions, [keys.sessions]);
+ const canvas = useStored(() => readValue<CanvasDraft>(keys.canvas, {}), [keys.canvas]);
+
+ usePageControls(() => [
+  { id: 'toggle-focus', en: focusMode ? 'Exit focus mode' : 'Start focus mode', el: focusMode ? 'Έξοδος από εστίαση' : 'Έναρξη εστίασης', run: () => setFocusMode((prev) => !prev) },
+  { id: 'add-milestone', en: 'Add milestone', el: 'Προσθήκη ορόσημου', run: () => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone' } })) },
+ ], [focusMode]);
+ const assets = useStored(() => readValue<AssetRow[]>(keys.assets, []), [keys.assets]);
+ const nextStep = useMemo(() => studioNextStep(profile), [profile]);
+
+ // The gantt rows are real milestones: bar = createdAt → targetDate over an
+ // 8-week window starting at the earliest milestone.
+ const roadmapData = useMemo(() => {
+  const demoRows = isDemoMode ? [
+   { name: "MVP Launch", category: "Product", start: 0, duration: 3, status: "completed" as const, color: "bg-emerald-400" },
+   { name: "Beta Testing", category: "Product", start: 2, duration: 4, status: "in-progress" as const, color: "bg-violet-400" },
+   { name: "Seed Funding", category: "Fundraising", start: 3, duration: 5, status: "in-progress" as const, color: "bg-amber-400" },
+   { name: "First 100 Users", category: "Growth", start: 5, duration: 3, status: "pending" as const, color: "bg-stone-300" },
+   { name: "Product Hunt Launch", category: "Marketing", start: 7, duration: 2, status: "pending" as const, color: "bg-blue-400" },
+  ] : [];
+  const real = milestones
+   .filter((m) => m.targetDate)
+   .map((m) => ({ m, created: new Date(m.createdAt).getTime(), target: new Date(m.targetDate).getTime() }))
+   .filter((row) => Number.isFinite(row.created) && Number.isFinite(row.target))
+   .sort((a, b) => a.created - b.created);
+  const t0 = real[0]?.created ?? Date.now();
+  const week = 7 * 86400000;
+  const toStatus = (m: Milestone) => m.status === 'Completed' ? 'completed' as const : m.status === 'In Progress' ? 'in-progress' as const : 'pending' as const;
+  const toColor = (status: string, i: number) =>
+   status === 'completed' ? 'bg-emerald-400' : status === 'in-progress' ? 'bg-violet-400' : ['bg-stone-300', 'bg-amber-400', 'bg-blue-400'][i % 3]!;
+  const rows = real.map(({ m, created, target }, i) => ({
+   name: m.title,
+   category: m.category || 'General',
+   start: Math.max(0, Math.min(7, Math.round((created - t0) / week))),
+   duration: Math.max(1, Math.min(8, Math.ceil((target - created) / week))),
+   status: toStatus(m),
+   color: toColor(toStatus(m), i),
+  }));
+  return { rows: [...demoRows, ...rows], startTs: t0 };
+ }, [isDemoMode, milestones]);
+ const roadmap = roadmapData.rows;
+ const roadmapTodayPct = Math.max(0, Math.min(100, ((Date.now() - roadmapData.startTs) / (8 * 7 * 86400000)) * 100));
  const visibleRoadmap = roadmapFilter === 'All' ? roadmap : roadmap.filter((item) => item.status === roadmapFilter);
 
  const taskQuery = searchQuery.trim().toLowerCase();
@@ -130,6 +207,61 @@ export default function Workspace({ user }: WorkspaceProps) {
  const weekLabel = (w: string) => t(w, w.replace("W", "Ε"));
  const focusStateLabel = (mode: FocusMode) =>
   mode === "work" ? t("Deep Work", "Εστιασμένη εργασία") : mode === "shortBreak" ? t("Short Break", "Σύντομο διάλειμμα") : t("Long Break", "Μεγάλο διάλειμμα");
+
+ // Real milestone stats — same list the Milestones page reads.
+ const milestoneStats = useMemo(() => {
+  const total = milestones.length;
+  const done = milestones.filter((m) => m.status === 'Completed').length;
+  const active = milestones.filter((m) => m.status === 'In Progress').length;
+  const overdue = milestones.filter((m) => m.status !== 'Completed' && m.targetDate && new Date(m.targetDate).getTime() < Date.now()).length;
+  return { total, done, active, overdue };
+ }, [milestones]);
+
+ // Canvas draft — real accounts persist their own text, demo starts filled.
+ const saveCanvas = () => {
+  writeValue(keys.canvas, canvas);
+ };
+ const setCanvasField = (key: string, value: string) => {
+  writeValue(keys.canvas, { ...canvas, [key]: value });
+ };
+ const canvasValue = (key: string) => canvas[key] ?? (isDemoMode ? DEMO_CANVAS[key] ?? '' : '');
+
+ // Calendar — real month navigation and real session markers.
+ const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+ const calDays = useMemo(() => {
+  const first = new Date(calMonth.year, calMonth.month, 1);
+  const daysInMonth = new Date(calMonth.year, calMonth.month + 1, 0).getDate();
+  const leading = (first.getDay() + 6) % 7; // Monday-first grid
+  const cells: (number | null)[] = [...Array(leading).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  return cells;
+ }, [calMonth]);
+ const sessionDays = useMemo(() => {
+  const set = new Set<string>();
+  for (const s of sessions) {
+   const d = new Date(s.time);
+   if (Number.isFinite(d.getTime())) set.add(d.toISOString().slice(0, 10));
+  }
+  return set;
+ }, [sessions]);
+ const dayKey = (day: number) => `${calMonth.year}-${String(calMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+ const sessionsOn = (day: number) => sessions.filter((s) => s.time.slice(0, 10) === dayKey(day));
+ const todaySessions = sessions.filter((s) => s.time.slice(0, 10) === todayKey());
+ const weekSessions = sessions
+  .filter((s) => { const ts = new Date(s.time).getTime(); return ts >= Date.now() && ts < Date.now() + 7 * 86400000; })
+  .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
+  .slice(0, 5);
+
+ const addAsset = async (file: File | null) => {
+  if (!file) return;
+  const row: AssetRow = { name: file.name, size: formatBytes(file.size) };
+  if (!isDemoMode && user.id) {
+   try {
+    const uploaded = await uploadFile(file, { folder: 'assets' as UploadFolder, uid: user.id });
+    row.url = uploaded.url; row.path = uploaded.path; row.size = formatBytes(uploaded.size);
+   } catch { /* keep the local row without a link */ }
+  }
+  writeValue(keys.assets, [row, ...assets.filter((a) => a.name !== row.name)]);
+ };
 
  return (
   <PageShell
@@ -291,7 +423,7 @@ export default function Workspace({ user }: WorkspaceProps) {
             </div>
             <div className="space-y-2">
              {visibleTasks.filter((task) => task.status === status).length === 0 && (
-              <p className="text-[10px] text-stone-400 px-1">{t("No items", "Κανένα")}</p>
+              <p className="text-xs text-stone-400 px-1">{t("No items", "Κανένα")}</p>
              )}
              {visibleTasks.filter((task) => task.status === status).map((task) => (
               <div 
@@ -309,11 +441,11 @@ export default function Workspace({ user }: WorkspaceProps) {
                <div className="flex items-center justify-between">
                 <div className="flex gap-1">
                  {task.tags.slice(0, 1).map(tag => (
-                  <span key={tag} className="px-1 py-0.5 bg-stone-50 text-stone-400 rounded text-[10px]">{labelOf(tag)}</span>
+                  <span key={tag} className="px-1 py-0.5 bg-stone-50 text-stone-400 rounded text-xs">{labelOf(tag)}</span>
                  ))}
                 </div>
                 {task.timeTracked > 0 && (
-                 <span className="text-[10px] text-stone-400 flex items-center gap-0.5">
+                 <span className="text-xs text-stone-400 flex items-center gap-0.5">
                   <Timer className="w-2.5 h-2.5" /> {Math.floor(task.timeTracked / 60)}h
                  </span>
                 )}
@@ -336,10 +468,10 @@ export default function Workspace({ user }: WorkspaceProps) {
           <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t("Velocity", "Ταχύτητα")}</h3>
          </div>
          <div className="flex items-end justify-between">
-          <span className="text-xl font-semibold text-stone-900">12</span>
-          <span className="text-sm font-medium text-emerald-600">{t("+20% vs last week", "+20% έναντι προηγούμενης εβδομάδας")}</span>
+          <span className="text-lg font-semibold text-stone-900">{tasks.filter((task) => task.status === 'Done').length}</span>
+          <span className="text-sm font-medium text-stone-400">{tasks.filter((task) => task.status !== 'Done').length} {t("open", "ανοικτές")}</span>
          </div>
-         <p className="text-xs text-stone-400">{t("Tasks completed in the current sprint cycle.", "Εργασίες που ολοκληρώθηκαν στον τρέχοντα κύκλο sprint.")}</p>
+         <p className="text-xs text-stone-400">{t("Tasks completed on this board.", "Εργασίες που ολοκληρώθηκαν σε αυτόν τον πίνακα.")}</p>
         </div>
 
         <div className="card-minimal p-4 space-y-3">
@@ -350,11 +482,11 @@ export default function Workspace({ user }: WorkspaceProps) {
           <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t("Focus Score", "Σκορ εστίασης")}</h3>
          </div>
          <div className="flex items-end justify-between">
-          <span className="text-xl font-semibold text-stone-900">8.4</span>
-          <span className="text-sm text-stone-400">{t("Target", "Στόχος")}: 9.0</span>
+          <span className="text-lg font-semibold text-stone-900">{Math.round(focusStats.seconds / 60)}m</span>
+          <span className="text-sm text-stone-400">{t("deep work today", "deep work σήμερα")}</span>
          </div>
          <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-          <div className="h-full bg-stone-900 w-[84%]" />
+          <div className="h-full bg-stone-900 transition-all" style={{ width: `${Math.min(100, (focusStats.seconds / (4 * 3600)) * 100)}%` }} />
          </div>
         </div>
        </section>
@@ -372,17 +504,17 @@ export default function Workspace({ user }: WorkspaceProps) {
         <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-2.5">
          <p className="text-xs font-semibold text-stone-400 tracking-wider">{t("Next Best Action", "Επόμενη καλύτερη ενέργεια")}</p>
          <p className="text-sm text-stone-600 leading-relaxed">
-          {t("Based on your progress, focus on the Pitch Deck to prepare for your upcoming investor meeting.", "Με βάση την πρόοδό σου, εστίασε στο pitch deck για την επερχόμενη συνάντηση με επενδυτές.")}
+          {t(nextStep.en, nextStep.el)}
          </p>
          <Button
           className="w-full bg-stone-900 text-white h-7 rounded-lg text-sm hover:bg-stone-800"
           onClick={() => {
            window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', {
-            detail: { agentId: 'a3', prompt: 'I want to refine my startup idea' }
+            detail: { agentId: 'a3', prompt: nextStep.prompt ?? nextStep.en }
            }));
           }}
          >
-          {t("Open AI Chat", "Άνοιγμα συνομιλίας AI")}
+          {t(nextStep.action?.en ?? "Open AI Chat", nextStep.action?.el ?? "Άνοιγμα συνομιλίας AI")}
          </Button>
         </div>
        </section>
@@ -421,7 +553,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
 
         <div className="text-center py-2">
-         <div className={cn("text-xl font-bold tracking-tight font-mono", focusMode ? "text-white" : "text-stone-900")}>
+         <div className={cn("text-lg font-bold tracking-tight font-mono", focusMode ? "text-white" : "text-stone-900")}>
           {Math.floor(focusTimer / 60).toString().padStart(2, "0")}:{(focusTimer % 60).toString().padStart(2, "0")}
          </div>
          <p className={cn("text-xs mt-1", focusMode ? "text-white/60" : "text-stone-400")}>
@@ -458,11 +590,11 @@ export default function Workspace({ user }: WorkspaceProps) {
         {/* Session Stats */}
         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100/20">
          <div className="text-center">
-          <p className={cn("text-xl font-bold", focusMode ? "text-white" : "text-stone-900")}>4</p>
+          <p className={cn("text-lg font-bold", focusMode ? "text-white" : "text-stone-900")}>{focusStats.sessions}</p>
           <p className={cn("text-xs", focusMode ? "text-white/60" : "text-stone-400")}>{t("Sessions Today", "Συνεδρίες σήμερα")}</p>
          </div>
          <div className="text-center">
-          <p className={cn("text-xl font-bold", focusMode ? "text-white" : "text-stone-900")}>2.4h</p>
+          <p className={cn("text-lg font-bold", focusMode ? "text-white" : "text-stone-900")}>{(focusStats.seconds / 3600).toFixed(1)}h</p>
           <p className={cn("text-xs", focusMode ? "text-white/60" : "text-stone-400")}>{t("Deep Work", "Deep work")}</p>
          </div>
         </div>
@@ -489,7 +621,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           </div>
           <h3 className="text-sm font-semibold text-stone-900">{t("Time Tracking", "Καταγραφή χρόνου")}</h3>
          </div>
-         <span className="text-xs text-stone-400">{t("Today", "Σήμερα")}</span>
+         <span className="text-xs text-stone-400">{t("This sprint", "Αυτό το sprint")}</span>
         </div>
 
         <div className="space-y-2">
@@ -528,30 +660,35 @@ export default function Workspace({ user }: WorkspaceProps) {
        <section className="card-minimal p-4 space-y-3">
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Project Assets", "Αρχεία έργου")}</h3>
         <div className="space-y-1">
-         {[
-          { name: "Pitch Deck v2.pdf", size: "2.4 MB", icon: FileText },
-          { name: "Brand Guidelines.zip", size: "15.8 MB", icon: Layers },
-          { name: "Market Research.docx", size: "840 KB", icon: FileText },
-         ].map((asset) => (
-          <div key={asset.name} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-stone-50 transition-colors cursor-pointer group">
+         {assets.length === 0 && (
+          <p className="text-xs text-stone-400 py-1">{t("No files yet — upload a deck, a doc, or a zip.", "Κανένα αρχείο ακόμη — ανέβασε deck, doc ή zip.")}</p>
+         )}
+         {assets.slice(0, 5).map((asset) => {
+          const url = safeMediaUrl(asset.url);
+          return (
+          <a
+           key={asset.name}
+           href={url ?? undefined}
+           target={url ? '_blank' : undefined}
+           rel="noopener noreferrer"
+           className="flex items-center justify-between p-2.5 rounded-lg hover:bg-stone-50 transition-colors group"
+          >
            <div className="flex items-center gap-2.5">
-            <asset.icon className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors shrink-0" />
+            <FileText className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors shrink-0" />
             <div>
              <p className="text-sm font-medium text-stone-900">{asset.name}</p>
              <p className="text-xs text-stone-400">{asset.size}</p>
             </div>
            </div>
-           <MoreVertical className="w-3.5 h-3.5 text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-         ))}
+           {url ? <ArrowRight className="w-3.5 h-3.5 text-stone-300" /> : null}
+          </a>
+          );
+         })}
         </div>
-        <Button
-         variant="outline"
-         className="w-full h-7 rounded-lg text-sm border-stone-200"
-         onClick={() => ask('Open my pitch deck and workspace assets')}
-        >
-         {t("View All Assets", "Όλα τα αρχεία")}
-        </Button>
+        <label className="flex items-center justify-center w-full h-7 rounded-lg text-sm border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer">
+         <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("Upload file", "Μεταφόρτωση αρχείου")}
+         <input type="file" className="sr-only" onChange={(e) => { void addAsset(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+        </label>
        </section>
       </div>
      </motion.div>
@@ -575,7 +712,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          variant="outline"
          size="sm"
          className="h-7 text-sm border-stone-200"
-         onClick={() => ask('Help me save and refine my Lean Canvas')}
+         onClick={saveCanvas}
         >
          <Save className="w-3 h-3 mr-1.5" /> {t("Save", "Αποθήκευση")}
         </Button>
@@ -594,18 +731,14 @@ export default function Workspace({ user }: WorkspaceProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-       {[
-        { title: "Problem", content: "Existing solutions are too complex and expensive for early-stage startups." },
-        { title: "Solution", content: "A minimalist, AI-powered workspace designed specifically for founders." },
-        { title: "Key Metrics", content: "Daily Active Users, Task Completion Rate, Retention." },
-        { title: "Unique Value Prop", content: "The only workspace that actively guides you through the startup lifecycle." },
-        { title: "Unfair Advantage", content: "Proprietary AI matching engine and exclusive mentor network." },
-       ].map((section) => (
-        <div key={section.title} className="card-minimal p-4 space-y-2 min-h-[180px] flex flex-col">
+       {CANVAS_SECTIONS.map((section) => (
+        <div key={section.key} className="card-minimal p-4 space-y-2 min-h-[180px] flex flex-col">
          <h4 className="text-xs font-semibold tracking-wider text-stone-400">{canvasTitle(section.title)}</h4>
          <textarea
-          defaultValue={section.content}
-          className="flex-1 bg-transparent text-sm text-stone-600 leading-relaxed resize-none focus:outline-none"
+          value={canvasValue(section.key)}
+          onChange={(e) => setCanvasField(section.key, e.target.value)}
+          placeholder={t('Write it here — it saves to your account.', 'Γράψε εδώ — αποθηκεύεται στον λογαριασμό σου.')}
+          className="flex-1 bg-transparent text-sm text-stone-600 leading-relaxed resize-none focus:outline-none placeholder:text-stone-300"
          />
         </div>
        ))}
@@ -625,13 +758,13 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Milestones Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
        {[
-        { label: t("Total", "Σύνολο"), value: "12", color: "bg-stone-900 text-white" },
-        { label: t("Completed", "Ολοκληρώθηκε"), value: "8", color: "bg-emerald-50 text-emerald-700" },
-        { label: t("In Progress", "Σε εξέλιξη"), value: "3", color: "bg-violet-50 text-violet-700" },
-        { label: t("Overdue", "Εκπρόθεσμο"), value: "1", color: "bg-red-50 text-red-700" },
+        { label: t("Total", "Σύνολο"), value: String(milestoneStats.total), color: "bg-stone-900 text-white" },
+        { label: t("Completed", "Ολοκληρώθηκε"), value: String(milestoneStats.done), color: "bg-emerald-50 text-emerald-700" },
+        { label: t("In Progress", "Σε εξέλιξη"), value: String(milestoneStats.active), color: "bg-violet-50 text-violet-700" },
+        { label: t("Overdue", "Εκπρόθεσμο"), value: String(milestoneStats.overdue), color: "bg-red-50 text-red-700" },
        ].map(stat => (
         <div key={stat.label} className={cn("p-3 rounded-2xl border", stat.color.replace("text-", "border-").replace("700", "100").replace("900", "stone-100"))}>
-         <p className={cn("text-xl font-bold", stat.color.includes("white") ? "text-white" : stat.color.split(" ")[1])}>{stat.value}</p>
+         <p className={cn("text-lg font-bold", stat.color.includes("white") ? "text-white" : stat.color.split(" ")[1])}>{stat.value}</p>
          <p className={cn("text-xs", stat.color.includes("white") ? "text-stone-300" : "text-stone-500")}>{stat.label}</p>
         </div>
        ))}
@@ -642,7 +775,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t("Product Roadmap", "Οδικός χάρτης προϊόντος")}</h3>
-         <p className="text-xs text-stone-400 mt-0.5">{t("Q2 2026 Milestones", "Ορόσημα Q2 2026")}</p>
+         <p className="text-xs text-stone-400 mt-0.5">{t("Your milestones on an 8-week window", "Τα ορόσημά σου σε οκταεβδομαδιαίο παράθυρο")}</p>
         </div>
         <div className="flex items-center gap-2">
          <Button type="button" variant="outline" size="sm" className="h-7 text-sm rounded-lg" onClick={() => setRoadmapFilter((prev) => prev === 'All' ? 'completed' : prev === 'completed' ? 'in-progress' : prev === 'in-progress' ? 'pending' : 'All')}>
@@ -665,6 +798,9 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
 
         {/* Timeline rows */}
+        {visibleRoadmap.length === 0 && (
+         <p className="text-sm text-stone-400 py-3 px-1">{t('No milestones on the roadmap yet — add one and its bar appears here.', 'Κανένα ορόσημο στον οδικό χάρτη ακόμη — πρόσθεσε ένα και η μπάρα του εμφανίζεται εδώ.')}</p>
+        )}
         {visibleRoadmap.map((milestone, idx) => (
          <div key={milestone.name} className="grid grid-cols-12 gap-1 items-center py-2 hover:bg-stone-50 rounded-lg transition-colors group min-w-[640px]">
           <div className="col-span-3 px-2">
@@ -683,8 +819,8 @@ export default function Workspace({ user }: WorkspaceProps) {
              <div className="absolute inset-0 bg-white/20 animate-pulse" />
             )}
            </div>
-           {/* Today marker */}
-           <div className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10" style={{ left: "37.5%" }}>
+           {/* Today marker — position derives from the real 8-week window */}
+           <div className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-10" style={{ left: `${roadmapTodayPct}%` }}>
             <span className="absolute -top-4 -left-2 text-[8px] text-red-400 font-semibold">{t("Today", "Σήμερα")}</span>
            </div>
           </div>
@@ -693,34 +829,37 @@ export default function Workspace({ user }: WorkspaceProps) {
        </div>
       </Card>
 
-      {/* Milestone List */}
+      {/* Milestone List — the same records the Milestones page and assistant manage */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-       {[
-        { title: "Complete User Research", date: "2026-04-15", status: "completed", tasks: 8 },
-        { title: "Finalize Core Features", date: "2026-04-28", status: "in-progress", tasks: 12 },
-        { title: "Launch Private Beta", date: "2026-05-10", status: "pending", tasks: 15 },
-        { title: "First Revenue", date: "2026-06-01", status: "pending", tasks: 6 },
-       ].map(m => (
-        <div key={m.title} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-2xl hover:border-stone-300 transition-all">
+       {milestones.length === 0 && (
+        <div className="col-span-2 p-4 bg-white border border-stone-100 rounded-2xl text-sm text-stone-400">
+         {t('No milestones yet — ask the assistant to add one, or open the Milestones page.', 'Κανένα ορόσημο ακόμη — ζήτα από τον βοηθό να προσθέσει ή άνοιξε τη σελίδα Ορόσημα.')}
+        </div>
+       )}
+       {milestones.slice(0, 6).map(m => {
+        const status = m.status === 'Completed' ? 'completed' : m.status === 'In Progress' ? 'in-progress' : 'pending';
+        return (
+        <div key={m.id} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-2xl hover:border-stone-300 transition-all">
          <div className="flex items-center gap-3">
           <div className={cn(
            "w-8 h-8 rounded-xl flex items-center justify-center",
-           m.status === "completed" ? "bg-emerald-100 text-emerald-600" : 
-           m.status === "in-progress" ? "bg-violet-100 text-violet-600" : 
+           status === "completed" ? "bg-emerald-100 text-emerald-600" :
+           status === "in-progress" ? "bg-violet-100 text-violet-600" :
            "bg-stone-100 text-stone-400"
           )}>
-           {m.status === "completed" ? <CheckCircle className="w-4 h-4" /> : 
-            m.status === "in-progress" ? <Clock className="w-4 h-4" /> : 
+           {status === "completed" ? <CheckCircle className="w-4 h-4" /> :
+            status === "in-progress" ? <Clock className="w-4 h-4" /> :
             <CalendarIcon className="w-4 h-4" />}
           </div>
           <div>
            <p className="text-sm font-semibold text-stone-900">{m.title}</p>
-           <p className="text-xs text-stone-400">{m.tasks} {t("tasks", "εργασίες")} · {t("Due", "Προθεσμία")} {formatDate(m.date)}</p>
+           <p className="text-xs text-stone-400">{(m.tasks ?? []).length} {t("tasks", "εργασίες")} · {t("Due", "Προθεσμία")} {formatDate(m.targetDate)}</p>
           </div>
          </div>
          <ChevronRight className="w-4 h-4 text-stone-300" />
         </div>
-       ))}
+        );
+       })}
       </div>
      </motion.div>
     )}
@@ -739,38 +878,39 @@ export default function Workspace({ user }: WorkspaceProps) {
        <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
          <div>
-          <h3 className="text-sm font-semibold text-stone-900">{formatDate(new Date(2026, 3, 1), { month: "long", year: "numeric" })}</h3>
+          <h3 className="text-sm font-semibold text-stone-900">{formatDate(new Date(calMonth.year, calMonth.month, 1), { month: "long", year: "numeric" })}</h3>
          </div>
          <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" aria-label={t("Previous month", "Προηγούμενος μήνας")}>
+          <Button type="button" variant="outline" size="icon" aria-label={t("Previous month", "Προηγούμενος μήνας")} onClick={() => setCalMonth((m) => ({ year: m.month === 0 ? m.year - 1 : m.year, month: (m.month + 11) % 12 }))}>
            <ChevronRight className="w-4 h-4 rotate-180" />
           </Button>
-          <Button variant="outline" size="icon" aria-label={t("Next month", "Επόμενος μήνας")}>
+          <Button type="button" variant="outline" size="icon" aria-label={t("Next month", "Επόμενος μήνας")} onClick={() => setCalMonth((m) => ({ year: m.month === 11 ? m.year + 1 : m.year, month: (m.month + 1) % 12 }))}>
            <ChevronRight className="w-4 h-4" />
           </Button>
          </div>
         </div>
 
-        {/* Calendar Days Header */}
+        {/* Calendar Days Header — Monday-first, localized */}
         <div className="grid grid-cols-7 gap-1 mb-2">
-         {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className="text-center text-xs font-semibold text-stone-400 py-1">{formatDate(new Date(2026, 3, 6 + i), { weekday: "short" })}</div>
-         ))}
+         {Array.from({ length: 7 }, (_, i) => {
+          const ref = new Date(2024, 0, 1 + i); // 2024-01-01 was a Monday
+          return <div key={i} className="text-center text-xs font-semibold text-stone-400 py-1">{formatDate(ref, { weekday: "short" })}</div>;
+         })}
         </div>
 
-        {/* Calendar Grid */}
+        {/* Calendar Grid — marks days that hold real sessions */}
         <div className="grid grid-cols-7 gap-1">
-         {Array.from({ length: 30 }, (_, i) => {
-          const day = i + 1;
-          const hasEvent = [5, 12, 15, 18, 22, 28].includes(day);
-          const isToday = day === 15;
+         {calDays.map((day, i) => {
+          if (day === null) return <div key={`pad-${i}`} />;
+          const isToday = dayKey(day) === todayKey();
+          const hasEvent = sessionDays.has(dayKey(day));
           return (
-           <div 
-            key={day} 
+           <div
+            key={day}
             className={cn(
-             "aspect-square p-1 rounded-lg border cursor-pointer transition-all relative",
+             "aspect-square p-1 rounded-lg border transition-all relative",
              isToday ? "border-stone-900 bg-stone-50" : "border-stone-100 hover:border-stone-300",
-             day > 30 && "opacity-30"
+             hasEvent && "cursor-pointer"
             )}
            >
             <span className={cn(
@@ -788,18 +928,23 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
        </Card>
 
-       {/* Day Events */}
+       {/* Day Events — the sessions actually on today */}
        <Card className="p-4">
-        <h4 className="text-sm font-semibold text-stone-900 mb-3">{t("Today", "Σήμερα")}, {formatDate(new Date(2026, 3, 15), { day: "numeric", month: "long" })}</h4>
+        <h4 className="text-sm font-semibold text-stone-900 mb-3">{t("Today", "Σήμερα")}, {formatDate(new Date(), { day: "numeric", month: "long" })}</h4>
         <div className="space-y-2">
-         {[
-          { time: "10:00", title: "Investor Pitch Call", type: "meeting", color: "bg-violet-100 text-violet-700" },
-          { time: "14:00", title: "Team Standup", type: "internal", color: "bg-stone-100 text-stone-700" },
-          { time: "16:30", title: "MVP Deadline", type: "milestone", color: "bg-emerald-100 text-emerald-700" },
-         ].map(event => (
-          <div key={event.title} className="flex items-center gap-3 p-2 rounded-lg hover:bg-stone-50 transition-colors">
-           <span className="text-xs font-medium text-stone-400 w-10">{event.time}</span>
-           <div className={cn("flex-1 p-2 rounded-lg text-sm font-medium", event.color)}>
+         {todaySessions.length === 0 && (
+          <p className="text-sm text-stone-400">{t('Nothing scheduled today — use New Event or ask the assistant.', 'Τίποτα προγραμματισμένο σήμερα — πάτα Νέα εκδήλωση ή ζήτα από τον βοηθό.')}</p>
+         )}
+         {todaySessions.map((event) => (
+          <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-stone-50 transition-colors">
+           <span className="text-xs font-medium text-stone-400 w-10">{event.time.slice(11, 16) || '—'}</span>
+           <div className={cn(
+            "flex-1 p-2 rounded-lg text-sm font-medium",
+            event.type === 'Meeting' ? 'bg-violet-100 text-violet-700' :
+            event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
+            event.type === 'Mentorship' ? 'bg-amber-100 text-amber-700' :
+            'bg-emerald-100 text-emerald-700'
+           )}>
             {event.title}
            </div>
           </div>
@@ -826,22 +971,21 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
        </Card>
 
-       {/* Upcoming */}
+       {/* Upcoming — the next seven days of real sessions */}
        <Card className="p-4 space-y-3">
         <h4 className="text-sm font-semibold text-stone-900">{t("This Week", "Αυτή την εβδομάδα")}</h4>
         <div className="space-y-2">
-         {[
-          { day: "2026-04-16", title: "Product Review", time: "11:00" },
-          { day: "2026-04-17", title: "Investor Dinner", time: "19:00" },
-          { day: "2026-04-18", title: "Sprint Planning", time: "10:00" },
-         ].map(item => (
-          <div key={item.title} className="flex items-center gap-2 p-2 rounded-lg hover:bg-stone-50 transition-colors">
+         {weekSessions.length === 0 && (
+          <p className="text-sm text-stone-400">{t('Nothing scheduled this week.', 'Τίποτα προγραμματισμένο αυτή την εβδομάδα.')}</p>
+         )}
+         {weekSessions.map((item) => (
+          <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-stone-50 transition-colors">
            <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center">
             <CalendarIcon className="w-3.5 h-3.5 text-stone-500" />
            </div>
            <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-stone-900 truncate">{item.title}</p>
-            <p className="text-xs text-stone-400">{formatDate(item.day, { weekday: "short", day: "numeric" })} · {item.time}</p>
+            <p className="text-xs text-stone-400">{formatDate(item.time.slice(0, 10), { weekday: "short", day: "numeric" })} · {item.time.slice(11, 16) || item.duration}</p>
            </div>
           </div>
          ))}

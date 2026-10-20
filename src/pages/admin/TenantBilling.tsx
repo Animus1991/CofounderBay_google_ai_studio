@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Users, CreditCard, History, Zap, Shield, AlertCircle, CheckCircle2, ArrowRight, ExternalLink, Download, Plus, UserPlus, Settings2, LayoutGrid } from "lucide-react";
+import { Users, History, AlertCircle, CheckCircle2, ArrowRight, Download, Plus, UserPlus, Settings2, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { Tenant, Subscription, Invoice, BillingPlan, User } from "../../types";
+import { Tenant, Subscription, Invoice, User } from "../../types";
 import { billingService, MOCK_PLANS } from "../../services/billingService";
+import { db } from "../../firebase";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
@@ -17,18 +19,22 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
  const t = useT();
  const [subscription, setSubscription] = useState<Subscription | null>(null);
  const [invoices, setInvoices] = useState<Invoice[]>([]);
+ const [members, setMembers] = useState<User[]>([]);
+ const [requestState, setRequestState] = useState<string>('');
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'overview' | 'seats' | 'history'>('overview');
 
  useEffect(() => {
   async function loadBillingData() {
    try {
-    const [sub, invs] = await Promise.all([
+    const [sub, invs, memberSnap] = await Promise.all([
      billingService.getSubscription(tenant.id, 'tenant'),
-     billingService.getInvoices(tenant.id, 'tenant')
+     billingService.getInvoices(tenant.id, 'tenant'),
+     getDocs(query(collection(db, 'users'), where('tenantId', '==', tenant.id))).catch(() => null),
     ]);
     setSubscription(sub);
     setInvoices(invs);
+    setMembers(memberSnap ? memberSnap.docs.map((d) => ({ ...(d.data() as User), id: d.id })) : []);
    } catch (error) {
     console.error("Error loading billing data:", error);
    } finally {
@@ -37,6 +43,18 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
   }
   loadBillingData();
  }, [tenant.id]);
+
+ const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+
+ const requestBilling = async (kind: 'upgrade' | 'seats', label: string) => {
+  if (!subscription) return;
+  await billingService.requestChange(kind, { subscriptionId: subscription.id, tenantId: tenant.id }).catch(() => {});
+  setRequestState(label);
+  setTimeout(() => setRequestState(''), 2500);
+ };
+
+ const seatLimit = subscription?.seatLimit ?? members.length;
+ const seatCount = subscription?.activeSeatCount ?? members.length;
 
  const currentPlan = MOCK_PLANS.find(p => p.id === subscription?.planId);
  const featureName = (f: string) => {
@@ -66,14 +84,15 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
   <div className="space-y-8 max-w-6xl mx-auto">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="text-xl font-medium tracking-tight">{t('Organization Billing', 'Χρέωση οργανισμού')}</h2>
+     <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Organization Billing', 'Χρέωση οργανισμού')}</h2>
      <p className="text-stone-500">{t('Manage subscriptions, seat allocations, and billing for', 'Διαχειρίσου συνδρομές, θέσεις και χρέωση για')} {tenant.name}.</p>
     </div>
     <div className="flex gap-3">
-     <Button variant="outline" className="gap-2">
+     {requestState && <span className="self-center text-xs font-medium text-green-700 bg-green-50 px-3 py-2 rounded-xl">{requestState}</span>}
+     <Button variant="outline" className="gap-2" onClick={() => ask(`Show billing settings and invoices for tenant ${tenant.name}`)}>
       <Settings2 className="w-4 h-4" /> {t('Billing Settings', 'Ρυθμίσεις χρέωσης')}
      </Button>
-     <Button className="gap-2">
+     <Button className="gap-2" onClick={() => requestBilling('seats', t('Seat request sent to the platform team.', 'Το αίτημα θέσεων στάλθηκε.'))}>
       <Plus className="w-4 h-4" /> {t('Add Seats', 'Προσθήκη θέσεων')}
      </Button>
     </div>
@@ -121,7 +140,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
         <div className="space-y-6">
          <div className="space-y-1">
-          <h3 className="text-lg font-medium">{t('Active Subscription', 'Ενεργή συνδρομή')}</h3>
+          <h3 className="text-base font-semibold">{t('Active Subscription', 'Ενεργή συνδρομή')}</h3>
           <p className="text-stone-500">{t(`Your organization is currently on the ${currentPlan?.name} plan.`, `Ο οργανισμός είναι στο πλάνο ${currentPlan?.name}.`)}</p>
          </div>
 
@@ -141,34 +160,34 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
          </div>
 
          <div className="flex gap-4 pt-4">
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => requestBilling('upgrade', t('Upgrade request sent to the platform team.', 'Το αίτημα αναβάθμισης στάλθηκε.'))}>
            {t('Upgrade Subscription', 'Αναβάθμιση συνδρομής')} <ArrowRight className="w-4 h-4" />
           </Button>
-          <Button variant="outline">{t('Manage Payment Method', 'Διαχείριση τρόπου πληρωμής')}</Button>
+          <Button variant="outline" onClick={() => requestBilling('upgrade', t('Payment method request sent.', 'Το αίτημα τρόπου πληρωμής στάλθηκε.'))}>{t('Manage Payment Method', 'Διαχείριση τρόπου πληρωμής')}</Button>
          </div>
         </div>
        </Card>
 
        <Card className="p-8 flex flex-col justify-between">
         <div className="space-y-4">
-         <h3 className="text-lg font-medium">{t('Seat Usage', 'Χρήση θέσεων')}</h3>
+         <h3 className="text-base font-semibold">{t('Seat Usage', 'Χρήση θέσεων')}</h3>
          <div className="space-y-2">
           <div className="flex justify-between text-sm font-medium">
            <span>{t('Occupied Seats', 'Κατειλημμένες θέσεις')}</span>
-           <span>{subscription?.activeSeatCount} / {subscription?.seatLimit}</span>
+           <span>{seatCount} / {seatLimit}</span>
           </div>
           <div className="h-3 bg-stone-100 rounded-full overflow-hidden">
-           <div 
-            className="h-full bg-stone-900 transition-all duration-200" 
-            style={{ width: `${((subscription?.activeSeatCount ?? 0) / (subscription?.seatLimit ?? 1)) * 100}%` }} 
+           <div
+            className="h-full bg-stone-900 transition-all duration-200"
+            style={{ width: `${Math.min(100, (seatCount / Math.max(1, seatLimit)) * 100)}%` }}
            />
           </div>
          </div>
          <p className="text-xs text-stone-500 leading-relaxed">
-          {t('You are using', 'Χρησιμοποιείς')} {subscription?.activeSeatCount} {t('out of your', 'από τις')} {subscription?.seatLimit} {t('available seats. You can add more seats at any time for', 'διαθέσιμες θέσεις. Μπορείς να προσθέσεις θέσεις οποιαδήποτε στιγμή με')} ${currentPlan?.priceMonthly ? Math.floor(currentPlan.priceMonthly / (currentPlan.limits?.seats || 1)) : 10} {t('per seat/month.', 'ανά θέση/μήνα.')}
+          {t('You are using', 'Χρησιμοποιείς')} {seatCount} {t('out of your', 'από τις')} {seatLimit} {t('available seats. You can add more seats at any time for', 'διαθέσιμες θέσεις. Μπορείς να προσθέσεις θέσεις οποιαδήποτε στιγμή με')} ${currentPlan?.priceMonthly ? Math.floor(currentPlan.priceMonthly / (currentPlan.limits?.seats || 1)) : 10} {t('per seat/month.', 'ανά θέση/μήνα.')}
          </p>
         </div>
-        <Button variant="outline" className="w-full mt-6 gap-2">
+        <Button variant="outline" className="w-full mt-6 gap-2" onClick={() => setActiveTab('seats')}>
          <UserPlus className="w-4 h-4" /> {t('Manage Seats', 'Διαχείριση θέσεων')}
         </Button>
        </Card>
@@ -239,12 +258,12 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
       <Card className="overflow-hidden">
        <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
         <div className="space-y-1">
-         <h3 className="text-lg font-medium">{t('Active Seat Allocations', 'Ενεργές θέσεις')}</h3>
+         <h3 className="text-base font-semibold">{t('Active Seat Allocations', 'Ενεργές θέσεις')}</h3>
          <p className="text-sm text-stone-500">{t("Manage which users are currently assigned to your organization's seats.", 'Διαχειρίσου ποια μέλη έχουν θέση στον οργανισμό.')}</p>
         </div>
         <div className="flex gap-2">
          <div className="px-4 py-2 bg-white border border-stone-200 rounded-xl text-sm font-medium">
-          {subscription?.activeSeatCount} / {subscription?.seatLimit} {t('Seats Used', 'θέσεις σε χρήση')}
+          {seatCount} / {seatLimit} {t('Seats Used', 'θέσεις σε χρήση')}
          </div>
         </div>
        </div>
@@ -258,34 +277,45 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-         {[1, 2, 3, 4, 5].map((i) => (
-          <tr key={i} className="hover:bg-stone-50 transition-colors">
+         {members.map((member) => (
+          <tr key={member.id} className="hover:bg-stone-50 transition-colors">
            <td className="px-4 py-2">
             <div className="flex items-center gap-3">
              <div className="w-8 h-8 bg-stone-200 rounded-full" />
              <div>
-              <p className="text-sm font-medium">{t('User', 'Μέλος')} {i}</p>
-              <p className="text-xs text-stone-500">user{i}@example.com</p>
+              <p className="text-sm font-medium">{member.fullName || member.email || member.id}</p>
+              <p className="text-xs text-stone-500">{member.email || ''}</p>
              </div>
             </div>
            </td>
            <td className="px-4 py-2">
             <span className="px-2 py-1 bg-stone-100 text-stone-600 rounded text-xs font-medium tracking-wider">
-             {labelOf('Founder')}
+             {labelOf(member.roles?.[0] || 'Member')}
             </span>
            </td>
-           <td className="px-4 py-2 text-sm text-stone-500">{formatDate(new Date(2024, 0, i))}</td>
+           <td className="px-4 py-2 text-sm text-stone-500">{member.createdAt ? formatDate(member.createdAt) : '—'}</td>
            <td className="px-4 py-2 text-right">
-            <button className="text-xs font-medium text-red-500 hover:text-red-600 tracking-wide">
+            <button
+             type="button"
+             onClick={() => ask(`How do I revoke ${member.fullName || member.email}'s seat on ${tenant.name}?`)}
+             className="text-xs font-medium text-red-500 hover:text-red-600 tracking-wide"
+            >
              {t('Revoke Seat', 'Ανάκληση θέσης')}
             </button>
            </td>
           </tr>
          ))}
+         {members.length === 0 && (
+          <tr>
+           <td colSpan={4} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+            {t('No members assigned to this tenant yet.', 'Δεν έχουν ανατεθεί μέλη σε αυτόν τον οργανισμό ακόμη.')}
+           </td>
+          </tr>
+         )}
         </tbody>
        </table>
        <div className="p-6 bg-stone-50 border-t border-stone-100 text-center">
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => ask(`How do I assign a new member to ${tenant.name}?`)}>
          <Plus className="w-4 h-4" /> {t('Assign New User', 'Ανάθεση σε νέο μέλος')}
         </Button>
        </div>
@@ -326,12 +356,32 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
             </span>
            </td>
            <td className="px-4 py-2 text-right">
-            <button className="p-2 text-stone-400 hover:text-stone-900 transition-colors">
+            <button
+             type="button"
+             title={t('Download invoice record', 'Λήψη εγγραφής τιμολογίου')}
+             onClick={() => {
+              const blob = new Blob([JSON.stringify(invoice, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${invoice.number || invoice.id}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+             }}
+             className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+            >
              <Download className="w-4 h-4" />
             </button>
            </td>
           </tr>
          ))}
+         {invoices.length === 0 && (
+          <tr>
+           <td colSpan={5} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+            {t('No invoices issued yet. Records appear here when billing runs.', 'Δεν έχουν εκδοθεί τιμολόγια ακόμη.')}
+           </td>
+          </tr>
+         )}
         </tbody>
        </table>
       </Card>

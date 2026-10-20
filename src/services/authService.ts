@@ -1,4 +1,7 @@
-import { User, TenantConfig, TenantSSOConfig, IdentityProvider, UserRole } from '../types';
+import { TenantSSOConfig, UserRole } from '../types';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('auth');
 
 // Mock data for SSO discovery
 const mockDomainMappings: Record<string, string> = {
@@ -61,7 +64,7 @@ export const authService = {
   async initiateSSO(tenantId: string): Promise<string> {
     // In a real app, this would redirect to the IdP
     // For MVP, we'll return a mock auth URL
-    console.log(`Initiating SSO for tenant: ${tenantId}`);
+    log.info(`Initiating SSO for tenant: ${tenantId}`);
     return `/api/auth/sso/callback?tenantId=${tenantId}&code=mock_code`;
   },
 
@@ -75,7 +78,7 @@ export const authService = {
     providerType: string;
     metadata?: any;
   }) {
-    console.log('Auth Event Logged:', {
+    log.info('Auth Event Logged:', {
       ...event,
       timestamp: new Date().toISOString(),
       ip: '127.0.0.1',

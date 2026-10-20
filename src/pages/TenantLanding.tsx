@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTenant } from '../context/TenantContext';
-import { Zap, ArrowRight, CheckCircle2, Users, GraduationCap, Globe } from 'lucide-react';
+import { Zap, ArrowRight, Users, GraduationCap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import { useT } from '../lib/language';
+import { safeWebUrl } from '../lib/webUrl';
 
 export default function TenantLanding() {
  const t = useT();
@@ -147,8 +148,12 @@ export default function TenantLanding() {
       <span className="font-medium">{tenant.displayName}</span>
      </div>
      <div className="flex gap-8 text-sm text-stone-500">
-      <a href={tenant.privacyPolicyUrl || "#"} className="hover:text-stone-900">{t('Privacy', 'Απόρρητο')}</a>
-      <a href={tenant.termsUrl || "#"} className="hover:text-stone-900">{t('Terms', 'Όροι')}</a>
+      {safeWebUrl(tenant.privacyPolicyUrl) && (
+       <a href={safeWebUrl(tenant.privacyPolicyUrl)!} className="hover:text-stone-900">{t('Privacy', 'Απόρρητο')}</a>
+      )}
+      {safeWebUrl(tenant.termsUrl) && (
+       <a href={safeWebUrl(tenant.termsUrl)!} className="hover:text-stone-900">{t('Terms', 'Όροι')}</a>
+      )}
       <a href={`mailto:${tenant.supportEmail}`} className="hover:text-stone-900">{t('Support', 'Υποστήριξη')}</a>
      </div>
      <div className="text-xs text-stone-400">

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Bell,
@@ -18,7 +18,9 @@ import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
-import { readNotificationPrefs, readOpenTo, readPlan, readSaved, resetAllLists, writeNotificationPrefs, writeOpenTo, writePlan, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
+import { keys, readNotificationPrefs, readOpenTo, readPlan, readSaved, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeValue, type NotificationPrefs, type OpenToKind, type PlanId } from "../lib/localLists";
+import { applyOpenTo } from "../lib/openTo";
+import { safeWebUrl } from "../lib/webUrl";
 import { useBlocks, unblockPerson } from "../lib/social";
 import { useSyncStatus } from "../lib/cloudSync";
 import Avatar from "../components/ui/Avatar";
@@ -26,11 +28,11 @@ import { findPerson, avatarOf } from "../lib/peopleSource";
 import { AskLink } from "../components/ui/EmptyHint";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
-import { changeAccountPassword, deleteAccount, persistAccount, persistPrivacy, signOutAccount } from "../lib/account";
+import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
 
-const FORM_KEY = "cfb.accountForm";
-const SWITCH_KEY = "cfb.accountSwitches";
-const CARDS_KEY = "cfb.paymentCards";
+const FORM_KEY = keys.accountForm;
+const SWITCH_KEY = keys.accountSwitches;
+const CARDS_KEY = keys.paymentCards;
 
 type AccountForm = {
   fullName: string;
@@ -125,16 +127,11 @@ const defaultSwitches = (): Switches => ({
 });
 
 function readStored<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as T;
-    if (Array.isArray(fallback)) return (Array.isArray(parsed) ? parsed : fallback) as T;
-    if (parsed && typeof parsed === "object") return { ...(fallback as object), ...(parsed as object) } as T;
-    return fallback;
-  } catch {
-    return fallback;
-  }
+  const parsed = readValue<T | null>(key, null);
+  if (parsed == null) return fallback;
+  if (Array.isArray(fallback)) return (Array.isArray(parsed) ? parsed : fallback) as T;
+  if (parsed && typeof parsed === "object") return { ...(fallback as object), ...(parsed as object) } as T;
+  return fallback;
 }
 
 const inputClass =
@@ -180,7 +177,7 @@ function SwitchRow({ title, desc, on, onClick }: { title: string; desc: string; 
 export default function Settings() {
   const { user, profile, isDemoMode, toggleDemoMode } = useAuth();
   const { mode, setMode } = useLanguage();
-  const { success, info } = useToast();
+  const { success, info, error: toastError } = useToast();
   const navigate = useNavigate();
   const photoRef = useRef<HTMLInputElement>(null);
   const t = (en: string, el: string) => bothText(en, el);
@@ -213,6 +210,19 @@ export default function Settings() {
     setParams(next, { replace: true });
   };
   const [form, setForm] = useState<AccountForm>(() => readStored(FORM_KEY, seedForm()));
+  const formDirtyRef = useRef(false);
+  const formSeededRef = useRef(false);
+  // The profile may arrive after first render; re-seed once unless the user already typed or a draft exists.
+  useEffect(() => {
+    if (formDirtyRef.current || formSeededRef.current) return;
+    if (readStored<AccountForm | null>(FORM_KEY, null)) {
+      formSeededRef.current = true;
+      return;
+    }
+    setForm(seedForm());
+    formSeededRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, user]);
   const blocks = useBlocks();
   const syncStatus = useSyncStatus();
   const [switches, setSwitches] = useState<Switches>(() => {
@@ -248,13 +258,28 @@ export default function Settings() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteText, setDeleteText] = useState("");
 
-  const setField = (key: keyof AccountForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  const setField = (key: keyof AccountForm, value: string) => {
+    formDirtyRef.current = true;
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const saveForm = async () => {
-    localStorage.setItem(FORM_KEY, JSON.stringify(form));
+    // Reject non-http(s) link values instead of storing a scriptable scheme.
+    const saved = { ...form };
+    let rejected = false;
+    for (const key of ["website", "linkedin", "github"] as const) {
+      if (saved[key].trim() && !safeWebUrl(saved[key])) {
+        saved[key] = "";
+        rejected = true;
+      }
+    }
+    if (rejected) {
+      toastError(t("Links must start with http:// or https://", "Οι σύνδεσμοι πρέπει να ξεκινούν με http:// ή https://"));
+    }
+    writeValue(FORM_KEY, saved);
     if (!isDemoMode && user) {
       try {
-        await persistAccount(user.uid, form);
+        await persistAccount(user.uid, saved);
         success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details are on your profile.", "Τα στοιχεία είναι στο προφίλ σου."));
         return;
       } catch {
@@ -266,28 +291,25 @@ export default function Settings() {
   };
 
   const patchSwitches = (patch: Partial<Switches>) => {
-    setSwitches((prev) => {
-      const next = { ...prev, ...patch };
-      localStorage.setItem(SWITCH_KEY, JSON.stringify(next));
-      const kinds: OpenToKind[] = readOpenTo().filter((kind) => kind === "speaking");
-      if (next.openToCofounder) kinds.push("cofounder");
-      if (next.openToInvestors) kinds.push("investor");
-      if (next.openToAdvisors) kinds.push("advisor");
-      if (next.mentorAvailability) kinds.push("mentoring");
-      writeOpenTo(kinds);
-      // Privacy choices other members must respect live on the profile document.
-      if (!isDemoMode && user) {
-        void persistPrivacy(user.uid, {
-          discoverable: next.discoverable && next.publicProfile,
-          messagesFrom: next.messagesFrom,
-          showEmail: next.showEmail,
-          visibility: next.publicProfile ? "Public" : "Connections Only",
-          sharePresence: next.sharePresence,
-          openTo: kinds,
-          mentorAvailability: next.mentorAvailability,
-        }).catch(() => undefined);
-      }
-      return next;
+    const next = { ...switches, ...patch };
+    setSwitches(next);
+    writeValue(SWITCH_KEY, next);
+    const kinds: OpenToKind[] = readOpenTo().filter((kind) => kind === "speaking");
+    if (next.openToCofounder) kinds.push("cofounder");
+    if (next.openToInvestors) kinds.push("investor");
+    if (next.openToAdvisors) kinds.push("advisor");
+    if (next.mentorAvailability) kinds.push("mentoring");
+    // Shared helper: list + switch snapshot + profile privacy in one remote write.
+    applyOpenTo(kinds, {
+      uid: user?.uid ?? null,
+      demo: isDemoMode,
+      privacy: {
+        discoverable: next.discoverable && next.publicProfile,
+        messagesFrom: next.messagesFrom,
+        showEmail: next.showEmail,
+        visibility: next.publicProfile ? "Public" : "Connections Only",
+        sharePresence: next.sharePresence,
+      },
     });
   };
 
@@ -301,7 +323,7 @@ export default function Settings() {
 
   const saveCards = (next: PayCard[]) => {
     setCards(next);
-    localStorage.setItem(CARDS_KEY, JSON.stringify(next));
+    writeValue(CARDS_KEY, next);
   };
 
   const downloadMyData = () => {
@@ -385,7 +407,7 @@ export default function Settings() {
     { key: "showEmail", title: t("Show email", "Εμφάνιση email"), desc: t("Visible on your profile to signed-in members.", "Φαίνεται σε συνδεδεμένα μέλη.") },
     { key: "showLocation", title: t("Show location", "Εμφάνιση τοποθεσίας"), desc: t("City and country on your card.", "Πόλη και χώρα στην κάρτα.") },
     { key: "showStartup", title: t("Show startup", "Εμφάνιση startup"), desc: t("Company, stage, and industry stay visible.", "Εταιρεία, στάδιο και κλάδος μένουν ορατά.") },
-    { key: "mentorAvailability", title: t("Open to mentor", "Διαθέσιμος ως μέντορας"), desc: t("A badge that you can take mentor requests.", "Σήμα ότι δέχεσαι αιτήματα.") },
+    { key: "mentorAvailability", title: t("Open to mentor", "Διάθεση για καθοδήγηση"), desc: t("A badge that you can take mentor requests.", "Σήμα ότι δέχεσαι αιτήματα.") },
     { key: "openToCofounder", title: t("Looking for a co-founder", "Ψάχνω συνιδρυτή"), desc: t("Shown on your card and in matches.", "Φαίνεται στην κάρτα και στις αντιστοιχίσεις.") },
     { key: "openToInvestors", title: t("Open to investors", "Ανοιχτός σε επενδυτές"), desc: t("Investors can request an intro.", "Οι επενδυτές μπορούν να σου στείλουν αίτημα σύνδεσης.") },
     { key: "openToAdvisors", title: t("Open to advisors", "Ανοιχτός σε συμβούλους"), desc: t("Advisors can offer a session.", "Οι σύμβουλοι μπορούν να προτείνουν συνεδρία.") },
@@ -942,7 +964,7 @@ export default function Settings() {
             <div className="rounded-xl bg-stone-900 p-5 text-white sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-lg font-semibold">{plan === "pro" ? "Pro Founder" : plan === "studio" ? "Studio" : "Starter"}</p>
+                  <p className="text-base font-semibold">{plan === "pro" ? "Pro Founder" : plan === "studio" ? "Studio" : "Starter"}</p>
                   <p className="mt-1 text-sm text-white/70">{plan === "starter" ? t("Free", "Δωρεάν") : plan === "studio" ? t("Talk to us", "Επικοινώνησε") : (form.currency === "USD" ? "$240" : form.currency === "GBP" ? "£190" : "€220") + " · " + t("per year", "τον χρόνο")}</p>
                 </div>
                 <span className="inline-flex min-h-8 items-center rounded-full border border-white/15 px-3 text-xs font-semibold">{t("Active", "Ενεργό")}</span>

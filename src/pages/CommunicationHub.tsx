@@ -35,6 +35,7 @@ import { avatarOf, findPerson, isOnline, type Person } from "../lib/peopleSource
 import { REACTIONS, newCallLink, transcriptHash, type ValidationMode } from "../lib/chat";
 import { formatBytes, MAX_UPLOAD_BYTES, uploadFile, UploadError } from "../lib/files";
 import { downloadJson, downloadText } from "../lib/download";
+import { safeMediaUrl, safeWebUrl } from "../lib/webUrl";
 import {
  blockPerson,
  connectionRecords,
@@ -115,7 +116,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false, icon }: {
  status?: "online" | "offline"; isAI?: boolean; icon?: string;
 }) => {
  const s: Record<string, string> = {
-  xs: "w-6 h-6 rounded-lg text-[10px]", sm: "w-8 h-8 rounded-xl text-xs", md: "w-10 h-10 rounded-2xl text-xs",
+  xs: "w-6 h-6 rounded-lg text-xs", sm: "w-8 h-8 rounded-xl text-xs", md: "w-10 h-10 rounded-2xl text-xs",
   lg: "w-14 h-14 rounded-xl text-sm", xl: "w-20 h-20 rounded-xl text-base"
  };
  const initials = alt.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -151,7 +152,7 @@ const IconButton = ({ icon: Icon, onClick, active = false, variant = "ghost", ba
  )}>
   <Icon className="w-4 h-4" />
   {badge !== undefined && (
-   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-stone-900 text-white text-[10px] font-medium rounded-full flex items-center justify-center tabular-nums">{badge}</span>
+   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-stone-900 text-white text-xs font-medium rounded-full flex items-center justify-center tabular-nums">{badge}</span>
   )}
  </button>
 );
@@ -175,7 +176,7 @@ const DateSeparator = ({ at }: { at: number }) => {
  return (
   <div className="flex items-center gap-3 py-4">
    <div className="flex-1 h-px bg-stone-200" />
-   <span className="text-[10px] font-semibold text-stone-400 tracking-wider">{label}</span>
+   <span className="text-xs font-semibold text-stone-400 tracking-wider">{label}</span>
    <div className="flex-1 h-px bg-stone-200" />
   </div>
  );
@@ -205,7 +206,7 @@ function PeoplePicker({ open, onClose, title, description, people, onPick, inclu
     </div>
     <div className="max-h-[50vh] overflow-y-auto -mx-1 px-1 space-y-1">
      {recent.length > 0 && (
-      <p className="px-2 pt-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("Recent", "Πρόσφατα")}</p>
+      <p className="px-2 pt-1 text-xs font-semibold text-stone-400 uppercase tracking-wider">{t("Recent", "Πρόσφατα")}</p>
      )}
      {recent.map((item) => (
       <button key={item.id} type="button" onClick={() => onPick(item.otherId)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
@@ -217,7 +218,7 @@ function PeoplePicker({ open, onClose, title, description, people, onPick, inclu
       </button>
      ))}
      {members.length > 0 && (
-      <p className="px-2 pt-2 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("Members", "Μέλη")}</p>
+      <p className="px-2 pt-2 text-xs font-semibold text-stone-400 uppercase tracking-wider">{t("Members", "Μέλη")}</p>
      )}
      {members.map((person) => (
       <button key={person.id} type="button" onClick={() => onPick(person.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
@@ -226,11 +227,11 @@ function PeoplePicker({ open, onClose, title, description, people, onPick, inclu
         <p className="text-sm font-medium text-stone-900 truncate">{person.fullName}</p>
         <p className="text-xs text-stone-500 truncate">{person.headline || labelOf(person.role)}</p>
        </div>
-       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">{labelOf(person.role)}</span>
+       <span className="text-xs px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">{labelOf(person.role)}</span>
       </button>
      ))}
      {agents.length > 0 && (
-      <p className="px-2 pt-2 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">{t("AI specialists", "Ειδικοί AI")}</p>
+      <p className="px-2 pt-2 text-xs font-semibold text-stone-400 uppercase tracking-wider">{t("AI specialists", "Ειδικοί AI")}</p>
      )}
      {agents.map((agent) => (
       <button key={agent.id} type="button" onClick={() => onPick(agent.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-50 text-left">
@@ -538,14 +539,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   const url = newCallLink(kind);
   const opened = window.open(url, "_blank", "noopener,noreferrer");
   void messaging.send(kind === "video" ? t("Video call", "Βιντεοκλήση") : t("Voice call", "Φωνητική κλήση"), { kind: "call", callUrl: url });
-  if (!opened) toast.info(t("Call link sent", "Ο σύνδεσμος κλήσης στάλθηκε"), t("Open it from the conversation when you are ready.", "Άνοιξέ τον από τη συνομιλία όταν είσαι έτοιμος/η."));
+  if (!opened) toast.info(t("Call link sent", "Ο σύνδεσμος κλήσης στάλθηκε"), t("Open it from the conversation when you are ready.", "Άνοιξέ τον από τη συνομιλία όποτε θέλεις."));
  };
 
  const handleAcceptIntro = async (intro: IntroCard) => {
   if (intro.record) {
    try {
     await respondToConnection(intro.record, true);
-    toast.success(t("Connected", "Συνδεθήκατε"), t(`You and ${intro.from.fullName} can message each other now.`, `Εσύ και ο/η ${intro.from.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+    toast.success(t("Connected", "Συνδεθήκατε"), t(`You and ${intro.from.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${intro.from.fullName}.`));
     logActivity({ kind: "request", title: `Connected with ${intro.from.fullName}`, titleEl: `Σύνδεση με ${intro.from.fullName}`, href: `/profile/${intro.from.id}` });
    } catch {
     toast.error(t("Could not accept", "Η αποδοχή απέτυχε"), t("Please try again.", "Δοκίμασε ξανά."));
@@ -639,7 +640,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     toast.success(t("Report sent", "Η αναφορά στάλθηκε"), t("Our team reviews every report. Thank you.", "Η ομάδα μας εξετάζει κάθε αναφορά. Ευχαριστούμε."));
    } else if (isBlockedByMe) {
     if (real) await unblockPerson(active.otherId);
-    toast.success(t("Member unblocked", "Ο αποκλεισμός αφαιρέθηκε"), t(`${target.fullName} can message you again.`, `Ο/Η ${target.fullName} μπορεί ξανά να σου στείλει μήνυμα.`));
+    toast.success(t("Member unblocked", "Ο αποκλεισμός αφαιρέθηκε"), t(`${target.fullName} can message you again.`, `${target.fullName} μπορεί ξανά να σου στείλει μήνυμα.`));
    } else {
     if (real) await blockPerson({ id: active.otherId, fullName: target.fullName });
     toast.success(t("Member blocked", "Το μέλος αποκλείστηκε"), t("You can undo this from Settings › Privacy.", "Μπορείς να το αναιρέσεις από Ρυθμίσεις › Απόρρητο."));
@@ -733,23 +734,21 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {conv.pinned && <Pin className="absolute top-2 right-2 w-3 h-3 text-stone-400 rotate-45" aria-hidden="true" />}
     <Avatar src={conv.other.avatar} alt={conv.other.fullName} size="md" status={conv.kind === "ai" ? undefined : online ? "online" : "offline"} isAI={conv.kind === "ai"} icon={agent?.icon} />
     <div className="flex-1 min-w-0">
-     <div className="flex items-center justify-between mb-0.5">
-      <div className="flex items-center gap-1.5 min-w-0">
-       <h3 className={cn("text-sm font-semibold truncate", conv.unread > 0 ? "text-stone-900" : "text-stone-700")}>
-        {agent ? agentName(agent) : conv.other.fullName}
-       </h3>
-       {conv.kind === "ai" ? <span className="shrink-0 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] rounded-full font-medium">AI</span>
-        : conv.other.role ? <span className="shrink-0 px-1.5 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-medium leading-tight">{labelOf(conv.other.role)}</span> : null}
-       {conv.muted && <BellOff className="w-3 h-3 text-stone-400 shrink-0" aria-label={t("Muted", "Σε σίγαση")} />}
-      </div>
-      {conv.lastMessage && <span className="text-[11px] text-stone-400 shrink-0 ml-2 mr-3"><RelTime iso={new Date(conv.lastMessageAt).toISOString()} /></span>}
+     <div className="flex items-center gap-2 mb-0.5">
+      <h3 className={cn("text-sm font-semibold truncate min-w-0 flex-1", conv.unread > 0 ? "text-stone-900" : "text-stone-700")}>
+       {agent ? agentName(agent) : conv.other.fullName}
+      </h3>
+      {conv.muted && <BellOff className="w-3 h-3 text-stone-400 shrink-0" aria-label={t("Muted", "Σε σίγαση")} />}
+      {conv.lastMessage && <span className="text-xs text-stone-400 shrink-0"><RelTime iso={new Date(conv.lastMessageAt).toISOString()} /></span>}
      </div>
-     <div className="flex items-center justify-between">
-      <p className={cn("text-xs truncate pr-2", conv.unread > 0 ? "text-stone-700 font-medium" : "text-stone-500")}>
+     <div className="flex items-center gap-1.5">
+      {conv.kind === "ai" ? <span className="shrink-0 px-1.5 py-0.5 bg-stone-900 text-white text-xs rounded-full font-medium">AI</span>
+       : conv.other.role ? <span className="shrink-0 max-w-[55%] truncate px-1.5 py-0.5 bg-stone-100 text-stone-500 text-xs rounded-full font-medium leading-tight">{labelOf(conv.other.role)}</span> : null}
+      <p className={cn("text-xs truncate min-w-0 flex-1", conv.unread > 0 ? "text-stone-700 font-medium" : "text-stone-500")}>
        {mine ? <span className="text-stone-400">{t("You: ", "Εσύ: ")}</span> : null}{preview}
       </p>
       {conv.unread > 0 && (
-       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{conv.unread > 99 ? '99+' : conv.unread}</span>
+       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-xs font-bold rounded-full flex items-center justify-center">{conv.unread > 99 ? '99+' : conv.unread}</span>
       )}
      </div>
     </div>
@@ -781,7 +780,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
       <div>
        <h1 className="text-base font-bold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
-       <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Private conversations", "Ιδιωτικές συνομιλίες")}</p>
+       <p className="text-xs text-stone-400 font-medium tracking-wider">{t("Private conversations", "Ιδιωτικές συνομιλίες")}</p>
       </div>
      </div>
      <IconButton icon={Plus} variant="filled" tooltip={t("New message", "Νέο μήνυμα")} onClick={() => setPicker({ open: true, mode: 'new' })} />
@@ -792,13 +791,13 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all", sidebarTab === "chats" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <MessageSquare className="w-3.5 h-3.5" />
       {t("Chats", "Συνομιλίες")}
-      {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white text-[10px] font-medium rounded-full tabular-nums">{totalUnread}</span>}
+      {totalUnread > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-900 text-white text-xs font-medium rounded-full tabular-nums">{totalUnread}</span>}
      </button>
      <button role="tab" aria-selected={sidebarTab === "intros"} onClick={() => setSidebarTab("intros")}
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all", sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
       {t("Requests", "Αιτήματα")}
-      {intros.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-[10px] font-bold rounded-full">{intros.length}</span>}
+      {intros.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-xs font-bold rounded-full">{intros.length}</span>}
      </button>
     </div>
 
@@ -855,7 +854,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <>
          <div className="flex items-center gap-2 px-2 py-2">
           <Pin className="w-3 h-3 text-stone-400 rotate-45" />
-          <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Pinned", "Καρφιτσωμένες")}</span>
+          <span className="text-xs font-semibold text-stone-400 tracking-wider uppercase">{t("Pinned", "Καρφιτσωμένες")}</span>
          </div>
          {pinnedConversations.map((c) => renderConvCard(c))}
          <div className="h-px bg-stone-200 mx-2 my-2" />
@@ -866,7 +865,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          {pinnedConversations.length > 0 && (
           <div className="flex items-center gap-2 px-2 py-2">
            <Clock className="w-3 h-3 text-stone-400" />
-           <span className="text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Recent", "Πρόσφατες")}</span>
+           <span className="text-xs font-semibold text-stone-400 tracking-wider uppercase">{t("Recent", "Πρόσφατες")}</span>
           </div>
          )}
          {unpinnedConversations.map((c) => renderConvCard(c))}
@@ -895,9 +894,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <div className="flex-1 min-w-0">
            <h4 className="text-sm font-semibold text-stone-900">{req.from.fullName}</h4>
            <p className="text-xs text-stone-500 truncate">{req.from.headline}</p>
-           {req.from.role && <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-[10px] font-medium rounded-full">{labelOf(req.from.role)}</span>}
+           {req.from.role && <span className="inline-block mt-1 px-2 py-0.5 bg-stone-100 text-stone-700 text-xs font-medium rounded-full">{labelOf(req.from.role)}</span>}
           </div>
-          <span className="text-[10px] text-stone-400 shrink-0"><RelTime iso={req.createdAt} /></span>
+          <span className="text-xs text-stone-400 shrink-0"><RelTime iso={req.createdAt} /></span>
          </div>
          {req.message && <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-lg leading-relaxed italic">“{req.message}”</p>}
          <div className="flex items-center gap-2">
@@ -916,14 +915,14 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       )}
       {sentRequests.length > 0 && (
        <div className="pt-2">
-        <p className="px-1 pb-2 text-[10px] font-semibold text-stone-400 tracking-wider uppercase">{t("Sent by you", "Σταλμένα από εσένα")}</p>
+        <p className="px-1 pb-2 text-xs font-semibold text-stone-400 tracking-wider uppercase">{t("Sent by you", "Σταλμένα από εσένα")}</p>
         <div className="space-y-2">
          {sentRequests.map((item) => (
           <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-xl">
            <Avatar src={item.person.avatar} alt={item.person.name} size="sm" />
            <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-stone-900 truncate">{item.person.name}</p>
-            <p className="text-[11px] text-stone-400">{t("Waiting for a reply", "Αναμονή απάντησης")} · <RelTime iso={new Date(item.at).toISOString()} /></p>
+            <p className="text-xs text-stone-400">{t("Waiting for a reply", "Αναμονή απάντησης")} · <RelTime iso={new Date(item.at).toISOString()} /></p>
            </div>
            <button type="button" onClick={() => void handleWithdraw(item)} className="min-h-11 px-2 text-xs font-medium text-stone-500 hover:text-red-600">{t("Withdraw", "Ανάκληση")}</button>
           </div>
@@ -952,27 +951,28 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // RENDER: MESSAGE BUBBLE
  // =============================================================================
  const renderAttachment = (att: ChatAttachment, isMe: boolean, key: number) => {
-  if (isImage(att) && att.url) {
+  const url = safeMediaUrl(att.url);
+  if (isImage(att) && url) {
    return (
-    <a key={key} href={att.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-stone-200/60 max-w-[260px]">
-     <img src={att.url} alt={att.name} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
+    <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-stone-200/60 max-w-[260px]">
+     <img src={url} alt={att.name} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
     </a>
    );
   }
-  if (isAudio(att) && att.url) {
+  if (isAudio(att) && url) {
    return (
     <div key={key} className={cn("flex items-center gap-2 p-2 rounded-lg", isMe ? "bg-stone-800" : "bg-stone-100")}>
      <Mic className={cn("w-4 h-4 shrink-0", isMe ? "text-stone-300" : "text-stone-500")} />
-     <audio controls src={att.url} className="h-8 max-w-[220px]" preload="metadata" />
+     <audio controls src={url} className="h-8 max-w-[220px]" preload="metadata" />
     </div>
    );
   }
   return (
-   <a key={key} href={att.url || undefined} target="_blank" rel="noopener noreferrer" download={att.name}
-    className={cn("flex items-center gap-2 p-2 rounded-lg transition-colors", isMe ? "bg-stone-800 hover:bg-stone-700" : "bg-stone-100 hover:bg-stone-200", !att.url && "pointer-events-none opacity-70")}>
+   <a key={key} href={url || undefined} target="_blank" rel="noopener noreferrer" download={att.name}
+    className={cn("flex items-center gap-2 p-2 rounded-lg transition-colors", isMe ? "bg-stone-800 hover:bg-stone-700" : "bg-stone-100 hover:bg-stone-200", !url && "pointer-events-none opacity-70")}>
     <FileText className={cn("w-4 h-4 shrink-0", isMe ? "text-stone-400" : "text-stone-500")} />
     <span className={cn("text-xs truncate", isMe ? "text-stone-200" : "text-stone-700")}>{att.name}</span>
-    <span className={cn("text-[10px] shrink-0", isMe ? "text-stone-400" : "text-stone-400")}>{formatBytes(att.size)}</span>
+    <span className={cn("text-xs shrink-0", isMe ? "text-stone-400" : "text-stone-400")}>{formatBytes(att.size)}</span>
     <Download className={cn("w-3 h-3 ml-auto shrink-0", isMe ? "text-stone-400" : "text-stone-500")} />
    </a>
   );
@@ -1018,7 +1018,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {msg.isAI && activeAgent && (
         <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-stone-200/50">
          <Sparkles className="w-3 h-3 text-stone-500" />
-         <span className="text-[10px] font-semibold text-stone-600 tracking-wider">{agentName(activeAgent)}</span>
+         <span className="text-xs font-semibold text-stone-600 tracking-wider">{agentName(activeAgent)}</span>
         </div>
        )}
        {msg.replyTo && (
@@ -1035,9 +1035,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          </div>
          <div className="min-w-0">
           <p className="font-medium">{msg.body}</p>
-          <a href={msg.callUrl} target="_blank" rel="noopener noreferrer" className={cn("inline-flex items-center gap-1 text-xs underline", isMe ? "text-stone-300" : "text-stone-600")}>
-           {t("Join call", "Συμμετοχή στην κλήση")} <ExternalLink className="w-3 h-3" />
-          </a>
+          {safeWebUrl(msg.callUrl) ? (
+           <a href={safeWebUrl(msg.callUrl)!} target="_blank" rel="noopener noreferrer" className={cn("inline-flex items-center gap-1 text-xs underline", isMe ? "text-stone-300" : "text-stone-600")}>
+            {t("Join call", "Συμμετοχή στην κλήση")} <ExternalLink className="w-3 h-3" />
+           </a>
+          ) : null}
          </div>
         </div>
        ) : editing?.id === msg.id ? (
@@ -1085,8 +1087,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
 
       <div className={cn("flex items-center gap-2 px-1", isMe ? "flex-row-reverse" : "flex-row")}>
-       <span className="text-[10px] text-stone-400">{formatTime(msg.createdAt)}</span>
-       {msg.edited && !msg.deleted && <span className="text-[10px] text-stone-400">· {t("edited", "επεξεργασμένο")}</span>}
+       <span className="text-xs text-stone-400">{formatTime(msg.createdAt)}</span>
+       {msg.edited && !msg.deleted && <span className="text-xs text-stone-400">· {t("edited", "επεξεργασμένο")}</span>}
        {isMe && (
         <span className="text-stone-400" aria-label={msg.failed ? t("Not sent", "Δεν στάλθηκε") : msg.pending ? t("Sending", "Αποστολή") : read ? t("Read", "Διαβάστηκε") : t("Sent", "Στάλθηκε")}>
          {msg.failed ? <AlertCircle className="w-3 h-3 text-red-500" /> : msg.pending ? <Clock className="w-3 h-3" /> : read ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3" />}
@@ -1119,7 +1121,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     <div className="w-20 h-20 mx-auto mb-8 bg-stone-900 rounded-xl flex items-center justify-center">
      <MessageSquare className="w-9 h-9 text-white" />
     </div>
-    <h2 className="text-2xl font-bold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
+    <h2 className="text-xl sm:text-2xl font-semibold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
     <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
      {t("Message co-founders, mentors and investors, share files, start a call, or ask an AI specialist.", "Στείλε μήνυμα σε συνιδρυτές, μέντορες και επενδυτές, μοιράσου αρχεία, ξεκίνα κλήση ή ρώτησε έναν ειδικό AI.")}
     </p>
@@ -1133,7 +1135,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}><Icon className="w-3.5 h-3.5" /></div>
        <div className="text-left">
         <p className="text-base font-bold text-stone-900 leading-none tabular-nums">{value}</p>
-        <p className="text-[10px] text-stone-400 font-medium tracking-wider">{label}</p>
+        <p className="text-xs text-stone-400 font-medium tracking-wider">{label}</p>
        </div>
       </div>
      ))}
@@ -1158,12 +1160,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     </div>
     {conversations.length > 0 && (
      <div className="mt-8 pt-6 border-t border-stone-200/60">
-      <p className="text-[10px] font-semibold text-stone-400 tracking-wide uppercase mb-3">{t("Recent conversations", "Πρόσφατες συνομιλίες")}</p>
+      <p className="text-xs font-semibold text-stone-400 tracking-wide uppercase mb-3">{t("Recent conversations", "Πρόσφατες συνομιλίες")}</p>
       <div className="flex items-center justify-center gap-2 flex-wrap">
        {conversations.filter((c) => !c.archived).slice(0, 6).map((conv) => (
         <button key={conv.id} type="button" onClick={() => openConversation(conv.id)} className="relative block" title={conv.other.fullName} aria-label={conv.other.fullName}>
          <Avatar src={conv.other.avatar} alt={conv.other.fullName} size="md" isAI={conv.kind === "ai"} icon={MOCK_AGENTS.find((a) => a.id === conv.otherId)?.icon} />
-         {conv.unread > 0 && <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-stone-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center tabular-nums">{conv.unread}</div>}
+         {conv.unread > 0 && <div className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-stone-900 text-white text-xs font-medium rounded-full flex items-center justify-center tabular-nums">{conv.unread}</div>}
         </button>
        ))}
       </div>
@@ -1189,7 +1191,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0">
          <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h2>
-         {!isAIChat && active.other.role && <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-[9px] rounded-full font-semibold tracking-wider shrink-0">{labelOf(active.other.role)}</span>}
+         {!isAIChat && active.other.role && <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-xs rounded-full font-semibold tracking-wider shrink-0">{labelOf(active.other.role)}</span>}
         </div>
         <p className="text-xs text-stone-500 truncate">
          {otherTyping ? <span className="text-emerald-600 font-medium animate-pulse">{t("typing…", "πληκτρολογεί…")}</span>
@@ -1246,7 +1248,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {!isAIChat && (
        <button type="button" onClick={() => setShowValidationDialog(true)} className={cn("flex items-center gap-1 mr-1 min-h-9 px-2 rounded-lg transition-colors shrink-0", MODE_STYLE[validation.mode].bgColor)} title={modeText(validation.mode).description}>
         {(() => { const VIcon = MODE_STYLE[validation.mode].icon; return <VIcon className={cn("w-3 h-3", MODE_STYLE[validation.mode].color)} />; })()}
-        <span className={cn("text-[10px] font-medium", MODE_STYLE[validation.mode].color)}>{modeText(validation.mode).label}</span>
+        <span className={cn("text-xs font-medium", MODE_STYLE[validation.mode].color)}>{modeText(validation.mode).label}</span>
        </button>
       )}
       {!isAIChat && (
@@ -1269,7 +1271,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <Search className="w-4 h-4 text-stone-400 shrink-0" />
         <input type="search" placeholder={t("Search in this conversation…", "Αναζήτηση σε αυτή τη συνομιλία…")} value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} autoFocus
          className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-stone-400 min-h-11" />
-        <span className="text-[10px] text-stone-400 tabular-nums">{chatSearchQuery ? t(`${searchHits} found`, `${searchHits} βρέθηκαν`) : ""}</span>
+        <span className="text-xs text-stone-400 tabular-nums">{chatSearchQuery ? t(`${searchHits} found`, `${searchHits} βρέθηκαν`) : ""}</span>
         <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded"><X className="w-4 h-4" /></button>
        </div>
       </motion.div>
@@ -1279,7 +1281,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {twoPartyWaitingOnMe && (
      <div className="px-5 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3 text-xs text-emerald-800">
       <ShieldCheck className="w-4 h-4 shrink-0" />
-      <span className="flex-1">{t(`${active.other.fullName} asks both of you to verify this transcript.`, `Ο/Η ${active.other.fullName} ζητά να επικυρώσετε και οι δύο αυτό το αντίγραφο.`)}</span>
+      <span className="flex-1">{t(`${active.other.fullName} asks both of you to verify this transcript.`, `${active.other.fullName} ζητά να επικυρώσετε και οι δύο αυτό το αντίγραφο.`)}</span>
       <button type="button" onClick={() => void acceptTwoParty()} className="min-h-9 px-3 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700">{t("Accept", "Αποδοχή")}</button>
       <button type="button" onClick={() => messaging.setValidation(active.id, { mode: "casual" })} className="min-h-9 px-2 text-emerald-700 hover:underline">{t("Decline", "Απόρριψη")}</button>
      </div>
@@ -1365,7 +1367,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <div key={i} className="flex items-center gap-2 pl-1.5 pr-1 py-1 bg-stone-100 rounded-lg">
            {preview ? <img src={preview} alt="" className="w-7 h-7 rounded object-cover" /> : file.type.startsWith("audio/") ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
            <span className="text-xs text-stone-600 truncate max-w-[140px]">{file.name}</span>
-           <span className="text-[10px] text-stone-400">{formatBytes(file.size)}</span>
+           <span className="text-xs text-stone-400">{formatBytes(file.size)}</span>
            <button type="button" aria-label={t("Remove attachment", "Αφαίρεση συνημμένου")} onClick={() => { if (preview) URL.revokeObjectURL(preview); setPendingFiles((prev) => prev.filter((_, idx) => idx !== i)); }} className="min-h-7 min-w-7 inline-flex items-center justify-center text-stone-400 hover:text-red-500"><X className="w-3 h-3" /></button>
           </div>
          ))}
@@ -1451,7 +1453,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <h3 className="font-semibold text-stone-900 text-sm mb-0.5">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h3>
       <p className="text-xs text-stone-500 mb-3">{activeAgent ? agentRole(activeAgent) : active.other.headline || labelOf(active.other.role) || t("Member", "Μέλος")}</p>
       {isAIChat && activeAgent ? (
-       <div className="flex flex-wrap justify-center gap-1.5">{agentCapabilities(activeAgent).map((cap) => <span key={cap} className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] rounded-full">{cap}</span>)}</div>
+       <div className="flex flex-wrap justify-center gap-1.5">{agentCapabilities(activeAgent).map((cap) => <span key={cap} className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs rounded-full">{cap}</span>)}</div>
       ) : (
        <button type="button" onClick={() => navigate(`/profile/${active.otherId}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
         <UserIcon className="w-3 h-3" /> {t("View profile", "Προβολή προφίλ")}
@@ -1460,30 +1462,34 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      </div>
 
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared photos", "Κοινοποιημένες φωτογραφίες")}</h4>
+      <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared photos", "Κοινοποιημένες φωτογραφίες")}</h4>
       {sharedMedia.length === 0 ? <p className="text-xs text-stone-400">{t("No photos shared yet.", "Δεν έχουν σταλεί φωτογραφίες ακόμη.")}</p> : (
        <div className="grid grid-cols-3 gap-1.5">
-        {sharedMedia.slice(-9).reverse().map(({ attachment, message }) => (
-         <a key={`${message.id}-${attachment.name}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
-          <img src={attachment.url} alt={attachment.name} className="w-full h-full object-cover" loading="lazy" />
-         </a>
-        ))}
+        {sharedMedia.slice(-9).reverse().map(({ attachment, message }) => {
+         const mediaUrl = safeMediaUrl(attachment.url);
+         if (!mediaUrl) return null;
+         return (
+          <a key={`${message.id}-${attachment.name}`} href={mediaUrl} target="_blank" rel="noopener noreferrer" className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+           <img src={mediaUrl} alt={attachment.name} className="w-full h-full object-cover" loading="lazy" />
+          </a>
+         );
+        })}
        </div>
       )}
      </div>
 
      <div className="p-3 border-b border-stone-100">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared files", "Κοινοποιημένα αρχεία")}</h4>
+      <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared files", "Κοινοποιημένα αρχεία")}</h4>
       {sharedFiles.length === 0 ? <p className="text-xs text-stone-400">{t("No files shared yet.", "Δεν έχουν σταλεί αρχεία ακόμη.")}</p> : (
        <div className="space-y-1.5">
         {sharedFiles.slice(-8).reverse().map(({ attachment, message }) => (
-         <a key={`${message.id}-${attachment.name}`} href={attachment.url || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group">
+         <a key={`${message.id}-${attachment.name}`} href={safeMediaUrl(attachment.url) || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group">
           <div className="w-9 h-9 bg-stone-100 rounded-lg flex items-center justify-center group-hover:bg-stone-200 transition-colors shrink-0">
            {isAudio(attachment) ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
           </div>
           <div className="flex-1 min-w-0">
            <p className="text-xs font-medium text-stone-900 truncate">{attachment.name}</p>
-           <p className="text-[10px] text-stone-500">{formatBytes(attachment.size)} · {formatDate(message.createdAt)}</p>
+           <p className="text-xs text-stone-500">{formatBytes(attachment.size)} · {formatDate(message.createdAt)}</p>
           </div>
           <Download className="w-3.5 h-3.5 text-stone-400 opacity-0 group-hover:opacity-100 shrink-0" />
          </a>
@@ -1495,19 +1501,19 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {!isAIChat && (
       <div className="p-3 border-b border-stone-100">
        <div className="flex items-center justify-between mb-2">
-        <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase">{t("Transcript verification", "Επικύρωση αντιγράφου")}</h4>
-        <button type="button" onClick={() => setShowValidationDialog(true)} className="min-h-9 text-[10px] text-stone-400 hover:text-stone-900 transition-colors">{t("Change", "Αλλαγή")}</button>
+        <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">{t("Transcript verification", "Επικύρωση αντιγράφου")}</h4>
+        <button type="button" onClick={() => setShowValidationDialog(true)} className="min-h-9 text-xs text-stone-400 hover:text-stone-900 transition-colors">{t("Change", "Αλλαγή")}</button>
        </div>
        <div className={cn("flex items-center gap-2.5 p-2.5 rounded-xl border mb-2", style.bgColor, style.border)}>
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", style.bgColor)}><VIcon className={cn("w-3.5 h-3.5", style.color)} /></div>
         <div className="min-w-0 flex-1">
          <p className="text-xs font-medium text-stone-900">{modeText(validation.mode).label}</p>
-         <p className="text-[10px] text-stone-500">{twoPartyWaitingOnOther ? t(`Waiting for ${active.other.fullName.split(" ")[0]} to accept.`, `Αναμονή αποδοχής από ${active.other.fullName.split(" ")[0]}.`) : modeText(validation.mode).description}</p>
+         <p className="text-xs text-stone-500">{twoPartyWaitingOnOther ? t(`Waiting for ${active.other.fullName.split(" ")[0]} to accept.`, `Αναμονή αποδοχής από ${active.other.fullName.split(" ")[0]}.`) : modeText(validation.mode).description}</p>
         </div>
        </div>
        {validation.hash && (
         <div className="flex items-center gap-2 p-2 rounded-lg border border-stone-200 bg-stone-50 mb-2">
-         <span className="text-[10px] text-stone-500 font-mono truncate flex-1" title={validation.hash}>sha256:{validation.hash}</span>
+         <span className="text-xs text-stone-500 font-mono truncate flex-1" title={validation.hash}>sha256:{validation.hash}</span>
          <button type="button" onClick={() => void copyValidationHash()} aria-label={t("Copy hash", "Αντιγραφή αποτυπώματος")} className="min-h-8 min-w-8 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 rounded shrink-0">
           {hashCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
          </button>
@@ -1515,16 +1521,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        )}
        {transcriptAvailable && (
         <div className="flex items-center gap-1.5">
-         <button type="button" onClick={() => handleExportTranscript('txt')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><FileText className="w-3 h-3" /> {t("Export .txt", "Εξαγωγή .txt")}</button>
-         <button type="button" onClick={() => handleExportTranscript('json')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><Download className="w-3 h-3" /> {t("Export .json", "Εξαγωγή .json")}</button>
-         <button type="button" onClick={() => void refreshHash()} title={t("Recompute the fingerprint over the current messages", "Υπολόγισε ξανά το αποτύπωμα για τα τρέχοντα μηνύματα")} className="min-h-9 px-2 text-[10px] font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200">{t("Refresh", "Ανανέωση")}</button>
+         <button type="button" onClick={() => handleExportTranscript('txt')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-xs font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><FileText className="w-3 h-3" /> {t("Export .txt", "Εξαγωγή .txt")}</button>
+         <button type="button" onClick={() => handleExportTranscript('json')} className="flex-1 flex items-center justify-center gap-1.5 min-h-9 px-2 text-xs font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200 transition-all"><Download className="w-3 h-3" /> {t("Export .json", "Εξαγωγή .json")}</button>
+         <button type="button" onClick={() => void refreshHash()} title={t("Recompute the fingerprint over the current messages", "Υπολόγισε ξανά το αποτύπωμα για τα τρέχοντα μηνύματα")} className="min-h-9 px-2 text-xs font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 rounded-lg border border-stone-200">{t("Refresh", "Ανανέωση")}</button>
         </div>
        )}
       </div>
      )}
 
      <div className="p-3">
-      <h4 className="text-[10px] font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Conversation", "Συνομιλία")}</h4>
+      <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Conversation", "Συνομιλία")}</h4>
       <div className="space-y-0.5">
        <button type="button" onClick={() => messaging.setFlag(active.id, "muted", !active.muted)} className={cn("w-full flex items-center gap-2.5 min-h-11 px-3 text-xs rounded-xl transition-all", active.muted ? "text-stone-800 bg-stone-100" : "text-stone-600 hover:bg-stone-50")}>
         {active.muted ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />} {active.muted ? t("Unmute notifications", "Κατάργηση σίγασης") : t("Mute notifications", "Σίγαση ειδοποιήσεων")}
@@ -1575,7 +1581,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center"><BrainCircuit className="w-5 h-5 text-white" /></div>
      <div>
       <h1 className="font-bold text-stone-900 tracking-tight">{t("AI specialists", "Ειδικοί AI")}</h1>
-      <p className="text-[10px] text-stone-400 font-medium tracking-wider">{t("Each one keeps its own conversation with you", "Ο καθένας κρατά τη δική του συνομιλία μαζί σου")}</p>
+      <p className="text-xs text-stone-400 font-medium tracking-wider">{t("Each one keeps its own conversation with you", "Ο καθένας κρατά τη δική του συνομιλία μαζί σου")}</p>
      </div>
     </div>
     <div className="flex p-1 bg-stone-100 rounded-xl" role="tablist">
@@ -1595,7 +1601,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     {aiView === "agents" && (
      <div className="max-w-4xl mx-auto space-y-6">
       <div className="text-center mb-6">
-       <h2 className="text-lg font-bold text-stone-900 mb-1.5 tracking-tight">{t("Pick a specialist", "Διάλεξε ειδικό")}</h2>
+       <h2 className="text-base font-semibold text-stone-900 mb-1.5 tracking-tight">{t("Pick a specialist", "Διάλεξε ειδικό")}</h2>
        <p className="text-sm text-stone-500">{t("Focused help for team formation, pitching, strategy, market research and more.", "Στοχευμένη βοήθεια για σύνθεση ομάδας, pitch, στρατηγική, έρευνα αγοράς και άλλα.")}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1624,7 +1630,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
     {aiView === "insights" && (
      <div className="max-w-2xl mx-auto space-y-4">
-      <h2 className="text-lg font-bold text-stone-900 mb-1 tracking-tight">{t("Latest answers", "Τελευταίες απαντήσεις")}</h2>
+      <h2 className="text-base font-semibold text-stone-900 mb-1 tracking-tight">{t("Latest answers", "Τελευταίες απαντήσεις")}</h2>
       <p className="text-sm text-stone-500 mb-4">{t("The most recent reply from each specialist you have talked to.", "Η πιο πρόσφατη απάντηση από κάθε ειδικό με τον οποίο έχεις μιλήσει.")}</p>
       {aiInsights.length === 0 ? (
        <div className="text-center py-12">
@@ -1641,7 +1647,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           <div className="flex-1 min-w-0">
            <div className="flex items-center justify-between gap-2">
             <h3 className="font-semibold text-stone-900 text-sm">{agent ? agentName(agent) : conversation.other.fullName}</h3>
-            <span className="text-[10px] text-stone-400 shrink-0"><RelTime iso={new Date(conversation.lastMessageAt).toISOString()} /></span>
+            <span className="text-xs text-stone-400 shrink-0"><RelTime iso={new Date(conversation.lastMessageAt).toISOString()} /></span>
            </div>
            <p className="text-xs text-stone-600 mt-1 leading-relaxed line-clamp-4 whitespace-pre-wrap">{conversation.lastMessage}</p>
           </div>
@@ -1654,7 +1660,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
     {aiView === "history" && (
      <div className="max-w-2xl mx-auto">
-      <h2 className="text-lg font-bold text-stone-900 mb-4 tracking-tight">{t("Specialist conversations", "Συνομιλίες με ειδικούς")}</h2>
+      <h2 className="text-base font-semibold text-stone-900 mb-4 tracking-tight">{t("Specialist conversations", "Συνομιλίες με ειδικούς")}</h2>
       {aiConversations.length === 0 ? (
        <p className="text-sm text-stone-500 text-center py-12">{t("No conversations with specialists yet.", "Δεν υπάρχουν συνομιλίες με ειδικούς ακόμη.")}</p>
       ) : (
@@ -1721,11 +1727,11 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <div className="flex-1 min-w-0">
          <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-stone-900">{modeText(mode).label}</p>
-          {isActive && <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-[9px] rounded-full font-medium">{t("Current", "Τρέχουσα")}</span>}
+          {isActive && <span className="px-1.5 py-0.5 bg-stone-200 text-stone-600 text-xs rounded-full font-medium">{t("Current", "Τρέχουσα")}</span>}
          </div>
          <p className="text-xs text-stone-500 mt-0.5">{modeText(mode).description}</p>
          {mode === 'two_party' && active && (
-          <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1"><Flag className="w-3 h-3" /> {t(`${active.other.fullName} must accept.`, `Απαιτείται αποδοχή από ${active.other.fullName}.`)}</p>
+          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><Flag className="w-3 h-3" /> {t(`${active.other.fullName} must accept.`, `Απαιτείται αποδοχή από ${active.other.fullName}.`)}</p>
          )}
         </div>
        </button>
@@ -1735,7 +1741,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 mb-4">
      <div className="flex items-start gap-2">
       <Info className="w-4 h-4 shrink-0 text-stone-400 mt-0.5" />
-      <p className="text-[11px] text-stone-500 leading-relaxed">
+      <p className="text-xs text-stone-500 leading-relaxed">
        {t("The fingerprint is a SHA-256 hash of the messages at the time of verification. Export the transcript and anyone can recompute the same hash to confirm nothing changed.", "Το αποτύπωμα είναι ένας κωδικός SHA-256 των μηνυμάτων τη στιγμή της επικύρωσης. Εξάγοντας το αντίγραφο, οποιοσδήποτε μπορεί να υπολογίσει ξανά τον ίδιο κωδικό και να επιβεβαιώσει ότι τίποτα δεν άλλαξε.")}
       </p>
      </div>

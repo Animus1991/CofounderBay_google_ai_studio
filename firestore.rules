@@ -377,7 +377,18 @@ service cloud.firestore {
     match /communities/{communityId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      // Members may join/leave: the only allowed non-owner change is adding or
+      // removing exactly the caller from memberIds (memberCount may move with it).
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'memberCount']) &&
+          ((request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+              request.auth.uid in request.resource.data.memberIds &&
+              request.resource.data.memberIds.size() <= resource.data.memberIds.size() + 1) ||
+           (resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+              !(request.auth.uid in request.resource.data.memberIds))))
+      );
       allow delete: if isAdmin();
 
       match /posts/{postId} {
@@ -398,6 +409,13 @@ service cloud.firestore {
     match /xpEvents/{eventId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Append-only AI usage events — the owner writes, only admins read aggregate.
+    match /aiUsage/{eventId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /streaks/{userId} {
@@ -442,7 +460,44 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Platform-published listings — members read, admins publish.
+    match /programs/{programId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /learningResources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /perks/{perkId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Jobs can be posted by any member and edited by their author.
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
     match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         isAdmin()
@@ -450,8 +505,51 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // A member may file a billing change request for their own account; only admins can act on it.
+    match /billingRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     match /mentorFeedbackMetrics/{metricId} {
       allow read: if isAuthenticated() && (resource.data.workspaceId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Written by the SSO backend (admin SDK bypasses rules); members can't forge audit entries.
+    // Admin-managed platform vocabulary; members read it for onboarding/matching.
+    match /taxonomies/{termId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /automationRules/{ruleId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /automationExecutions/{execId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /automationLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /emailTemplates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notificationTemplates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ssoAuditLog/{eventId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /tenantDomains/{domainId} {
+      allow read: if isAuthenticated() && isAdmin();
       allow write: if isAdmin();
     }
 

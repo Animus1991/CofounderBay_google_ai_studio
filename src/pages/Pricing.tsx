@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, X, ArrowRight, Shield, Zap, Building2, Globe, Sparkles, ZapIcon } from "lucide-react";
+import { Check, X, ArrowRight, Shield, Globe, Sparkles, ZapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -51,10 +51,10 @@ export default function Pricing() {
     >
      <Sparkles className="w-3 h-3" /> {t('Pricing Plans', 'Πακέτα τιμών')}
     </motion.div>
-    <h1 className="text-lg font-medium tracking-tight text-stone-900">
+    <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      {t('Scale your ecosystem with confidence.', 'Κλιμάκωσε το οικοσύστημά σου με σιγουριά.')}
     </h1>
-    <p className="text-sm sm:text-base lg:text-lg text-stone-500">
+    <p className="text-sm sm:text-base text-stone-500">
      {t('Choose the plan that fits your stage, from individual founders to global institutions.', 'Διάλεξε το πακέτο που ταιριάζει στο στάδιό σου, από μεμονωμένους ιδρυτές έως παγκόσμιους οργανισμούς.')}
     </p>
 
@@ -94,7 +94,7 @@ export default function Pricing() {
        )}
 
        <div className="space-y-4 mb-8">
-        <h3 className="text-lg font-medium">{planName(plan.id, plan.name)}</h3>
+        <h3 className="text-base font-semibold">{planName(plan.id, plan.name)}</h3>
         <p className="text-sm text-stone-500 h-10">{planDescription(plan.id, plan.description ?? '')}</p>
         <div className="pt-4">
          <span className="text-lg font-semibold">
@@ -146,7 +146,7 @@ export default function Pricing() {
     >
      <Card className="h-full flex flex-col p-8 bg-stone-900 text-white border-none">
       <div className="space-y-4 mb-8">
-       <h3 className="text-lg font-medium">{t('Enterprise', 'Enterprise')}</h3>
+       <h3 className="text-base font-semibold">{t('Enterprise', 'Enterprise')}</h3>
        <p className="text-sm text-stone-400 h-10">{t('Custom solutions for global institutions and large-scale ecosystems.', 'Προσαρμοσμένες λύσεις για παγκόσμιους οργανισμούς και οικοσυστήματα μεγάλης κλίμακας.')}</p>
        <div className="pt-4">
         <span className="text-lg font-semibold">{t('Custom', 'Προσαρμοσμένο')}</span>
@@ -186,7 +186,7 @@ export default function Pricing() {
    {/* Feature Comparison Table (Simplified for brevity) */}
    <div className="pt-20 space-y-12">
     <div className="text-center space-y-4">
-     <h2 className="text-xl font-medium">{t('Compare all features', 'Σύγκριση όλων των δυνατοτήτων')}</h2>
+     <h2 className="text-base font-semibold">{t('Compare all features', 'Σύγκριση όλων των δυνατοτήτων')}</h2>
      <p className="text-sm text-stone-500">{t('A detailed breakdown of what each plan offers.', 'Αναλυτική εικόνα του τι προσφέρει κάθε πακέτο.')}</p>
     </div>
 
@@ -234,7 +234,7 @@ export default function Pricing() {
      <div className="p-3 bg-stone-100 rounded-2xl w-fit">
       <Shield className="w-6 h-6 text-stone-900" />
      </div>
-     <h3 className="text-lg font-medium">{t('Enterprise Security', 'Ασφάλεια enterprise')}</h3>
+     <h3 className="text-base font-semibold">{t('Enterprise Security', 'Ασφάλεια enterprise')}</h3>
      <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
       {t("We employ bank-grade encryption and follow strict data privacy protocols to ensure your organization's data is always protected.", "Χρησιμοποιούμε κρυπτογράφηση τραπεζικού επιπέδου και αυστηρά πρωτόκολλα ιδιωτικότητας ώστε τα δεδομένα του οργανισμού σου να είναι πάντα προστατευμένα.")}
      </p>
@@ -243,7 +243,7 @@ export default function Pricing() {
      <div className="p-3 bg-stone-100 rounded-2xl w-fit">
       <Globe className="w-6 h-6 text-stone-900" />
      </div>
-     <h3 className="text-lg font-medium">{t('Global Compliance', 'Παγκόσμια συμμόρφωση')}</h3>
+     <h3 className="text-base font-semibold">{t('Global Compliance', 'Παγκόσμια συμμόρφωση')}</h3>
      <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
       {t('Fully GDPR and CCPA compliant. We support data residency requirements for our institutional partners.', 'Πλήρης συμμόρφωση με GDPR και CCPA. Υποστηρίζουμε απαιτήσεις διαμονής δεδομένων για θεσμικούς συνεργάτες.')}
      </p>
@@ -252,7 +252,7 @@ export default function Pricing() {
      <div className="p-3 bg-stone-100 rounded-2xl w-fit">
       <ZapIcon className="w-6 h-6 text-stone-900" />
      </div>
-     <h3 className="text-lg font-medium">{t('Instant Provisioning', 'Άμεση ενεργοποίηση')}</h3>
+     <h3 className="text-base font-semibold">{t('Instant Provisioning', 'Άμεση ενεργοποίηση')}</h3>
      <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
       {t('Get your community up and running in minutes. Our automated onboarding ensures a seamless experience for your members.', 'Η κοινότητά σου είναι έτοιμη σε λίγα λεπτά. Η αυτοματοποιημένη ένταξη δίνει ομαλή εμπειρία στα μέλη σου.')}
      </p>

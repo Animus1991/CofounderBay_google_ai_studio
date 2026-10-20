@@ -124,7 +124,7 @@ export default function FitCheck() {
           <p className="text-xs font-medium text-stone-400 tracking-wide">
             <Both en="Same fields Matches already scores" el="Τα ίδια πεδία που ήδη βαθμολογεί το Matches" />
           </p>
-          <h1 className="text-2xl font-medium text-stone-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
             <Both en={result.archetype.en} el={result.archetype.el} />
           </h1>
           <p className="text-sm text-stone-600 leading-relaxed">

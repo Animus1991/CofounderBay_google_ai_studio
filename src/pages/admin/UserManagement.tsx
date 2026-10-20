@@ -6,15 +6,17 @@ import {
  Tag, BarChart3, ShieldAlert, Briefcase, Download, Mail,
  UserPlus, Ban, Trash2, Edit3, ChevronRight, ChevronLeft
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
+import Avatar from "../../components/ui/Avatar";
 import { User } from "../../types";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { toMillis } from "../../lib/peopleSource";
 
 interface AdminProps {
  user: User;
@@ -35,42 +37,170 @@ const UserManagementSkeleton = () => (
  </div>
 );
 
+interface MemberRow {
+ id: string;
+ fullName: string;
+ email: string;
+ roles: string[];
+ accountStatus: string;
+ verificationStatus: string;
+ createdAt: string;
+ company: string;
+ lastActiveAt: number | null;
+ avatarUrl: string;
+}
+
+interface ReportRow {
+ id: string;
+ targetType: string;
+ targetName: string;
+ targetId: string;
+ targetOwnerId: string;
+ reporterName: string;
+ reason: string;
+ details: string;
+ href: string;
+ status: string;
+ createdAt: number | null;
+}
+
 export default function UserManagement({ user }: AdminProps) {
  const t = useT();
- const [users, setUsers] = useState<any[]>([]);
+ const navigate = useNavigate();
+ const [users, setUsers] = useState<MemberRow[]>([]);
+ const [reports, setReports] = useState<ReportRow[]>([]);
  const [loading, setLoading] = useState(true);
  const [searchQuery, setSearchQuery] = useState("");
  const [selectedTab, setSelectedTab] = useState("All Users");
+ const [busy, setBusy] = useState<string | null>(null);
 
+ // Members come straight from Firestore — this app has no /api backend.
  useEffect(() => {
-  const fetchUsers = async () => {
+  let cancelled = false;
+  void (async () => {
    try {
-    const res = await fetch("/api/users");
-    const data = await res.json();
-    setUsers(data);
+    const { db } = await import('../../firebase');
+    if (!db) { setUsers([]); setLoading(false); return; }
+    const { collection, getDocs, query, limit } = await import('firebase/firestore');
+    const [userSnap, profileSnap] = await Promise.all([
+     getDocs(query(collection(db, 'users'), limit(500))),
+     getDocs(query(collection(db, 'profiles'), limit(500))).catch(() => null),
+    ]);
+    const profileById = new Map<string, Record<string, unknown>>((profileSnap?.docs ?? []).map((d) => [d.id, d.data()]));
+    const rows: MemberRow[] = userSnap.docs.map((entry) => {
+     const u = entry.data() as Record<string, unknown>;
+     const p = profileById.get(entry.id) ?? {};
+     return {
+      id: entry.id,
+      fullName: String(u.fullName ?? p.fullName ?? u.displayName ?? String(u.email ?? '').split('@')[0] ?? 'Member'),
+      email: String(u.email ?? ''),
+      roles: Array.isArray(u.roles) ? (u.roles as string[]) : u.role ? [String(u.role)] : ['Founder'],
+      accountStatus: String(u.accountStatus ?? 'Active'),
+      verificationStatus: String(u.verificationStatus ?? p.verificationStatus ?? ''),
+      createdAt: toMillis(u.createdAt) ? new Date(toMillis(u.createdAt)!).toISOString() : '',
+      company: String(p.company ?? ''),
+      lastActiveAt: toMillis(p.lastActiveAt ?? u.lastActiveAt),
+      avatarUrl: String(p.avatarUrl ?? p.profilePhoto ?? ''),
+     };
+    });
+    if (!cancelled) { setUsers(rows); setLoading(false); }
    } catch (err) {
-    console.error("Error fetching users", err);
-   } finally {
-    setTimeout(() => setLoading(false), 800);
+    console.error('Error fetching users', err);
+    if (!cancelled) { setUsers([]); setLoading(false); }
    }
-  };
-  fetchUsers();
+  })();
+  return () => { cancelled = true; };
  }, []);
+
+ // Live moderation queue from the reports collection.
+ useEffect(() => {
+  let unsub: (() => void) | undefined;
+  let cancelled = false;
+  void (async () => {
+   try {
+    const { db } = await import('../../firebase');
+    if (!db) { setReports([]); return; }
+    const { collection, onSnapshot, query, orderBy, limit } = await import('firebase/firestore');
+    const stop = onSnapshot(
+     query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(50)),
+     (snap) => setReports(snap.docs.map((d) => {
+      const r = d.data() as Record<string, unknown>;
+      return {
+       id: d.id,
+       targetType: String(r.targetType ?? 'user'),
+       targetName: String(r.targetName ?? r.targetId ?? ''),
+       targetId: String(r.targetId ?? ''),
+       targetOwnerId: String(r.targetOwnerId ?? ''),
+       reporterName: String(r.reporterName ?? r.reporterId ?? ''),
+       reason: String(r.reason ?? ''),
+       details: String(r.details ?? ''),
+       href: String(r.href ?? ''),
+       status: String(r.status ?? 'open'),
+       createdAt: toMillis(r.createdAt),
+      } satisfies ReportRow;
+     })),
+     () => setReports([]),
+    );
+    if (cancelled) { stop(); return; }
+    unsub = stop;
+   } catch { if (!cancelled) setReports([]); }
+  })();
+  return () => { cancelled = true; unsub?.(); };
+ }, []);
+
+ const setUserStatus = async (id: string, status: 'Active' | 'Suspended') => {
+  setBusy(id);
+  try {
+   const { db } = await import('../../firebase');
+   const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+   await updateDoc(doc(db, 'users', id), { accountStatus: status, updatedAt: serverTimestamp() });
+   setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, accountStatus: status } : u)));
+  } catch { /* keep the previous state */ }
+  finally { setBusy(null); }
+ };
+
+ const setReportStatus = async (id: string, status: 'dismissed' | 'reviewing') => {
+  setBusy(id);
+  try {
+   const { db } = await import('../../firebase');
+   const { doc, updateDoc } = await import('firebase/firestore');
+   await updateDoc(doc(db, 'reports', id), { status });
+   setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  } catch { /* keep state */ }
+  finally { setBusy(null); }
+ };
+
+ const exportCsv = () => {
+  const header = 'id,name,email,roles,status,joined\n';
+  const body = users.map((u) => [u.id, u.fullName, u.email, u.roles.join('|'), u.accountStatus, u.createdAt].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([header + body], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'members.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+ };
 
  if (loading) return <UserManagementSkeleton />;
 
- const moderationQueue = [
-  { id: 1, type: "Profile", user: "Alex Rivera", reason: t('Potential spam', 'Πιθανό spam'), time: t('2h ago', 'πριν από 2 ώρες'), severity: "medium" },
-  { id: 2, type: "Community", user: "Web3 Builders", reason: t('Inappropriate content', 'Ακατάλληλο περιεχόμενο'), time: t('4h ago', 'πριν από 4 ώρες'), severity: "high" },
-  { id: 3, type: "Message", user: "Sarah Chen", reason: t('Harassment report', 'Αναφορά παρενόχλησης'), time: t('6h ago', 'πριν από 6 ώρες'), severity: "low" },
- ];
- const typeLabel = (type: string) => type === 'Profile' ? t('Profile', 'Προφίλ') : type === 'Community' ? t('Community', 'Κοινότητα') : t('Message', 'Μήνυμα');
+ const openReports = reports.filter((r) => r.status === 'open');
+ const typeLabel = (type: string) => type === 'Profile' || type === 'user' ? t('Profile', 'Προφίλ') : type === 'Community' || type === 'community' ? t('Community', 'Κοινότητα') : type === 'job' ? t('Job', 'Θέση') : t('Message', 'Μήνυμα');
  const tabLabel = (tab: string) => tab === 'All Users' ? t('All Users', 'Όλα τα μέλη') : tab === 'Admins' ? t('Admins', 'Διαχειριστές') : tab === 'Mentors' ? t('Mentors', 'Μέντορες') : t('Founders', 'Ιδρυτές');
 
- const filteredUsers = users.filter(u => 
-  u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  u.email.toLowerCase().includes(searchQuery.toLowerCase())
+ const TAB_ROLE: Record<string, string | null> = { 'All Users': null, Admins: 'Admin', Mentors: 'Mentor', Founders: 'Founder' };
+ const activeNow = users.filter((u) => u.lastActiveAt != null && Date.now() - u.lastActiveAt < 15 * 60 * 1000).length;
+ const filteredUsers = users.filter(u =>
+  (u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  u.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
+  (!TAB_ROLE[selectedTab] || u.roles.some((r) => TAB_ROLE[selectedTab] && r.toLowerCase().includes(TAB_ROLE[selectedTab]!.toLowerCase())))
  );
+
+ const stats = [
+  { label: t('Total Members', 'Σύνολο μελών'), value: String(users.length), change: '', icon: Users, color: "text-blue-600", bg: "bg-blue-50/50" },
+  { label: t('Active Now', 'Ενεργά τώρα'), value: String(activeNow), change: '', icon: Zap, color: "text-amber-600", bg: "bg-amber-50/50" },
+  { label: t('Verified', 'Επαληθευμένα'), value: String(users.filter((u) => u.verificationStatus === 'Verified').length), change: '', icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50/50" },
+  { label: t('Pending Issues', 'Εκκρεμή ζητήματα'), value: String(openReports.length), change: openReports.length ? 'Critical' : 'Stable', icon: AlertCircle, color: "text-red-600", bg: "bg-red-50/50" },
+ ];
 
  return (
   <motion.div 
@@ -92,7 +222,7 @@ export default function UserManagement({ user }: AdminProps) {
         <Users className="w-7 h-7 text-stone-900" />
        </div>
        <div>
-        <h2 className="text-xl font-medium tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h2>
         <p className="text-stone-400 text-xs font-medium tracking-wider mt-1">{t("Orchestrate your ecosystem's member base", 'Οργάνωσε τη βάση μελών του οικοσυστήματος')}</p>
        </div>
       </motion.div>
@@ -111,24 +241,19 @@ export default function UserManagement({ user }: AdminProps) {
         </Button>
        </Link>
       </div>
-      <Button variant="outline" className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
+      <Button variant="outline" onClick={exportCsv} className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
        <Download className="w-3.5 h-3.5 mr-2.5" /> {t('Export', 'Εξαγωγή')}
       </Button>
-      <Button className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-wide shadow-xl shadow-stone-200 transition-all">
-       <UserPlus className="w-3.5 h-3.5 mr-2.5" /> {t('Invite Member', 'Πρόσκληση μέλους')}
+      <Button onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/signup`)} className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-wide shadow-xl shadow-stone-200 transition-all">
+       <UserPlus className="w-3.5 h-3.5 mr-2.5" /> {t('Copy Invite Link', 'Αντιγραφή συνδέσμου πρόσκλησης')}
       </Button>
      </div>
     </div>
    </div>
 
-   {/* Stats Grid */}
+   {/* Stats Grid — real counts from the member directory and open reports */}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    {[
-     { label: t('Total Members', 'Σύνολο μελών'), value: "2,542", change: "+12%", icon: Users, color: "text-blue-600", bg: "bg-blue-50/50" },
-     { label: t('Active Now', 'Ενεργά τώρα'), value: "850", change: "+5%", icon: Zap, color: "text-amber-600", bg: "bg-amber-50/50" },
-     { label: t('Verified Hubs', 'Επαληθευμένοι κόμβοι'), value: "42", change: "Stable", icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50/50" },
-     { label: t('Pending Issues', 'Εκκρεμή ζητήματα'), value: "3", change: "Critical", icon: AlertCircle, color: "text-red-600", bg: "bg-red-50/50" },
-    ].map((stat, i) => (
+    {stats.map((stat, i) => (
      <motion.div
       key={i}
       whileHover={{ y: -4, scale: 1.02 }}
@@ -140,7 +265,7 @@ export default function UserManagement({ user }: AdminProps) {
        <div className="p-8 flex items-center justify-between">
         <div className="space-y-3">
          <p className="text-xs font-medium text-stone-400 tracking-wider">{stat.label}</p>
-         <h4 className="text-xl font-medium tracking-tight text-stone-900">{stat.value}</h4>
+         <h4 className="text-lg font-semibold tracking-tight text-stone-900">{stat.value}</h4>
         </div>
         <div className={cn("w-14 h-11 rounded-2xl flex items-center justify-center transition-all shadow-inner border border-stone-100/50", stat.bg, stat.color)}>
          <stat.icon className="w-7 h-7" />
@@ -150,7 +275,7 @@ export default function UserManagement({ user }: AdminProps) {
         "px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium tracking-wider",
         stat.color
        )}>
-        <TrendingUp className="w-3.5 h-3.5" /> {stat.change === 'Stable' || stat.change === 'Critical' ? labelOf(stat.change) : stat.change} {t('this month', 'αυτό τον μήνα')}
+        <TrendingUp className="w-3.5 h-3.5" /> {stat.change ? (stat.change === 'Stable' || stat.change === 'Critical' ? labelOf(stat.change) : stat.change) : t('Live', 'Ζωντανά')}
        </div>
       </Card>
      </motion.div>
@@ -219,14 +344,9 @@ export default function UserManagement({ user }: AdminProps) {
              <div className="flex items-center gap-6">
               <div className="relative">
                <div className="w-14 h-11 rounded-2xl bg-stone-100 overflow-hidden border border-stone-100 shadow-sm transition-all group-hover:shadow-md group-hover:scale-105">
-                <img 
-                 src={`https://picsum.photos/seed/${u.id}/100/100`} 
-                 alt={u.fullName}
-                 className="w-full h-full object-cover transition-transform"
-                 referrerPolicy="no-referrer"
-                />
+                <Avatar src={u.avatarUrl || undefined} name={u.fullName} size="lg" className="[&>*]:rounded-2xl [&>*]:border-0 [&>*]:w-full [&>*]:h-full" />
                </div>
-               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></div>
+               <div className={cn("absolute -bottom-1 -right-1 w-4 h-4 border-2 border-white rounded-full shadow-sm", u.lastActiveAt != null && Date.now() - u.lastActiveAt < 15 * 60 * 1000 ? "bg-emerald-500" : "bg-stone-300")} title={u.lastActiveAt != null && Date.now() - u.lastActiveAt < 15 * 60 * 1000 ? t('Online now', 'Σε σύνδεση τώρα') : ''}></div>
               </div>
               <div className="space-y-1">
                <p className="text-base font-medium text-stone-900 group-hover:text-stone-600 transition-colors tracking-tight">{u.fullName}</p>
@@ -243,7 +363,7 @@ export default function UserManagement({ user }: AdminProps) {
                 </span>
                ))}
               </div>
-              <span className="text-xs text-stone-300 font-medium tracking-wider">Techstars Hub</span>
+              {u.company ? <span className="text-xs text-stone-300 font-medium tracking-wider">{u.company}</span> : null}
              </div>
             </td>
             <td className="px-8 py-7">
@@ -259,20 +379,20 @@ export default function UserManagement({ user }: AdminProps) {
             </td>
             <td className="px-8 py-7">
              <div className="space-y-1.5">
-              <p className="text-xs font-medium text-stone-700 tracking-tight">{t('Last login: 2h ago', 'Τελευταία είσοδος: πριν από 2 ώρες')}</p>
+              <p className="text-xs font-medium text-stone-700 tracking-tight">{u.lastActiveAt ? t(`Last active ${new Date(u.lastActiveAt).toLocaleDateString()}`, `Τελευταία δραστηριότητα ${new Date(u.lastActiveAt).toLocaleDateString('el-GR')}`) : t('No recent activity', 'Χωρίς πρόσφατη δραστηριότητα')}</p>
               <p className="text-xs text-stone-300 font-medium tracking-wider">{t('Joined', 'Εγγραφή')} {formatDate(u.createdAt)}</p>
              </div>
             </td>
             <td className="px-8 py-7 text-right">
              <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-white hover:shadow-md border border-transparent hover:border-stone-100 transition-all">
+              <Button variant="ghost" size="icon" onClick={() => { window.location.href = `mailto:${u.email}`; }} title={t('Email member', 'Email στο μέλος')} className="h-10 w-10 rounded-2xl hover:bg-white hover:shadow-md border border-transparent hover:border-stone-100 transition-all">
                <Mail className="w-4.5 h-4.5 text-stone-400" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-white hover:shadow-md border border-transparent hover:border-stone-100 transition-all">
+              <Button variant="ghost" size="icon" onClick={() => navigate(`/profile/${u.id}`)} title={t('View profile', 'Προβολή προφίλ')} className="h-10 w-10 rounded-2xl hover:bg-white hover:shadow-md border border-transparent hover:border-stone-100 transition-all">
                <Edit3 className="w-4.5 h-4.5 text-stone-400" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-red-50 border border-transparent hover:border-red-100 group/btn transition-all">
-               <Trash2 className="w-4.5 h-4.5 text-stone-300 group-hover/btn:text-red-500" />
+              <Button variant="ghost" size="icon" disabled={busy === u.id} onClick={() => void setUserStatus(u.id, u.accountStatus === 'Suspended' ? 'Active' : 'Suspended')} title={u.accountStatus === 'Suspended' ? t('Reactivate member', 'Επανενεργοποίηση μέλους') : t('Suspend member', 'Αναστολή μέλους')} className="h-10 w-10 rounded-2xl hover:bg-red-50 border border-transparent hover:border-red-100 group/btn transition-all">
+               <Ban className={cn("w-4.5 h-4.5", u.accountStatus === 'Suspended' ? "text-amber-500" : "text-stone-300 group-hover/btn:text-red-500")} />
               </Button>
              </div>
             </td>
@@ -284,33 +404,8 @@ export default function UserManagement({ user }: AdminProps) {
       </div>
       <div className="p-8 bg-stone-50/20 border-t border-stone-50 flex flex-col md:flex-row items-center justify-between gap-8">
        <p className="text-xs text-stone-400 font-medium tracking-wider">
-        {t('Showing', 'Εμφάνιση')} <span className="text-stone-900">{filteredUsers.length}</span> {t('of', 'από')} <span className="text-stone-900">2,542</span> {t('members', 'μέλη')}
+        {t('Showing', 'Εμφάνιση')} <span className="text-stone-900">{filteredUsers.length}</span> {t('of', 'από')} <span className="text-stone-900">{users.length}</span> {t('members', 'μέλη')}
        </p>
-       <div className="flex items-center gap-8">
-        <div className="flex gap-2">
-         {[1, 2, 3, "...", 12].map((p, i) => (
-          <button 
-           key={i}
-           className={cn(
-            "w-9 h-9 rounded-xl text-xs font-medium transition-all border",
-            p === 1 
-             ? "bg-stone-900 text-white border-stone-900 shadow-sm" 
-             : "text-stone-400 border-transparent hover:bg-white hover:border-stone-100 hover:shadow-sm"
-           )}
-          >
-           {p}
-          </button>
-         ))}
-        </div>
-        <div className="flex gap-2">
-         <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-stone-200 hover:border-stone-900 transition-all bg-white shadow-sm">
-          <ChevronLeft className="w-4.5 h-4.5" />
-         </Button>
-         <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-stone-200 hover:border-stone-900 transition-all bg-white shadow-sm">
-          <ChevronRight className="w-4.5 h-4.5" />
-         </Button>
-        </div>
-       </div>
       </div>
      </Card>
 
@@ -326,13 +421,18 @@ export default function UserManagement({ user }: AdminProps) {
          <p className="text-stone-400 font-medium text-xs tracking-wider mt-1">{t('Items requiring administrative review', 'Στοιχεία που χρειάζονται έλεγχο από τη διαχείριση')}</p>
         </div>
        </div>
-       <Button variant="ghost" className="text-xs font-medium tracking-wider text-stone-400 hover:text-stone-900 h-11 px-8 rounded-xl transition-all">
-        {t('View All Reports', 'Όλες οι αναφορές')}
-       </Button>
+       <span className="text-xs font-medium tracking-wider text-stone-400">
+        {openReports.length === 0 ? t('No open reports', 'Καμία ανοιχτή αναφορά') : t(`${openReports.length} open`, `${openReports.length} ανοιχτές`)}
+       </span>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-       {moderationQueue.map((item, i) => (
+       {openReports.length === 0 && (
+        <Card className="border-stone-100 p-8 rounded-xl">
+         <p className="text-sm text-stone-400 font-medium">{t('The moderation queue is empty. Reports filed by members appear here.', 'Η ουρά εποπτείας είναι κενή. Αναφορές από μέλη εμφανίζονται εδώ.')}</p>
+        </Card>
+       )}
+       {openReports.map((item, i) => (
         <motion.div
          key={item.id}
          whileHover={{ y: -4, scale: 1.01 }}
@@ -343,35 +443,31 @@ export default function UserManagement({ user }: AdminProps) {
          <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgb(0,0,0,0.08)] transition-all group rounded-xl overflow-hidden">
           <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-10">
            <div className="flex items-center gap-8 w-full md:w-auto">
-            <div className={cn(
-             "w-20 h-20 rounded-xl flex items-center justify-center shadow-inner shrink-0 border border-stone-100/50 transition-all group-hover:scale-105",
-             item.severity === 'high' ? "bg-red-50 text-red-500" :
-             item.severity === 'medium' ? "bg-amber-50 text-amber-500" :
-             "bg-blue-50 text-blue-500"
-            )}>
-             {item.type === 'Profile' ? <Users className="w-10 h-10" /> :
-              item.type === 'Community' ? <Globe className="w-10 h-10" /> :
+            <div className="w-20 h-20 rounded-xl flex items-center justify-center shadow-inner shrink-0 border border-stone-100/50 transition-all group-hover:scale-105 bg-amber-50 text-amber-500">
+             {item.targetType === 'user' || item.targetType === 'Profile' ? <Users className="w-10 h-10" /> :
+              item.targetType === 'community' || item.targetType === 'Community' ? <Globe className="w-10 h-10" /> :
               <MessageSquare className="w-10 h-10" />}
             </div>
             <div className="space-y-3">
              <div className="flex items-center gap-5">
-              <span className="text-sm font-semibold text-stone-900">{item.user}</span>
+              <span className="text-sm font-semibold text-stone-900">{item.targetName || t('Unnamed item', 'Ανώνυμο στοιχείο')}</span>
               <span className="px-3 py-1 bg-stone-100 text-stone-500 rounded-md text-xs font-medium tracking-wider border border-stone-200/50">
-               {typeLabel(item.type)}
+               {typeLabel(item.targetType)}
               </span>
              </div>
              <p className="text-sm text-stone-500 font-medium flex items-center gap-4">
-              <span className="text-red-500 font-medium text-xs tracking-wider">{item.reason}</span>
+              <span className="text-red-500 font-medium text-xs tracking-wider">{item.reason || t('Report', 'Αναφορά')}</span>
               <span className="w-1 h-1 rounded-full bg-stone-200"></span>
-              <span className="text-stone-400 font-medium text-xs tracking-[0.15em]">{t('Reported', 'Αναφορά')} {item.time}</span>
+              <span className="text-stone-400 font-medium text-xs tracking-[0.15em]">{item.reporterName ? `${t('by', 'από')} ${item.reporterName}` : ''} {item.createdAt ? `· ${formatDate(new Date(item.createdAt).toISOString())}` : ''}</span>
              </p>
+             {item.details && <p className="text-xs text-stone-400 font-medium max-w-md">{item.details}</p>}
             </div>
            </div>
            <div className="flex items-center gap-4 w-full md:w-auto">
-            <Button variant="ghost" className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-wide text-stone-400 hover:text-stone-900 rounded-xl transition-all">
+            <Button variant="ghost" disabled={busy === item.id} onClick={() => void setReportStatus(item.id, 'dismissed')} className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-wide text-stone-400 hover:text-stone-900 rounded-xl transition-all">
              {t('Dismiss', 'Απόρριψη')}
             </Button>
-            <Button className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-wide bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
+            <Button disabled={busy === item.id} onClick={() => { void setReportStatus(item.id, 'reviewing'); if (item.href) navigate(item.href); else if (item.targetOwnerId) navigate(`/profile/${item.targetOwnerId}`); }} className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-wide bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
              {t('Review & Action', 'Έλεγχος και ενέργεια')}
             </Button>
            </div>
@@ -389,15 +485,15 @@ export default function UserManagement({ user }: AdminProps) {
       <div className="p-3 bg-stone-50 rounded-2xl border border-stone-100 shadow-sm">
        <BarChart3 className="w-5 h-5 text-stone-900" />
       </div>
-      <h2 className="text-lg font-medium text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h2>
+      <h2 className="text-base font-semibold text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h2>
      </div>
 
      <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-10">
       <div className="space-y-8">
        {[
-        { label: t('Profile Completion', 'Ολοκλήρωση προφίλ'), value: 78, color: "bg-blue-500" },
-        { label: t('Match Success Rate', 'Επιτυχία αντιστοιχίσεων'), value: 64, color: "bg-emerald-500" },
-        { label: t('Daily Engagement', 'Ημερήσια συμμετοχή'), value: 42, color: "bg-amber-500" },
+        { label: t('Profile Completion', 'Ολοκλήρωση προφίλ'), value: users.length ? Math.round((users.filter((u) => u.company || u.avatarUrl).length / users.length) * 100) : 0, color: "bg-blue-500" },
+        { label: t('Verified Members', 'Επαληθευμένα μέλη'), value: users.length ? Math.round((users.filter((u) => u.verificationStatus === 'Verified').length / users.length) * 100) : 0, color: "bg-emerald-500" },
+        { label: t('Active Last 15 Min', 'Ενεργά τα τελευταία 15 λεπτά'), value: users.length ? Math.round((activeNow / users.length) * 100) : 0, color: "bg-amber-500" },
        ].map((metric, i) => (
         <div key={i} className="space-y-4">
          <div className="flex items-center justify-between">
@@ -422,8 +518,8 @@ export default function UserManagement({ user }: AdminProps) {
          <CheckCircle2 className="w-6 h-6" />
         </div>
         <div>
-         <p className="text-xs font-medium text-emerald-900 tracking-wider">{t('All Systems Normal', 'Όλα τα συστήματα κανονικά')}</p>
-         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">{t('Last check: 1m ago', 'Τελευταίος έλεγχος: πριν από 1 λεπτό')}</p>
+         <p className="text-xs font-medium text-emerald-900 tracking-wider">{t('Data live from Firestore', 'Δεδομένα ζωντανά από το Firestore')}</p>
+         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">{openReports.length ? t(`${openReports.length} report(s) pending`, `${openReports.length} αναφορές σε εκκρεμότητα`) : t('No pending reports', 'Καμία εκκρεμής αναφορά')}</p>
         </div>
        </div>
       </div>
@@ -433,12 +529,16 @@ export default function UserManagement({ user }: AdminProps) {
      <div className="space-y-4">
       <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Member Distribution', 'Κατανομή μελών')}</h3>
       <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-8">
-       {[
-        { label: t('Founders', 'Ιδρυτές'), value: 45, color: "bg-stone-900", icon: Zap },
-        { label: t('Co-Founders', 'Συνιδρυτές'), value: 35, color: "bg-stone-600", icon: Users },
-        { label: t('Mentors', 'Μέντορες'), value: 15, color: "bg-stone-400", icon: Star },
-        { label: t('Advisors', 'Σύμβουλοι'), value: 5, color: "bg-stone-200", icon: ShieldCheck },
-       ].map((item, i) => (
+       {(() => {
+        const count = (re: RegExp) => users.filter((u) => u.roles.some((r) => re.test(r))).length;
+        const pct = (n: number) => (users.length ? Math.round((n / users.length) * 100) : 0);
+        return [
+         { label: t('Founders', 'Ιδρυτές'), value: pct(count(/founder/i)), color: "bg-stone-900", icon: Zap },
+         { label: t('Co-Founders', 'Συνιδρυτές'), value: pct(count(/co-?founder|cofounder/i)), color: "bg-stone-600", icon: Users },
+         { label: t('Mentors', 'Μέντορες'), value: pct(count(/mentor/i)), color: "bg-stone-400", icon: Star },
+         { label: t('Admins', 'Διαχειριστές'), value: pct(count(/admin/i)), color: "bg-stone-200", icon: ShieldCheck },
+        ];
+       })().map((item, i) => (
         <div key={i} className="space-y-3">
          <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -467,14 +567,15 @@ export default function UserManagement({ user }: AdminProps) {
       <div className="grid grid-cols-1 gap-4">
        <motion.button
         whileHover={{ x: 6, scale: 1.01 }}
+        onClick={() => navigate('/admin/branding')}
         className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-[1.75rem] hover:border-stone-900 hover:shadow-[0_10px_40px_rgb(0,0,0,0.06)] transition-all text-left group shadow-[0_4px_20px_rgb(0,0,0,0.02)]"
        >
         <div className="w-14 h-11 bg-stone-50 rounded-2xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all shadow-inner border border-stone-100/50">
          <Globe className="w-7 h-7" />
         </div>
         <div className="space-y-1">
-         <p className="text-sm font-medium text-stone-900 tracking-tight">{t('New Ecosystem Hub', 'Νέος κόμβος οικοσυστήματος')}</p>
-         <p className="text-xs text-stone-500 font-medium">{t('Create a branded tenant environment', 'Δημιούργησε περιβάλλον οργανισμού με ταυτότητα')}</p>
+         <p className="text-sm font-medium text-stone-900 tracking-tight">{t('Platform Branding', 'Ταυτότητα πλατφόρμας')}</p>
+         <p className="text-xs text-stone-500 font-medium">{t('Logos, name and visual identity', 'Λογότυπο, όνομα και οπτική ταυτότητα')}</p>
         </div>
         <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center ml-auto group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm border border-stone-100/50">
          <ChevronRight className="w-4 h-4" />
@@ -483,6 +584,7 @@ export default function UserManagement({ user }: AdminProps) {
 
        <motion.button
         whileHover={{ x: 6, scale: 1.01 }}
+        onClick={exportCsv}
         className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-[1.75rem] hover:border-stone-900 hover:shadow-[0_10px_40px_rgb(0,0,0,0.06)] transition-all text-left group shadow-[0_4px_20px_rgb(0,0,0,0.02)]"
        >
         <div className="w-14 h-11 bg-stone-50 rounded-2xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all shadow-inner border border-stone-100/50">
@@ -490,7 +592,7 @@ export default function UserManagement({ user }: AdminProps) {
         </div>
         <div className="space-y-1">
          <p className="text-sm font-medium text-stone-900 tracking-tight">{t('Export Platform Data', 'Εξαγωγή δεδομένων πλατφόρμας')}</p>
-         <p className="text-xs text-stone-500 font-medium">{t('Generate CSV/JSON ecosystem reports', 'Δημιουργία αναφορών οικοσυστήματος σε CSV/JSON')}</p>
+         <p className="text-xs text-stone-500 font-medium">{t('Download members as CSV', 'Λήψη μελών σε CSV')}</p>
         </div>
         <div className="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center ml-auto group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm border border-stone-100/50">
          <ChevronRight className="w-4 h-4" />

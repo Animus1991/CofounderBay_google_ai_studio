@@ -45,18 +45,19 @@ import {
  ResponsiveContainer 
 } from 'recharts';
 import Button from '../components/ui/Button';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { cn } from '../lib/utils';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
-import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, writeOpenTo, type OpenToKind } from '../lib/localLists';
+import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, type OpenToKind } from '../lib/localLists';
 import RelTime from '../components/ui/RelTime';
 import { useStored } from '../lib/useStored';
-import { persistPrivacy } from '../lib/account';
+import { applyOpenTo } from '../lib/openTo';
+import { persistProfilePatch } from '../lib/account';
 import { lookupPerson } from '../lib/people';
-import { useAuth } from '../App';
+import { useAuth, DEMO_USER_ID } from '../App';
 import { avatarFor, findCast } from '../data/cast';
 import FactLine from '../components/ui/FactLine';
 import Avatar from '../components/ui/Avatar';
@@ -65,6 +66,7 @@ import { usePeople } from '../lib/directory';
 import { avatarOf, findPerson } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { shareLink } from '../lib/download';
+import { safeWebUrl } from '../lib/webUrl';
 import {
  connectionStateWith,
  endorseSkill,
@@ -77,7 +79,7 @@ import {
  withdrawConnection,
  type ProfileView,
 } from '../lib/social';
-import { UserProfile, UserSkill, Endorsement, ReadinessScore } from '../types';
+import { UserProfile, Endorsement, ReadinessScore } from '../types';
 
 enum OperationType {
  CREATE = 'create',
@@ -193,7 +195,7 @@ const AVAILABILITY_EL: Record<string, string> = {
 function fallbackProfile(profileId: string, ownName?: string | null): UserProfile {
  const live = findPerson(profileId);
  const person = live
-  ? { fullName: live.fullName, headline: live.headline, bio: live.bio, location: live.location, stage: live.stage, role: live.role, commitment: live.commitment, industry: live.industry, skills: live.skills, lookingFor: live.lookingFor }
+  ? { fullName: live.fullName, headline: live.headline, headlineEl: live.headlineEl, bio: live.bio, bioEl: live.bioEl, location: live.location, stage: live.stage, role: live.role, commitment: live.commitment, industry: live.industry, skills: live.skills, lookingFor: live.lookingFor }
   : lookupPerson(profileId);
  return {
   id: profileId,
@@ -209,7 +211,9 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
   createdAt: '',
   updatedAt: '',
   headline: person?.headline || 'Founder',
+  headlineEl: person?.headlineEl,
   bio: person?.bio || '',
+  bioEl: person?.bioEl,
   location: person?.location || '',
   stage: person?.stage || '',
   role: person?.role || 'Founder',
@@ -244,6 +248,9 @@ export default function ProfilePage() {
  const [showMatchNote, setShowMatchNote] = useState(false);
 
  const isOwnProfile = !id || id === currentUser?.uid;
+ // The demo account's own page shows the profile useAuth already carries —
+ // the same data, without a Firestore read the demo backend would refuse.
+ const demoOwn = isDemoMode && (!id || id === DEMO_USER_ID);
  const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
  const profileId = id || currentUser?.uid;
  const real = !isDemoMode && Boolean(currentUser?.uid);
@@ -266,7 +273,7 @@ export default function ProfilePage() {
  const handleConnect = async () => {
   if (!id || !profile) return;
   if (!real) {
-   saveRequest({ id, fullName: profile.fullName || 'Founder', role: profile.role || 'Founder', industry: profile.industry || '', location: profile.location || '', note: profile.headline || '', status: 'Pending' });
+   saveRequest({ id, fullName: profile.fullName || 'Founder', role: profile.role || 'Founder', industry: profile.industry || '', location: profile.location || '', note: profile.headline || '', status: 'pending' });
    toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.'));
    return;
   }
@@ -274,7 +281,7 @@ export default function ProfilePage() {
   try {
    if (connection.state === 'incoming' && connection.record) {
     await respondToConnection(connection.record, true);
-    toast.success(t('Connected', 'Συνδεθήκατε'), t(`You and ${profile.fullName} can message each other now.`, `Εσύ και ο/η ${profile.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+    toast.success(t('Connected', 'Συνδεθήκατε'), t(`You and ${profile.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${profile.fullName}.`));
    } else if (connection.state === 'outgoing' && connection.record) {
     await withdrawConnection(connection.record);
     toast.info(t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
@@ -304,10 +311,11 @@ export default function ProfilePage() {
    : t('Connect', 'Σύνδεση');
 
  const openTo = useStored(readOpenTo, [keys.openTo]);
+ // Same write path as Settings → Privacy and the studio assistant: the list,
+ // the switch snapshot and the remote privacy fields move together.
  const toggleOpenTo = (kind: OpenToKind) => {
   const next = openTo.includes(kind) ? openTo.filter((item) => item !== kind) : [...openTo, kind];
-  writeOpenTo(next);
-  if (real && currentUser) void persistPrivacy(currentUser.uid, { openTo: next, mentorAvailability: next.includes('mentoring') }).catch(() => undefined);
+  applyOpenTo(next, { uid: real && currentUser ? currentUser.uid : null, demo: !real });
  };
 
  const shareProfile = async () => {
@@ -319,7 +327,7 @@ export default function ProfilePage() {
  // ── Derived display data (always show sections, fallback to mock) ──
  const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
  const displayReadiness = readiness || (isDemoMode ? MOCK_READINESS : null);
- const insightScore = isDemoMode ? 84 : Math.round(([
+ const insightScore = Math.round(([
   profile?.fullName, profile?.headline, profile?.bio, profile?.location, profile?.role,
   profile?.stage, profile?.industry, profile?.linkedinUrl,
   (profile?.skills || []).length, (profile?.lookingFor || []).length,
@@ -403,6 +411,15 @@ export default function ProfilePage() {
  }, [isEditing, profile]);
 
  useEffect(() => {
+  if (isDemoMode) {
+   // Demo data lives in memory/cast — never Firestore, so the page loads
+   // clean on an unauthenticated backend.
+   setProfile(demoOwn && ownProfile ? (ownProfile as UserProfile) : fallbackProfile(profileId ?? '', demoOwn ? currentUser?.displayName : null));
+   setEndorsements([]);
+   setReadiness(null);
+   setLoading(false);
+   return;
+  }
   const fetchProfileAndEndorsements = async () => {
    if (!profileId) return;
    setLoading(true);
@@ -459,7 +476,7 @@ export default function ProfilePage() {
   return () => {
    if (unsubscribeReadiness) unsubscribeReadiness();
   };
- }, [profileId, isOwnProfile, currentUser?.displayName]);
+ }, [profileId, isOwnProfile, currentUser?.displayName, isDemoMode, demoOwn, ownProfile]);
 
  const handleEndorse = async () => {
   if (!currentUser || !profileId || !selectedSkillForEndorsement) return;
@@ -469,20 +486,22 @@ export default function ProfilePage() {
     const record = await endorseSkill({ id: profileId, fullName: profile?.fullName || 'Member' }, selectedSkillForEndorsement, endorsementComment);
     setEndorsements((prev) => [{ id: record.id, endorserId: record.endorserId, recipientId: record.recipientId, skillId: record.skillId, comment: record.comment, createdAt: new Date(record.createdAt).toISOString() } as Endorsement, ...prev.filter((item) => item.id !== record.id)]);
    } else {
-    const newEndorsement = {
+    // Demo keeps the endorsement local — no Firestore write to a
+    // backend the sample account cannot reach.
+    const newEndorsement: Endorsement = {
+     id: `local-${Date.now()}`,
      authorId: currentUser.uid,
      endorserId: currentUser.uid,
      recipientId: profileId,
      skillId: selectedSkillForEndorsement,
      comment: endorsementComment,
      createdAt: new Date().toISOString()
-    };
-    const docRef = await addDoc(collection(db, 'endorsements'), newEndorsement);
-    setEndorsements(prev => [{ id: docRef.id, ...newEndorsement }, ...prev]);
+    } as Endorsement;
+    setEndorsements(prev => [newEndorsement, ...prev]);
    }
    setSelectedSkillForEndorsement('');
    setEndorsementComment('');
-   toast.success(t('Endorsement sent', 'Η σύσταση στάλθηκε'), t(`${profile?.fullName || 'They'} will be notified.`, `Ο/Η ${profile?.fullName || 'παραλήπτης'} θα ειδοποιηθεί.`));
+   toast.success(t('Endorsement sent', 'Η σύσταση στάλθηκε'), t(`${profile?.fullName || 'They'} will be notified.`, `Θα σταλεί ειδοποίηση σε ${profile?.fullName || 'το μέλος'}.`));
   } catch (err: any) {
    if (err instanceof Error && err.message === 'self') {
     toast.info(t('You cannot endorse yourself', 'Δεν μπορείς να συστήσεις τον εαυτό σου'));
@@ -497,21 +516,28 @@ export default function ProfilePage() {
 
  const handleSave = async (data: Partial<UserProfile>) => {
   if (!profileId) return;
+  // Reject non-http(s) link values instead of storing a scriptable scheme.
+  const clean = { ...data };
+  let rejected = false;
+  for (const key of ['linkedinUrl', 'githubUrl', 'twitterUrl', 'portfolioUrl'] as const) {
+   const value = clean[key];
+   if (typeof value === 'string' && value.trim() && !safeWebUrl(value)) {
+    delete clean[key];
+    rejected = true;
+   }
+  }
+  if (rejected) {
+   toast.error(t('Links must start with http:// or https://', 'Οι σύνδεσμοι πρέπει να ξεκινούν με http:// ή https://'));
+  }
+  if (!real) {
+   // Demo edits update the in-memory profile only — nothing hits Firestore.
+   setProfile(prev => prev ? { ...prev, ...clean } : null);
+   setIsEditing(false);
+   return;
+  }
   try {
-   const docRef = doc(db, 'profiles', profileId);
-
-   // Filter out empty strings for URLs to avoid validation errors
-   const updateData: any = {
-    ...data,
-    updatedAt: serverTimestamp(),
-   };
-
-   if (data.linkedinUrl === "") updateData.linkedinUrl = "";
-   if (data.githubUrl === "") updateData.githubUrl = "";
-   if (data.portfolioUrl === "") updateData.portfolioUrl = "";
-
-   await updateDoc(docRef, updateData);
-   setProfile(prev => prev ? { ...prev, ...data } : null);
+   await persistProfilePatch(profileId, clean);
+   setProfile(prev => prev ? { ...prev, ...clean } : null);
    setIsEditing(false);
   } catch (err: any) {
    handleFirestoreError(err, OperationType.UPDATE, `profiles/${profileId}`);
@@ -533,7 +559,7 @@ export default function ProfilePage() {
      <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
       <X className="w-8 h-8" />
      </div>
-     <h2 className="text-lg font-medium text-stone-900">{t('Profile Error', 'Σφάλμα προφίλ')}</h2>
+     <h2 className="text-xl font-semibold text-stone-900">{t('Profile Error', 'Σφάλμα προφίλ')}</h2>
      <p className="text-stone-500">{error || t('Profile not found', 'Το προφίλ δεν βρέθηκε')}</p>
      <button 
       onClick={() => navigate('/dashboard')}
@@ -545,6 +571,11 @@ export default function ProfilePage() {
    </div>
   );
  }
+
+ const linkedinSafe = safeWebUrl(profile.linkedinUrl);
+ const githubSafe = safeWebUrl(profile.githubUrl);
+ const twitterSafe = safeWebUrl(profile.twitterUrl);
+ const portfolioSafe = safeWebUrl(profile.portfolioUrl);
 
  const matchGaps = [
   { ok: !!(profile.skills && profile.skills.length), key: t('Skills', 'Δεξιότητες'), why: t('The scorer uses skills to see what you cover.', 'Η βαθμολόγηση χρησιμοποιεί τις δεξιότητες για να δει τι καλύπτεις.') },
@@ -566,7 +597,7 @@ export default function ProfilePage() {
     {t('Back', 'Πίσω')}
    </button>
    {/* Profile Header */}
-   <div className="relative lg:pr-36">
+   <div className="relative">
     <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative" />
 
     {/* Profile Info Card */}
@@ -590,7 +621,7 @@ export default function ProfilePage() {
       <div className="flex-1 space-y-4">
        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-         <h1 className="text-lg font-medium text-stone-900 tracking-tight">
+         <h1 className="text-xl font-semibold text-stone-900 tracking-tight">
           {isOwnProfile ? (currentUser?.displayName || t('Founder', 'Ιδρυτής')) : labelOf(profile.fullName || 'Founder')}
          </h1>
          {isEditing ? (
@@ -602,7 +633,7 @@ export default function ProfilePage() {
            placeholder={t('Headline', 'Τίτλος')}
           />
          ) : (
-          <p className="text-lg font-medium text-stone-500 mt-1">{labelOf(profile.headline)}</p>
+          <p className="text-base font-medium text-stone-500 mt-1">{profile.headlineEl ? t(profile.headline, profile.headlineEl) : labelOf(profile.headline)}</p>
          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -793,8 +824,8 @@ export default function ProfilePage() {
         </div>
        </div>
       ) : (
-       <p className="text-stone-600 leading-relaxed whitespace-pre-wrap">
-        {profile.bio || t('No bio provided yet.', 'Δεν έχει προστεθεί ακόμη βιογραφικό.')}
+       <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">
+        {profile.bio ? t(profile.bio, profile.bioEl || profile.bio) : t('No bio provided yet.', 'Δεν έχει προστεθεί ακόμη βιογραφικό.')}
        </p>
       )}
      </div>
@@ -994,7 +1025,7 @@ export default function ProfilePage() {
             {endorsement.comment && (
              <p className="text-xs text-stone-500 italic leading-relaxed">"{endorsement.comment}"</p>
             )}
-            <p className="text-[10px] text-stone-400 flex items-center gap-1">
+            <p className="text-xs text-stone-400 flex items-center gap-1">
              <Clock className="w-3 h-3" />
              {endorsement.createdAt ? formatDate(endorsement.createdAt) : t('Recently', 'Πρόσφατα')}
             </p>
@@ -1037,8 +1068,8 @@ export default function ProfilePage() {
           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
          </div>
          <div>
-          <p className={cn("text-[11px] font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-500")}>{t(badge.name, badge.nameEl)}</p>
-          <p className="text-[9px] text-stone-400 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
+          <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-500")}>{t(badge.name, badge.nameEl)}</p>
+          <p className="text-xs text-stone-400 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
          </div>
          {badge.earned && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
@@ -1082,7 +1113,7 @@ export default function ProfilePage() {
          );
         })}
        </div>
-       <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">
+       <p className="text-xs text-stone-400 pt-1 border-t border-stone-100">
         {t('Other members see these on your profile; Matches and Mentors use them to place you in the right lists.', 'Τα άλλα μέλη τα βλέπουν στο προφίλ σου· οι Αντιστοιχίσεις και οι Μέντορες τα χρησιμοποιούν για να σε βάλουν στις σωστές λίστες.')}
        </p>
       </div>
@@ -1091,31 +1122,31 @@ export default function ProfilePage() {
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Connect', 'Σύνδεση')}</h3>
       <div className="space-y-4">
-       {profile.linkedinUrl && (
-        <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+       {linkedinSafe && (
+        <a href={linkedinSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Linkedin className="w-5 h-5" />
          {t('LinkedIn Profile', 'Προφίλ LinkedIn')}
         </a>
        )}
-       {profile.githubUrl && (
-        <a href={profile.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+       {githubSafe && (
+        <a href={githubSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Github className="w-5 h-5" />
          {t('GitHub Portfolio', 'Προφίλ GitHub')}
         </a>
        )}
-       {profile.twitterUrl && (
-        <a href={profile.twitterUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+       {twitterSafe && (
+        <a href={twitterSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Twitter className="w-5 h-5" />
          Twitter / X
         </a>
        )}
-       {profile.portfolioUrl && (
-        <a href={profile.portfolioUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+       {portfolioSafe && (
+        <a href={portfolioSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
          <Globe className="w-5 h-5" />
          {t('Personal Website', 'Προσωπικός ιστότοπος')}
         </a>
        )}
-       {!profile.linkedinUrl && !profile.githubUrl && !profile.twitterUrl && !profile.portfolioUrl && (
+       {!linkedinSafe && !githubSafe && !twitterSafe && !portfolioSafe && (
         <p className="text-stone-500 text-sm">{t('No social links added yet.', 'Δεν έχουν προστεθεί ακόμη σύνδεσμοι κοινωνικών δικτύων.')}</p>
        )}
       </div>
@@ -1134,7 +1165,7 @@ export default function ProfilePage() {
          </div>
          <div>
           <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
-          <p className="text-[10px] text-stone-500">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
+          <p className="text-xs text-stone-500">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
          </div>
         </div>
         <div className="space-y-3">
@@ -1160,7 +1191,7 @@ export default function ProfilePage() {
           ].map(d => (
            <div key={d.label} className="text-center p-2 bg-white/5 rounded-lg border border-white/5">
             <p className="text-white font-semibold text-sm">{d.pct}%</p>
-            <p className="text-[10px] text-stone-500">{t(d.label, d.labelEl)}</p>
+            <p className="text-xs text-stone-500">{t(d.label, d.labelEl)}</p>
            </div>
           ))}
          </div>
@@ -1266,7 +1297,7 @@ export default function ProfilePage() {
          <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
           <div className="text-lg font-semibold text-stone-900 tabular-nums">{stat.value}</div>
           <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
-          <div className="text-[10px] font-semibold text-stone-400">{stat.sub}</div>
+          <div className="text-xs font-semibold text-stone-400">{stat.sub}</div>
          </div>
         ));
        })()}
@@ -1310,7 +1341,7 @@ export default function ProfilePage() {
            <p className="text-xs text-stone-400 truncate">{conn.headline}</p>
           </div>
           {conn.mutual != null && (
-           <span className="text-[10px] text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
+           <span className="text-xs text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
             {conn.mutual} {t('mutual', 'κοινές')}
            </span>
           )}

@@ -1,5 +1,7 @@
-import { BillingPlan, Subscription, Invoice, UserRole } from "../types";
+import { BillingPlan, Subscription, Invoice } from "../types";
 import { readPlan } from "../lib/localLists";
+import { db, auth } from "../firebase";
+import { addDoc, collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 
 function isDemoBilling() {
   try {
@@ -170,6 +172,11 @@ export const MOCK_PLANS: BillingPlan[] = [
 ];
 
 // --- Service Implementation ---
+//
+// Subscriptions and invoices are Firestore documents. There is no payment
+// processor wired yet, so user-initiated plan changes are persisted as
+// `billingRequests` records that admins (or a future payments backend) act on —
+// they never pretend a charge happened.
 
 export const billingService = {
   getPlans: async (): Promise<BillingPlan[]> => {
@@ -177,64 +184,60 @@ export const billingService = {
   },
 
   getSubscription: async (id: string, type: 'user' | 'tenant'): Promise<Subscription | null> => {
+    const docId = `${type}-${id}`;
+    try {
+      const snap = await getDoc(doc(db, 'subscriptions', docId));
+      if (snap.exists()) return { ...(snap.data() as Subscription), id: snap.id };
+    } catch (error) {
+      console.error('Error reading subscription:', error);
+    }
+    // No billing record yet: derive an honest view from the plan the account actually chose.
     const planId = planIdForAccount(type);
+    const plan = MOCK_PLANS.find((p) => p.id === planId);
     return {
-      id: type === "user" ? `sub-${id}` : "sub_tenant",
+      id: docId,
       userId: type === 'user' ? id : undefined,
-      tenantId: type === 'tenant' ? id : "default_tenant",
+      tenantId: type === 'tenant' ? id : '',
       planId,
-      billingCycle: "Annual",
-      status: "Active",
-      renewalDate: "2027-01-01T00:00:00Z",
-      seatLimit: type === 'tenant' ? 50 : 1,
-      activeSeatCount: type === 'tenant' ? 12 : 1,
-      currentPeriodEnd: "2027-01-01T00:00:00Z",
-    };
+      status: 'Active',
+      seatLimit: typeof plan?.limits?.seats === 'number' && plan.limits.seats > 0 ? plan.limits.seats : 1,
+      currentPeriodEnd: '',
+    } as Subscription;
   },
 
   getInvoices: async (id: string, type: 'user' | 'tenant'): Promise<Invoice[]> => {
-    if (type === 'user' && planIdForAccount('user') === 'free-individual') return [];
-    return [
-      {
-        id: "inv_001",
-        subscriptionId: "sub_123",
-        userId: type === 'user' ? id : undefined,
-        number: "INV-2024-001",
-        status: "Paid",
-        currency: "USD",
-        total: 190,
-        amount: 190,
-        dueDate: "2024-01-01T00:00:00Z",
-        paidAt: "2024-01-01T00:00:00Z",
-        createdAt: "2024-01-01T00:00:00Z",
-      },
-      {
-        id: "inv_002",
-        subscriptionId: "sub_123",
-        userId: type === 'user' ? id : undefined,
-        number: "INV-2025-001",
-        status: "Open",
-        currency: "USD",
-        total: 190,
-        amount: 190,
-        dueDate: "2025-01-01T00:00:00Z",
-        createdAt: "2024-12-15T00:00:00Z",
-      }
-    ];
+    try {
+      const field = type === 'user' ? 'userId' : 'tenantId';
+      const snap = await getDocs(query(collection(db, 'invoices'), where(field, '==', id)));
+      return snap.docs.map((d) => ({ ...(d.data() as Invoice), id: d.id }));
+    } catch (error) {
+      console.error('Error reading invoices:', error);
+      return [];
+    }
+  },
+
+  /** Persists a billing change request for the platform to process — no charge is made client-side. */
+  requestChange: async (kind: 'upgrade' | 'cancel' | 'seats', payload: Record<string, any>): Promise<void> => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('Sign in required');
+    await addDoc(collection(db, 'billingRequests'), {
+      kind,
+      userId: uid,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      ...payload,
+    });
   },
 
   updateSubscription: async (subscriptionId: string, planId: string, cycle: 'Monthly' | 'Annual'): Promise<void> => {
-    console.log(`Updating subscription ${subscriptionId} to plan ${planId} (${cycle})`);
-    return new Promise(resolve => setTimeout(resolve, 1000));
+    await billingService.requestChange('upgrade', { subscriptionId, planId, billingCycle: cycle });
   },
 
   cancelSubscription: async (subscriptionId: string, immediate: boolean = false): Promise<void> => {
-    console.log(`Canceling subscription ${subscriptionId} (immediate: ${immediate})`);
-    return new Promise(resolve => setTimeout(resolve, 1000));
+    await billingService.requestChange('cancel', { subscriptionId, immediate });
   },
 
   requestSeats: async (subscriptionId: string, count: number): Promise<void> => {
-    console.log(`Requesting ${count} seats for subscription ${subscriptionId}`);
-    return new Promise(resolve => setTimeout(resolve, 1000));
+    await billingService.requestChange('seats', { subscriptionId, seats: count });
   }
 };

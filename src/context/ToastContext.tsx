@@ -11,6 +11,8 @@ interface Toast {
  title: string;
  description?: string;
  duration?: number;
+ /** Optional inline action — e.g. Undo for a just-removed record. */
+ action?: { label: string; run: () => void };
 }
 
 interface ToastContextType {
@@ -92,6 +94,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
        <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-stone-900">{t.title}</p>
         {t.description && <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">{t.description}</p>}
+        {t.action && (
+         <button
+          type="button"
+          onClick={() => { t.action!.run(); dismiss(t.id); }}
+          className="mt-1.5 text-xs font-semibold text-stone-900 underline underline-offset-2 hover:text-stone-600"
+         >
+          {t.action.label}
+         </button>
+        )}
        </div>
        <button 
         onClick={() => dismiss(t.id)} 

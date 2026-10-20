@@ -21,15 +21,18 @@ import {
  MoreVertical,
  ChevronDown
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Milestone, User } from '../types';
 import { milestoneService } from '../services/milestoneService';
+import { upsertMilestone } from '../lib/localLists';
 import PageShell from '../components/ui/PageShell';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import { labelOf } from '../lib/labels';
 import { useT } from '../lib/language';
 import { formatDate } from '../lib/dates';
+import { usePageControls } from '../lib/pageControls';
+import { useToast } from '../context/ToastContext';
 
 interface MilestonesPageProps {
  user?: User;
@@ -106,7 +109,7 @@ function MilestoneCard({
       <h3 className="text-sm font-semibold text-stone-900 truncate">{milestone.title}</h3>
       <div className="flex items-center gap-1.5 mt-0.5">
        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
-       <span className={cn("text-[10px] font-medium", cfg.color)}>{milestone.status === 'Delayed' ? t('Delayed', 'Καθυστερημένο') : labelOf(milestone.status)}</span>
+       <span className={cn("text-xs font-medium", cfg.color)}>{milestone.status === 'Delayed' ? t('Delayed', 'Καθυστερημένο') : labelOf(milestone.status)}</span>
       </div>
      </div>
     </div>
@@ -127,10 +130,10 @@ function MilestoneCard({
 
    {/* Tags row */}
    <div className="flex flex-wrap items-center gap-1.5">
-    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[milestone.category] || 'text-stone-500 border-transparent')}>
+    <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", CATEGORY_COLORS[milestone.category] || 'text-stone-500 border-transparent')}>
      {labelOf(milestone.category)}
     </span>
-    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", PRIORITY_BADGE[milestone.priority])}>
+    <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", PRIORITY_BADGE[milestone.priority])}>
      {labelOf(milestone.priority)}
     </span>
    </div>
@@ -139,8 +142,8 @@ function MilestoneCard({
    {tasksTotal > 0 && (
     <div className="space-y-1.5">
      <div className="flex items-center justify-between">
-      <span className="text-[10px] font-semibold text-stone-400 tracking-wider">{t("Tasks", "Εργασίες")}</span>
-      <span className="text-[10px] font-medium text-stone-400">{tasksDone}/{tasksTotal}</span>
+      <span className="text-xs font-semibold text-stone-400 tracking-wider">{t("Tasks", "Εργασίες")}</span>
+      <span className="text-xs font-medium text-stone-400">{tasksDone}/{tasksTotal}</span>
      </div>
      <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
       <div
@@ -155,11 +158,11 @@ function MilestoneCard({
          <div className={cn("w-3 h-3 rounded-sm flex items-center justify-center shrink-0", task.completed ? "bg-stone-700" : "border border-stone-200")}>
           {task.completed && <CheckCircle2 className="w-2 h-2 text-white" />}
          </div>
-         <span className={cn("text-[11px]", task.completed ? "text-stone-400 line-through" : "text-stone-600")}>{task.title}</span>
+         <span className={cn("text-xs", task.completed ? "text-stone-400 line-through" : "text-stone-600")}>{task.title}</span>
         </div>
        ))}
        {milestone.tasks!.length > 3 && (
-        <span className="text-[10px] text-stone-400 pl-5">+{milestone.tasks!.length - 3} {t("more", "ακόμη")}</span>
+        <span className="text-xs text-stone-400 pl-5">+{milestone.tasks!.length - 3} {t("more", "ακόμη")}</span>
        )}
       </div>
      )}
@@ -168,7 +171,7 @@ function MilestoneCard({
 
    {/* Footer */}
    <div className="flex items-center justify-between pt-1 border-t border-stone-50">
-    <div className="flex items-center gap-1 text-[10px] text-stone-400">
+    <div className="flex items-center gap-1 text-xs text-stone-400">
      <Calendar className="w-3 h-3" />
      {formatDate(milestone.targetDate, { month: 'short', day: 'numeric' })}
     </div>
@@ -198,6 +201,7 @@ function MilestoneCard({
 export default function MilestonesPage({ user }: MilestonesPageProps) {
  const t = useT();
  const navigate = useNavigate();
+ const toast = useToast();
  const [milestones, setMilestones] = useState<Milestone[]>([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState<string | null>(null);
@@ -212,6 +216,10 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const setShowCreate = setAdding;
 
  useEffect(() => { fetchMilestones(); }, []);
+
+ usePageControls(() => [
+  { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: () => { setDraftTitle(''); setEditingId(null); setAdding(true); } },
+ ], []);
 
  const fetchMilestones = async () => {
   setLoading(true);
@@ -234,7 +242,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
    setMilestones((prev) => prev.map((m) => (m.id === editingId ? updated : m)));
    setEditingId(null);
   } else {
-   const created = await milestoneService.createMilestone({ title, ownerId: user?.id || '1' });
+   const created = await milestoneService.createMilestone({ title, ownerId: user?.id || 'me' });
    setMilestones((prev) => [created, ...prev]);
   }
   setDraftTitle('');
@@ -246,9 +254,16 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
   setShowCreate(true);
  };
  const handleDelete = async (id: string) => {
-  if (window.confirm(t('Delete this milestone?', 'Διαγραφή αυτού του ορόσημου;'))) {
-   await milestoneService.deleteMilestone(id);
-   setMilestones((prev) => prev.filter((m) => m.id !== id));
+  const item = milestones.find((m) => m.id === id);
+  await milestoneService.deleteMilestone(id);
+  setMilestones((prev) => prev.filter((m) => m.id !== id));
+  if (item) {
+   toast.toast({
+    type: 'info',
+    title: t('Milestone deleted', 'Το ορόσημο διαγράφηκε'),
+    duration: 6000,
+    action: { label: t('Undo', 'Αναίρεση'), run: () => setMilestones(upsertMilestone(item)) },
+   });
   }
  };
 
@@ -313,7 +328,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
       )}
       <div>
        <div className="text-sm font-semibold text-stone-900">{stat.value}</div>
-       <div className="text-[10px] text-stone-400 tracking-wider">{stat.label}</div>
+       <div className="text-xs text-stone-400 tracking-wider">{stat.label}</div>
       </div>
      </div>
     ))}
@@ -349,7 +364,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-xl p-0.5">
       {categories.map(cat => (
        <button key={cat} onClick={() => setCategoryFilter(cat)}
-        className={cn("px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+        className={cn("px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
          categoryFilter === cat ? "bg-stone-900 text-white" : "text-stone-500 hover:bg-stone-50"
         )}>
         {cat === 'All' ? t('All', 'Όλα') : labelOf(cat)}
@@ -400,9 +415,9 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
           <div className="flex items-center justify-between px-1">
            <div className="flex items-center gap-2">
             <span className={cn("w-2 h-2 rounded-full", cfg.dot)} />
-            <span className="text-[10px] font-semibold text-stone-500 tracking-wider">{labelOf(col.label)}</span>
+            <span className="text-xs font-semibold text-stone-500 tracking-wider">{labelOf(col.label)}</span>
            </div>
-           <span className="text-[10px] font-medium text-stone-400 bg-stone-50 px-1.5 py-0.5 rounded">{colItems.length}</span>
+           <span className="text-xs font-medium text-stone-400 bg-stone-50 px-1.5 py-0.5 rounded">{colItems.length}</span>
           </div>
           <div className="space-y-3">
            {colItems.map((m, idx) => (
@@ -411,7 +426,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
             </motion.div>
            ))}
            {colItems.length === 0 && (
-            <p className="text-[10px] text-stone-400 px-1">{t("No items", "Κανένα")}</p>
+            <p className="text-xs text-stone-400 px-1">{t("No items", "Κανένα")}</p>
            )}
           </div>
          </div>
@@ -448,7 +463,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
      {view === 'list' && (
       <div className="bg-white rounded-2xl border border-stone-100 overflow-x-auto">
        {/* Table Header */}
-       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold text-stone-400 tracking-wider min-w-[720px]">
+       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-xs font-semibold text-stone-400 tracking-wider min-w-[720px]">
         <div className="col-span-4">{t("Milestone", "Ορόσημο")}</div>
         <div className="col-span-2">{t("Category", "Κατηγορία")}</div>
         <div className="col-span-2">{t("Status", "Κατάσταση")}</div>
@@ -465,27 +480,27 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
            <ProgressRing progress={m.progress} size={28} stroke={2.5} />
            <div className="min-w-0">
             <p className="text-xs font-semibold text-stone-900 truncate">{m.title}</p>
-            {m.description && <p className="text-[10px] text-stone-400 truncate">{m.description}</p>}
+            {m.description && <p className="text-xs text-stone-400 truncate">{m.description}</p>}
            </div>
           </div>
           <div className="col-span-2">
-           <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", CATEGORY_COLORS[m.category] || 'text-stone-500 border-transparent')}>{labelOf(m.category)}</span>
+           <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", CATEGORY_COLORS[m.category] || 'text-stone-500 border-transparent')}>{labelOf(m.category)}</span>
           </div>
           <div className="col-span-2 flex items-center gap-1.5">
            <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
-           <span className={cn("text-[10px] font-medium", cfg.color)}>{m.status === 'Delayed' ? t('Delayed', 'Καθυστερημένο') : labelOf(m.status)}</span>
+           <span className={cn("text-xs font-medium", cfg.color)}>{m.status === 'Delayed' ? t('Delayed', 'Καθυστερημένο') : labelOf(m.status)}</span>
           </div>
           <div className="col-span-1">
-           <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold border", PRIORITY_BADGE[m.priority])}>{labelOf(m.priority)}</span>
+           <span className={cn("px-1.5 py-0.5 rounded text-xs font-semibold border", PRIORITY_BADGE[m.priority])}>{labelOf(m.priority)}</span>
           </div>
           <div className="col-span-1">
            <span className="text-xs font-semibold text-stone-900">{m.progress}%</span>
           </div>
           <div className="col-span-2 flex items-center justify-between">
-           <span className="text-[10px] text-stone-400">{formatDate(m.targetDate)}</span>
+           <span className="text-xs text-stone-400">{formatDate(m.targetDate)}</span>
            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
             <button className="p-1 text-stone-300 hover:text-stone-600 rounded" onClick={() => { setDraftTitle(m.title); setEditingId(m.id); setShowCreate(true); }}><Edit3 className="w-3 h-3" /></button>
-            <button className="p-1 text-stone-300 hover:text-red-400 rounded" onClick={() => { if (window.confirm(t('Delete this milestone?', 'Διαγραφή αυτού του ορόσημου;'))) { void milestoneService.deleteMilestone(m.id).then(() => { setMilestones((prev) => prev.filter((item) => item.id !== m.id)); }); } }}><Trash2 className="w-3 h-3" /></button>
+            <button className="p-1 text-stone-300 hover:text-red-400 rounded" onClick={() => void handleDelete(m.id)}><Trash2 className="w-3 h-3" /></button>
            </div>
           </div>
          </motion.div>
@@ -504,7 +519,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
      </div>
      <div>
       <p className="text-xs font-semibold text-stone-900">{t("Ready for your next milestone?", "Πάμε για το επόμενο ορόσημο;")}</p>
-      <p className="text-[10px] text-stone-400 mt-0.5">{t("Break goals into tasks and track your journey.", "Χώρισε τους στόχους σε εργασίες και παρακολούθησε τη διαδρομή.")}</p>
+      <p className="text-xs text-stone-400 mt-0.5">{t("Break goals into tasks and track your journey.", "Χώρισε τους στόχους σε εργασίες και παρακολούθησε τη διαδρομή.")}</p>
      </div>
     </div>
     <button type="button" onClick={() => setAdding(true)} title={t('Names a goal and puts it on this board.', 'Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα.')} className="shrink-0 inline-flex min-h-11 items-center gap-1.5 px-3 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-all">

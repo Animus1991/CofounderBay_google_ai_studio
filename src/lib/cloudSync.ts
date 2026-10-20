@@ -14,8 +14,8 @@ import { createLogger } from './logger';
 
 const log = createLogger('cloud-sync');
 
-/** Conversations with real people live in their own Firestore collection. */
-const NOT_SYNCED = new Set<string>([keys.chat, keys.inbox]);
+/** Conversations live in their own collection; account form/switches/cards mirror the profile and billing docs instead. */
+export const NOT_SYNCED = new Set<string>([keys.chat, keys.inbox, keys.accountForm, keys.accountSwitches, keys.paymentCards]);
 const SYNCED: string[] = Object.values(keys).filter((key) => !NOT_SYNCED.has(key));
 const MAX_BYTES = 900_000;
 const DEBOUNCE_MS = 700;

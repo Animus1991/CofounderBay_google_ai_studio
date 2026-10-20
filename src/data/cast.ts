@@ -15,6 +15,7 @@ export type CastMember = {
   fullName: string;
   role: CastRole;
   headline: string;
+  headlineEl?: string;
   city: string;
   country: string;
   timezone: string;
@@ -26,6 +27,7 @@ export type CastMember = {
   /** What this person wants from a match, in the same words as `skills`. */
   lookingFor: string[];
   bio: string;
+  bioEl?: string;
   company?: string;
   /** Mentors and investors only. */
   expertise?: string[];
@@ -42,6 +44,7 @@ export const CAST: CastMember[] = [
     fullName: 'Sarah Chen',
     role: 'Founder',
     headline: 'Product lead building cash-flow tools for freelancers',
+    headlineEl: 'Product lead — φτιάχνει εργαλεία ταμειακών ροών για freelancers',
     city: 'New York',
     country: 'USA',
     timezone: 'America/New_York',
@@ -52,12 +55,14 @@ export const CAST: CastMember[] = [
     interests: ['FinTech', 'Future of work', 'SaaS'],
     lookingFor: ['TypeScript', 'React', 'Node.js'],
     bio: 'Former product lead at a payments company. Talked to 60 freelancers about late invoices and is building the fix.',
+    bioEl: 'Πρώην product lead σε εταιρεία πληρωμών. Μίλησε με 60 freelancers για καθυστερημένα τιμολόγια και φτιάχνει τη λύση.',
   },
   {
     id: 'alex-rivera',
     fullName: 'Alex Rivera',
     role: 'Founder',
     headline: 'CTO, full-stack engineer',
+    headlineEl: 'CTO, full-stack μηχανικός',
     city: 'San Francisco',
     country: 'USA',
     timezone: 'America/Los_Angeles',
@@ -68,12 +73,14 @@ export const CAST: CastMember[] = [
     interests: ['AI', 'Developer tools', 'SaaS'],
     lookingFor: ['Sales', 'Growth', 'Partnerships'],
     bio: 'Ships product with small teams. Built the data platform at a Series B start-up and wants a commercial co-founder.',
+    bioEl: 'Βγάζει προϊόν με μικρές ομάδες. Έχτισε την πλατφόρμα δεδομένων σε Series B start-up και ψάχνει εμπορικό συνιδρυτή.',
   },
   {
     id: 'marcus-thorne',
     fullName: 'Marcus Thorne',
     role: 'Co-Founder Candidate',
     headline: 'Growth operator, ex-HubSpot',
+    headlineEl: 'Growth operator, πρώην HubSpot',
     city: 'London',
     country: 'UK',
     timezone: 'Europe/London',
@@ -84,12 +91,14 @@ export const CAST: CastMember[] = [
     interests: ['SaaS', 'AI', 'Marketplaces'],
     lookingFor: ['TypeScript', 'React', 'Product strategy'],
     bio: 'Took two SaaS products from zero to the first 1,000 paying teams. Looking for a technical co-founder.',
+    bioEl: 'Πήγε δύο προϊόντα SaaS από το μηδέν στις πρώτες 1.000 πληρώνουσες ομάδες. Ψάχνει τεχνικό συνιδρυτή.',
   },
   {
     id: 'elena-rodriguez',
     fullName: 'Elena Rodriguez',
     role: 'Co-Founder Candidate',
     headline: 'Product designer with a climate focus',
+    headlineEl: 'Product designer με επίκεντρο το κλίμα',
     city: 'Barcelona',
     country: 'Spain',
     timezone: 'Europe/Madrid',
@@ -100,12 +109,14 @@ export const CAST: CastMember[] = [
     interests: ['CleanTech', 'Mobility', 'SaaS'],
     lookingFor: ['Node.js', 'Sales', 'Fundraising'],
     bio: 'Designed energy dashboards used by 40 municipalities. Wants to join a founding team as the design lead.',
+    bioEl: 'Σχεδίασε dashboards ενέργειας που χρησιμοποιούν 40 δήμοι. Θέλει να μπει σε ιδρυτική ομάδα ως design lead.',
   },
   {
     id: 'david-park',
     fullName: 'David Park',
     role: 'Founder',
     headline: 'Hardware engineer building air-quality sensors',
+    headlineEl: 'Μηχανικός hardware — φτιάχνει αισθητήρες ποιότητας αέρα',
     city: 'Seoul',
     country: 'South Korea',
     timezone: 'Asia/Seoul',
@@ -116,12 +127,14 @@ export const CAST: CastMember[] = [
     interests: ['Deep Tech', 'CleanTech', 'IoT'],
     lookingFor: ['Sales', 'Fundraising', 'Product strategy'],
     bio: 'Built sensor boards for two consumer devices. Has a working prototype and three pilot buildings.',
+    bioEl: 'Έχτισε πλακέτες αισθητήρων για δύο συσκευές ευρείας χρήσης. Έχει λειτουργικό πρωτότυπο και τρία πιλοτικά κτίρια.',
   },
   {
     id: 'emma-kim',
     fullName: 'Emma Kim',
     role: 'Founder',
     headline: 'Data scientist working on clinical triage',
+    headlineEl: 'Data scientist — δουλεύει σε κλινική διαλογή',
     city: 'Toronto',
     country: 'Canada',
     timezone: 'America/Toronto',
@@ -132,12 +145,14 @@ export const CAST: CastMember[] = [
     interests: ['HealthTech', 'AI'],
     lookingFor: ['Product strategy', 'Sales', 'Regulatory'],
     bio: 'Five years of hospital data science. Validating a triage model with two emergency departments.',
+    bioEl: 'Πέντε χρόνια data science σε νοσοκομεία. Επικυρώνει μοντέλο διαλογής με δύο τμήματα επειγόντων.',
   },
   {
     id: 'jordan-taylor',
     fullName: 'Jordan Taylor',
     role: 'Co-Founder Candidate',
     headline: 'Growth marketer, ex-Stripe',
+    headlineEl: 'Growth marketer, πρώην Stripe',
     city: 'Austin',
     country: 'USA',
     timezone: 'America/Chicago',
@@ -148,12 +163,14 @@ export const CAST: CastMember[] = [
     interests: ['FinTech', 'SaaS'],
     lookingFor: ['TypeScript', 'Product strategy'],
     bio: 'Ran lifecycle marketing for Stripe Atlas. Joins teams that already have a product people use.',
+    bioEl: 'Ανέλαβε το lifecycle marketing του Stripe Atlas. Μπαίνει σε ομάδες που έχουν ήδη προϊόν που χρησιμοποιείται.',
   },
   {
     id: 'priya-sharma',
     fullName: 'Priya Sharma',
     role: 'Founder',
     headline: 'ML engineer turned founder',
+    headlineEl: 'Από ML engineer σε founder',
     city: 'Bengaluru',
     country: 'India',
     timezone: 'Asia/Kolkata',
@@ -164,12 +181,14 @@ export const CAST: CastMember[] = [
     interests: ['AI', 'Developer tools'],
     lookingFor: ['Sales', 'Growth'],
     bio: 'Building evaluation tooling for teams that ship language models. Two design partners signed.',
+    bioEl: 'Φτιάχνει εργαλεία αξιολόγησης για ομάδες που βγάζουν γλωσσικά μοντέλα. Δύο design partners έχουν ήδη συμφωνήσει.',
   },
   {
     id: 'mia-kovacs',
     fullName: 'Mia Kovacs',
     role: 'Founder',
     headline: 'EdTech founder moving to B2B',
+    headlineEl: 'EdTech founder — μετάβαση σε B2B',
     city: 'Vienna',
     country: 'Austria',
     timezone: 'Europe/Vienna',
@@ -180,12 +199,14 @@ export const CAST: CastMember[] = [
     interests: ['EdTech', 'Future of work'],
     lookingFor: ['TypeScript', 'React'],
     bio: 'Sold a consumer learning app to 30,000 students. Now selling the same course engine to companies.',
+    bioEl: 'Πούλησε εφαρμογή εκμάθησης σε 30.000 μαθητές. Τώρα πουλά την ίδια μηχανή μαθημάτων σε εταιρείες.',
   },
   {
     id: 'james-wilson',
     fullName: 'James Wilson',
     role: 'Advisor',
     headline: 'SaaS go-to-market advisor',
+    headlineEl: 'Σύμβουλος go-to-market για SaaS',
     city: 'London',
     country: 'UK',
     timezone: 'Europe/London',
@@ -196,6 +217,7 @@ export const CAST: CastMember[] = [
     interests: ['SaaS', 'AI'],
     lookingFor: [],
     bio: 'Former VP Sales. Helps seed-stage teams set pricing and run their first enterprise deals.',
+    bioEl: 'Πρώην VP Sales. Βοηθά seed-stage ομάδες με pricing και τις πρώτες enterprise συμφωνίες.',
     expertise: ['Pricing', 'Sales', 'Go-to-market'],
   },
   {
@@ -203,6 +225,7 @@ export const CAST: CastMember[] = [
     fullName: 'Leila Hassan',
     role: 'Advisor',
     headline: 'Regulatory advisor for HealthTech (FDA, CE)',
+    headlineEl: 'Σύμβουλος κανονιστικής συμμόρφωσης για HealthTech (FDA, CE)',
     city: 'Dubai',
     country: 'UAE',
     timezone: 'Asia/Dubai',
@@ -213,6 +236,7 @@ export const CAST: CastMember[] = [
     interests: ['HealthTech'],
     lookingFor: [],
     bio: 'Took eleven medical devices through FDA and CE review. Advises on evidence plans and data protection.',
+    bioEl: 'Οδήγησε έντεκα ιατρικά προϊόντα σε έγκριση FDA και CE. Συμβουλεύει σε σχέδια τεκμηρίωσης και προστασία δεδομένων.',
     expertise: ['Regulatory', 'Legal', 'Compliance'],
   },
   {
@@ -220,6 +244,7 @@ export const CAST: CastMember[] = [
     fullName: 'David Hoffman',
     role: 'Mentor',
     headline: 'Ex-VP Product @ Uber',
+    headlineEl: 'Πρώην VP Product στην Uber',
     city: 'San Francisco',
     country: 'USA',
     timezone: 'America/Los_Angeles',
@@ -231,6 +256,7 @@ export const CAST: CastMember[] = [
     lookingFor: [],
     company: 'Uber',
     bio: 'Fifteen years in product, including the core marketplace teams at Uber during their fastest growth.',
+    bioEl: 'Δεκαπέντε χρόνια στο προϊόν, με τις βασικές ομάδες marketplace της Uber στην περίοδο ταχύτερης ανάπτυξης.',
     expertise: ['Product', 'Growth', 'Marketplace'],
     rating: 4.9,
     reviews: 124,
@@ -242,6 +268,7 @@ export const CAST: CastMember[] = [
     fullName: 'Elena Rossi',
     role: 'Mentor',
     headline: 'Venture partner, FinTech and SaaS',
+    headlineEl: 'Venture partner, FinTech και SaaS',
     city: 'Milan',
     country: 'Italy',
     timezone: 'Europe/Rome',
@@ -253,6 +280,7 @@ export const CAST: CastMember[] = [
     lookingFor: [],
     company: 'Sequoia',
     bio: 'Early-stage investor in enterprise SaaS and FinTech across Europe and the US. Three exits as an operator.',
+    bioEl: 'Επενδύει σε early-stage enterprise SaaS και FinTech σε Ευρώπη και ΗΠΑ. Τρεις exits ως επιχειρησιακό στέλεχος.',
     expertise: ['Fundraising', 'Pitching', 'Strategy'],
     rating: 5,
     reviews: 89,
@@ -264,6 +292,7 @@ export const CAST: CastMember[] = [
     fullName: 'Samir Patel',
     role: 'Mentor',
     headline: 'CTO at a FinTech scale-up',
+    headlineEl: 'CTO σε FinTech scale-up',
     city: 'London',
     country: 'UK',
     timezone: 'Europe/London',
@@ -275,6 +304,7 @@ export const CAST: CastMember[] = [
     lookingFor: [],
     company: 'FinTech scale-up',
     bio: 'Grew an engineering team from 10 to 500 people and moved a monolith to secure, highly available services.',
+    bioEl: 'Ανάπτυξε ομάδα μηχανικών από 10 σε 500 άτομα και μετέτρεψε monolith σε ασφαλείς, υψηλά διαθέσιμες υπηρεσίες.',
     expertise: ['Engineering', 'Security', 'Team Building'],
     rating: 4.8,
     reviews: 56,
@@ -286,6 +316,7 @@ export const CAST: CastMember[] = [
     fullName: 'Jessica Wu',
     role: 'Mentor',
     headline: 'Growth lead @ Airbnb',
+    headlineEl: 'Growth lead στην Airbnb',
     city: 'Seattle',
     country: 'USA',
     timezone: 'America/Los_Angeles',
@@ -297,6 +328,7 @@ export const CAST: CastMember[] = [
     lookingFor: [],
     company: 'Airbnb',
     bio: 'User acquisition and lifecycle marketing. Built referral loops that became a main growth channel at Airbnb.',
+    bioEl: 'User acquisition και lifecycle marketing. Έχτισε referral loops που έγιναν βασικό κανάλι ανάπτυξης της Airbnb.',
     expertise: ['Marketing', 'Retention', 'Virality'],
     rating: 4.9,
     reviews: 210,
@@ -308,6 +340,7 @@ export const CAST: CastMember[] = [
     fullName: 'Daniel Weiss',
     role: 'Investor',
     headline: 'Angel investor, 30+ pre-seed deals',
+    headlineEl: 'Angel investor, 30+ pre-seed συμφωνίες',
     city: 'Berlin',
     country: 'Germany',
     timezone: 'Europe/Berlin',
@@ -318,6 +351,7 @@ export const CAST: CastMember[] = [
     interests: ['SaaS', 'FinTech', 'AI'],
     lookingFor: [],
     bio: 'Writes first cheques into B2B software teams in Europe. Usually decides within two meetings.',
+    bioEl: 'Γράφει πρώτα cheques σε B2B software ομάδες στην Ευρώπη. Συνήθως αποφασίζει μέσα σε δύο συναντήσεις.',
     checkSize: '$25k–$100k',
   },
 ];
@@ -370,8 +404,9 @@ export function castByRole(...roles: CastRole[]): CastMember[] {
   return CAST.filter((person) => roles.includes(person.role));
 }
 
-export function avatarFor(id: string, size = 100): string {
-  return `https://picsum.photos/seed/${encodeURIComponent(castId(id))}/${size}/${size}`;
+// No stock faces for demo people: initials everywhere (see photos.ts).
+export function avatarFor(_id: string, _size = 100): string {
+  return '';
 }
 
 export function placeOf(person: Pick<CastMember, 'city' | 'country'>): string {

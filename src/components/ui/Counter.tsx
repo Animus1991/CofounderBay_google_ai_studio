@@ -7,7 +7,7 @@ export default function Counter({ value, tone = 'neutral', className }: { value:
   return (
     <span
       className={cn(
-        'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-medium leading-none tabular-nums',
+        'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-medium leading-none tabular-nums',
         tone === 'attention' && 'bg-stone-900 text-white',
         tone === 'inverse' && 'bg-white/20 text-white',
         tone === 'neutral' && 'bg-stone-900/[0.07] text-stone-600',

@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
-import { CreditCard, History, Zap, Shield, AlertCircle, CheckCircle2, ArrowRight, ExternalLink, Download, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CreditCard, History, Zap, AlertCircle, CheckCircle2, ArrowRight, Download, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { User, Subscription, Invoice, BillingPlan } from "../../types";
+import { User, Subscription, Invoice } from "../../types";
 import { billingService, MOCK_PLANS } from "../../services/billingService";
+import { keys, readIds, readSessions, readValue, writeValue } from "../../lib/localLists";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+
+type PayCard = { id: string; brand: string; last4: string; expiry: string };
 
 interface BillingProps {
  user: User;
@@ -17,6 +21,12 @@ export default function Billing({ user }: BillingProps) {
  const t = useT();
  const [subscription, setSubscription] = useState<Subscription | null>(null);
  const [invoices, setInvoices] = useState<Invoice[]>([]);
+ const [cards, setCards] = useState<PayCard[]>(() => readValue<PayCard[]>(keys.paymentCards, []));
+ const [billingInfo, setBillingInfo] = useState<{ name: string; country: string }>(() => {
+  const stored = readValue<{ billingName?: string; billingCountry?: string }>(keys.accountForm, {});
+  return { name: stored.billingName || user.fullName || '', country: stored.billingCountry || '' };
+ });
+ const [requestNote, setRequestNote] = useState('');
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'plan' | 'payment' | 'history'>('plan');
 
@@ -39,6 +49,23 @@ export default function Billing({ user }: BillingProps) {
  }, [user.id]);
 
  const currentPlan = MOCK_PLANS.find(p => p.id === subscription?.planId);
+ const communityCount = readIds(keys.communities).length;
+ const mentorshipsThisMonth = readSessions().filter((s) => {
+  const d = new Date((s as any).date || (s as any).start || (s as any).createdAt || 0);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+ }).length;
+ const commLimit = Number(currentPlan?.limits?.communities) || 0;
+ const mentorLimit = Number(currentPlan?.limits?.mentorships) || 0;
+ const requestBilling = async (kind: 'upgrade' | 'cancel', note: string) => {
+  try {
+   await billingService.requestChange(kind, { subscriptionId: subscription?.id, planId: subscription?.planId });
+   setRequestNote(note);
+   setTimeout(() => setRequestNote(''), 2500);
+  } catch {
+   setRequestNote(t('Sign in to send a billing request.', 'Συνδέσου για να στείλεις αίτημα χρέωσης.'));
+  }
+ };
  const planName = (id: string | undefined, name: string | undefined) => ({
   'free-individual': t('Individual Free', 'Δωρεάν ατομικό'),
   'premium-individual': t('Individual Premium', 'Premium ατομικό'),
@@ -82,7 +109,7 @@ export default function Billing({ user }: BillingProps) {
   <div className="space-y-8 max-w-4xl mx-auto">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
-     <h2 className="text-xl font-medium tracking-tight">{t('Billing & Subscription', 'Χρέωση και συνδρομή')}</h2>
+     <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing & Subscription', 'Χρέωση και συνδρομή')}</h2>
      <p className="text-stone-500">{t('Manage your plan, payment methods, and billing history.', 'Διαχείριση πακέτου, μεθόδων πληρωμής και ιστορικού χρέωσης.')}</p>
     </div>
    </div>
@@ -129,7 +156,7 @@ export default function Billing({ user }: BillingProps) {
        <div className="flex flex-col md:flex-row gap-8 items-start">
         <div className="flex-1 space-y-4">
          <div className="space-y-1">
-          <h3 className="text-lg font-medium">{planName(currentPlan?.id, currentPlan?.name)}</h3>
+          <h3 className="text-base font-semibold">{planName(currentPlan?.id, currentPlan?.name)}</h3>
           <p className="text-stone-500">{planDescription(currentPlan?.id, currentPlan?.description)}</p>
          </div>
 
@@ -144,23 +171,32 @@ export default function Billing({ user }: BillingProps) {
          <div className="pt-4 flex flex-wrap gap-4">
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
            <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Next Renewal', 'Επόμενη ανανέωση')}</p>
-           <p className="text-sm font-medium">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : ''}</p>
+           <p className="text-sm font-medium">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : '—'}</p>
           </div>
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
            <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Payment Status', 'Κατάσταση πληρωμής')}</p>
-           <p className="text-sm font-medium text-green-600">{labelOf('Healthy')}</p>
+           <p className="text-sm font-medium text-green-600">{subscription?.status ? labelOf(subscription.status) : '—'}</p>
           </div>
+          {requestNote && (
+           <div className="px-4 py-2 bg-green-50 rounded-xl border border-green-100">
+            <p className="text-sm font-medium text-green-700">{requestNote}</p>
+           </div>
+          )}
          </div>
         </div>
 
         <div className="w-full md:w-64 space-y-3">
-         <Button className="w-full gap-2">
+         <Button className="w-full gap-2" onClick={() => requestBilling('upgrade', t('Upgrade request sent to the platform team.', 'Το αίτημα αναβάθμισης στάλθηκε στην ομάδα.'))}>
           {t('Upgrade Plan', 'Αναβάθμιση πακέτου')} <ArrowRight className="w-4 h-4" />
          </Button>
-         <Button variant="outline" className="w-full">
+         <Button variant="outline" className="w-full" onClick={() => requestBilling('upgrade', t('Billing cycle change request sent.', 'Το αίτημα αλλαγής κύκλου στάλθηκε.'))}>
           {t('Change Billing Cycle', 'Αλλαγή κύκλου χρέωσης')}
          </Button>
-         <button className="w-full text-center text-xs text-stone-400 font-medium tracking-wide hover:text-red-500 transition-colors pt-2">
+         <button
+          type="button"
+          onClick={() => requestBilling('cancel', t('Cancellation request sent.', 'Το αίτημα ακύρωσης στάλθηκε.'))}
+          className="w-full text-center text-xs text-stone-400 font-medium tracking-wide hover:text-red-500 transition-colors pt-2"
+         >
           {t('Cancel Subscription', 'Ακύρωση συνδρομής')}
          </button>
         </div>
@@ -191,27 +227,29 @@ export default function Billing({ user }: BillingProps) {
          <div className="space-y-2">
           <div className="flex justify-between text-sm font-medium">
            <span>{t('Communities', 'Κοινότητες')}</span>
-           <span>3 / {currentPlan?.limits?.communities}</span>
+           <span>{communityCount} / {commLimit > 0 ? commLimit : t('Unlimited', 'Απεριόριστο')}</span>
           </div>
           <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-           <div className="h-full bg-stone-900 w-[30%]" />
+           <div className="h-full bg-stone-900" style={{ width: `${commLimit > 0 ? Math.min(100, (communityCount / commLimit) * 100) : 0}%` }} />
           </div>
          </div>
          <div className="space-y-2">
           <div className="flex justify-between text-sm font-medium">
            <span>{t('Monthly Mentorships', 'Μηνιαίες καθοδηγήσεις')}</span>
-           <span>1 / {currentPlan?.limits?.mentorships}</span>
+           <span>{mentorshipsThisMonth} / {mentorLimit > 0 ? mentorLimit : t('Unlimited', 'Απεριόριστο')}</span>
           </div>
           <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-           <div className="h-full bg-stone-900 w-[100%]" />
+           <div className="h-full bg-stone-900" style={{ width: `${mentorLimit > 0 ? Math.min(100, (mentorshipsThisMonth / mentorLimit) * 100) : 0}%` }} />
           </div>
          </div>
-         <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-          <p className="text-xs text-amber-800 leading-relaxed">
-           {t("You've reached your mentorship limit for this month. Upgrade to Premium for unlimited mentorship sessions.", "Έφτασες το όριο καθοδήγησης για αυτόν τον μήνα. Αναβάθμισε σε Premium για απεριόριστες συνεδρίες.")}
-          </p>
-         </div>
+         {mentorLimit > 0 && mentorshipsThisMonth >= mentorLimit && (
+          <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
+           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+           <p className="text-xs text-amber-800 leading-relaxed">
+            {t("You've reached your mentorship limit for this month. Upgrade to Premium for unlimited mentorship sessions.", "Έφτασες το όριο καθοδήγησης για αυτόν τον μήνα. Αναβάθμισε σε Premium για απεριόριστες συνεδρίες.")}
+           </p>
+          </div>
+         )}
         </div>
        </Card>
       </div>
@@ -229,49 +267,96 @@ export default function Billing({ user }: BillingProps) {
       <Card className="p-8">
        <div className="flex items-center justify-between mb-8">
         <div className="space-y-1">
-         <h3 className="text-lg font-medium">{t('Default Payment Method', 'Προεπιλεγμένη μέθοδος πληρωμής')}</h3>
+         <h3 className="text-base font-semibold">{t('Default Payment Method', 'Προεπιλεγμένη μέθοδος πληρωμής')}</h3>
          <p className="text-sm text-stone-500">{t('This card will be used for all recurring charges.', 'Αυτή η κάρτα θα χρησιμοποιείται για όλες τις επαναλαμβανόμενες χρεώσεις.')}</p>
         </div>
-        <Button variant="outline" className="gap-2">
-         <Plus className="w-4 h-4" /> {t('Add Method', 'Προσθήκη μεθόδου')}
-        </Button>
+        <Link to="/settings">
+         <Button variant="outline" className="gap-2">
+          <Plus className="w-4 h-4" /> {t('Add Method', 'Προσθήκη μεθόδου')}
+         </Button>
+        </Link>
        </div>
 
-       <div className="p-6 border-2 border-stone-100 rounded-2xl flex items-center gap-6">
-        <div className="w-16 h-10 bg-stone-900 rounded-lg flex items-center justify-center text-white font-medium italic">
-         VISA
+       {cards.length === 0 ? (
+        <div className="p-8 text-center border-2 border-dashed border-stone-200 rounded-2xl">
+         <p className="text-sm text-stone-500 mb-3">{t('No payment method saved yet.', 'Δεν έχει αποθηκευτεί μέθοδος πληρωμής ακόμη.')}</p>
+         <Link to="/settings" className="text-sm font-medium text-stone-900 underline underline-offset-2">
+          {t('Add a card in Account Settings', 'Πρόσθεσε κάρτα στις ρυθμίσεις λογαριασμού')}
+         </Link>
         </div>
-        <div className="flex-1">
-         <p className="font-medium text-stone-900">•••• •••• •••• 4242</p>
-         <p className="text-xs text-stone-500 tracking-wide font-medium">{t('Expires 12/26', 'Λήξη 12/26')}</p>
+       ) : (
+        <div className="space-y-4">
+         {cards.map((card, idx) => (
+          <div key={card.id} className="p-6 border-2 border-stone-100 rounded-2xl flex items-center gap-6">
+           <div className="w-16 h-10 bg-stone-900 rounded-lg flex items-center justify-center text-white font-medium italic text-xs">
+            {card.brand}
+           </div>
+           <div className="flex-1">
+            <p className="font-medium text-stone-900">•••• •••• •••• {card.last4}</p>
+            <p className="text-xs text-stone-500 tracking-wide font-medium">{t('Expires', 'Λήξη')} {card.expiry}</p>
+           </div>
+           <div className="flex gap-2">
+            {idx === 0 && <span className="self-center text-xs text-green-700 bg-green-50 px-2 py-1 rounded-lg font-medium">{t('Default', 'Προεπιλογή')}</span>}
+            <Button
+             variant="outline"
+             className="text-xs px-3 py-1.5 text-red-500 hover:text-red-600"
+             onClick={() => {
+              const next = cards.filter((item) => item.id !== card.id);
+              setCards(next);
+              writeValue(keys.paymentCards, next);
+             }}
+            >
+             {t('Remove', 'Αφαίρεση')}
+            </Button>
+           </div>
+          </div>
+         ))}
         </div>
-        <div className="flex gap-2">
-         <Button variant="outline" className="text-xs px-3 py-1.5">{t('Edit', 'Επεξεργασία')}</Button>
-         <Button variant="outline" className="text-xs px-3 py-1.5 text-red-500 hover:text-red-600">{t('Remove', 'Αφαίρεση')}</Button>
-        </div>
-       </div>
+       )}
       </Card>
 
       <Card className="p-8">
        <div className="space-y-1 mb-6">
-        <h3 className="text-lg font-medium">{t('Billing Address', 'Διεύθυνση χρέωσης')}</h3>
+        <h3 className="text-base font-semibold">{t('Billing Address', 'Διεύθυνση χρέωσης')}</h3>
         <p className="text-sm text-stone-500">{t('Used for generating tax-compliant invoices.', 'Για την έκδοση φορολογικά συμμορφωμένων τιμολογίων.')}</p>
        </div>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
          <label className="text-xs font-medium text-stone-400 tracking-wide">{t('Legal Name', 'Νομική επωνυμία')}</label>
-         <input type="text" defaultValue="Alex Stanford" className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none" />
+         <input
+          type="text"
+          value={billingInfo.name}
+          onChange={(e) => setBillingInfo((prev) => ({ ...prev, name: e.target.value }))}
+          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none"
+         />
         </div>
         <div className="space-y-2">
          <label className="text-xs font-medium text-stone-400 tracking-wide">{t('Country', 'Χώρα')}</label>
-         <select className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none">
-          <option>{t('United States', 'Ηνωμένες Πολιτείες')}</option>
-          <option>{t('United Kingdom', 'Ηνωμένο Βασίλειο')}</option>
-          <option>{t('Germany', 'Γερμανία')}</option>
+         <select
+          value={billingInfo.country}
+          onChange={(e) => setBillingInfo((prev) => ({ ...prev, country: e.target.value }))}
+          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none"
+         >
+          <option value="">{t('Select country', 'Επίλεξε χώρα')}</option>
+          <option value="US">{t('United States', 'Ηνωμένες Πολιτείες')}</option>
+          <option value="UK">{t('United Kingdom', 'Ηνωμένο Βασίλειο')}</option>
+          <option value="DE">{t('Germany', 'Γερμανία')}</option>
+          <option value="GR">{t('Greece', 'Ελλάδα')}</option>
          </select>
         </div>
        </div>
-       <Button className="mt-8">{t('Update Billing Info', 'Ενημέρωση στοιχείων χρέωσης')}</Button>
+       <Button
+        className="mt-8"
+        onClick={() => {
+         const stored = readValue<Record<string, any>>(keys.accountForm, {});
+         const next = { ...stored, billingName: billingInfo.name, billingCountry: billingInfo.country };
+         writeValue(keys.accountForm, next);
+         setRequestNote(t('Billing info saved.', 'Τα στοιχεία χρέωσης αποθηκεύτηκαν.'));
+         setTimeout(() => setRequestNote(''), 2500);
+        }}
+       >
+        {requestNote || t('Update Billing Info', 'Ενημέρωση στοιχείων χρέωσης')}
+       </Button>
       </Card>
      </motion.div>
     )}
@@ -309,12 +394,32 @@ export default function Billing({ user }: BillingProps) {
             </span>
            </td>
            <td className="px-4 py-2 text-right">
-            <button className="p-2 text-stone-400 hover:text-stone-900 transition-colors" aria-label={t('Download', 'Λήψη')}>
+            <button
+             type="button"
+             aria-label={t('Download', 'Λήψη')}
+             onClick={() => {
+              const blob = new Blob([JSON.stringify(invoice, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${invoice.number || invoice.id}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+             }}
+             className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+            >
              <Download className="w-4 h-4" />
             </button>
            </td>
           </tr>
          ))}
+         {invoices.length === 0 && (
+          <tr>
+           <td colSpan={5} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+            {t('No invoices yet. They appear here once billing runs.', 'Δεν υπάρχουν τιμολόγια ακόμη.')}
+           </td>
+          </tr>
+         )}
         </tbody>
        </table>
       </Card>

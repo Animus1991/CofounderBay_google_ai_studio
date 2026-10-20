@@ -5,7 +5,6 @@ import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Chrome, User, FlaskConical } from 'lucide-react';
 import { auth } from '../firebase';
 import { useAuth } from '../App';
-import { cn } from '../lib/utils';
 import { LanguageToggle, useT } from '../lib/language';
 
 export default function SignUpPage() {
@@ -98,7 +97,7 @@ export default function SignUpPage() {
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
+    <h2 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      {t('Create your account', 'Δημιούργησε τον λογαριασμό σου')}
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">

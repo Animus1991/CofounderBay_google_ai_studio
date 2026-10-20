@@ -178,11 +178,17 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
   if (text === 'Matching') return t('Matching', 'Αντιστοιχίσεις');
   return text;
  };
- const logMessage = (message: string) => {
-  if (message === "Workflow 'Onboarding Reminder' executed successfully for user_123") return t("Workflow 'Onboarding Reminder' executed successfully for user_123", "Η ροή «Υπενθύμιση onboarding» εκτελέστηκε με επιτυχία για το user_123");
-  if (message === "Workflow 'Match Generation' failed for user_456") return t("Workflow 'Match Generation' failed for user_456", "Η ροή «Δημιουργία αντιστοιχίσεων» απέτυχε για το user_456");
-  if (message === "Workflow 'Connection Follow-up' scheduled for request_789") return t("Workflow 'Connection Follow-up' scheduled for request_789", "Η ροή «Follow-up σύνδεσης» προγραμματίστηκε για το request_789");
-  return message;
+ const RULE_NAME_EL: Record<string, string> = {
+ 'Onboarding Reminder': 'Υπενθύμιση onboarding',
+ 'Match Generation': 'Δημιουργία αντιστοιχίσεων',
+ 'Inactivity Nudge': 'Υπενθύμιση αδράνειας',
+ 'Mentor Request Notification': 'Ειδοποίηση αιτήματος μέντορα',
+ 'Connection Follow-up': 'Follow-up σύνδεσης',
+};
+const logMessage = (message: string) => {
+  let out = message;
+  for (const [en, el] of Object.entries(RULE_NAME_EL)) if (out.includes(en)) out = out.replace(en, el);
+  return out;
  };
  const getTriggerIcon = (type: string) => {
   switch (type) {
@@ -241,7 +247,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
        <div className={cn("p-1.5 rounded-lg", stat.bg)}>
         <stat.icon className={cn("w-4 h-4", stat.color)} />
        </div>
-       <span className="text-xl font-medium tracking-tight text-stone-900">{stat.value}</span>
+       <span className="text-lg font-semibold tracking-tight text-stone-900">{stat.value}</span>
       </div>
       <p className="text-micro mt-3">{stat.label}</p>
      </Card>
@@ -600,7 +606,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
        >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
          <div className="space-y-4">
-          <h3 className="text-lg font-medium flex items-center gap-2">
+          <h3 className="text-base font-semibold flex items-center gap-2">
            <Mail className="w-5 h-5 text-blue-500" />
            {t('Email Templates', 'Πρότυπα email')}
           </h3>
@@ -625,7 +631,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
          </div>
 
          <div className="space-y-4">
-          <h3 className="text-lg font-medium flex items-center gap-2">
+          <h3 className="text-base font-semibold flex items-center gap-2">
            <Bell className="w-5 h-5 text-amber-500" />
            {t('In-App Notifications', 'Ειδοποιήσεις στην εφαρμογή')}
           </h3>
@@ -672,7 +678,7 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
            <Plus className="w-4 h-4" />
           </div>
           <div>
-           <h3 className="text-lg font-medium tracking-tight">{t('New Automation Workflow', 'Νέα ροή αυτοματισμού')}</h3>
+           <h3 className="text-base font-semibold tracking-tight">{t('New Automation Workflow', 'Νέα ροή αυτοματισμού')}</h3>
            <p className="text-xs text-stone-500">{t('Define triggers and actions for your platform.', 'Όρισε εκδηλώσεις και ενέργειες για την πλατφόρμα.')}</p>
           </div>
          </div>

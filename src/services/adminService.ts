@@ -13,7 +13,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { XPEvent, XPEventType, ReadinessScore, Streak, ContributionScore, TeamMomentum, MentorFeedbackMetric, Badge, UserBadge } from '../types';
+import { XPEvent, Streak, UserBadge } from '../types';
 
 export const getAdminAnalytics = async () => {
   try {
@@ -35,12 +35,16 @@ export const getAdminAnalytics = async () => {
     const badgesSnap = await getDocs(badgesRef);
     const totalBadgesAwarded = badgesSnap.size;
 
+    const aiUsageSnap = await getDocs(collection(db, 'aiUsage'));
+    const aiUsageCount = aiUsageSnap.size;
+
     return {
       totalUsers,
       totalXP,
       totalBadgesAwarded,
       eventTypeDistribution,
-      xpEventsCount: xpEvents.length
+      xpEventsCount: xpEvents.length,
+      aiUsageCount
     };
   } catch (error) {
     console.error('Error fetching admin analytics:', error);

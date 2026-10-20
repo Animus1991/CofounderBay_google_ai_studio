@@ -43,7 +43,6 @@ import {
  MoreHorizontal,
  Plus,
  X,
- ChevronLeft,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -87,6 +86,16 @@ const STAGE_META: Record<string, { color: string; dot: string }> = {
  "Passed":        { color: "text-rose-500",    dot: "bg-stone-400" },
 };
 
+// Sample investors shown to the demo account only — real accounts see the live member directory.
+const mockInvestors: InvestorCard[] = [
+ { id: "inv_1", name: "Sequoia Capital",       type: "VC",    focus: ["SaaS", "FinTech", "AI"],              stage: ["Seed", "Series A"],              location: "Menlo Park, CA",   checkSize: "$500k–$5M",   portfolio: "312" },
+ { id: "inv_2", name: "Naval Ravikant",         type: "Angel", focus: ["Crypto", "Marketplaces", "DeepTech"], stage: ["Pre-Seed", "Seed"],               location: "San Francisco, CA", checkSize: "$25k–$250k",  portfolio: "84" },
+ { id: "inv_3", name: "Andreessen Horowitz",    type: "VC",    focus: ["Consumer", "Enterprise", "Bio"],       stage: ["Seed", "Series A", "Series B"],  location: "Menlo Park, CA",   checkSize: "$1M–$50M",    portfolio: "510" },
+ { id: "inv_4", name: "First Round Capital",    type: "VC",    focus: ["Early Stage", "Generalist"],           stage: ["Seed"],                          location: "Philadelphia, PA",  checkSize: "$250k–$3M",   portfolio: 195 },
+ { id: "inv_5", name: "Bessemer Venture",       type: "VC",    focus: ["Cloud", "Cybersecurity", "HealthTech"],stage: ["Series A", "Series B"],          location: "Redwood City, CA",  checkSize: "$5M–$25M",    portfolio: 240 },
+ { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
+];
+
 export default function Fundraising({ user }: FundraisingProps) {
  const t = useT();
  const { isDemoMode, profile } = useAuth();
@@ -120,7 +129,6 @@ export default function Fundraising({ user }: FundraisingProps) {
  const investorSearchRef = useRef<HTMLInputElement>(null);
  const [showMeetingScheduler, setShowMeetingScheduler] = useState(false);
  const [showDocumentRoom, setShowDocumentRoom] = useState(false);
- const [showSAFECalc, setShowSAFECalc] = useState(false);
  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
  // The pipeline lives on the account's round — one source for the table, the funnel and the CRM.
@@ -160,15 +168,6 @@ export default function Fundraising({ user }: FundraisingProps) {
  const runway = burn > 0 ? Math.round(((round.cashOnHand || (mockTracker.targetAmount - mockTracker.raisedAmount)) / burn)) : 0;
 
  // The investors directory: sample funds in the demo, the platform's real investor members otherwise.
- const mockInvestors: InvestorCard[] = [
-  { id: "inv_1", name: "Sequoia Capital",       type: "VC",    focus: ["SaaS", "FinTech", "AI"],              stage: ["Seed", "Series A"],              location: "Menlo Park, CA",   checkSize: "$500k–$5M",   portfolio: "312" },
-  { id: "inv_2", name: "Naval Ravikant",         type: "Angel", focus: ["Crypto", "Marketplaces", "DeepTech"], stage: ["Pre-Seed", "Seed"],               location: "San Francisco, CA", checkSize: "$25k–$250k",  portfolio: "84" },
-  { id: "inv_3", name: "Andreessen Horowitz",    type: "VC",    focus: ["Consumer", "Enterprise", "Bio"],       stage: ["Seed", "Series A", "Series B"],  location: "Menlo Park, CA",   checkSize: "$1M–$50M",    portfolio: "510" },
-  { id: "inv_4", name: "First Round Capital",    type: "VC",    focus: ["Early Stage", "Generalist"],           stage: ["Seed"],                          location: "Philadelphia, PA",  checkSize: "$250k–$3M",   portfolio: 195 },
-  { id: "inv_5", name: "Bessemer Venture",       type: "VC",    focus: ["Cloud", "Cybersecurity", "HealthTech"],stage: ["Series A", "Series B"],          location: "Redwood City, CA",  checkSize: "$5M–$25M",    portfolio: 240 },
-  { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
- ];
-
  const investorDirectory = useMemo<InvestorCard[]>(() => {
   if (isDemoMode) return mockInvestors;
   return directoryMembers
@@ -317,15 +316,6 @@ export default function Fundraising({ user }: FundraisingProps) {
   priority: stageIndex(item.stage) >= 3 && item.stage !== 'Passed' ? 'high' : 'medium',
  }));
 
- // SAFE Calculator State (mock)
- const safeCalcData = {
-  valuationCap: 8000000,
-  discountRate: 20,
-  investmentAmount: 500000,
-  proRata: true,
-  mostFavoredNation: true,
- };
-
  const tabLabel: Record<typeof activeTab, string> = {
   tracker: t("Tracker", "Παρακολούθηση"),
   investors: t("Investors", "Επενδυτές"),
@@ -446,7 +436,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         {/* Amount & Bar */}
         <div className="space-y-1.5">
          <div className="flex items-baseline gap-1.5">
-          <span className="text-xl font-bold text-stone-900">${(mockTracker.raisedAmount / 1000).toFixed(0)}k</span>
+          <span className="text-lg font-semibold text-stone-900">${(mockTracker.raisedAmount / 1000).toFixed(0)}k</span>
           <span className="text-sm text-stone-400">{t("of", "από")} ${(mockTracker.targetAmount / 1000000).toFixed(1)}M</span>
          </div>
          <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
@@ -670,7 +660,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <div className="flex flex-col gap-1 shrink-0">
              {item.stage !== 'Closed' && item.stage !== 'Passed' && (
               <button type="button" aria-label={t("Move to next stage", "Επόμενο στάδιο")} title={t("Move to next stage", "Επόμενο στάδιο")}
-               onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed' ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
+               onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
                className="min-h-8 min-w-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors">
                <ArrowRight className="w-3.5 h-3.5 text-stone-500" />
               </button>
@@ -733,7 +723,7 @@ export default function Fundraising({ user }: FundraisingProps) {
                <div className="flex items-center justify-end gap-1">
                 {item.stage !== 'Closed' && item.stage !== 'Passed' && (
                  <button type="button" aria-label={t("Move to next stage", "Επόμενο στάδιο")} title={t("Move to next stage", "Επόμενο στάδιο")}
-                  onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed' ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
+                  onClick={() => { const next = PIPELINE_STAGES[Math.min(stageIndex(item.stage) + 1, 5)] ?? 'Closed'; setPipelineStage(item.investorId, next); showToast(`${pipelineName(item, i)} → ${stageLabel(next)}`); }}
                   className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center transition-colors">
                   <ArrowRight className="w-3.5 h-3.5" />
                  </button>

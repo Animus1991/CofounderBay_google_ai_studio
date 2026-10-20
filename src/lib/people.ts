@@ -1,22 +1,24 @@
 /** People the studio shows on cards. Opening a profile uses the cast, then anything remembered from a click. */
 import { CAST, castId, findCast, placeOf, type CastMember } from '../data/cast';
-import { dataScope } from './localLists';
+import { dataScope, keys } from './localLists';
 
 export type PersonCard = {
   id: string;
   fullName: string;
   headline: string;
+  headlineEl?: string;
   location: string;
   role: string;
   industry: string;
   bio: string;
+  bioEl?: string;
   skills?: string[];
   lookingFor?: string[];
   stage?: string;
   commitment?: string;
 };
 
-const KEY = 'cfb.openedPeople';
+const KEY = keys.openedPeople;
 
 /** One remembered-people map per account, so a signed-in account never sees the demo's or another account's names. */
 function storeKey(): string {
@@ -29,10 +31,12 @@ export function cardFromCast(person: CastMember): PersonCard {
     id: person.id,
     fullName: person.fullName,
     headline: person.headline,
+    headlineEl: person.headlineEl,
     location: placeOf(person),
     role: person.role,
     industry: person.industry,
     bio: person.bio,
+    bioEl: person.bioEl,
     skills: person.skills,
     lookingFor: person.lookingFor,
     stage: person.stage,

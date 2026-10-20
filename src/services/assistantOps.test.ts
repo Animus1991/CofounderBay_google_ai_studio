@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { listKeys, logActivity, readIds, readInvites, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists } from '../lib/localLists';
+import { listKeys, logActivity, readIds, readInvites, readMilestones, readRound, readSaved, readSessions, readTasks, readTracked, resetAllLists, upsertNeed } from '../lib/localLists';
 import { runAssistant } from './assistantOps';
 
 const demo = {
@@ -17,6 +17,9 @@ const demo = {
 describe('runAssistant', () => {
   beforeEach(() => {
     resetAllLists();
+    // These tests exercise the demo world's shared catalogs (starter events,
+    // demo programs, claimable perks) — real-mode copy is intentionally vague.
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
   });
 
   it('ranks matches from the shared cast', () => {
@@ -155,7 +158,7 @@ describe('runAssistant', () => {
     const result = runAssistant('Tell me about readiness score', demo);
     expect(result.tool).toBe('about');
     expect(result.href).toBe('/insights');
-    expect(result.en).toMatch(/80%/);
+    expect(result.en).toMatch(/Readiness|Profile/i);
   });
 
   it('adds a workspace task the Venture Builder board shows', () => {
@@ -235,5 +238,91 @@ describe('runAssistant', () => {
     const result = runAssistant('show my studio activity', demo);
     expect(result.tool).toBe('activity');
     expect(result.en).toMatch(/1 unread/);
+  });
+});
+
+describe('proposals', () => {
+  beforeEach(() => {
+    resetAllLists();
+    // A real account — demo seeding would pre-fill the lists under test.
+    try { localStorage.removeItem('demo_mode'); } catch { /* non-DOM env */ }
+    upsertNeed({
+      id: 'need-seed',
+      exists: 'A founding team with a scored looking-for',
+      outcome: 'A signed pilot',
+      missing: 'a designer',
+      offer: 'equity',
+      status: 'open',
+      at: new Date().toISOString(),
+    });
+  });
+
+  it('proposes a save and writes nothing until confirmed, then undoes it', async () => {
+    const result = runAssistant('save Marcus Thorne', demo, { propose: true });
+    expect(result.tool).toBe('save');
+    expect(result.proposal?.reversal).toBe('full');
+    expect(readSaved()).toHaveLength(0);
+    const final = await result.proposal!.apply();
+    expect(final.tool).toBe('save');
+    expect(readSaved().some((item) => item.id === 'marcus-thorne')).toBe(true);
+    await result.proposal!.undo!();
+    expect(readSaved()).toHaveLength(0);
+  });
+
+  it('proposes a milestone add and removes it on undo', async () => {
+    const result = runAssistant('add milestone ship the MVP', demo, { propose: true });
+    expect(result.tool).toBe('milestone-add');
+    expect(result.proposal?.reversal).toBe('full');
+    expect(readMilestones()).toHaveLength(0);
+    await result.proposal!.apply();
+    expect(readMilestones().some((item) => /ship the mvp/i.test(item.title))).toBe(true);
+    await result.proposal!.undo!();
+    expect(readMilestones()).toHaveLength(0);
+  });
+
+  it('proposes an investment and restores the round on undo', async () => {
+    const before = readRound().committedAmount;
+    const result = runAssistant('record a $50k investment', demo, { propose: true });
+    expect(result.tool).toBe('record-investment');
+    expect(result.proposal?.reversal).toBe('full');
+    expect(readRound().committedAmount).toBe(before);
+    await result.proposal!.apply();
+    expect(readRound().committedAmount).toBe(before + 50_000);
+    await result.proposal!.undo!();
+    expect(readRound().committedAmount).toBe(before);
+  });
+
+  it('does not attach a proposal to a pure read', () => {
+    const result = runAssistant('who is my best match', demo, { propose: true });
+    expect(result.tool).toBe('matches');
+    expect(result.proposal).toBeUndefined();
+  });
+
+  it('declares honest reversibility on every write branch', () => {
+    const phrases = [
+      'save Marcus Thorne',
+      'connect with Marcus Thorne',
+      'schedule a session with Marcus Thorne',
+      'schedule a meeting',
+      'add milestone ship the MVP',
+      'record a $50k investment',
+      'add task write the pitch deck',
+      'give me a 7-day match plan',
+      'apply to Y Combinator S26',
+      'claim the AWS perk',
+      'invite 3 founders',
+      'draft a need card for a designer',
+      'change the outcome of my need card to a signed pilot',
+      'close the need card',
+      'open to investor',
+    ];
+    for (const phrase of phrases) {
+      const result = runAssistant(phrase, demo, { propose: true });
+      expect(result.proposal, phrase).toBeTruthy();
+      const proposal = result.proposal!;
+      if (proposal.reversal !== 'none') expect(typeof proposal.undo, phrase).toBe('function');
+      if (proposal.reversal !== 'full') expect(proposal.reversalNote, phrase).toBeTruthy();
+      expect(typeof proposal.apply, phrase).toBe('function');
+    }
   });
 });

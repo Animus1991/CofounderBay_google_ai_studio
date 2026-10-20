@@ -53,9 +53,9 @@ export default function Footer() {
        <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
         <Zap className="w-6 h-6 text-white" />
        </div>
-       <span className="text-[13px] sm:text-[14px] font-medium text-stone-900 tracking-tight">CoFounderBay</span>
+       <span className="text-sm font-medium text-stone-900 tracking-tight">CoFounderBay</span>
       </NavLink>
-      <p className="text-stone-500 text-[15px] sm:text-lg leading-relaxed max-w-sm mb-8">
+      <p className="text-stone-500 text-sm sm:text-base leading-relaxed max-w-sm mb-8">
        {t('The premium ecosystem for founders to find co-founders, mentors, and build the next generation of startups.', 'Το premium οικοσύστημα για ιδρυτές: βρες συνιδρυτή, μέντορες και χτίσε την επόμενη γενιά startup.')}
       </p>
       <div className="flex gap-4">

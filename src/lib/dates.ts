@@ -33,6 +33,27 @@ export function formatDateTime(value: When): string {
   return `${day}, ${formatTime(date)}`;
 }
 
+/** 13–19 October 2026 · 13–19 Οκτωβρίου 2026 — the seven days starting at `start`. */
+export function formatWeekRange(start: When): string {
+  const first = toDate(start);
+  if (!first) return String(start);
+  const last = new Date(first.getFullYear(), first.getMonth(), first.getDate() + 6);
+  const loc = locale();
+  const sameMonth = first.getMonth() === last.getMonth();
+  const sameYear = first.getFullYear() === last.getFullYear();
+  const leftOptions: Intl.DateTimeFormatOptions = { day: 'numeric' };
+  if (!sameMonth) leftOptions.month = 'long';
+  if (!sameYear) leftOptions.year = 'numeric';
+  return `${first.toLocaleDateString(loc, leftOptions)}–${last.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+}
+
+/** Time-of-day greeting: 05–11 morning, 12–17 afternoon, otherwise evening. */
+export function greetingFor(hour: number): { en: string; el: string } {
+  if (hour >= 5 && hour <= 11) return { en: 'Good morning', el: 'Καλημέρα' };
+  if (hour >= 12 && hour <= 17) return { en: 'Good afternoon', el: 'Καλό απόγευμα' };
+  return { en: 'Good evening', el: 'Καλησπέρα' };
+}
+
 /** Today, 07:00 · Tomorrow, 07:00 · Sat 18 Oct, 07:00 — and the Greek equivalents. */
 export function formatWhen(value: When, now: When = Date.now()): string {
   const date = toDate(value);

@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { keys, readActivity } from "../../lib/localLists";
-import { useStored } from "../../lib/useStored";
+import { useNotificationFeed } from "../../lib/notificationFeed";
 import { 
  LayoutDashboard, 
  Users, 
@@ -26,6 +24,7 @@ import {
  Scale,
  Gift,
  ChevronRight,
+ LogIn,
  LogOut,
  Menu
 } from "lucide-react";
@@ -38,11 +37,11 @@ import { navTitle } from "../../lib/navHelp";
 import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
 import { signOutAccount } from "../../lib/account";
-import { useNotifications } from "../../lib/social";
 import { useOptionalMessaging } from "../../context/MessagingContext";
 
 interface SidebarProps {
  user: User & { avatarUrl?: string };
+ guest?: boolean;
  collapsed: boolean;
  setCollapsed: (collapsed: boolean) => void;
  mobileOpen?: boolean;
@@ -50,7 +49,7 @@ interface SidebarProps {
  onMenuToggle?: () => void;
 }
 
-export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
+export default function Sidebar({ user, guest = false, collapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
  useLanguage();
  const { tenant } = useTenant();
  const navigate = useNavigate();
@@ -112,10 +111,9 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
   }
  ];
 
- const activity = useStored(readActivity, [keys.activity]);
- const cloudNotes = useNotifications();
+ const feed = useNotificationFeed();
  const messaging = useOptionalMessaging();
- const unread = activity.filter((item) => !item.read).length + cloudNotes.items.filter((item) => !item.read).length;
+ const unread = feed.unread;
  const unreadMessages = messaging?.totalUnread ?? 0;
  const badgeFor = (path: string) => (path === '/messages' ? unreadMessages : 0);
 
@@ -183,7 +181,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
         className="flex flex-col whitespace-nowrap"
        >
         <h1 className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</h1>
-        <span className="text-[10px] font-medium text-stone-400 tracking-wide mt-1">{withEl("Ecosystem Hub")}</span>
+        <span className="text-xs font-medium text-stone-400 tracking-wide mt-1">{withEl("Ecosystem Hub")}</span>
        </motion.div>
       )}
      </div>
@@ -251,7 +249,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
           )}
          </div>
          {!collapsed && badgeFor(item.path) > 0 ? (
-          <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-[9px] font-medium tabular-nums leading-4 text-center">
+          <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-xs font-medium tabular-nums leading-4 text-center">
            {badgeFor(item.path) > 99 ? '99+' : badgeFor(item.path)}
           </span>
          ) : !collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
@@ -305,7 +303,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
    {/* User Footer */}
    <div className="p-4 border-t border-stone-100 bg-stone-50/30">
     <div
-     onClick={() => navigate('/profile')}
+     onClick={() => navigate(guest ? '/login' : '/profile')}
      className={cn(
      "flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200 shadow-sm group cursor-pointer hover:border-stone-400 transition-all",
      collapsed && "justify-center p-1.5"
@@ -325,10 +323,12 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
      {!collapsed && (
       <div className="flex-1 min-w-0">
        <p className="text-xs font-semibold text-stone-900 truncate">{user.fullName}</p>
-       <p className="text-xs text-stone-400 font-medium truncate">{labelOf(user.roles.find((role) => role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) || user.roles[0] || UserRole.FOUNDER)}</p>
+       {!guest && (
+        <p className="text-xs text-stone-400 font-medium truncate">{labelOf(user.roles.find((role) => role !== UserRole.ADMIN && role !== UserRole.SUPER_ADMIN) || user.roles[0] || UserRole.FOUNDER)}</p>
+       )}
       </div>
      )}
-     {!collapsed && (
+     {!collapsed && !guest && (
       <div className="flex items-center">
        <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label={bothText('Settings', 'Ρυθμίσεις')} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
         <Settings className="w-4 h-4" />
@@ -338,6 +338,16 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
     </div>
 
     {!collapsed ? (
+     guest ? (
+      <NavLink
+       to="/login"
+       title={bothText("Sign in", "Είσοδος")}
+       className="mt-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-stone-900 text-white text-xs font-medium tracking-wider hover:bg-stone-700 transition-all"
+      >
+       <LogIn className="w-3 h-3" />
+       {bothText("Sign in", "Είσοδος")}
+      </NavLink>
+     ) : (
      <div className="grid grid-cols-2 gap-2 mt-3">
       <NavLink 
        to="/notifications"
@@ -347,7 +357,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
        <Bell className="w-3 h-3" />
        {withEl("Alerts")}
        {unread > 0 && (
-        <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-[9px] font-medium tabular-nums leading-4">
+        <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-xs font-medium tabular-nums leading-4">
          {unread > 99 ? '99+' : unread}
         </span>
        )}
@@ -361,8 +371,18 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
        {withEl("Logout")}
       </button>
      </div>
+     )
     ) : (
      <div className="flex flex-col items-center gap-2 mt-3">
+      {guest ? (
+       <NavLink
+        to="/login"
+        title={bothText("Sign in", "Είσοδος")}
+        className="p-2 rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-all"
+       >
+        <LogIn className="w-4.5 h-4.5" />
+       </NavLink>
+      ) : (
       <NavLink 
        to="/notifications"
        title={navTitle("Alerts", "/notifications")}
@@ -375,6 +395,7 @@ export default function Sidebar({ user, collapsed, setCollapsed, mobileOpen, set
         </span>
        )}
       </NavLink>
+      )}
      </div>
     )}
    </div>

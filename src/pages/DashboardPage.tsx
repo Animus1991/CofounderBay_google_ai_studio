@@ -4,13 +4,11 @@ import {
   MessageSquare,
   Target,
   TrendingUp,
-  Search,
   Plus,
   Star,
   CheckCircle2,
   Clock,
   Flame,
-  Filter,
   Sparkles,
 } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
@@ -35,6 +33,8 @@ import { profileViews as loadProfileViews, sendConnectionRequest } from '../lib/
 import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
+import { greetingFor, formatWhen } from '../lib/dates';
+import { PAGE_STARTERS } from '../lib/assistantStarters';
 import { useT } from '../lib/language';
 import NextMove from '../components/ui/NextMove';
 import PersonHovercard from '../components/ui/PersonHovercard';
@@ -55,7 +55,7 @@ function circlesFromPeople(profile: Parameters<typeof fromProfile>[0], people: P
   const pool = new Set(cofounderPool().map((person) => person.id));
   return rankPeople(fromProfile(profile), people.filter((person) => pool.has(person.id)))
     .slice(0, 5)
-    .map(({ person, fit }) => ({ id: person.id, name: person.fullName, role: person.headline || person.role, match: fit.score ?? 0, avatar: avatarOf(person) }));
+    .map(({ person, fit }) => ({ id: person.id, name: person.fullName, role: person.headline || person.role, roleEl: person.headlineEl, match: fit.score ?? 0, avatar: avatarOf(person) }));
 }
 
 function circlesFromCast(profile: Parameters<typeof fromProfile>[0]) {
@@ -66,6 +66,7 @@ function circlesFromCast(profile: Parameters<typeof fromProfile>[0]) {
     id: person.id,
     name: person.fullName,
     role: person.headline,
+    roleEl: person.headlineEl,
     match: fit.score ?? 0,
     avatar: avatarFor(person.id),
   }));
@@ -76,11 +77,23 @@ const ACTIVE_COMMUNITIES = [
   { id: '2', name: 'AI & Machine Learning', members: '3.4k', newPosts: 45 },
 ];
 
+// Demo schedule entries carry real ISO timestamps relative to today so the
+// shared formatWhen helper renders them localized and 24-hour.
+const demoAt = (daysAhead: number, hour: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+};
+const nextWeekday = (weekday: number) => ((weekday - new Date().getDay() + 7) % 7) || 7;
 const DEMO_EVENTS = [
-  { id: 'downtown', title: 'Downtown Pitch Club', time: 'Tomorrow, 7:00 AM', day: 'Tomorrow', clock: '7:00', type: 'MEETUP', location: '', attendees: 0 },
-  { id: 'hackathon', title: 'Weekend Builders Hackathon', time: 'Saturday, 8:00 AM', day: 'Saturday', clock: '8:00', type: 'NETWORK', location: '', attendees: 0 },
-  { id: 'deadline', title: 'Pre-Seed Checklist Deadline', time: 'Next Friday', day: 'Friday', clock: '', type: 'MILESTONE', location: '', attendees: 0 },
+  { id: 'downtown', title: 'Downtown Pitch Club', titleEl: 'Pitch Club στο κέντρο', time: demoAt(1, 7), day: '', clock: '', type: 'MEETUP', location: '', attendees: 0 },
+  { id: 'hackathon', title: 'Weekend Builders Hackathon', titleEl: 'Hackathon builders το Σαββατοκύριακο', time: demoAt(nextWeekday(6), 9), day: '', clock: '', type: 'NETWORK', location: '', attendees: 0 },
+  { id: 'deadline', title: 'Pre-Seed Checklist Deadline', titleEl: 'Προθεσμία λίστας Pre-Seed', time: demoAt(nextWeekday(5), 17), day: '', clock: '', type: 'MILESTONE', location: '', attendees: 0 },
 ];
+// ISO timestamps (demo entries, stored sessions) render via formatWhen; free
+// text from the events collection stays as written.
+const dashTime = (time: string) => (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith('Z') ? formatWhen(time) : time);
 
 const DEMO_POSTS = [
   {
@@ -89,6 +102,7 @@ const DEMO_POSTS = [
     name: 'Sarah',
     avatar: avatarFor('sarah-chen'),
     text: 'just reached a Match score of 98',
+    textEl: 'μόλις έφτασε σκορ αντιστοίχισης 98',
     time: '2h ago',
     likes: 4,
     comments: 1,
@@ -100,6 +114,7 @@ const DEMO_POSTS = [
     name: 'Alex',
     avatar: avatarFor('alex-rivera'),
     text: 'hit a 10-day profile activity streak',
+    textEl: 'έχει σερί δραστηριότητας προφίλ 10 ημερών',
     time: '4h ago',
     likes: 12,
     comments: 3,
@@ -140,6 +155,7 @@ type FeedPost = {
   name: string;
   avatar: string;
   text: string;
+  textEl?: string;
   time: string;
   likes: number;
   comments: number;
@@ -148,6 +164,7 @@ type FeedPost = {
 type DashEvent = {
   id: string;
   title: string;
+  titleEl?: string;
   time: string;
   day: string;
   clock: string;
@@ -407,11 +424,20 @@ export default function DashboardPage() {
 
   const t = useT();
   const heroAction = nextActions[0];
-  const studioNext = useMemo(() => studioNextStep(fromProfile(profile)), [profile, activity]);
-  const waiting = useMemo(() => studioWaiting(), [activity]);
+  const studioNext = studioNextStep(fromProfile(profile));
+  const waiting = studioWaiting();
   const goStep = (href: string) => {
     if (heroAction && user) logNudgeConversion(user.uid, heroAction.id);
     navigate(href);
+  };
+
+  const greeting = greetingFor(new Date().getHours());
+  const dashStarters = PAGE_STARTERS['/dashboard'] ?? [];
+  const sendAsk = () => {
+    const prompt = searchQuery.trim();
+    if (!prompt) return;
+    window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+    setSearchQuery('');
   };
 
   // Ranked with the same scorer as Matches: the sample cast in the demo, live members for a real account.
@@ -477,7 +503,7 @@ export default function DashboardPage() {
 
   return (
     <PageShell
-      title={bothText(`Good morning, ${firstName}`, `Καλημέρα, ${firstName}`)}
+      title={bothText(`${greeting.en}, ${firstName}`, `${greeting.el}, ${firstName}`)}
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
       actions={isDemoMode ? (
         <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
@@ -486,26 +512,62 @@ export default function DashboardPage() {
       ) : undefined}
     >
       <div className="space-y-8">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-stone-400" />
-            </div>
-            <input
-              type="text"
+        <div>
+          <div className="flex items-end gap-2 bg-white border border-stone-200 rounded-xl p-2">
+            <textarea
+              rows={1}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && searchQuery.trim()) navigate(`/discovery?q=${encodeURIComponent(searchQuery.trim())}`); }}
-              className="w-full min-h-11 pl-10 pr-4 py-3 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
-              placeholder={bothText('Search founders, mentors, communities...', 'Ιδρυτές, μέντορες, κοινότητες...')}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 76)}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  sendAsk();
+                }
+              }}
+              className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
+              placeholder={bothText('Ask anything…', 'Ρώτα οτιδήποτε…')}
             />
+            <button
+              type="button"
+              title={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')}
+              onClick={sendAsk}
+              disabled={!searchQuery.trim()}
+              className="flex items-center justify-center w-9 h-9 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-all shrink-0 disabled:opacity-50"
+              aria-label={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
           </div>
-          <button title={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: searchQuery.trim() } }))} className="flex items-center justify-center w-11 h-11 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-all shrink-0">
-            <Sparkles className="w-4 h-4" />
-          </button>
-          <button title={bothText('Open Discovery to narrow this search', 'Άνοιξε την Εξερεύνηση για να φιλτράρεις την αναζήτηση')} onClick={() => navigate('/discovery')} className="flex items-center justify-center w-11 h-11 bg-white border border-stone-200 rounded-xl text-stone-400 hover:text-stone-900 hover:border-stone-300 transition-all shrink-0">
-            <Filter className="w-4 h-4" />
-          </button>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {dashStarters.map((prompt) => (
+              <button
+                key={prompt.en}
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: bothText(prompt.en, prompt.el) } }))}
+                className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+              >
+                {bothText(prompt.en, prompt.el)}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => navigate(searchQuery.trim() ? `/discovery?q=${encodeURIComponent(searchQuery.trim())}` : '/discovery')}
+              className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+            >
+              {bothText('Search people in Discovery', 'Αναζήτηση ατόμων στην Εξερεύνηση')}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/discovery')}
+              className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+            >
+              {bothText('Filters', 'Φίλτρα')}
+            </button>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -543,28 +605,34 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
+            <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
             {leadMatch ? (
               <div className="flex items-center gap-3">
-                <img src={leadMatch.avatar} alt="" className="w-10 h-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                <Avatar src={leadMatch.avatar} fallback={leadMatch.name} size="md" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-stone-900 truncate"><PersonHovercard person={leadMatch.id}>{leadMatch.name}</PersonHovercard></p>
-                  <p className="text-xs text-stone-500 truncate">{leadMatch.role}</p>
+                  <p className="text-xs text-stone-500 truncate">{'roleEl' in leadMatch && leadMatch.roleEl ? t(String(leadMatch.role), String(leadMatch.roleEl)) : labelOf(leadMatch.role ?? '')}</p>
                 </div>
               </div>
             ) : (
               <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
             )}
           </button>
-          <button type="button" onClick={() => navigate('/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
-            <p className="text-sm font-medium text-stone-900">{schedule[0]?.title ?? DEMO_EVENTS[0]?.title}</p>
-            <p className="text-xs text-stone-500 mt-1">{schedule[0]?.time ? (schedule[0].id === 'downtown' || schedule[0].id === 'hackathon' || schedule[0].id === 'deadline' ? t(schedule[0].time, schedule[0].id === 'downtown' ? 'Αύριο, 07:00' : schedule[0].id === 'hackathon' ? 'Σάββατο, 08:00' : 'Την επόμενη Παρασκευή') : schedule[0].time) : t(DEMO_EVENTS[0]?.time ?? 'Tomorrow, 7:00 AM', 'Αύριο, 07:00')}</p>
+          <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+            <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
+            {!isDemoMode && schedule.length === 0 ? (
+              <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-stone-900">{(() => { const ev = schedule[0] ?? DEMO_EVENTS[0]; return ev ? t(ev.title, ev.titleEl ?? ev.title) : ''; })()}</p>
+                <p className="text-xs text-stone-500 mt-1">{dashTime(schedule[0]?.time ?? DEMO_EVENTS[0]?.time ?? '')}</p>
+              </>
+            )}
           </button>
           <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-900 rounded-2xl p-4 text-white hover:bg-stone-800 transition-all">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · playbook" /></p>
+            <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
             <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
-            <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks the Task button writes." el="Γράφει τις ίδιες εργασίες Workspace με το κουμπί Task." /></p>
+            <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks as the Task button." el="Γράφει τις ίδιες εργασίες με το κουμπί «Εργασία» στον Χώρο εργασίας." /></p>
           </button>
         </div>
 
@@ -579,19 +647,19 @@ export default function DashboardPage() {
                     <Plus className="w-2.5 h-2.5 text-white" />
                   </div>
                 </div>
-                <span className="text-[10px] font-medium text-stone-400"><Both en="You" el="Εσύ" /></span>
+                <span className="text-xs font-medium text-stone-400"><Both en="You" el="Εσύ" /></span>
               </div>
               {circles.map((match) => (
                 <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
                   <Avatar src={match.avatar} fallback={match.name} size="lg" className="group-hover:scale-95 transition-transform" />
-                  <span className="text-[10px] font-medium text-stone-400"><PersonHovercard person={match.id}>{match.name.split(' ')[0]}</PersonHovercard></span>
+                  <span className="text-xs font-medium text-stone-400"><PersonHovercard person={match.id}>{match.name.split(' ')[0]}</PersonHovercard></span>
                 </div>
               ))}
             </div>
           </div>
           {leadMatch && (
             <button type="button" className="mt-2 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${leadMatch.name}?` } }))}>
-              <Both en={`Why ${leadMatch.name.split(' ')[0]}?`} el={`Γιατί ${leadMatch.name.split(' ')[0]};`} />
+              <Both en={`Why ${leadMatch.name.split(' ')[0]}?`} el="Γιατί ταιριάζετε;" />
             </button>
           )}
         </div>
@@ -630,7 +698,7 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-stone-900">
                       <span className="font-medium"><PersonHovercard person={item.authorId}>{item.name.split(' ')[0]}</PersonHovercard></span>{' '}
-                      <span className="text-stone-400">{item.text}</span>
+                      <span className="text-stone-400">{t(item.text, item.textEl ?? item.text)}</span>
                     </p>
                     {/^\d{4}-/.test(item.time) ? <RelTime iso={item.time} className="text-xs text-stone-400" /> : <span className="text-xs text-stone-400">{item.time === '2h ago' ? t('2h ago', 'πριν από 2 ώρες') : item.time === '4h ago' ? t('4h ago', 'πριν από 4 ώρες') : item.time}</span>}
                   </div>
@@ -680,8 +748,8 @@ export default function DashboardPage() {
             },
           ].map((stat) => (
             <div key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{stat.label}</p>
-              <p className="text-xl font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
+              <p className="text-xs font-semibold text-stone-400 tracking-wider">{stat.label}</p>
+              <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
               {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
             </div>
           ))}
@@ -702,7 +770,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {prospect && (
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
-              <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3">
+              <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">
                 <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
               </p>
               <div className="flex items-center gap-3">
@@ -742,9 +810,9 @@ export default function DashboardPage() {
             </div>
           )}
           <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχον σερί')}</p>
+            <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχον σερί')}</p>
             <div>
-              <p className="text-[13px] sm:text-[14px] font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-[11px] font-medium text-stone-400">d</span></p>
+              <p className="text-sm font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-xs font-medium text-stone-400">d</span></p>
               <div className="flex items-center gap-1.5 mt-2">
                 <Flame className="w-3.5 h-3.5 text-amber-500" />
                 <p className="text-xs text-stone-400"><Both en="Keep the work moving today" el="Συνέχισε τη δουλειά σήμερα" /></p>
@@ -785,7 +853,7 @@ export default function DashboardPage() {
 
         {communities.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
-            <p className="text-[10px] font-semibold text-stone-400 tracking-wider mb-3"><Both en="Communities" el="Κοινότητες" /></p>
+            <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3"><Both en="Communities" el="Κοινότητες" /></p>
             <div className="space-y-3">
               {communities.map((community) => (
                 <div key={community.id} className="flex items-center justify-between gap-3">
@@ -813,11 +881,11 @@ export default function DashboardPage() {
               {schedule.map((ev) => (
                 <div key={ev.id} className="pl-5 relative cursor-pointer hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}>
                   <div className="absolute left-[-1px] top-2.5 w-2.5 h-2.5 rounded-full bg-stone-900 border-2 border-white" />
-                  <p className="text-sm font-medium text-stone-900 leading-tight">{ev.title}</p>
+                  <p className="text-sm font-medium text-stone-900 leading-tight">{t(ev.title, ev.titleEl ?? ev.title)}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Clock className="w-3 h-3 text-stone-400" />
-                    <span className="text-xs text-stone-400">{ev.time}</span>
-                    {ev.type && <span className="text-[10px] font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
+                    <span className="text-xs text-stone-400">{dashTime(ev.time)}</span>
+                    {ev.type && <span className="text-xs font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
                     {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
                   </div>
                 </div>

@@ -76,7 +76,7 @@ export default function PersonHovercard({ person: idOrName, children }: { person
               <p className="text-xs leading-snug text-stone-500">{labelOf(person.role)}</p>
             </div>
           </div>
-          <p className="mt-2 text-sm leading-snug text-stone-700">{person.headline}</p>
+          <p className="mt-2 text-sm leading-snug text-stone-700">{t(person.headline, person.headlineEl || person.headline)}</p>
           <FactLine
             className="mt-2"
             items={[

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addSession, listKeys, logActivity, readIds, toggleId } from '../lib/localLists';
+import { addSession, keys, listKeys, logActivity, readIds, readSessions, toggleId } from '../lib/localLists';
 import { 
  Star, 
  MessageSquare, 
@@ -30,6 +30,7 @@ import { avatarOf, mentorPool, type Person } from '../lib/peopleSource';
 import { sendConnectionRequest } from '../lib/social';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../App';
+import { useStored } from '../lib/useStored';
 
 type MentorCard = {
   id: string;
@@ -42,7 +43,9 @@ type MentorCard = {
   availability: string;
   avatar: string;
   verified: boolean;
+  roleEl?: string;
   detailedBio: string;
+  detailedBioEl?: string;
   achievements: string[];
 };
 
@@ -50,6 +53,7 @@ const SAMPLE_MENTORS: MentorCard[] = castByRole('Mentor').map((person) => ({
   id: person.id,
   name: person.fullName,
   role: person.headline,
+  roleEl: person.headlineEl,
   company: person.company || '',
   expertise: person.expertise || [],
   rating: person.rating || 0,
@@ -58,6 +62,7 @@ const SAMPLE_MENTORS: MentorCard[] = castByRole('Mentor').map((person) => ({
   avatar: avatarFor(person.id, 200),
   verified: true,
   detailedBio: person.bio,
+  detailedBioEl: person.bioEl,
   achievements: person.achievements || [],
 }));
 
@@ -66,6 +71,7 @@ function mentorFromPerson(person: Person): MentorCard {
     id: person.id,
     name: person.fullName,
     role: person.headline || person.role,
+    roleEl: person.headlineEl,
     company: person.company,
     expertise: person.expertise.length ? person.expertise : person.skills,
     rating: person.rating,
@@ -74,8 +80,13 @@ function mentorFromPerson(person: Person): MentorCard {
     avatar: avatarOf(person),
     verified: person.verified,
     detailedBio: person.bio,
+    detailedBioEl: person.bioEl,
     achievements: person.achievements,
   };
+}
+
+function initialsOf(name: string): string {
+ return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 }
 
 const AVAILABILITY_EL: Record<string, string> = {
@@ -105,6 +116,7 @@ export default function MentorsPage() {
  const [yourAvailability, setYourAvailability] = useState('');
  const [requestError, setRequestError] = useState('');
  const [savedMentors, setSavedMentors] = useState(() => new Set(readIds(listKeys.mentors)));
+ const sessions = useStored(() => readSessions(), [keys.sessions]);
  const navigate = useNavigate();
 
  const availableFilters = ['All', 'Immediate', 'Flexible', '1 month notice'];
@@ -132,7 +144,7 @@ export default function MentorsPage() {
       <Zap className="w-4 h-4 text-amber-400" />
       {t('Expert Guidance', 'Καθοδήγηση από ειδικούς')}
      </div>
-     <h2 className="text-lg font-semibold text-white tracking-tight leading-tight">
+     <h2 className="text-base font-semibold text-white tracking-tight leading-tight">
       {t('Learn from the', 'Μάθε από')} <span className="text-stone-400">{t('Best in the World.', 'τα καλύτερα μυαλά του κόσμου.')}</span>
      </h2>
      <p className="text-sm text-stone-400 leading-relaxed">
@@ -200,17 +212,19 @@ export default function MentorsPage() {
     </div>
    </div>
 
-   {/* Stats Bar */}
+   {/* Stats Bar — every figure read from the list on screen or the reader's own sessions. */}
    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-5 border-y border-stone-100">
     {[
-     { label: 'Verified Mentors', labelEl: 'Μέντορες με επαλήθευση', value: '500+' },
-     { label: 'Sessions Completed', labelEl: 'Ολοκληρωμένες συνεδρίες', value: '12k+' },
-     { label: 'Avg. Rating', labelEl: 'Μέση βαθμολογία', value: '4.9/5' },
-     { label: 'Success Rate', labelEl: 'Ποσοστό επιτυχίας', value: '94%' },
+     { label: 'Mentors', labelEl: 'Μέντορες', value: `${mentors.length}` },
+     { label: 'Verified Mentors', labelEl: 'Μέντορες με επαλήθευση', value: `${mentors.filter((m) => m.verified).length}` },
+     { label: 'Sessions Booked', labelEl: 'Συνεδρίες που κλείστηκαν', value: `${sessions.filter((s) => s.type === 'Mentorship').length}` },
+     ...(mentors.some((m) => m.rating > 0)
+      ? [{ label: 'Avg. Rating', labelEl: 'Μέση βαθμολογία', value: `${(mentors.reduce((sum, m) => sum + m.rating, 0) / mentors.filter((m) => m.rating > 0).length).toFixed(1)}/5` }]
+      : []),
     ].map((stat) => (
      <div key={stat.label} className="text-center space-y-1">
       <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-      <div className="text-[10px] font-medium text-stone-400 tracking-wider">{t(stat.label, stat.labelEl)}</div>
+      <div className="text-xs font-medium text-stone-400 tracking-wider">{t(stat.label, stat.labelEl)}</div>
      </div>
     ))}
    </div>
@@ -242,12 +256,16 @@ export default function MentorsPage() {
        className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
       >
        <div className="relative">
-        <img 
-         src={mentor.avatar} 
-         alt={mentor.name} 
-         className="w-full h-44 object-cover"
-         referrerPolicy="no-referrer"
-        />
+        {mentor.avatar ? (
+         <img
+          src={mentor.avatar}
+          alt={mentor.name}
+          className="w-full h-44 object-cover"
+          referrerPolicy="no-referrer"
+         />
+        ) : (
+         <div className="w-full h-44 bg-stone-100 flex items-center justify-center text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</div>
+        )}
         {mentor.verified && (
          <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-md border-2 border-white shadow">
           <ShieldCheck className="w-3 h-3" />
@@ -259,7 +277,7 @@ export default function MentorsPage() {
        <div className="p-4 flex flex-col flex-1">
         <div className="mb-3">
          <h3 className="text-sm font-semibold text-stone-900 leading-snug">{mentor.name}</h3>
-         <FactLine className="mt-0.5" items={[mentor.role, mentor.company]} label={t('Mentor facts', 'Στοιχεία μέντορα')} />
+         <FactLine className="mt-0.5" items={[t(mentor.role, mentor.roleEl ?? mentor.role), mentor.company]} label={t('Mentor facts', 'Στοιχεία μέντορα')} />
         </div>
 
         <FactLine className="mb-3" items={mentor.expertise.slice(0, 3)} label={t('Expertise', 'Εξειδίκευση')} />
@@ -268,9 +286,9 @@ export default function MentorsPage() {
          <div className="flex items-center gap-1">
           <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
           <span className="text-xs font-semibold text-stone-900">{mentor.rating}</span>
-          <span className="text-[10px] text-stone-400">({mentor.reviews})</span>
+          <span className="text-xs text-stone-400">({mentor.reviews})</span>
          </div>
-         <div className="flex items-center gap-1 text-[10px] font-semibold text-stone-400 tracking-wider">
+         <div className="flex items-center gap-1 text-xs font-semibold text-stone-400 tracking-wider">
           <CheckCircle2 className="w-3 h-3 text-green-500" />
           {t(mentor.availability, AVAILABILITY_EL[mentor.availability] ?? mentor.availability)}
          </div>
@@ -303,7 +321,7 @@ export default function MentorsPage() {
     {filteredMentors.length === 0 && !(peopleLoading && !isDemoMode) && (
      <EmptyHint
       title={mentors.length === 0 ? t('No mentors have joined yet.', 'Δεν έχουν εγγραφεί μέντορες ακόμη.') : t('No mentors match these filters.', 'Δεν υπάρχουν μέντορες για αυτά τα φίλτρα.')}
-      detail={mentors.length === 0 ? t('Members who mark “Open to mentoring” on their profile appear here. Know someone? Invite them.', 'Εδώ εμφανίζονται τα μέλη που δηλώνουν «Διαθέσιμος/η για καθοδήγηση» στο προφίλ τους. Γνωρίζεις κάποιον; Προσκάλεσέ τον.') : t('Try another expertise or availability, or ask the assistant.', 'Δοκίμασε άλλη εξειδίκευση ή διαθεσιμότητα, ή ρώτα τον βοηθό.')}
+      detail={mentors.length === 0 ? t('Members who mark “Open to mentoring” on their profile appear here. Know someone? Invite them.', 'Εδώ εμφανίζονται τα μέλη που δηλώνουν διαθεσιμότητα για καθοδήγηση στο προφίλ τους. Γνωρίζεις ένα μέλος; Προσκάλεσέ το.') : t('Try another expertise or availability, or ask the assistant.', 'Δοκίμασε άλλη εξειδίκευση ή διαθεσιμότητα, ή ρώτα τον βοηθό.')}
      >
       <AskLink prompt={mentors.length === 0 ? 'Invite 3 founders' : 'Find a fundraising mentor'}>{mentors.length === 0 ? t('Invite someone', 'Πρόσκληση') : t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
      </EmptyHint>
@@ -335,16 +353,29 @@ export default function MentorsPage() {
    </div>
    <div className="grid grid-cols-2 gap-3">
     {mentors.slice(0, 4).map((mentor, i) => (
-     <img 
+     mentor.avatar ? (
+     <img
       key={mentor.id}
-      src={mentor.avatar} 
-      alt={mentor.name} 
+      src={mentor.avatar}
+      alt={mentor.name}
       className={cn(
        "w-20 h-20 rounded-2xl object-cover shadow border-2 border-white",
        i % 2 === 0 ? "translate-y-3" : ""
       )}
       referrerPolicy="no-referrer"
      />
+     ) : (
+     <div
+      key={mentor.id}
+      aria-label={mentor.name}
+      className={cn(
+       "w-20 h-20 rounded-2xl bg-stone-100 flex items-center justify-center text-base font-semibold text-stone-400 shadow border-2 border-white",
+       i % 2 === 0 ? "translate-y-3" : ""
+      )}
+     >
+      {initialsOf(mentor.name)}
+     </div>
+     )
     ))}
    </div>
   </div>
@@ -378,18 +409,22 @@ export default function MentorsPage() {
 
        {/* Profile Header */}
        <div className="text-center space-y-4 pt-8">
-        <img 
-         src={selectedMentor.avatar} 
-         alt={selectedMentor.name}
-         className="w-32 h-32 mx-auto rounded-3xl object-cover shadow-xl border-4 border-white"
-         referrerPolicy="no-referrer"
-        />
+        {selectedMentor.avatar ? (
+         <img
+          src={selectedMentor.avatar}
+          alt={selectedMentor.name}
+          className="w-32 h-32 mx-auto rounded-3xl object-cover shadow-xl border-4 border-white"
+          referrerPolicy="no-referrer"
+         />
+        ) : (
+         <div className="w-32 h-32 mx-auto rounded-3xl bg-stone-100 flex items-center justify-center text-3xl font-semibold text-stone-400 shadow-xl border-4 border-white">{initialsOf(selectedMentor.name)}</div>
+        )}
         <div>
-         <h2 className="text-lg font-semibold text-stone-900 tracking-tight inline-flex items-center gap-2">
+         <h2 className="text-base font-semibold text-stone-900 tracking-tight inline-flex items-center gap-2">
           {selectedMentor.name}
           {selectedMentor.verified && <ShieldCheck className="w-5 h-5 text-blue-500" />}
          </h2>
-         <p className="text-stone-500 font-medium">{selectedMentor.role}</p>
+         <p className="text-stone-500 font-medium">{t(selectedMentor.role, selectedMentor.roleEl ?? selectedMentor.role)}</p>
         </div>
 
         <div className="flex items-center justify-center gap-4 text-sm font-medium">
@@ -420,7 +455,7 @@ export default function MentorsPage() {
        <div className="space-y-3">
         <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('About', 'Σχετικά')}</h3>
         <p className="text-stone-600 leading-relaxed">
-         {selectedMentor.detailedBio || t("No detailed bio available.", "Δεν υπάρχει αναλυτικό βιογραφικό.")}
+         {selectedMentor.detailedBio ? t(selectedMentor.detailedBio, selectedMentor.detailedBioEl ?? selectedMentor.detailedBio) : t("No detailed bio available.", "Δεν υπάρχει αναλυτικό βιογραφικό.")}
         </p>
        </div>
 
@@ -476,7 +511,7 @@ export default function MentorsPage() {
       <div className="p-8 space-y-6">
        <div className="flex items-start justify-between">
         <div>
-         <h2 className="text-lg font-semibold text-stone-900">{t('Request Mentorship', 'Αίτημα καθοδήγησης')}</h2>
+         <h2 className="text-base font-semibold text-stone-900">{t('Request Mentorship', 'Αίτημα καθοδήγησης')}</h2>
          <p className="text-stone-500 mt-1">{t('Connect with', 'Σύνδεση με')} {selectedMentor?.name}</p>
         </div>
        </div>
@@ -551,7 +586,7 @@ export default function MentorsPage() {
             priority: 'Medium',
            });
            logActivity({ kind: 'session', title: `Requested mentoring from ${mentor.name}`, titleEl: `Αίτημα καθοδήγησης προς ${mentor.name}`, href: `/profile/${mentor.id}`, byAssistant: false });
-           toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), isDemoMode ? t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.') : t(`${mentor.name} will see your focus areas and availability and can reply in Messages.`, `Ο/Η ${mentor.name} θα δει τα θέματα και τη διαθεσιμότητά σου και μπορεί να απαντήσει στα Μηνύματα.`));
+           toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), isDemoMode ? t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.') : t(`${mentor.name} will see your focus areas and availability and can reply in Messages.`, `${mentor.name} θα δει τα θέματα και τη διαθεσιμότητά σου και μπορεί να απαντήσει στα Μηνύματα.`));
            setIsMentorshipModalOpen(false);
            setSelectedMentor(null);
            setFocusAreas('');

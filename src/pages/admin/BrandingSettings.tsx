@@ -3,7 +3,7 @@ import { useTenant } from '../../context/TenantContext';
 import { User } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { Palette, Layout, Type, Globe, Check, RefreshCcw, Save, Zap } from 'lucide-react';
+import { Palette, Layout, Globe, Check, RefreshCcw, Save, Zap } from 'lucide-react';
 import { useT } from '../../lib/language';
 
 interface BrandingSettingsProps {

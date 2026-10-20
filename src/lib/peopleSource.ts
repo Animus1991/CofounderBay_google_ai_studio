@@ -15,7 +15,9 @@ export type Person = {
   id: string;
   fullName: string;
   headline: string;
+  headlineEl?: string;
   bio: string;
+  bioEl?: string;
   /** Primary role, e.g. "Founder" or "Mentor". */
   role: string;
   roles: string[];
@@ -58,7 +60,9 @@ export function personFromCast(person: CastMember): Person {
     id: person.id,
     fullName: person.fullName,
     headline: person.headline,
+    headlineEl: person.headlineEl,
     bio: person.bio,
+    bioEl: person.bioEl,
     role: person.role,
     roles: [person.role],
     industry: person.industry,

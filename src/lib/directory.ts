@@ -86,7 +86,7 @@ export function usePeople(selfId?: string | null): { people: Person[]; loading: 
   const [, setTick] = useState(0);
   useEffect(() => onPeopleChange(() => setTick((value) => value + 1)), []);
   const hidden = useStored(() => readIds(keys.hiddenPeople), [keys.hiddenPeople]);
-  const blocked = useStored(() => readIds('cfb.blockedPeople'), ['cfb.blockedPeople']);
+  const blocked = useStored(() => readIds(keys.blockedPeople), [keys.blockedPeople]);
   const people = directoryPeople().filter((person) => person.id !== selfId && !hidden.includes(person.id) && !blocked.includes(person.id));
   return { people, loading: !directoryLoaded(), error: lastError };
 }

@@ -76,6 +76,7 @@ type NetworkConnection = {
   id: string;
   fullName: string;
   headline: string;
+  headlineEl?: string;
   role: string;
   industry: string;
   location: string;
@@ -108,7 +109,7 @@ function sampleConnections(): NetworkConnection[] {
   return rows.flatMap(({ id, status }, index) => {
     const person = findPerson(id);
     if (!person) return [];
-    return [{ id, fullName: person.fullName, headline: person.headline, role: person.role, industry: person.industry, location: person.city, avatar: avatarOf(person), status, since: Date.now() - (index + 1) * 86_400_000 * 3, person }];
+    return [{ id, fullName: person.fullName, headline: person.headline, headlineEl: person.headlineEl, role: person.role, industry: person.industry, location: person.city, avatar: avatarOf(person), status, since: Date.now() - (index + 1) * 86_400_000 * 3, person }];
   });
 }
 
@@ -193,6 +194,7 @@ export default function Network({ user }: NetworkProps) {
           id: other.id,
           fullName: person?.fullName || other.name || t('Member', 'Μέλος'),
           headline: person?.headline || other.headline || '',
+          headlineEl: person?.headlineEl,
           role: person?.role || record.requestType,
           industry: person?.industry || '',
           location: person?.city || person?.location || '',
@@ -227,7 +229,7 @@ export default function Network({ user }: NetworkProps) {
     }
   };
 
-  const acceptIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, true), t('Connected', 'Συνδεθήκατε'), t(`You and ${conn.fullName} can message each other now.`, `Εσύ και ο/η ${conn.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+  const acceptIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, true), t('Connected', 'Συνδεθήκατε'), t(`You and ${conn.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${conn.fullName}.`));
   const declineIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, false), t('Request declined', 'Το αίτημα απορρίφθηκε'));
   const withdraw = (conn: NetworkConnection) => {
     if (conn.record) return act(() => withdrawConnection(conn.record!), t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
@@ -236,7 +238,7 @@ export default function Network({ user }: NetworkProps) {
   };
   const disconnect = (conn: NetworkConnection) => {
     if (!conn.record) return;
-    if (!window.confirm(t(`Remove ${conn.fullName} from your connections?`, `Να αφαιρεθεί ο/η ${conn.fullName} από τις συνδέσεις σου;`))) return;
+    if (!window.confirm(t(`Remove ${conn.fullName} from your connections?`, `Αφαίρεση του μέλους ${conn.fullName} από τις συνδέσεις σου;`))) return;
     void act(() => removeConnection(conn.record!), t('Connection removed', 'Η σύνδεση αφαιρέθηκε'));
   };
 
@@ -337,7 +339,7 @@ export default function Network({ user }: NetworkProps) {
                 <motion.div key={conn.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05, duration: 0.4 }}>
                   <Card className={cn('group hover:border-stone-300 hover:shadow-md transition-all p-5 border-stone-100 h-full', conn.status === 'Incoming' && 'border-stone-900/20 bg-stone-50/40')}>
                     <div className="flex flex-col items-center text-center space-y-4 h-full">
-                      <button type="button" className="relative block" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
+                      <button type="button" className="relative block mb-3" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
                         <Avatar src={conn.avatar} fallback={conn.fullName} size="xl" className="rounded-2xl" />
                         <div className={cn('absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white', conn.status === 'Connected' ? (isOnline(conn.person) ? 'bg-emerald-500' : 'bg-stone-300') : 'bg-amber-400')} />
                       </button>
@@ -365,7 +367,7 @@ export default function Network({ user }: NetworkProps) {
                             {conn.record && (
                               <Button type="button" variant="outline" size="icon" aria-label={t('Remove connection', 'Αφαίρεση σύνδεσης')} title={t('Remove connection', 'Αφαίρεση σύνδεσης')} onClick={() => disconnect(conn)} className="h-10 w-10 rounded-lg border-stone-200 text-stone-400 hover:text-red-600"><UserMinus className="w-3.5 h-3.5" /></Button>
                             )}
-                            <Button type="button" variant="outline" size="icon" aria-label={t('View profile', 'Προβολή προφίλ')} onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} className="h-10 w-10 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900"><ChevronRight className="w-3.5 h-3.5" /></Button>
+                            <Button type="button" variant="outline" size="icon" aria-label={t('View profile', 'Προβολή προφίλ')} onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} className="h-10 w-10 rounded-lg border-stone-200 text-stone-400 hover:text-stone-900"><ChevronRight className="w-3.5 h-3.5" /></Button>
                           </>
                         )}
                       </div>
@@ -574,10 +576,10 @@ export default function Network({ user }: NetworkProps) {
                           <div className="flex justify-between gap-2"><dt className="text-stone-400">{t('Location', 'Τοποθεσία')}</dt><dd className="text-stone-800 text-right">{conn.location || '—'}</dd></div>
                         </dl>
                         {person && person.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1">{person.skills.slice(0, 6).map((skill) => <span key={skill} className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[11px]">{labelOf(skill)}</span>)}</div>
+                          <div className="flex flex-wrap gap-1">{person.skills.slice(0, 6).map((skill) => <span key={skill} className="px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-xs">{labelOf(skill)}</span>)}</div>
                         )}
                         {gaps && (
-                          <p className="text-[11px] text-stone-500">
+                          <p className="text-xs text-stone-500">
                             {t('Covers', 'Καλύπτει')}: {gaps.covered.length ? gaps.covered.map((area) => (mode === 'el' ? TEAM_AREAS[area].el : TEAM_AREAS[area].en)).join(', ') : '—'}
                           </p>
                         )}
@@ -655,7 +657,7 @@ function NeedsTab({
                   if (!value) return null;
                   return (
                     <div key={field}>
-                      <dt className="text-[11px] font-medium text-stone-400">{t(FIELD_LABEL[field].en, FIELD_LABEL[field].el)}</dt>
+                      <dt className="text-xs font-medium text-stone-400">{t(FIELD_LABEL[field].en, FIELD_LABEL[field].el)}</dt>
                       <dd className="text-sm leading-snug text-stone-800">{value}</dd>
                     </div>
                   );
@@ -685,7 +687,7 @@ function NeedsTab({
             </div>
             {(card.history?.length || card.version) && (
               <div>
-                <p className="text-[11px] font-medium text-stone-400 mb-2">{t('Versions', 'Εκδόσεις')}</p>
+                <p className="text-xs font-medium text-stone-400 mb-2">{t('Versions', 'Εκδόσεις')}</p>
                 <Timeline
                   items={[
                     {
@@ -748,7 +750,7 @@ function NeedFields({
     <div className="grid gap-3">
       {rows.map(({ field, rows: lineRows }) => (
         <label key={field} className="block space-y-1">
-          <span className="text-[11px] font-medium text-stone-400">{t(FIELD_LABEL[field].en, FIELD_LABEL[field].el)}</span>
+          <span className="text-xs font-medium text-stone-400">{t(FIELD_LABEL[field].en, FIELD_LABEL[field].el)}</span>
           <textarea
             rows={lineRows}
             value={draft[field]}

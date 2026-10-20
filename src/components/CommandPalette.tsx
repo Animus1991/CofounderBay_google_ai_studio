@@ -173,9 +173,10 @@ export default function CommandPalette() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefix, q, peopleTick]);
 
-  const discoveryRow = prefix === 'people' && needle
-    ? { id: 'discovery-search', name: needle }
-    : null;
+  const discoveryRow = useMemo(
+    () => (prefix === 'people' && needle ? { id: 'discovery-search', name: needle } : null),
+    [prefix, needle],
+  );
 
   const flatCount = filtered.length + people.length + (discoveryRow ? 1 : 0);
 
@@ -289,7 +290,7 @@ export default function CommandPalette() {
                 placeholder={placeholder}
                 className="flex-1 text-sm text-stone-900 placeholder:text-stone-400 outline-none bg-transparent"
               />
-              <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-stone-400 bg-stone-50 border border-stone-200 rounded-md tracking-wider">
+              <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-stone-400 bg-stone-50 border border-stone-200 rounded-md tracking-wider">
                 Esc
               </kbd>
             </div>
@@ -388,9 +389,9 @@ export default function CommandPalette() {
 
             <div className="px-5 py-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-[10px]">↑↓</kbd> {t('Navigate', 'Μετακίνηση')}</span>
-                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-[10px]">↵</kbd> {t('Open', 'Άνοιγμα')}</span>
-                <span className="hidden sm:flex items-center gap-2 text-[10px] tracking-wide">
+                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-xs">↑↓</kbd> {t('Navigate', 'Μετακίνηση')}</span>
+                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-xs">↵</kbd> {t('Open', 'Άνοιγμα')}</span>
+                <span className="hidden sm:flex items-center gap-2 text-xs tracking-wide">
                   <span>&gt; {t('commands', 'εντολές')}</span>
                   <span>@ {t('people', 'πρόσωπα')}</span>
                   <span>/ {t('pages', 'σελίδες')}</span>

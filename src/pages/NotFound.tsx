@@ -16,11 +16,11 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50 px-6">
       <div className="max-w-md w-full text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400 mb-4">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400 mb-4">
           {t('Error 404', 'Σφάλμα 404')}
         </p>
         <h1 className="text-5xl font-bold tracking-tighter text-stone-900 mb-4">404</h1>
-        <h2 className="text-lg font-semibold text-stone-900 mb-2">{t('This page does not exist', 'Αυτή η σελίδα δεν υπάρχει')}</h2>
+        <h2 className="text-xl font-semibold text-stone-900 mb-2">{t('This page does not exist', 'Αυτή η σελίδα δεν υπάρχει')}</h2>
         <p className="text-sm text-stone-500 leading-relaxed mb-8">
           {t('The link may be broken, the page may have moved, or it never existed. Let\'s get you back on track.', 'Ο σύνδεσμος μπορεί να είναι κατεστραμμένος, η σελίδα μπορεί να έχει μετακινηθεί, ή να μην υπήρξε ποτέ. Ας σε επιστρέψουμε στη σωστή πορεία.')}
         </p>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -57,15 +57,21 @@ import { User, Startup, FounderStage } from "../types";
 import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
-import { readTracked, writeTracked, type TrackedApplication } from "../lib/localLists";
+import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, type TrackedApplication } from "../lib/localLists";
+import { useStored } from "../lib/useStored";
+import { useAuth } from "../App";
 
 interface FounderToolsProps {
  user: User;
 }
 
+/** The founder's own venture draft — persisted per account (cloud-synced when signed in). */
+type StartupDraft = Startup & { dimensions?: Record<string, number> };
+
 export default function FounderTools({ user }: FounderToolsProps) {
  const t = useT();
  const navigate = useNavigate();
+ const { profile, isDemoMode } = useAuth();
  const tabLabel = (tab: string) => ({
   dashboard: t('Dashboard', 'Πίνακας ελέγχου'),
   builder: t('Builder', 'Δημιουργός'),
@@ -142,39 +148,74 @@ export default function FounderTools({ user }: FounderToolsProps) {
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
  const [activeTab, setActiveTab] = useState<'dashboard' | 'builder' | 'pitch' | 'applications' | 'tools' | 'templates'>('dashboard');
- const [pinnedTools, setPinnedTools] = useState<string[]>(() => {
-  const saved = localStorage.getItem('pinnedTools');
-  return saved ? JSON.parse(saved) : [];
- });
+ // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
+ const pinnedTools = useStored(() => readValue<string[]>('cfb.pinnedTools', []), ['cfb.pinnedTools']);
+ const setPinnedTools = (next: string[]) => writeValue('cfb.pinnedTools', next);
  const [recentlyUsed, setRecentlyUsed] = useState<string[]>([]);
  const [searchQuery, setSearchQuery] = useState('');
  const [showAssessment, setShowAssessment] = useState(false);
- const [builderInputs, setBuilderInputs] = useState<Record<string, string>>({});
+ const builderInputs = useStored(() => readValue<Record<string, string>>(keys.builderInputs, {}), [keys.builderInputs]);
+ const setBuilderInputs = (updater: (prev: Record<string, string>) => Record<string, string>) => {
+  writeValue(keys.builderInputs, updater(readValue<Record<string, string>>(keys.builderInputs, {})));
+ };
  const [templateSearch, setTemplateSearch] = useState('');
  const [showNewAppModal, setShowNewAppModal] = useState(false);
  const [expandedAppId, setExpandedAppId] = useState<number | null>(null);
  const [assessmentStep, setAssessmentStep] = useState(0);
 
- const [mockStartup, setMockStartup] = useState<Startup>({
-  id: "startup_1",
-  ownerId: user.id,
-  name: "EcoFlow Systems",
-  oneLiner: "Next-gen water purification for urban environments.",
-  description: "EcoFlow uses proprietary bio-filters to recycle gray water in high-density residential buildings.",
-  industry: ["Sustainability", "CleanTech", "PropTech"],
-  stage: FounderStage.PROTOTYPE,
-  readinessScore: 68,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
- });
+ // The founder's venture draft: demo sees the sample startup, real accounts see
+ // their own (seeded from the profile) and every edit is persisted per account.
+ const savedStartup = useStored(() => readValue<Partial<StartupDraft>>('cfb.startup', {}), ['cfb.startup']);
+ const mockStartup: StartupDraft = useMemo(() => {
+  const stageValues = Object.values(FounderStage) as string[];
+  const profileStage = profile?.stage && stageValues.includes(profile.stage) ? (profile.stage as FounderStage) : undefined;
+  const fallbackName = isDemoMode ? 'EcoFlow Systems' : '';
+  return {
+   id: savedStartup.id ?? 'startup',
+   ownerId: user.id,
+   name: savedStartup.name ?? profile?.company ?? fallbackName,
+   oneLiner: savedStartup.oneLiner ?? (isDemoMode ? 'Next-gen water purification for urban environments.' : ''),
+   description: savedStartup.description ?? (isDemoMode ? 'EcoFlow uses proprietary bio-filters to recycle gray water in high-density residential buildings.' : ''),
+   industry: savedStartup.industry ?? (isDemoMode ? ['Sustainability', 'CleanTech', 'PropTech'] : (profile?.industry ? [String(profile.industry)] : [])),
+   stage: savedStartup.stage ?? profileStage ?? (isDemoMode ? FounderStage.PROTOTYPE : FounderStage.IDEA),
+   readinessScore: savedStartup.readinessScore ?? (isDemoMode ? 68 : 0),
+   createdAt: savedStartup.createdAt ?? new Date().toISOString(),
+   updatedAt: savedStartup.updatedAt ?? new Date().toISOString(),
+   dimensions: savedStartup.dimensions,
+  };
+ }, [savedStartup, profile, isDemoMode, user.id]);
+ const setMockStartup = (updater: (prev: StartupDraft) => StartupDraft) => {
+  writeValue('cfb.startup', updater(mockStartup));
+ };
 
- const readinessMetrics = [
+ const READINESS_DIMENSIONS = ['Team Composition', 'Market Validation', 'Product/Tech', 'Financial Planning', 'Pitch Readiness'];
+ const demoReadinessMetrics = [
   { label: "Team Composition", score: 85, status: "Strong", next: t("Keep the team page current.", "Κράτα τη σελίδα ομάδας ενημερωμένη.") },
   { label: "Market Validation", score: 45, status: "In-Progress", next: t("Add one customer conversation this week.", "Πρόσθεσε μία συζήτηση με πελάτη αυτή την εβδομάδα.") },
   { label: "Product/Tech", score: 70, status: "Good", next: t("Ship the next milestone on Workspace.", "Παράδωσε το επόμενο ορόσημο στον χώρο εργασίας.") },
   { label: "Financial Planning", score: 30, status: "Critical", next: t("Open Fundraising and fill the 12-month model.", "Άνοιξε τη Χρηματοδότηση και συμπλήρωσε το μοντέλο 12 μηνών.") },
   { label: "Pitch Readiness", score: 60, status: "Improving", next: t("Export the pitch from Founder Tools.", "Εξήγαγε το pitch από τα Εργαλεία ιδρυτή.") }
  ];
+ const nextSteps: Record<string, string> = {
+  'Team Composition': t("Add a co-founder or key hire.", "Πρόσθεσε συνιδρυτή ή βασική πρόσληψη."),
+  'Market Validation': t("Add one customer conversation this week.", "Πρόσθεσε μία συζήτηση με πελάτη αυτή την εβδομάδα."),
+  'Product/Tech': t("Ship the next milestone on Workspace.", "Παράδωσε το επόμενο ορόσημο στον χώρο εργασίας."),
+  'Financial Planning': t("Open Fundraising and fill the 12-month model.", "Άνοιξε τη Χρηματοδότηση και συμπλήρωσε το μοντέλο 12 μηνών."),
+  'Pitch Readiness': t("Export the pitch from Founder Tools.", "Εξήγαγε το pitch από τα Εργαλεία ιδρυτή."),
+ };
+ // Real accounts see scores only from assessments they actually ran.
+ const readinessMetrics = isDemoMode
+  ? demoReadinessMetrics
+  : READINESS_DIMENSIONS.map((label) => {
+     const score = mockStartup.dimensions?.[label];
+     return {
+      label,
+      score: score ?? 0,
+      status: score == null ? 'Planned' : score < 40 ? 'Critical' : score < 70 ? 'In-Progress' : 'Strong',
+      next: nextSteps[label] ?? '',
+      assessed: score != null,
+     };
+    });
 
  const builderSteps = [
   { id: 1, title: "Problem Definition", status: "Completed", icon: Lightbulb },
@@ -186,18 +227,21 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
  const assessmentQuestions = [
   {
+   dim: 'Market Validation',
    category: dimensionName("Market Validation"),
    question: t("How many potential customers have you interviewed?", "Με πόσους δυνητικούς πελάτες έχεις μιλήσει;"),
    options: ["0-5", "6-20", "21-50", "50+"],
    impact: 15
   },
   {
+   dim: 'Product/Tech',
    category: dimensionName("Product/Tech"),
    question: t("What is the current state of your product?", "Σε τι στάδιο είναι το προϊόν σου;"),
    options: [t("Idea only", "Μόνο ιδέα"), t("Mockups/Wireframes", "Mockups/wireframes"), t("Functional Prototype", "Λειτουργικό πρωτότυπο"), t("MVP in Market", "MVP στην αγορά")],
    impact: 20
   },
   {
+   dim: 'Financial Planning',
    category: dimensionName("Financial Planning"),
    question: t("Do you have a detailed 12-month financial projection?", "Έχεις αναλυτική οικονομική πρόβλεψη 12 μηνών;"),
    options: [t("No", "Όχι"), t("Basic estimates", "Βασικές εκτιμήσεις"), t("Detailed model", "Αναλυτικό μοντέλο"), t("Verified by advisor", "Επαληθευμένο από σύμβουλο")],
@@ -205,13 +249,35 @@ export default function FounderTools({ user }: FounderToolsProps) {
   }
  ];
 
+ const [assessmentAnswers, setAssessmentAnswers] = useState<Record<number, number>>({});
+
  const handleCompleteAssessment = () => {
-  setMockStartup(prev => ({
-   ...prev,
-   readinessScore: Math.min(100, (prev.readinessScore ?? 0) + 12)
-  }));
+  // Answers → per-dimension scores → overall readiness. Persisted per account.
+  const dims: Record<string, number> = { ...(mockStartup.dimensions ?? {}) };
+  let weighted = 0;
+  let totalImpact = 0;
+  assessmentQuestions.forEach((q, i) => {
+   totalImpact += q.impact;
+   const picked = assessmentAnswers[i];
+   const frac = picked == null ? 0 : (q.options.length > 1 ? picked / (q.options.length - 1) : 1);
+   dims[q.dim] = Math.round(frac * 100);
+   weighted += frac * q.impact;
+  });
+  const score = totalImpact ? Math.min(100, Math.round((weighted / totalImpact) * 100)) : mockStartup.readinessScore ?? 0;
+  setMockStartup(prev => ({ ...prev, readinessScore: score, dimensions: dims, updatedAt: new Date().toISOString() }));
+  logActivity({ kind: 'milestone', title: `Readiness diagnostic: ${score}/100`, titleEl: `Διάγνωση ετοιμότητας: ${score}/100`, href: '/founder-tools' });
+  setAssessmentAnswers({});
   setShowAssessment(false);
   setAssessmentStep(0);
+ };
+
+ /** Real step status comes from the founder's own saved answers; demo keeps the staged statuses. */
+ const builderStepStatus = (id: number, fallback: string) => {
+  if (isDemoMode) return fallback;
+  const total = builderContent[id]?.questions.length ?? 0;
+  if (!total) return 'Planned';
+  const filled = Array.from({ length: total }, (_, i) => (builderInputs[`${id}-${i}`] ?? '').trim()).filter(Boolean).length;
+  return filled === 0 ? 'Planned' : filled >= total ? 'Completed' : 'In-Progress';
  };
 
  const [builderStep, setBuilderStep] = useState(1);
@@ -283,7 +349,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   { id: 4, program: "First Round Capital", type: "VC Intro", status: "rejected", deadline: "N/A", decision: "Apr 2026", match: 55, note: "Revisit after first revenue milestone. Keep in pipeline." },
   { id: 5, program: "Sequoia Arc", type: "Program", status: "draft", deadline: "May 30, 2026", decision: "Jul 2026", match: 82, note: "Requires product demo video and 1-pager." },
  ];
- const [applications, setApplications] = useState<TrackedApplication[]>(() => [...readTracked(), ...starterApplications]);
+ const [applications, setApplications] = useState<TrackedApplication[]>(() => [...readTracked(), ...(isDemoMode ? starterApplications : [])]);
  const [trackingName, setTrackingName] = useState<string | null>(null);
 
  // Tool Categories with icons and descriptions
@@ -384,7 +450,6 @@ export default function FounderTools({ user }: FounderToolsProps) {
    ? pinnedTools.filter(id => id !== toolId)
    : [...pinnedTools, toolId];
   setPinnedTools(newPinned);
-  localStorage.setItem('pinnedTools', JSON.stringify(newPinned));
  };
 
  const markToolUsed = (toolId: string) => {
@@ -465,6 +530,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            animate={{ opacity: 1, x: 0 }}
            transition={{ delay: i * 0.07 }}
            onClick={() => {
+            setAssessmentAnswers(prev => ({ ...prev, [assessmentStep]: i }));
             if (assessmentStep < assessmentQuestions.length - 1) {
              setAssessmentStep(prev => prev + 1);
             } else {
@@ -491,16 +557,13 @@ export default function FounderTools({ user }: FounderToolsProps) {
           <Cpu className="w-3.5 h-3.5 text-stone-500" />
          </div>
          <div>
-          <p className="text-xs text-stone-600 font-semibold">{t("Neural Processing Active", "Νευρωνική επεξεργασία ενεργή")}</p>
-          <p className="text-xs text-stone-400 font-mono tracking-wider">{t("Latency: 14ms · Confidence: 98.4%", "Latency: 14ms · βεβαιότητα: 98,4%")}</p>
+          <p className="text-xs text-stone-600 font-semibold">{t("Self-assessment", "Αυτοαξιολόγηση")}</p>
+          <p className="text-xs text-stone-400 font-mono tracking-wider">{t("Saved to your account", "Αποθηκεύεται στον λογαριασμό σου")}</p>
          </div>
         </div>
-        <div className="flex items-center gap-3">
-         <p className="text-xs text-stone-500">
-          {t("Cross-referenced with", "Διασταυρώθηκε με")} <span className="text-stone-900 font-semibold">2.4M</span> {t("venture data points.", "σημεία δεδομένων venture.")}
-         </p>
-         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">{labelOf("Verified")}</span>
-        </div>
+        <p className="text-xs text-stone-500">
+         {t("Your answers update the Readiness Index.", "Οι απαντήσεις σου ενημερώνουν τον δείκτη ετοιμότητας.")}
+        </p>
        </div>
       </motion.div>
      </div>
@@ -553,7 +616,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-         <span className="text-2xl font-semibold text-stone-900 tracking-tight leading-none tabular-nums">{mockStartup.readinessScore}</span>
+         <span className="text-lg font-semibold text-stone-900 tracking-tight leading-none tabular-nums">{mockStartup.readinessScore}</span>
          <span className="text-sm text-stone-400 tracking-wider mt-1">/ 100</span>
         </div>
        </div>
@@ -564,10 +627,14 @@ export default function FounderTools({ user }: FounderToolsProps) {
         <div key={i} className="space-y-1">
          <div className="flex justify-between items-center">
           <span className="text-sm text-stone-500">{dimensionName(m.label)}</span>
-          <span className={cn(
-           "text-sm font-semibold",
-           m.score < 40 ? "text-red-500" : m.score < 70 ? "text-amber-500" : "text-emerald-600"
-          )}>{labelOf(m.status)}</span>
+          {'assessed' in m && m.assessed === false ? (
+           <span className="text-sm font-medium text-stone-300">{t('Not assessed', 'Δεν αξιολογήθηκε')}</span>
+          ) : (
+           <span className={cn(
+            "text-sm font-semibold",
+            m.score < 40 ? "text-red-500" : m.score < 70 ? "text-amber-500" : "text-emerald-600"
+           )}>{labelOf(m.status)}</span>
+          )}
          </div>
          <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
           <motion.div
@@ -580,7 +647,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            )}
           />
          </div>
-         <p className="text-[10px] leading-snug text-stone-400">{t('Next', 'Επόμενο')} · {m.next}</p>
+         <p className="text-xs leading-snug text-stone-400">{t('Next', 'Επόμενο')} · {m.next}</p>
         </div>
        ))}
       </div>
@@ -609,12 +676,14 @@ export default function FounderTools({ user }: FounderToolsProps) {
        </div>
 
        <div className="space-y-2">
-        {builderSteps.map((step) => (
+        {builderSteps.map((step) => {
+         const status = builderStepStatus(step.id, step.status);
+         return (
          <div key={step.id} className="flex items-center gap-4 group cursor-pointer p-2.5 rounded-xl hover:bg-stone-50 transition-all" onClick={() => { setBuilderStep(step.id); setActiveTab('builder'); }}>
           <div className={cn(
            "w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 border",
-           step.status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : 
-           step.status === "In-Progress" ? "bg-amber-50 text-amber-600 border-amber-100" : 
+           status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+           status === "In-Progress" ? "bg-amber-50 text-amber-600 border-amber-100" :
            "bg-stone-50 text-stone-300 border-stone-100"
           )}>
            <step.icon className="w-4.5 h-4.5" style={{ width: '18px', height: '18px' }} />
@@ -624,20 +693,20 @@ export default function FounderTools({ user }: FounderToolsProps) {
             <h4 className="min-w-0 text-sm font-semibold text-stone-900">{moduleName(step.title)}</h4>
             <span className={cn(
              "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
-             step.status === "Completed" ? "text-emerald-600 border-transparent" : 
-             step.status === "In-Progress" ? "text-amber-600 border-transparent" : 
+             status === "Completed" ? "text-emerald-600 border-transparent" :
+             status === "In-Progress" ? "text-amber-600 border-transparent" :
              "text-stone-400 border-transparent"
-            )}>{labelOf(step.status)}</span>
+            )}>{labelOf(status)}</span>
            </div>
            <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-            <motion.div 
+            <motion.div
              initial={{ width: 0 }}
-             animate={{ width: step.status === "Completed" ? "100%" : step.status === "In-Progress" ? "55%" : "0%" }}
+             animate={{ width: status === "Completed" ? "100%" : status === "In-Progress" ? "55%" : "0%" }}
              transition={{ duration: 1, ease: "circOut" }}
              className={cn(
               "h-full rounded-full",
-              step.status === "Completed" ? "bg-emerald-500" : 
-              step.status === "In-Progress" ? "bg-amber-400" : 
+              status === "Completed" ? "bg-emerald-500" :
+              status === "In-Progress" ? "bg-amber-400" :
               "bg-stone-200"
              )}
             />
@@ -645,7 +714,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
           </div>
           <ChevronRight className="w-4 h-4 text-stone-200 group-hover:text-stone-500 transition-colors shrink-0" />
          </div>
-        ))}
+         );
+        })}
        </div>
       </Card>
 
@@ -687,7 +757,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
             <p className="text-sm font-semibold text-stone-900">{dl.title}</p>
             <p className={cn("text-xs", dl.urgent ? "text-red-500 font-medium" : "text-stone-400")}>{t("Due", "Λήξη")} {whenLabel(dl.date)}</p>
            </div>
-           {dl.urgent && <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full tracking-wider">{t("Soon", "Σύντομα")}</span>}
+           {dl.urgent && <span className="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full tracking-wider">{t("Soon", "Σύντομα")}</span>}
           </div>
          ))}
         </div>
@@ -722,16 +792,16 @@ export default function FounderTools({ user }: FounderToolsProps) {
          </div>
          <div className="flex-1 min-w-0">
           <p className={cn(
-           "text-[10px] tracking-wider mb-0.5",
+           "text-xs tracking-wider mb-0.5",
            builderStep === step.id ? "text-stone-400" : "text-stone-400"
           )}>{t("Module", "Ενότητα")} {step.id}</p>
           <h4 className={cn("min-w-0 text-sm font-semibold", builderStep === step.id ? "text-white" : "text-stone-900")}>{moduleName(step.title)}</h4>
          </div>
-         {step.status === "Completed" ? (
+         {builderStepStatus(step.id, step.status) === "Completed" ? (
           <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
            <Check className="w-2.5 h-2.5 text-white" />
           </div>
-         ) : step.status === "In-Progress" ? (
+         ) : builderStepStatus(step.id, step.status) === "In-Progress" ? (
           <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
            <div className="w-1.5 h-1.5 rounded-full bg-white" />
           </div>
@@ -1055,7 +1125,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
        {t("Track New Application", "Καταγραφή νέας αίτησης")}
       </button>
      ) : (
-      <form onSubmit={(e) => { e.preventDefault(); const raw = new FormData(e.currentTarget).get('program'); const program = typeof raw === 'string' ? raw.trim() : ''; if (!program) return; const item: TrackedApplication = { id: Date.now(), program, type: 'Program', status: 'draft', deadline: '—', decision: '—', match: 0, note: '' }; const tracked = [item, ...readTracked()]; writeTracked(tracked); setApplications([...tracked, ...starterApplications]); setTrackingName(null); }} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 flex items-center gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); const raw = new FormData(e.currentTarget).get('program'); const program = typeof raw === 'string' ? raw.trim() : ''; if (!program) return; const item: TrackedApplication = { id: Date.now(), program, type: 'Program', status: 'draft', deadline: '—', decision: '—', match: 0, note: '' }; const tracked = [item, ...readTracked()]; writeTracked(tracked); setApplications([...tracked, ...(isDemoMode ? starterApplications : [])]); setTrackingName(null); }} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 flex items-center gap-2">
        <input name="program" value={trackingName} onChange={(e) => setTrackingName(e.target.value)} placeholder={t("Program name", "Όνομα προγράμματος")} className="flex-1 bg-transparent text-sm text-stone-900 outline-none" autoFocus />
        <button type="submit" className="text-sm font-medium text-stone-900">{t("Save", "Αποθήκευση")}</button>
       </form>
@@ -1109,7 +1179,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
             <tool.icon className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100" />
             <div className="flex-1 min-w-0">
              <p className="text-xs font-medium truncate">{tool.name}</p>
-             <p className="text-[10px] opacity-50 truncate">{tool.desc}</p>
+             <p className="text-xs opacity-50 truncate">{tool.desc}</p>
             </div>
             <Pin 
              className={cn(
@@ -1121,7 +1191,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            </button>
           ))}
           {category.tools.length > 3 && (
-           <p className="text-[10px] opacity-50 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
+           <p className="text-xs opacity-50 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
           )}
          </div>
         </Card>
@@ -1208,11 +1278,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
          </div>
          <h4 className="text-sm font-semibold text-stone-900 mb-1 truncate">{template.name}</h4>
          <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] px-1.5 py-0.5 bg-stone-100 rounded text-stone-500">{template.category === 'HR' ? t('HR', 'HR') : template.category === 'Fundraising' ? t('Fundraising', 'Χρηματοδότηση') : labelOf(template.category)}</span>
-          <span className="text-[10px] text-stone-400">{template.format}</span>
+          <span className="text-xs px-1.5 py-0.5 bg-stone-100 rounded text-stone-500">{template.category === 'HR' ? t('HR', 'HR') : template.category === 'Fundraising' ? t('Fundraising', 'Χρηματοδότηση') : labelOf(template.category)}</span>
+          <span className="text-xs text-stone-400">{template.format}</span>
          </div>
          <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-          <span className="text-[10px] text-stone-400">{template.downloads.toLocaleString()} {t("downloads", "λήψεις")}</span>
+          <span className="text-xs text-stone-400">{template.downloads.toLocaleString()} {t("downloads", "λήψεις")}</span>
           <div className="flex items-center gap-1">
            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Copy link", "Αντιγραφή συνδέσμου")} onClick={() => { navigator.clipboard.writeText(`https://cofounderbay.app/templates/${template.id}`); showToast(t('Link copied!', 'Ο σύνδεσμος αντιγράφηκε!')); }}>
             <Copy className="w-3 h-3 text-stone-400" />

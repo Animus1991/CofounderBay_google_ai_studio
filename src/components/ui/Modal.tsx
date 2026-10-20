@@ -68,7 +68,7 @@ export default function Modal({ open, onClose, title, description, children, siz
       {(title || showClose) && (
        <div className="flex items-start justify-between gap-3 p-4 sm:p-6 pb-0">
         <div className="min-w-0">
-         {title && <h2 className="text-lg font-semibold text-stone-900">{title}</h2>}
+         {title && <h2 className="text-xl font-medium text-stone-900">{title}</h2>}
          {description && <p className="text-sm text-stone-500 mt-1">{description}</p>}
         </div>
         {showClose && (

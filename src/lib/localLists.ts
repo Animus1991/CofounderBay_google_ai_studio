@@ -41,6 +41,11 @@ function keyFor(key: string): string {
   return scope ? `${key}@${scope}` : key;
 }
 
+/** Physical storage key for `key` under the current account scope — keeps account data from leaking between accounts on one browser. */
+export function scopedKey(key: string): string {
+  return keyFor(key);
+}
+
 function emit(key: string) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<string>(CHANGE_EVENT, { detail: key }));
@@ -225,8 +230,19 @@ export const keys = {
   prefs: 'cfb.prefs',
   venture: 'cfb.ventureChecklist',
   assets: 'cfb.projectAssets',
-  fitCheck: 'cfb.fitCheckResult',
+  fitCheck: 'cfb.fitCheck',
   pinnedChats: 'cfb.pinnedChats',
+  savedSearches: 'cfb.savedSearches',
+  demoNotes: 'cfb.demoNotifications',
+  hiddenNotes: 'cfb.hiddenNotifications',
+  builderInputs: 'cfb.builderInputs',
+  legalChecklist: 'cfb.legalChecklist',
+  blockedPeople: 'cfb.blockedPeople',
+  openedPeople: 'cfb.openedPeople',
+  calendarBriefing: 'cfb.calendarBriefing',
+  accountForm: 'cfb.accountForm',
+  accountSwitches: 'cfb.accountSwitches',
+  paymentCards: 'cfb.paymentCards',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -363,6 +379,30 @@ export function writeDiscoveryFilters(filters: DiscoveryFilters) {
   writeJson(keys.discovery, filters);
 }
 
+export type SavedSearch = DiscoveryFilters & { id: string; label: string; at: string };
+
+export function readSavedSearches(): SavedSearch[] {
+  const stored = readJson<SavedSearch[] | null>(keys.savedSearches, null);
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function addSavedSearch(filters: DiscoveryFilters, label: string): SavedSearch {
+  const item: SavedSearch = {
+    ...filters,
+    id: `search-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    label,
+    at: new Date().toISOString(),
+  };
+  writeJson(keys.savedSearches, [item, ...readSavedSearches()].slice(0, 12));
+  return item;
+}
+
+export function removeSavedSearch(id: string): SavedSearch[] {
+  const next = readSavedSearches().filter((item) => item.id !== id);
+  writeJson(keys.savedSearches, next);
+  return next;
+}
+
 export type MatchFilters = {
   q: string;
   role: string;
@@ -392,7 +432,7 @@ export function writeMatchFilters(filters: MatchFilters) {
 
 // ── Connection requests ────────────────────────────────────────────────────
 
-export type ConnectionRequest = SavedProfile & { status: string; sentAt?: string; message?: string };
+export type ConnectionRequest = SavedProfile & { status: 'pending' | 'accepted' | 'declined'; sentAt?: string; message?: string };
 
 export function readRequests(): ConnectionRequest[] {
   const stored = readJson<ConnectionRequest[] | null>(keys.requests, null);
@@ -447,6 +487,12 @@ export function trackApplication(program: string, type: string, deadline = '—'
     note: '',
   };
   const next = [item, ...existing];
+  writeTracked(next);
+  return next;
+}
+
+export function untrackApplication(program: string): TrackedApplication[] {
+  const next = readTracked().filter((item) => item.program.toLowerCase() !== program.toLowerCase());
   writeTracked(next);
   return next;
 }
@@ -526,6 +572,10 @@ export function addStudioTask(title: string): StudioTask {
   };
   writeTasks([task, ...readTasks().filter((item) => item.id !== task.id)]);
   return task;
+}
+
+export function removeStudioTask(id: string): StudioTask[] {
+  return writeTasks(readTasks().filter((item) => item.id !== id));
 }
 
 // ── Calendar sessions ──────────────────────────────────────────────────────
@@ -888,6 +938,12 @@ export function appendAssistant(turn: Omit<AssistantTurn, 'id' | 'at'> & { id?: 
   return next;
 }
 
+export function updateAssistantTurn(id: string, patch: Partial<Pick<AssistantTurn, 'text' | 'href' | 'links' | 'followUps' | 'sources' | 'tool'>>): AssistantTurn[] {
+  const next = readAssistant().map((item) => (item.id === id ? { ...item, ...patch } : item));
+  writeJson(keys.assistant, next);
+  return next;
+}
+
 export function clearAssistant(): AssistantTurn[] {
   writeJson(keys.assistant, []);
   return [];
@@ -939,7 +995,7 @@ export function readNeeds(): NeedCard[] {
   return Array.isArray(stored) ? stored.map(hydrateNeed) : [];
 }
 
-function writeNeeds(list: NeedCard[]): NeedCard[] {
+export function writeNeeds(list: NeedCard[]): NeedCard[] {
   writeJson(keys.needs, list.slice(0, 40));
   return list;
 }
@@ -1004,7 +1060,7 @@ export function readOpenTo(): OpenToKind[] {
     return stored.filter(isOpenToKind);
   }
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('cfb.accountSwitches') : null;
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(scopedKey('cfb.accountSwitches')) : null;
     if (!raw) return ['cofounder', 'advisor'];
     const parsed = JSON.parse(raw) as { openToCofounder?: boolean; openToInvestors?: boolean; openToAdvisors?: boolean };
     const out: OpenToKind[] = [];

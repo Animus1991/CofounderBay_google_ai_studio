@@ -3,11 +3,13 @@
  * page, list and score the assistant mentions is the same data the rest of
  * the app already shows. Gemini only rewrites the wording.
  */
-import { cofounderPool, directoryPeople, findPerson, mentorPool, type Person } from '../lib/peopleSource';
+import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
 import {
   addSession,
   addStudioTask,
+  dataScope,
+  isDemoData,
   seedFounderInvites,
   readInvites,
   readTasks,
@@ -22,21 +24,33 @@ import {
   readOpenTo,
   readRound,
   readSaved,
+  readTracked,
+  readValue,
+  writeValue,
+  removeMilestone,
+  removeRequest,
+  removeSaved,
+  removeSession,
+  removeStudioTask,
   saveProfile,
   saveRequest,
   searchChat,
   setId,
   trackApplication,
+  untrackApplication,
   upsertMilestone,
   closeNeed,
   editNeed,
   upsertNeed,
+  writeInvites,
   writeMatchFilters,
-  writeOpenTo,
+  writeNeeds,
   writeRound,
+  type ActivityKind,
   type NeedCard,
   type NeedField,
   type OpenToKind,
+  type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
 import { milestoneService } from './milestoneService';
@@ -57,6 +71,20 @@ export type AssistantFollowUp = { en: string; el: string };
 
 export type AssistantSource = TurnSource;
 
+export type AssistantReversal = 'full' | 'partial' | 'none';
+
+export type AssistantProposal = {
+  /** What will change, one sentence, both languages. */
+  summary: { en: string; el: string };
+  reversal: AssistantReversal;
+  /** Why the reversal is partial/none, shown under the card. Required unless reversal === 'full'. */
+  reversalNote?: { en: string; el: string };
+  /** Performs the write and returns the final result (the text that exists today). Firestore-backed writes resolve async. */
+  apply: () => AssistantResult | Promise<AssistantResult>;
+  /** Present iff reversal !== 'none'. Must restore exactly what apply changed. */
+  undo?: () => void | Promise<void>;
+};
+
 export type AssistantResult = {
   en: string;
   el: string;
@@ -65,7 +93,21 @@ export type AssistantResult = {
   tool: string;
   followUps?: AssistantFollowUp[];
   sources?: AssistantSource[];
+  proposal?: AssistantProposal;
 };
+
+type LoggedWrite = { kind: ActivityKind; title: string; titleEl?: string; href?: string };
+
+/** Re-logs the applied write as undone, under the same kind the apply used. */
+function logUndo(logged: LoggedWrite | null) {
+  if (!logged) return;
+  logActivity({ kind: logged.kind, title: `Undid: ${logged.title}`, titleEl: `Αναιρέθηκε: ${logged.titleEl || logged.title}`, href: logged.href, byAssistant: true });
+}
+
+/** The result a write branch returns when it proposes instead of writing. */
+function proposalResult(plan: AssistantProposal, base: { tool: string; href?: string; links: AssistantLink[] }): AssistantResult {
+  return { tool: base.tool, en: plan.summary.en, el: plan.summary.el, href: base.href, links: base.links, proposal: plan };
+}
 
 const SOURCE = {
   people: { kind: 'people', en: 'People directory', el: 'Κατάλογος ανθρώπων', href: '/matches' },
@@ -179,48 +221,47 @@ export function pageContext(pathname: string): { href: string; en: string; el: s
   return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
 }
 
-type KnowledgeCard = { keys: string[]; href: string; en: string; el: string };
+type KnowledgeCard = { keys: string[]; href: string; en: string; el: string; /** True when the card describes demo-only sample content. */ demo?: boolean };
 
 const KNOWLEDGE: KnowledgeCard[] = [
-  { keys: ['series a scout', 'scout network'], href: '/fundraising', en: 'Series A Scout Network is a rolling Sequoia intro on Fundraising → Opportunities ($5M+, AI/SaaS). Open the tab and apply, or I can walk the round numbers.', el: 'Το Series A Scout Network είναι rolling intro της Sequoia στη Χρηματοδότηση → Ευκαιρίες ($5M+, AI/SaaS). Άνοιξε την καρτέλα ή ρώτα για τον γύρο.' },
-  { keys: ['impact investor roundtable'], href: '/fundraising', en: 'Impact Investor Roundtable is a pitch event on Fundraising → Opportunities ($1–3M, 12 May 2026, ESG). Same list as the Opportunities tab.', el: 'Το Impact Investor Roundtable είναι pitch event στη Χρηματοδότηση → Ευκαιρίες ($1–3M, 12 Μαΐ 2026).' },
-  { keys: ['founder grant', 'stripe foundation'], href: '/fundraising', en: 'Founder Grant — Q2 2026 is a $50k non-dilutive Stripe Foundation grant on Fundraising → Opportunities (deadline 30 May 2026).', el: 'Το Founder Grant — Q2 2026 είναι μη αραιωτική επιχορήγηση $50k από Stripe Foundation στη Χρηματοδότηση → Ευκαιρίες (30 Μαΐ 2026).' },
-  { keys: ['eu horizon', 'horizon innovation'], href: '/fundraising', en: 'EU Horizon Innovation Fund is a €250k grant from the European Commission on Fundraising → Opportunities (1 Jun 2026, DeepTech/EU).', el: 'Το EU Horizon Innovation Fund είναι επιχορήγηση €250k από την Ευρωπαϊκή Επιτροπή στη Χρηματοδότηση → Ευκαιρίες (1 Ιουν 2026).' },
-  { keys: ['debt facility', 'clearco', 'revenue-based'], href: '/fundraising', en: 'Debt Facility — Revenue-Based is a Clearco line up to $2M on Fundraising → Opportunities (rolling, SaaS with MRR over $30k).', el: 'Το Debt Facility — Revenue-Based είναι γραμμή Clearco έως $2M στη Χρηματοδότηση → Ευκαιρίες (rolling).' },
-  { keys: ['sequoia'], href: '/fundraising', en: 'Sequoia Capital is in the Fundraising investor list and pipeline (Due Diligence). VC, SaaS/FinTech/AI, checks $500k–$5M. Open Fundraising to move the stage or send a note.', el: 'Η Sequoia Capital είναι στη λίστα επενδυτών και στον αγωγό (Due Diligence). VC, SaaS/FinTech/AI, $500k–$5M. Άνοιξε τη Χρηματοδότηση για το στάδιο.' },
-  { keys: ['andreessen', 'a16z'], href: '/fundraising', en: 'Andreessen Horowitz is on Fundraising → Investors (Contacted). VC, Consumer/Enterprise/Bio, $1M–$50M.', el: 'Η Andreessen Horowitz είναι στη Χρηματοδότηση → Επενδυτές (Contacted). VC, $1M–$50M.' },
-  { keys: ['first round'], href: '/fundraising', en: 'First Round Capital is Identified on the Fundraising pipeline. Seed specialist, $250k–$3M.', el: 'Η First Round Capital είναι Identified στον αγωγό Χρηματοδότησης. Seed, $250k–$3M.' },
-  { keys: ['y combinator', 'yc s26'], href: '/fundraising', en: 'Y Combinator S26 is on Fundraising → Programs: $500k accelerator, deadline 19 Apr 2026, 96% match.', el: 'Το Y Combinator S26 είναι στη Χρηματοδότηση → Προγράμματα: $500k, προθεσμία 19 Απρ 2026, 96% match.' },
-  { keys: ['techstars'], href: '/fundraising', en: 'Techstars Sustainability is on Fundraising → Programs: $120k, NYC, deadline 1 May 2026.', el: 'Το Techstars Sustainability είναι στη Χρηματοδότηση → Προγράμματα: $120k, NYC, 1 Μαΐ 2026.' },
-  { keys: ['nsf sbir'], href: '/fundraising', en: 'NSF SBIR Phase I is a $275k US grant on Fundraising → Programs (18 Jun 2026).', el: 'Το NSF SBIR Phase I είναι επιχορήγηση $275k στη Χρηματοδότηση → Προγράμματα (18 Ιουν 2026).' },
-  { keys: ['founders factory'], href: '/fundraising', en: 'Founders Factory EU is a studio on Fundraising → Programs (€150k, London/Paris, 10 Jul 2026).', el: 'Το Founders Factory EU είναι studio στη Χρηματοδότηση → Προγράμματα (€150k, 10 Ιουλ 2026).' },
-  { keys: ['fintech accelerator'], href: '/programs', en: 'FinTech Accelerator Q3 2026 is on Programs: $120k, 12 weeks, deadline 15 Apr 2026. Same card as the Programs page.', el: 'Το FinTech Accelerator Q3 2026 είναι στα Προγράμματα: $120k, 12 εβδομάδες, 15 Απρ 2026.' },
-  { keys: ['cleantech innovation'], href: '/programs', en: 'CleanTech Innovation Grant is on Programs: $50k non-dilutive, deadline 1 May 2026.', el: 'Το CleanTech Innovation Grant είναι στα Προγράμματα: $50k μη αραιωτικά, 1 Μαΐ 2026.' },
-  { keys: ['saas growth bootcamp', 'founders academy'], href: '/programs', en: 'SaaS Growth Bootcamp / Founders Academy is on Programs: 4 weeks, deadline 30 Mar 2026.', el: 'Το SaaS Growth Bootcamp είναι στα Προγράμματα: 4 εβδομάδες, 30 Μαρ 2026.' },
-  { keys: ['networking night', 'startup founders networking'], href: '/events', en: 'Startup Founders Networking Night is on Events: London, 28 Mar 2026, 6–9 PM. Register on the Events page.', el: 'Το Startup Founders Networking Night είναι στις Εκδηλώσεις: Λονδίνο, 28 Μαρ 2026.' },
-  { keys: ['seed round pitch', 'mastering the seed'], href: '/events', en: 'Mastering the Seed Round Pitch is an online workshop on Events, 2 Apr 2026, hosted by Sarah Chen.', el: 'Το Mastering the Seed Round Pitch είναι online workshop στις Εκδηλώσεις, 2 Απρ 2026.' },
-  { keys: ['fintech demo day'], href: '/events', en: 'FinTech Demo Day Q2 is on Events: New York, 15 Apr 2026, 10 AM–1 PM.', el: 'Το FinTech Demo Day Q2 είναι στις Εκδηλώσεις: Νέα Υόρκη, 15 Απρ 2026.' },
-  { keys: ['global startup summit'], href: '/events', en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
-  { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate through CoFounderBay is on Perks: up to $100k credits plus training. Claim it on the Perks page.', el: 'Το AWS Activate μέσω CoFounderBay είναι στις Παροχές: έως $100k credits. Κάνε claim στη σελίδα Παροχές.' },
-  { keys: ['readiness score'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Teams over 80% are modeled as 3× more likely to close in six months. Open Profile to improve the score.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Πάνω από 80% μοντελοποιείται 3× πιθανότητα κλεισίματος σε έξι μήνες.' },
-  { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download or preview there, or book legal office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασέ το από εκεί ή κλείσε legal office hours.' },
-  { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15 minutes with partner firms on Legal Hub. Open that page and use Book a Session — I keep the same firms: Wilson Sonsini, Gunderson Dettmer, Cooley.', el: 'Τα legal office hours είναι 15 λεπτά με partner firms στο Legal Hub. Άνοιξε τη σελίδα και πάτα Book a Session.' },
-  { keys: ['wilson sonsini', 'gunderson dettmer', 'cooley llp'], href: '/legal', en: 'Wilson Sonsini, Gunderson Dettmer and Cooley are the partner firms on Legal Hub. Book office hours from that sidebar.', el: 'Wilson Sonsini, Gunderson Dettmer και Cooley είναι τα partner firms στο Legal Hub.' },
+  { keys: ['series a scout', 'scout network'], href: '/fundraising', demo: true, en: 'Series A Scout Network is a rolling Sequoia intro on Fundraising → Opportunities ($5M+, AI/SaaS). Open the tab and apply, or I can walk the round numbers.', el: 'Το Series A Scout Network είναι rolling intro της Sequoia στη Χρηματοδότηση → Ευκαιρίες ($5M+, AI/SaaS). Άνοιξε την καρτέλα ή ρώτα για τον γύρο.' },
+  { keys: ['impact investor roundtable'], href: '/fundraising', demo: true, en: 'Impact Investor Roundtable is a pitch event on Fundraising → Opportunities ($1–3M, 12 May 2026, ESG). Same list as the Opportunities tab.', el: 'Το Impact Investor Roundtable είναι pitch event στη Χρηματοδότηση → Ευκαιρίες ($1–3M, 12 Μαΐ 2026).' },
+  { keys: ['founder grant', 'stripe foundation'], href: '/fundraising', demo: true, en: 'Founder Grant — Q2 2026 is a $50k non-dilutive Stripe Foundation grant on Fundraising → Opportunities (deadline 30 May 2026).', el: 'Το Founder Grant — Q2 2026 είναι μη αραιωτική επιχορήγηση $50k από Stripe Foundation στη Χρηματοδότηση → Ευκαιρίες (30 Μαΐ 2026).' },
+  { keys: ['eu horizon', 'horizon innovation'], href: '/fundraising', demo: true, en: 'EU Horizon Innovation Fund is a €250k grant from the European Commission on Fundraising → Opportunities (1 Jun 2026, DeepTech/EU).', el: 'Το EU Horizon Innovation Fund είναι επιχορήγηση €250k από την Ευρωπαϊκή Επιτροπή στη Χρηματοδότηση → Ευκαιρίες (1 Ιουν 2026).' },
+  { keys: ['debt facility', 'clearco', 'revenue-based'], href: '/fundraising', demo: true, en: 'Debt Facility — Revenue-Based is a Clearco line up to $2M on Fundraising → Opportunities (rolling, SaaS with MRR over $30k).', el: 'Το Debt Facility — Revenue-Based είναι γραμμή Clearco έως $2M στη Χρηματοδότηση → Ευκαιρίες (rolling).' },
+  { keys: ['sequoia'], href: '/fundraising', demo: true, en: 'Sequoia Capital is in the Fundraising investor list and pipeline (Due Diligence). VC, SaaS/FinTech/AI, checks $500k–$5M. Open Fundraising to move the stage or send a note.', el: 'Η Sequoia Capital είναι στη λίστα επενδυτών και στον αγωγό (Due Diligence). VC, SaaS/FinTech/AI, $500k–$5M. Άνοιξε τη Χρηματοδότηση για το στάδιο.' },
+  { keys: ['andreessen', 'a16z'], href: '/fundraising', demo: true, en: 'Andreessen Horowitz is on Fundraising → Investors (Contacted). VC, Consumer/Enterprise/Bio, $1M–$50M.', el: 'Η Andreessen Horowitz είναι στη Χρηματοδότηση → Επενδυτές (Contacted). VC, $1M–$50M.' },
+  { keys: ['first round'], href: '/fundraising', demo: true, en: 'First Round Capital is Identified on the Fundraising pipeline. Seed specialist, $250k–$3M.', el: 'Η First Round Capital είναι Identified στον αγωγό Χρηματοδότησης. Seed, $250k–$3M.' },
+  { keys: ['y combinator', 'yc s26'], href: '/fundraising', demo: true, en: 'Y Combinator S26 is on Fundraising → Programs: $500k accelerator, deadline 19 Apr 2026, 96% match.', el: 'Το Y Combinator S26 είναι στη Χρηματοδότηση → Προγράμματα: $500k, προθεσμία 19 Απρ 2026, 96% match.' },
+  { keys: ['techstars'], href: '/fundraising', demo: true, en: 'Techstars Sustainability is on Fundraising → Programs: $120k, NYC, deadline 1 May 2026.', el: 'Το Techstars Sustainability είναι στη Χρηματοδότηση → Προγράμματα: $120k, NYC, 1 Μαΐ 2026.' },
+  { keys: ['nsf sbir'], href: '/fundraising', demo: true, en: 'NSF SBIR Phase I is a $275k US grant on Fundraising → Programs (18 Jun 2026).', el: 'Το NSF SBIR Phase I είναι επιχορήγηση $275k στη Χρηματοδότηση → Προγράμματα (18 Ιουν 2026).' },
+  { keys: ['founders factory'], href: '/fundraising', demo: true, en: 'Founders Factory EU is a studio on Fundraising → Programs (€150k, London/Paris, 10 Jul 2026).', el: 'Το Founders Factory EU είναι studio στη Χρηματοδότηση → Προγράμματα (€150k, 10 Ιουλ 2026).' },
+  { keys: ['fintech accelerator'], href: '/programs', demo: true, en: 'FinTech Accelerator Q3 2026 is on Programs: $120k, 12 weeks, deadline 15 Apr 2026. Same card as the Programs page.', el: 'Το FinTech Accelerator Q3 2026 είναι στα Προγράμματα: $120k, 12 εβδομάδες, 15 Απρ 2026.' },
+  { keys: ['cleantech innovation'], href: '/programs', demo: true, en: 'CleanTech Innovation Grant is on Programs: $50k non-dilutive, deadline 1 May 2026.', el: 'Το CleanTech Innovation Grant είναι στα Προγράμματα: $50k μη αραιωτικά, 1 Μαΐ 2026.' },
+  { keys: ['saas growth bootcamp', 'founders academy'], href: '/programs', demo: true, en: 'SaaS Growth Bootcamp / Founders Academy is on Programs: 4 weeks, deadline 30 Mar 2026.', el: 'Το SaaS Growth Bootcamp είναι στα Προγράμματα: 4 εβδομάδες, 30 Μαρ 2026.' },
+  { keys: ['networking night', 'startup founders networking'], href: '/events', demo: true, en: 'Startup Founders Networking Night is on Events: London, 28 Mar 2026, 6–9 PM. Register on the Events page.', el: 'Το Startup Founders Networking Night είναι στις Εκδηλώσεις: Λονδίνο, 28 Μαρ 2026.' },
+  { keys: ['seed round pitch', 'mastering the seed'], href: '/events', demo: true, en: 'Mastering the Seed Round Pitch is an online workshop on Events, 2 Apr 2026, hosted by Sarah Chen.', el: 'Το Mastering the Seed Round Pitch είναι online workshop στις Εκδηλώσεις, 2 Απρ 2026.' },
+  { keys: ['fintech demo day'], href: '/events', demo: true, en: 'FinTech Demo Day Q2 is on Events: New York, 15 Apr 2026, 10 AM–1 PM.', el: 'Το FinTech Demo Day Q2 είναι στις Εκδηλώσεις: Νέα Υόρκη, 15 Απρ 2026.' },
+  { keys: ['global startup summit'], href: '/events', demo: true, en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
+  { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate is the flagship public founder program listed on Perks — apply on the provider site from that card. Open Perks to see every published perk.', el: 'Το AWS Activate είναι δημόσιο πρόγραμμα στις Παροχές — κάνε αίτηση στον πάροχο από την κάρτα. Άνοιξε Παροχές για όλες.' },
+  { keys: ['readiness score'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
+  { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download the starter draft there, or book office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασε το αρχικό draft από εκεί ή κλείσε συνεδρία.' },
+  { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15-minute sessions you book on Legal Hub — the Book a Session button adds it straight to your Calendar.', el: 'Οι νομικές συνεδρίες είναι 15λεπτες συναντήσεις που κλείνεις στο Legal Hub — το κουμπί τις βάζει στο Ημερολόγιό σου.' },
   { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
   { keys: ['list a partner service', 'list your service'], href: '/resources', en: 'Partner services are listed on Resources → Services. Tell me the service name and price and I will point you at that tab.', el: 'Οι υπηρεσίες partners είναι στους Πόρους → Services. Πες όνομα και τιμή.' },
-  { keys: ['post a job', 'post a role'], href: '/resources', en: 'Jobs sit on Resources → Jobs, same cards as Lead Full-Stack Engineer, Growth Marketing Manager, Product Design Intern. Open that tab to post or apply.', el: 'Οι θέσεις είναι στους Πόρους → Jobs. Άνοιξε την καρτέλα για καταχώριση ή αίτηση.' },
-  { keys: ['foundations of fundraising', 'scalable sales engine', 'legal essentials for startups', 'product-market fit workshop'], href: '/resources', en: 'That course is on Resources → Learning, same cards as the Learning Hub. Start Learning opens this assistant with the course title.', el: 'Αυτό το μάθημα είναι στους Πόρους → Learning.' },
+  { keys: ['post a job', 'post a role'], href: '/resources', en: 'Jobs sit on Resources → Jobs. Use Post a Job on that tab — the listing goes live for every member.', el: 'Οι θέσεις είναι στους Πόρους → Jobs. Πάτα Post a Job στην καρτέλα — η αγγελία βγαίνει live για όλα τα μέλη.' },
+  { keys: ['foundations of fundraising', 'scalable sales engine', 'legal essentials for startups', 'product-market fit workshop'], href: '/resources', demo: true, en: 'That course is on Resources → Learning, same cards as the Learning Hub. Start Learning opens this assistant with the course title.', el: 'Αυτό το μάθημα είναι στους Πόρους → Learning.' },
   { keys: ['create a community'], href: '/communities', en: 'Create stays on Communities. Name the space, pick a category, and I will keep it next to Fintech Founders, AI & Machine Learning, SaaS Builders, and Web3 & Crypto. Open Communities and use Create — or tell me the name.', el: 'Η δημιουργία μένει στις Κοινότητες. Δώσε όνομα και κατηγορία. Άνοιξε Κοινότητες και πάτα Create — ή πες μου το όνομα.' },
-  { keys: ['fintech founders', 'ai & machine learning', 'saas builders', 'web3 & crypto'], href: '/communities', en: 'That community is on the Communities page with the same members and posts you see on the cards. Join there, or Enter Community to open Messages.', el: 'Αυτή η κοινότητα είναι στη σελίδα Κοινότητες. Κάνε Join εκεί, ή Enter για τα Μηνύματα.' },
+  { keys: ['fintech founders', 'ai & machine learning', 'saas builders', 'web3 & crypto'], href: '/communities', en: 'That community is on the Communities page with its real member count. Join there, or tell me “join <name>” and I will do it.', el: 'Αυτή η κοινότητα είναι στη σελίδα Κοινότητες με τον πραγματικό αριθμό μελών. Κάνε Join εκεί, ή πες μου «join <όνομα>».' },
   { keys: ['export my pitch', 'share my pitch', 'pitch deck', 'pitch slide', 'cover & hook'], href: '/founder-tools', en: 'Pitch lives on Founder Tools → Pitch: Cover & Hook, Problem, Solution, Market Size, Business Model, Traction, Team, Ask. Export, share, or send to a mentor from that tab — I can also book a mentor.', el: 'Το pitch είναι στα Εργαλεία ιδρυτή → Pitch. Export, share ή αποστολή σε μέντορα από εκεί. Μπορώ και να κλείσω μέντορα.' },
   { keys: ['lean canvas'], href: '/workspace', en: 'Lean Canvas is on Workspace → Canvas. Save keeps the draft on that page; AI Refine opens this assistant on the same nine boxes.', el: 'Το Lean Canvas είναι στο Workspace → Canvas. Το Save κρατά το draft εκεί· το AI Refine ανοίγει αυτόν τον βοηθό.' },
-  { keys: ['workspace assets', 'project assets'], href: '/workspace', en: 'Project assets sit on Workspace → Dashboard: Pitch Deck v2.pdf, Brand Guidelines.zip, Market Research.docx. Open Workspace to download, or Founder Tools for the live pitch.', el: 'Τα αρχεία είναι στο Workspace → Dashboard. Άνοιξε Workspace ή τα Εργαλεία ιδρυτή για το live pitch.' },
-  { keys: ['ecosphere'], href: '/discovery', en: 'EcoSphere Accelerator is on Discovery → Opportunities: 12 weeks, remote, sustainability, deadline 30 Oct. Same card as Explore.', el: 'Το EcoSphere Accelerator είναι στην Εξερεύνηση → Ευκαιρίες: 12 εβδομάδες, remote, 30 Οκτ.' },
-  { keys: ['web3 founders grant'], href: '/discovery', en: 'Web3 Founders Grant is on Discovery → Opportunities: equity-free funding for core infrastructure, deadline 15 Nov.', el: 'Το Web3 Founders Grant είναι στην Εξερεύνηση → Ευκαιρίες: χωρίς equity, 15 Νοε.' },
-  { keys: ['ai innovation lab'], href: '/discovery', en: 'AI Innovation Lab is on Discovery → Opportunities: Berlin incubator for enterprise automation, deadline 5 Dec.', el: 'Το AI Innovation Lab είναι στην Εξερεύνηση → Ευκαιρίες: Βερολίνο, 5 Δεκ.' },
-  { keys: ['founder mixer'], href: '/events', en: 'Founder Mixer SF is on Discovery → Upcoming Sessions and Events. Register on Events to put it on Calendar.', el: 'Το Founder Mixer SF είναι στην Εξερεύνηση και στις Εκδηλώσεις. Κάνε Register για το Ημερολόγιο.' },
-  { keys: ['ai product workshop'], href: '/events', en: 'AI Product Workshop is on Discovery → Upcoming Sessions (20 Oct, virtual). Register from Events.', el: 'Το AI Product Workshop είναι στην Εξερεύνηση (20 Οκτ, virtual).' },
-  { keys: ['seed funding webinar'], href: '/events', en: 'Seed Funding Webinar is on Discovery → Upcoming Sessions (25 Oct). Same ecosystem list.', el: 'Το Seed Funding Webinar είναι στην Εξερεύνηση (25 Οκτ).' },
+  { keys: ['workspace assets', 'project assets'], href: '/workspace', demo: true, en: 'Project assets sit on Workspace → Dashboard: Pitch Deck v2.pdf, Brand Guidelines.zip, Market Research.docx. Open Workspace to download, or Founder Tools for the live pitch.', el: 'Τα αρχεία είναι στο Workspace → Dashboard. Άνοιξε Workspace ή τα Εργαλεία ιδρυτή για το live pitch.' },
+  { keys: ['ecosphere'], href: '/discovery', demo: true, en: 'EcoSphere Accelerator is on Discovery → Opportunities: 12 weeks, remote, sustainability, deadline 30 Oct. Same card as Explore.', el: 'Το EcoSphere Accelerator είναι στην Εξερεύνηση → Ευκαιρίες: 12 εβδομάδες, remote, 30 Οκτ.' },
+  { keys: ['web3 founders grant'], href: '/discovery', demo: true, en: 'Web3 Founders Grant is on Discovery → Opportunities: equity-free funding for core infrastructure, deadline 15 Nov.', el: 'Το Web3 Founders Grant είναι στην Εξερεύνηση → Ευκαιρίες: χωρίς equity, 15 Νοε.' },
+  { keys: ['ai innovation lab'], href: '/discovery', demo: true, en: 'AI Innovation Lab is on Discovery → Opportunities: Berlin incubator for enterprise automation, deadline 5 Dec.', el: 'Το AI Innovation Lab είναι στην Εξερεύνηση → Ευκαιρίες: Βερολίνο, 5 Δεκ.' },
+  { keys: ['founder mixer'], href: '/events', demo: true, en: 'Founder Mixer SF is on Discovery → Upcoming Sessions and Events. Register on Events to put it on Calendar.', el: 'Το Founder Mixer SF είναι στην Εξερεύνηση και στις Εκδηλώσεις. Κάνε Register για το Ημερολόγιο.' },
+  { keys: ['ai product workshop'], href: '/events', demo: true, en: 'AI Product Workshop is on Discovery → Upcoming Sessions (20 Oct, virtual). Register from Events.', el: 'Το AI Product Workshop είναι στην Εξερεύνηση (20 Οκτ, virtual).' },
+  { keys: ['seed funding webinar'], href: '/events', demo: true, en: 'Seed Funding Webinar is on Discovery → Upcoming Sessions (25 Oct). Same ecosystem list.', el: 'Το Seed Funding Webinar είναι στην Εξερεύνηση (25 Οκτ).' },
 ];
 
 function fold(text: string): string {
@@ -475,7 +516,7 @@ const NEED_FIELDS: { field: NeedField; stems: string[]; en: string; el: string }
   { field: 'missing', stems: ['missing', 'λειπει'], en: 'who is missing', el: 'ποιος λείπει' },
 ];
 
-function needResult(query: string): AssistantResult {
+function needResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   const closing = hasStem(folded, 'close', 'κλεισ') && hasStem(folded, 'need', 'card', 'καρτα', 'αναγκ');
   if (closing) {
@@ -490,15 +531,30 @@ function needResult(query: string): AssistantResult {
         links: [NEED_LINK],
       };
     }
-    closeNeed(card.id);
-    logActivity({ kind: 'profile', title: `Closed need: ${card.missing}`, titleEl: `Έκλεισε ανάγκη: ${card.missing}`, href: NEED_HREF, byAssistant: true });
-    return {
-      tool: 'need',
-      en: `Closed “${card.missing}”. Other cards stay as they are.`,
-      el: `Έκλεισε το «${card.missing}». Οι άλλες κάρτες μένουν όπως είναι.`,
-      href: NEED_HREF,
-      links: [NEED_LINK],
+    const before = readNeeds();
+    let logged: LoggedWrite | null = null;
+    const apply = (): AssistantResult => {
+      closeNeed(card.id);
+      logged = { kind: 'profile', title: `Closed need: ${card.missing}`, titleEl: `Έκλεισε ανάγκη: ${card.missing}`, href: NEED_HREF };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'need',
+        en: `Closed “${card.missing}”. Other cards stay as they are.`,
+        el: `Έκλεισε το «${card.missing}». Οι άλλες κάρτες μένουν όπως είναι.`,
+        href: NEED_HREF,
+        links: [NEED_LINK],
+      };
     };
+    if (!propose) return apply();
+    return proposalResult(
+      {
+        summary: { en: `Close the need card “${card.missing}”?`, el: `Κλείσιμο της κάρτας ανάγκης «${card.missing}»;` },
+        reversal: 'full',
+        apply,
+        undo: () => { writeNeeds(before); logUndo(logged); },
+      },
+      { tool: 'need', href: NEED_HREF, links: [NEED_LINK] },
+    );
   }
   const editing = hasStem(folded, 'set', 'change', 'update', 'edit', 'αλλαξ', 'ορισ', 'διορθωσ') && hasStem(folded, 'need', 'card', 'καρτα', 'αναγκ');
   const target = editing ? NEED_FIELDS.find((item) => hasStem(folded, ...item.stems)) : undefined;
@@ -506,15 +562,30 @@ function needResult(query: string): AssistantResult {
   if (target && value) {
     const card = readNeeds().find((item) => item.status === 'open') ?? readNeeds()[0];
     if (card) {
-      const updated = editNeed(card.id, { [target.field]: value });
-      logActivity({ kind: 'profile', title: `Need card v${updated?.version ?? 2}: ${target.en}`, titleEl: `Κάρτα ανάγκης v${updated?.version ?? 2}: ${target.el}`, href: NEED_HREF, byAssistant: true });
-      return {
-        tool: 'need',
-        en: `Changed the ${target.en} of “${card.missing}” to “${value}”. The card is now v${updated?.version ?? 2}; Network keeps the earlier version in its timeline.`,
-        el: `Άλλαξε το πεδίο «${target.el}» της κάρτας «${card.missing}» σε «${value}». Η κάρτα είναι πλέον v${updated?.version ?? 2}· το Δίκτυο κρατά την προηγούμενη έκδοση στο χρονολόγιο.`,
-        href: NEED_HREF,
-        links: [NEED_LINK],
+      const before = readNeeds();
+      let logged: LoggedWrite | null = null;
+      const apply = (): AssistantResult => {
+        const updated = editNeed(card.id, { [target.field]: value });
+        logged = { kind: 'profile', title: `Need card v${updated?.version ?? 2}: ${target.en}`, titleEl: `Κάρτα ανάγκης v${updated?.version ?? 2}: ${target.el}`, href: NEED_HREF };
+        logActivity({ ...logged, byAssistant: true });
+        return {
+          tool: 'need',
+          en: `Changed the ${target.en} of “${card.missing}” to “${value}”. The card is now v${updated?.version ?? 2}; Network keeps the earlier version in its timeline.`,
+          el: `Άλλαξε το πεδίο «${target.el}» της κάρτας «${card.missing}» σε «${value}». Η κάρτα είναι πλέον v${updated?.version ?? 2}· το Δίκτυο κρατά την προηγούμενη έκδοση στο χρονολόγιο.`,
+          href: NEED_HREF,
+          links: [NEED_LINK],
+        };
       };
+      if (!propose) return apply();
+      return proposalResult(
+        {
+          summary: { en: `Change the ${target.en} of “${card.missing}” to “${value}”?`, el: `Αλλαγή του πεδίου «${target.el}» της κάρτας «${card.missing}» σε «${value}»;` },
+          reversal: 'full',
+          apply,
+          undo: () => { writeNeeds(before); logUndo(logged); },
+        },
+        { tool: 'need', href: NEED_HREF, links: [NEED_LINK] },
+      );
     }
   }
   const drafting = hasStem(folded, 'draft', 'write', 'create', 'new', 'γραψ', 'φτιαξ', 'δημιουργ');
@@ -522,24 +593,39 @@ function needResult(query: string): AssistantResult {
     const missing = query
       .replace(/^(please\s+)?(draft|write|create|new|γραψε|φτιαξε|δημιουργησε)\s+(a\s+)?(need card|καρτα αναγκης)?\s*(for|για)?\s*/i, '')
       .trim() || 'a co-founder';
-    const card: NeedCard = {
-      id: `need-${Date.now().toString(36)}`,
-      exists: 'A founding team with a scored looking-for on Profile',
-      outcome: 'A partner who covers the open skills on this account',
-      missing,
-      offer: 'Equity and a first conversation, not a cold blast',
-      status: 'open',
-      at: new Date().toISOString(),
+    const before = readNeeds();
+    let logged: LoggedWrite | null = null;
+    const apply = (): AssistantResult => {
+      const card: NeedCard = {
+        id: `need-${Date.now().toString(36)}`,
+        exists: 'A founding team with a scored looking-for on Profile',
+        outcome: 'A partner who covers the open skills on this account',
+        missing,
+        offer: 'Equity and a first conversation, not a cold blast',
+        status: 'open',
+        at: new Date().toISOString(),
+      };
+      upsertNeed(card);
+      logged = { kind: 'profile', title: `Need card: ${missing}`, titleEl: `Κάρτα ανάγκης: ${missing}`, href: NEED_HREF };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'need',
+        en: `Need card is open: exists — ${card.exists}. Outcome — ${card.outcome}. Missing — ${card.missing}. Same list the next-step strip and Network read. I did not notify anyone.`,
+        el: `Η κάρτα ανάγκης είναι ανοιχτή: υπάρχει — ${card.exists}. Αποτέλεσμα — ${card.outcome}. Λείπει — ${card.missing}. Η ίδια λίστα με το επόμενο βήμα και το Δίκτυο. Δεν ειδοποίησα κανέναν.`,
+        href: NEED_HREF,
+        links: [NEED_LINK],
+      };
     };
-    upsertNeed(card);
-    logActivity({ kind: 'profile', title: `Need card: ${missing}`, titleEl: `Κάρτα ανάγκης: ${missing}`, href: NEED_HREF, byAssistant: true });
-    return {
-      tool: 'need',
-      en: `Need card is open: exists — ${card.exists}. Outcome — ${card.outcome}. Missing — ${card.missing}. Same list the next-step strip and Network read. I did not notify anyone.`,
-      el: `Η κάρτα ανάγκης είναι ανοιχτή: υπάρχει — ${card.exists}. Αποτέλεσμα — ${card.outcome}. Λείπει — ${card.missing}. Η ίδια λίστα με το επόμενο βήμα και το Δίκτυο. Δεν ειδοποίησα κανέναν.`,
-      href: NEED_HREF,
-      links: [NEED_LINK],
-    };
+    if (!propose) return apply();
+    return proposalResult(
+      {
+        summary: { en: `Open a need card for “${missing}”?`, el: `Άνοιγμα κάρτας ανάγκης για «${missing}»;` },
+        reversal: 'full',
+        apply,
+        undo: () => { writeNeeds(before); logUndo(logged); },
+      },
+      { tool: 'need', href: NEED_HREF, links: [NEED_LINK] },
+    );
   }
   const list = readNeeds();
   if (list.length === 0) {
@@ -612,22 +698,58 @@ function nextStepAssistant(profile: AssistantProfile | null): AssistantResult {
   };
 }
 
-function openToResult(query: string): AssistantResult {
+function openToResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   const kinds: OpenToKind[] = [];
   if (/\bco-?founder|συνιδρυτ/.test(folded)) kinds.push('cofounder');
   if (/\binvestor|επενδυτ/.test(folded)) kinds.push('investor');
   if (/\badvisor|mentor|συμβουλ|μεντορ/.test(folded)) kinds.push('advisor');
   if (kinds.length && /\b(open|mark|set|ανοιχτ)\b/.test(folded)) {
-    writeOpenTo([...new Set([...readOpenTo(), ...kinds])]);
-    logActivity({ kind: 'settings', title: `Open to ${kinds.join(', ')}`, titleEl: `Ανοιχτός σε ${kinds.join(', ')}`, href: '/settings', byAssistant: true });
-    return {
-      tool: 'open-to',
-      en: `Settings now marks you open to ${readOpenTo().join(', ')}. Matching reads this the next time you scout.`,
-      el: `Οι Ρυθμίσεις σε έχουν ανοιχτό σε ${readOpenTo().join(', ')}. Η αντιστοίχιση το διαβάζει στο επόμενο scout.`,
-      href: '/settings',
-      links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }],
+    const previous = readOpenTo();
+    const next = [...new Set([...previous, ...kinds])];
+    const ctx = () => ({ uid: dataScope() || null, demo: isDemoData() });
+    let logged: LoggedWrite | null = null;
+    // The shared helper writes the list, the Settings switch snapshot and the
+    // profile privacy slice — identical to what Settings → Privacy toggles do.
+    const apply = async (): Promise<AssistantResult> => {
+      const { applyOpenTo } = await import('../lib/openTo');
+      applyOpenTo(next, ctx());
+      logged = { kind: 'settings', title: `Open to ${kinds.join(', ')}`, titleEl: `Ανοιχτός σε ${kinds.join(', ')}`, href: '/settings' };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'open-to',
+        en: `Settings now marks you open to ${next.join(', ')}. Matching reads this the next time you scout.`,
+        el: `Οι Ρυθμίσεις σε έχουν ανοιχτό σε ${next.join(', ')}. Η αντιστοίχιση το διαβάζει στο επόμενο scout.`,
+        href: '/settings',
+        links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }],
+      };
     };
+    if (!propose) {
+      // Non-propose mode stays synchronous: the write goes through the same
+      // helper the pages use and lands in the background while the reply is
+      // already on screen. apply() cannot throw for local writes.
+      void apply();
+      return {
+        tool: 'open-to',
+        en: `Settings now marks you open to ${next.join(', ')}. Matching reads this the next time you scout.`,
+        el: `Οι Ρυθμίσεις σε έχουν ανοιχτό σε ${next.join(', ')}. Η αντιστοίχιση το διαβάζει στο επόμενο scout.`,
+        href: '/settings',
+        links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }],
+      };
+    }
+    return proposalResult(
+      {
+        summary: { en: `Mark you open to ${kinds.join(', ')} on Settings?`, el: `Σήμανση «ανοιχτός σε ${kinds.join(', ')}» στις Ρυθμίσεις;` },
+        reversal: 'full',
+        apply,
+        undo: async () => {
+          const { applyOpenTo } = await import('../lib/openTo');
+          applyOpenTo(previous, ctx());
+          logUndo(logged);
+        },
+      },
+      { tool: 'open-to', href: '/settings', links: [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }] },
+    );
   }
   return {
     tool: 'open-to',
@@ -690,7 +812,7 @@ function attachFollowUps(result: AssistantResult): AssistantResult {
   return out.length ? { ...result, followUps: out.slice(0, 2) } : result;
 }
 
-function saveOrConnect(kind: 'save' | 'connect', person: Person): AssistantResult {
+function saveOrConnect(kind: 'save' | 'connect', person: Person, propose: boolean): AssistantResult {
   const card = {
     id: person.id,
     fullName: person.fullName,
@@ -699,26 +821,142 @@ function saveOrConnect(kind: 'save' | 'connect', person: Person): AssistantResul
     location: person.location,
     note: person.headline,
   };
+  const links = [linkFor(person), { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }];
+  let logged: LoggedWrite | null = null;
   if (kind === 'save') {
-    saveProfile(card);
-    logActivity({ kind: 'profile', title: `Saved ${person.fullName}`, titleEl: `Αποθηκεύτηκε ο/η ${person.fullName}`, href: `/profile/${person.id}`, byAssistant: true });
-    return {
-      tool: 'save',
-      en: `${person.fullName} is on your saved list. Open Network to compare notes.`,
-      el: `Ο/Η ${person.fullName} είναι στη λίστα αποθηκευμένων. Άνοιξε το Δίκτυο για τις σημειώσεις.`,
-      href: '/network',
-      links: [linkFor(person), { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+    const apply = (): AssistantResult => {
+      saveProfile(card);
+      logged = { kind: 'profile', title: `Saved ${person.fullName}`, titleEl: `Αποθηκεύτηκε ${person.fullName}`, href: `/profile/${person.id}` };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'save',
+        en: `${person.fullName} is on your saved list. Open Network to compare notes.`,
+        el: `${person.fullName} είναι στη λίστα αποθηκευμένων. Άνοιξε το Δίκτυο για τις σημειώσεις.`,
+        href: '/network',
+        links,
+      };
     };
+    if (!propose) return apply();
+    return proposalResult(
+      {
+        summary: { en: `Save ${person.fullName} to your saved list?`, el: `Αποθήκευση ${person.fullName} στη λίστα αποθηκευμένων;` },
+        reversal: 'full',
+        apply,
+        undo: () => { removeSaved(person.id); logUndo(logged); },
+      },
+      { tool: 'save', href: '/network', links },
+    );
   }
-  saveRequest({ ...card, status: 'pending', message: 'Sent from the studio assistant' });
-  logActivity({ kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}`, byAssistant: true });
-  return {
-    tool: 'connect',
-    en: `Connection request queued for ${person.fullName}. It shows on Network.`,
-    el: `Το αίτημα σύνδεσης για ${person.fullName} είναι στη λίστα. Φαίνεται στο Δίκτυο.`,
-    href: '/network',
-    links: [linkFor(person), { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' }],
+
+  // A signed-in (non-demo) account sends through the same Firestore path the
+  // pages use — sendConnectionRequest notifies the member. Demo stays local.
+  const uid = dataScope() || null;
+  const remote = !isDemoData() && uid !== null;
+  let sent = false;
+
+  const applyLocal = (): AssistantResult => {
+    saveRequest({ ...card, status: 'pending', message: 'Sent from the studio assistant' });
+    logged = { kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}` };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'connect',
+      en: `Connection request queued for ${person.fullName}. It shows on Network.`,
+      el: `Το αίτημα σύνδεσης για ${person.fullName} είναι στη λίστα. Φαίνεται στο Δίκτυο.`,
+      href: '/network',
+      links,
+    };
   };
+
+  const applyRemote = async (): Promise<AssistantResult> => {
+    const { sendConnectionRequest } = await import('../lib/social');
+    const outcome = await sendConnectionRequest({ id: person.id, fullName: person.fullName, headline: person.headline, avatarUrl: avatarOf(person) }, 'Co-Founder');
+    sent = outcome === 'sent';
+    logged = { kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}` };
+    logActivity({ ...logged, byAssistant: true });
+    if (outcome === 'accepted') {
+      return {
+        tool: 'connect',
+        en: `${person.fullName} had already asked — you are now connected.`,
+        el: `${person.fullName} είχε ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.`,
+        href: '/network',
+        links,
+      };
+    }
+    if (outcome === 'exists') {
+      return {
+        tool: 'connect',
+        en: `A request to ${person.fullName} is already pending — nothing new was sent. Withdraw it from Network if you changed your mind.`,
+        el: `Υπάρχει ήδη αίτημα σε εκκρεμότητα προς ${person.fullName} — δεν στάλθηκε νέο. Ανάκτησέ το από το Δίκτυο αν άλλαξες γνώμη.`,
+        href: '/network',
+        links,
+      };
+    }
+    return {
+      tool: 'connect',
+      en: `Connection request sent to ${person.fullName} — they were notified. It shows on Network.`,
+      el: `Το αίτημα σύνδεσης στάλθηκε σε ${person.fullName} — ειδοποιήθηκε. Φαίνεται στο Δίκτυο.`,
+      href: '/network',
+      links,
+    };
+  };
+
+  const undoRemote = async () => {
+    const { connectionStateWith, withdrawConnection } = await import('../lib/social');
+    const state = connectionStateWith(person.id);
+    if (sent && state.state === 'outgoing' && state.record) {
+      await withdrawConnection(state.record);
+    } else if (sent && state.state !== 'connected' && uid) {
+      // The listener may not have delivered the record yet — its doc id is
+      // deterministic, so the pending request can still be withdrawn.
+      await withdrawConnection({ id: `${uid}_${person.id}` } as import('../lib/social').ConnectionRecord);
+    }
+    logUndo(logged);
+  };
+
+  if (!propose) {
+    if (remote) {
+      // Non-propose mode stays synchronous: the Firestore write is fired in
+      // the background and the caller keeps the optimistic reply. A failure
+      // leaves no trace, the same way the pages surface it only via toast.
+      void applyRemote().catch(() => undefined);
+      return {
+        tool: 'connect',
+        en: `Connection request sent to ${person.fullName} — they were notified. It shows on Network.`,
+        el: `Το αίτημα σύνδεσης στάλθηκε σε ${person.fullName} — ειδοποιήθηκε. Φαίνεται στο Δίκτυο.`,
+        href: '/network',
+        links,
+      };
+    }
+    return applyLocal();
+  }
+
+  const summary = { en: `Send a connection request to ${person.fullName}?`, el: `Αίτημα σύνδεσης σε ${person.fullName};` };
+  if (remote) {
+    return proposalResult(
+      {
+        summary,
+        reversal: 'partial',
+        reversalNote: {
+          en: 'Can be withdrawn while pending; the member may already have been notified.',
+          el: 'Μπορεί να ανακληθεί όσο εκκρεμεί· το μέλος μπορεί να έχει ήδη ειδοποιηθεί.',
+        },
+        apply: applyRemote,
+        undo: undoRemote,
+      },
+      { tool: 'connect', href: '/network', links },
+    );
+  }
+  // saveRequest only queues the card on this account's list — nobody is
+  // notified — so removing it restores the exact prior state.
+  return proposalResult(
+    {
+      summary,
+      reversal: 'full',
+      apply: applyLocal,
+      undo: () => { removeRequest(person.id); logUndo(logged); },
+    },
+    { tool: 'connect', href: '/network', links },
+  );
 }
 
 function mentorsResult(query: string): AssistantResult {
@@ -745,36 +983,54 @@ function mentorsResult(query: string): AssistantResult {
   };
 }
 
-function milestonesResult(query: string): AssistantResult {
+function milestonesResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   const creating = /\b(add|create|new|προσθεσ|δημιουργ)\b/.test(folded) && /\b(milestone|οροσημ)\b/.test(folded);
   if (creating) {
     const title = query.replace(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε)\s+(a\s+)?(milestone|οροσημο)\s*(called|named|με ονομα|με τίτλο)?\s*/i, '').trim() || 'New milestone';
-    const due = new Date();
-    due.setDate(due.getDate() + 14);
-    const created = {
-      id: `m-${Date.now().toString(36)}`,
-      title,
-      description: 'Created from the studio assistant.',
-      targetDate: due.toISOString().slice(0, 10),
-      status: 'Planned' as const,
-      category: 'Product' as const,
-      priority: 'Medium' as const,
-      progress: 0,
-      tasks: [],
-      ownerId: 'demo-user',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const createdId = `m-${Date.now().toString(36)}`;
+    let logged: LoggedWrite | null = null;
+    const apply = (): AssistantResult => {
+      const due = new Date();
+      due.setDate(due.getDate() + 14);
+      const created = {
+        id: createdId,
+        title,
+        description: 'Created from the studio assistant.',
+        targetDate: due.toISOString().slice(0, 10),
+        status: 'Planned' as const,
+        category: 'Product' as const,
+        priority: 'Medium' as const,
+        progress: 0,
+        tasks: [],
+        ownerId: 'me',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      upsertMilestone(created);
+      logged = { kind: 'milestone', title: `Added ${title}`, titleEl: `Προστέθηκε: ${title}`, href: '/milestones' };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'milestone-add',
+        en: `Added “${title}” to Milestones, due in two weeks. Open the board to change the date.`,
+        el: `Προστέθηκε το «${title}» στα Ορόσημα, σε δύο εβδομάδες. Άνοιξε τον πίνακα για την ημερομηνία.`,
+        href: '/milestones',
+        links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }],
+      };
     };
-    upsertMilestone(created);
-    logActivity({ kind: 'milestone', title: `Added ${title}`, titleEl: `Προστέθηκε: ${title}`, href: '/milestones', byAssistant: true });
-    return {
-      tool: 'milestone-add',
-      en: `Added “${title}” to Milestones, due in two weeks. Open the board to change the date.`,
-      el: `Προστέθηκε το «${title}» στα Ορόσημα, σε δύο εβδομάδες. Άνοιξε τον πίνακα για την ημερομηνία.`,
-      href: '/milestones',
-      links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }],
-    };
+    if (!propose) return apply();
+    // milestoneService writes through upsertMilestone/removeMilestone — the
+    // same local list, mirrored to the account's cloud by the write observer —
+    // so removeMilestone reverts the apply on both stores.
+    return proposalResult(
+      {
+        summary: { en: `Add “${title}” to Milestones, due in two weeks?`, el: `Προσθήκη «${title}» στα Ορόσημα, σε δύο εβδομάδες;` },
+        reversal: 'full',
+        apply,
+        undo: () => { removeMilestone(createdId); logUndo(logged); },
+      },
+      { tool: 'milestone-add', href: '/milestones', links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }] },
+    );
   }
   const list = milestoneService.list();
   if (list.length === 0) {
@@ -826,55 +1082,90 @@ function navigateResult(query: string): AssistantResult | null {
   };
 }
 
-function bookMentor(person: Person): AssistantResult {
-  const when = new Date();
-  when.setDate(when.getDate() + 3);
-  when.setHours(10, 0, 0, 0);
-  addSession({
-    id: `ses-${person.id}-${Date.now()}`,
-    title: `Mentorship · ${person.fullName}`,
-    type: 'Mentorship',
-    time: when.toISOString(),
-    duration: '30m',
-    location: 'Video call',
-    participants: [person.fullName],
-    priority: 'High',
-  });
-  setId(listKeys.mentors, person.id, true);
-  logActivity({ kind: 'session', title: `Booked ${person.fullName}`, titleEl: `Κλείστηκε συνάντηση με ${person.fullName}`, href: '/calendar', byAssistant: true });
-  return {
-    tool: 'book',
-    en: `Booked a 30-minute session with ${person.fullName} in three days. It is on the Calendar.`,
-    el: `Κλείστηκε συνάντηση 30 λεπτών με ${person.fullName} σε τρεις μέρες. Είναι στο Ημερολόγιο.`,
-    href: '/calendar',
-    links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }, linkFor(person)],
+function bookMentor(person: Person, propose: boolean): AssistantResult {
+  const sessionId = `ses-${person.id}-${Date.now()}`;
+  const hadMentor = readIds(listKeys.mentors).includes(person.id);
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const when = new Date();
+    when.setDate(when.getDate() + 3);
+    when.setHours(10, 0, 0, 0);
+    addSession({
+      id: sessionId,
+      title: `Mentorship · ${person.fullName}`,
+      type: 'Mentorship',
+      time: when.toISOString(),
+      duration: '30m',
+      location: 'Video call',
+      participants: [person.fullName],
+      priority: 'High',
+    });
+    setId(listKeys.mentors, person.id, true);
+    logged = { kind: 'session', title: `Booked ${person.fullName}`, titleEl: `Κλείστηκε συνάντηση με ${person.fullName}`, href: '/calendar' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'book',
+      en: `Booked a 30-minute session with ${person.fullName} in three days. It is on the Calendar.`,
+      el: `Κλείστηκε συνάντηση 30 λεπτών με ${person.fullName} σε τρεις μέρες. Είναι στο Ημερολόγιο.`,
+      href: '/calendar',
+      links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }, linkFor(person)],
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Book a 30-minute session with ${person.fullName} in three days?`, el: `Κράτηση συνάντησης 30′ με ${person.fullName} σε τρεις μέρες;` },
+      reversal: 'full',
+      apply,
+      undo: () => {
+        removeSession(sessionId);
+        if (!hadMentor) setId(listKeys.mentors, person.id, false);
+        logUndo(logged);
+      },
+    },
+    { tool: 'book', href: '/calendar', links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }, linkFor(person)] },
+  );
 }
 
-function sessionAddResult(query: string): AssistantResult {
+function sessionAddResult(query: string, propose: boolean): AssistantResult {
   const meeting = /\bmeeting\b/.test(fold(query));
-  const when = new Date();
-  when.setDate(when.getDate() + 1);
-  when.setHours(10, 0, 0, 0);
   const title = meeting ? 'Investor meeting' : 'Studio event';
-  addSession({
-    id: `ses-studio-${Date.now()}`,
-    title,
-    type: meeting ? 'Meeting' : 'Event',
-    time: when.toISOString(),
-    duration: '30m',
-    location: meeting ? 'Video call' : 'Workspace',
-    participants: ['Demo User'],
-    priority: 'Medium',
-  });
-  logActivity({ kind: 'session', title: `Scheduled ${title}`, titleEl: `Προγραμματίστηκε: ${title}`, href: '/calendar', byAssistant: true });
-  return {
-    tool: 'session-add',
-    en: `Put “${title}” on Calendar for tomorrow 10:00. Same list the Calendar page reads.`,
-    el: `Μπήκε το «${title}» στο Ημερολόγιο για αύριο 10:00. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
-    href: '/calendar',
-    links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
+  const sessionId = `ses-studio-${Date.now()}`;
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const when = new Date();
+    when.setDate(when.getDate() + 1);
+    when.setHours(10, 0, 0, 0);
+    addSession({
+      id: sessionId,
+      title,
+      type: meeting ? 'Meeting' : 'Event',
+      time: when.toISOString(),
+      duration: '30m',
+      location: meeting ? 'Video call' : 'Workspace',
+      participants: [],
+      priority: 'Medium',
+    });
+    logged = { kind: 'session', title: `Scheduled ${title}`, titleEl: `Προγραμματίστηκε: ${title}`, href: '/calendar' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'session-add',
+      en: `Put “${title}” on Calendar for tomorrow 10:00. Same list the Calendar page reads.`,
+      el: `Μπήκε το «${title}» στο Ημερολόγιο για αύριο 10:00. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
+      href: '/calendar',
+      links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Put “${title}” on Calendar for tomorrow 10:00?`, el: `Προσθήκη «${title}» στο Ημερολόγιο για αύριο 10:00;` },
+      reversal: 'full',
+      apply,
+      undo: () => { removeSession(sessionId); logUndo(logged); },
+    },
+    { tool: 'session-add', href: '/calendar', links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }] },
+  );
 }
 
 function becomeMentorResult(): AssistantResult {
@@ -910,7 +1201,7 @@ function parseMoney(folded: string): number | null {
   return Math.round(n);
 }
 
-function applyResult(query: string): AssistantResult {
+function applyResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   const catalog = [
     { keys: ['yc', 'y combinator'], title: 'Y Combinator S26', type: 'Accelerator' },
@@ -929,21 +1220,43 @@ function applyResult(query: string): AssistantResult {
   const hit = catalog.find((item) => item.keys.some((key) => folded.includes(key)));
   const title = hit?.title ?? (query.replace(/^(please\s+)?(apply(\s+now)?(\s+to)?|applying to)\s+/i, '').trim() || 'Studio program');
   const type = hit?.type ?? 'Program';
-  trackApplication(title, type);
-  logActivity({ kind: 'application', title: `Applied to ${title}`, titleEl: `Αίτηση: ${title}`, href: '/fundraising', byAssistant: true });
-  return {
-    tool: 'apply',
-    en: `Draft application for “${title}” is on the same tracking list Fundraising and Founder Tools read.`,
-    el: `Η αίτηση για «${title}» είναι στην ίδια λίστα tracking με τη Χρηματοδότηση και τα Εργαλεία ιδρυτή.`,
-    href: '/fundraising',
-    links: [
-      { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
-      { href: '/founder-tools', en: 'Open founder tools', el: 'Άνοιγμα εργαλείων' },
-    ],
+  const alreadyTracked = readTracked().some((item) => item.program.toLowerCase() === title.toLowerCase());
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    trackApplication(title, type);
+    logged = { kind: 'application', title: `Applied to ${title}`, titleEl: `Αίτηση: ${title}`, href: '/fundraising' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'apply',
+      en: `Draft application for “${title}” is on the same tracking list Fundraising and Founder Tools read.`,
+      el: `Η αίτηση για «${title}» είναι στην ίδια λίστα tracking με τη Χρηματοδότηση και τα Εργαλεία ιδρυτή.`,
+      href: '/fundraising',
+      links: [
+        { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
+        { href: '/founder-tools', en: 'Open founder tools', el: 'Άνοιγμα εργαλείων' },
+      ],
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Draft an application to “${title}”?`, el: `Προσχέδιο αίτησης για «${title}»;` },
+      reversal: 'full',
+      apply,
+      undo: () => { if (!alreadyTracked) untrackApplication(title); logUndo(logged); },
+    },
+    {
+      tool: 'apply',
+      href: '/fundraising',
+      links: [
+        { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
+        { href: '/founder-tools', en: 'Open founder tools', el: 'Άνοιγμα εργαλείων' },
+      ],
+    },
+  );
 }
 
-function claimPerkResult(query: string): AssistantResult {
+function claimPerkResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   const catalog = [
     { keys: ['aws', 'amazon web'], id: 'aws', name: 'Amazon Web Services' },
@@ -956,42 +1269,117 @@ function claimPerkResult(query: string): AssistantResult {
     { keys: ['mercury'], id: 'mercury', name: 'Mercury' },
   ];
   const hit = catalog.find((item) => item.keys.some((key) => folded.includes(key))) ?? catalog[0]!;
-  setId(listKeys.perks, hit.id, true);
-  logActivity({ kind: 'perk', title: `Claimed ${hit.name}`, titleEl: `Διεκδικήθηκε: ${hit.name}`, href: '/perks', byAssistant: true });
-  return {
-    tool: 'claim-perk',
-    en: `${hit.name} is marked claimed on Perks — same list the page reads.`,
-    el: `Το ${hit.name} σημειώθηκε ως claimed στις Παροχές — η ίδια λίστα με τη σελίδα.`,
-    href: '/perks',
-    links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }],
+  if (isDemoData()) {
+    const had = readIds(listKeys.perks).includes(hit.id);
+    let logged: LoggedWrite | null = null;
+    const apply = (): AssistantResult => {
+      setId(listKeys.perks, hit.id, true);
+      logged = { kind: 'perk', title: `Claimed ${hit.name}`, titleEl: `Διεκδικήθηκε: ${hit.name}`, href: '/perks' };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'claim-perk',
+        en: `${hit.name} is marked claimed on Perks — same list the page reads.`,
+        el: `Το ${hit.name} σημειώθηκε ως claimed στις Παροχές — η ίδια λίστα με τη σελίδα.`,
+        href: '/perks',
+        links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }],
+      };
+    };
+    if (!propose) return apply();
+    return proposalResult(
+      {
+        summary: { en: `Mark ${hit.name} claimed on Perks?`, el: `Σήμανση ${hit.name} ως claimed στις Παροχές;` },
+        reversal: 'full',
+        apply,
+        undo: () => { if (!had) setId(listKeys.perks, hit.id, false); logUndo(logged); },
+      },
+      { tool: 'claim-perk', href: '/perks', links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }] },
+    );
+  }
+  // Real accounts: perks are provider links, not platform claims — star the
+  // card (same list the Perks star reads) and point at the apply link.
+  const catalogIds: Record<string, string> = {
+    aws: 'aws-activate', gcp: 'google-startups-cloud', notion: 'notion-startups',
+    hubspot: 'hubspot-startups', intercom: 'intercom-early-stage',
   };
+  const perkId = catalogIds[hit.id] ?? hit.id;
+  const saved = readValue<string[]>('cfb.savedPerks', []);
+  const apply = (): AssistantResult => {
+    if (!saved.includes(perkId)) writeValue('cfb.savedPerks', [...saved, perkId]);
+    return {
+      tool: 'claim-perk',
+      en: `Starred ${hit.name} on Perks so you can track it — the card links to the provider site for the actual application.`,
+      el: `Το ${hit.name} μπήκε αστεράκι στις Παροχές — η κάρτα οδηγεί στο site του παρόχου για την αίτηση.`,
+      href: '/perks',
+      links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Star ${hit.name} on Perks so you can track it?`, el: `Αστεράκι στο ${hit.name} στις Παροχές;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeValue('cfb.savedPerks', saved); },
+    },
+    { tool: 'claim-perk', href: '/perks', links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }] },
+  );
 }
 
-function recordInvestmentResult(query: string): AssistantResult {
+function recordInvestmentResult(query: string, propose: boolean): AssistantResult {
   const amount = parseMoney(fold(query)) ?? 50_000;
-  const round = writeRound({ committedAmount: readRound().committedAmount + amount });
-  logActivity({ kind: 'round', title: `Recorded $${amount.toLocaleString()}`, titleEl: `Καταγράφηκε $${amount.toLocaleString()}`, href: '/fundraising', byAssistant: true });
-  const pct = round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0;
-  return {
-    tool: 'record-investment',
-    en: `Added $${amount.toLocaleString()} to ${round.name}. Now $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%). Same numbers Fundraising shows.`,
-    el: `Προστέθηκαν $${amount.toLocaleString()} στον ${round.name}. Τώρα $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%). Τα ίδια νούμερα με τη Χρηματοδότηση.`,
-    href: '/fundraising',
-    links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }],
+  const previous = readRound();
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const round = writeRound({ committedAmount: previous.committedAmount + amount });
+    logged = { kind: 'round', title: `Recorded $${amount.toLocaleString()}`, titleEl: `Καταγράφηκε $${amount.toLocaleString()}`, href: '/fundraising' };
+    logActivity({ ...logged, byAssistant: true });
+    const pct = round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0;
+    return {
+      tool: 'record-investment',
+      en: `Added $${amount.toLocaleString()} to ${round.name}. Now $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%). Same numbers Fundraising shows.`,
+      el: `Προστέθηκαν $${amount.toLocaleString()} στον ${round.name}. Τώρα $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%). Τα ίδια νούμερα με τη Χρηματοδότηση.`,
+      href: '/fundraising',
+      links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }],
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Add $${amount.toLocaleString()} to the ${previous.name} round?`, el: `Προσθήκη $${amount.toLocaleString()} στον γύρο ${previous.name};` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeRound(previous); logUndo(logged); },
+    },
+    { tool: 'record-investment', href: '/fundraising', links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }] },
+  );
 }
 
-function addTaskResult(query: string): AssistantResult {
+function addTaskResult(query: string, propose: boolean): AssistantResult {
   const title = query.replace(/^(please\s+)?(add|create|new)\s+(a\s+)?(task|todo)\s*(called|named|:)?\s*/i, '').trim() || 'New task';
-  addStudioTask(title);
-  logActivity({ kind: 'milestone', title: `Added task ${title}`, titleEl: `Προστέθηκε εργασία: ${title}`, href: '/workspace', byAssistant: true });
-  return {
-    tool: 'task-add',
-    en: `Added “${title}” to Workspace → Dashboard. Same board the Task button writes.`,
-    el: `Προστέθηκε το «${title}» στο Workspace → Dashboard. Ο ίδιος πίνακας με το κουμπί Task.`,
-    href: '/workspace',
-    links: [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }],
+  let created: StudioTask | null = null;
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    created = addStudioTask(title);
+    logged = { kind: 'milestone', title: `Added task ${title}`, titleEl: `Προστέθηκε εργασία: ${title}`, href: '/workspace' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'task-add',
+      en: `Added “${title}” to Workspace → Dashboard. Same board the Task button writes.`,
+      el: `Προστέθηκε το «${title}» στο Workspace → Dashboard. Ο ίδιος πίνακας με το κουμπί Task.`,
+      href: '/workspace',
+      links: [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }],
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Add “${title}” to Workspace → Dashboard?`, el: `Προσθήκη «${title}» στο Workspace → Dashboard;` },
+      reversal: 'full',
+      apply,
+      undo: () => { if (created) removeStudioTask(created.id); logUndo(logged); },
+    },
+    { tool: 'task-add', href: '/workspace', links: [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }] },
+  );
 }
 
 function activityResult(): AssistantResult {
@@ -1017,25 +1405,35 @@ function activityResult(): AssistantResult {
   };
 }
 
-function eventsResult(query: string): AssistantResult {
+function eventsResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
   if (/\bhost|διοργανωσ|create an event|how do i host/.test(folded)) {
-    return sessionAddResult('Schedule a new event on my calendar');
+    return sessionAddResult('Schedule a new event on my calendar', propose);
   }
+  const demoCopy = isDemoData();
   return {
     tool: 'events',
-    en: 'Same list as the Events page: Startup Founders Networking Night (London, 28 Mar), Mastering the Seed Round Pitch (online, 2 Apr), FinTech Demo Day Q2 (New York, 15 Apr).',
-    el: 'Η ίδια λίστα με τη σελίδα Εκδηλώσεις: Startup Founders Networking Night (Λονδίνο, 28 Μαρ), Mastering the Seed Round Pitch (online, 2 Απρ), FinTech Demo Day Q2 (Νέα Υόρκη, 15 Απρ).',
+    en: demoCopy
+      ? 'Same list as the Events page: Startup Founders Networking Night (London, 28 Mar), Mastering the Seed Round Pitch (online, 2 Apr), FinTech Demo Day Q2 (New York, 15 Apr).'
+      : 'Events shows every session published by the platform and members — newest first, with real RSVP counts. Open Events to register; anything you register for lands on your Calendar.',
+    el: demoCopy
+      ? 'Η ίδια λίστα με τη σελίδα Εκδηλώσεις: Startup Founders Networking Night (Λονδίνο, 28 Μαρ), Mastering the Seed Round Pitch (online, 2 Απρ), FinTech Demo Day Q2 (Νέα Υόρκη, 15 Απρ).'
+      : 'Οι Εκδηλώσεις δείχνουν κάθε session που δημοσίευσε η πλατφόρμα ή μέλη — με πραγματικά RSVP. Άνοιξε Εκδηλώσεις για εγγραφή· ό,τι δηλώσεις πάει στο Ημερολόγιό σου.',
     href: '/events',
     links: [{ href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' }, { href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
   };
 }
 
 function programsResult(): AssistantResult {
+  const demoCopy = isDemoData();
   return {
     tool: 'programs',
-    en: 'Same list as the Programs page: FinTech Accelerator Q3 2026 ($120k, 12 weeks), CleanTech Innovation Grant ($50k, non-dilutive), Founders Academy Bootcamp. Open Programs to filter Accelerators, Grants, or Bootcamps.',
-    el: 'Η ίδια λίστα με τη σελίδα Προγράμματα: FinTech Accelerator Q3 2026 ($120k, 12 εβδομάδες), CleanTech Innovation Grant ($50k), Founders Academy Bootcamp. Άνοιξε Προγράμματα για φίλτρο.',
+    en: demoCopy
+      ? 'Same list as the Programs page: FinTech Accelerator Q3 2026 ($120k, 12 weeks), CleanTech Innovation Grant ($50k, non-dilutive), Founders Academy Bootcamp. Open Programs to filter Accelerators, Grants, or Bootcamps.'
+      : 'Programs lists every published accelerator, grant and bootcamp, with the deadlines the admin set. Bookmark any card or tell me which one to apply to — I file the application for you.',
+    el: demoCopy
+      ? 'Η ίδια λίστα με τη σελίδα Προγράμματα: FinTech Accelerator Q3 2026 ($120k, 12 εβδομάδες), CleanTech Innovation Grant ($50k), Founders Academy Bootcamp. Άνοιξε Προγράμματα για φίλτρο.'
+      : 'Τα Προγράμματα δείχνουν κάθε δημοσιευμένο accelerator, grant και bootcamp με τις πραγματικές προθεσμίες. Κάνε bookmark ή πες μου σε ποιο να κάνω αίτηση.',
     href: '/programs',
     links: [{ href: '/programs', en: 'Open programs', el: 'Άνοιγμα προγραμμάτων' }],
   };
@@ -1044,7 +1442,7 @@ function programsResult(): AssistantResult {
 function aboutResult(query: string): AssistantResult | null {
   const folded = fold(query);
   const asking = /\b(tell me about|what is|what's|whats|explain|who is|πληροφορ|τι ειναι|ποιος)\b/.test(folded);
-  const hit = KNOWLEDGE.find((card) => card.keys.some((key) => folded.includes(key)));
+  const hit = KNOWLEDGE.find((card) => (!card.demo || isDemoData()) && card.keys.some((key) => folded.includes(key)));
   if (hit && (asking || hit.keys.some((key) => key.length >= 10 && folded.includes(key)))) {
     return {
       tool: 'about',
@@ -1068,20 +1466,30 @@ function aboutResult(query: string): AssistantResult | null {
 }
 
 function perksResult(): AssistantResult {
+  const demoCopy = isDemoData();
   return {
     tool: 'perks',
-    en: 'Same list as Perks: AWS Activate ($100k credits), Stripe fee-free, HubSpot, Notion, Google Cloud, Intercom, Slack, Mercury. Open Perks to claim one.',
-    el: 'Η ίδια λίστα με τις Παροχές: AWS Activate, Stripe, HubSpot, Notion, Google Cloud, Intercom, Slack, Mercury. Άνοιξε Παροχές για claim.',
+    en: demoCopy
+      ? 'Same list as Perks: AWS Activate ($100k credits), Stripe fee-free, HubSpot, Notion, Google Cloud, Intercom, Slack, Mercury. Open Perks to claim one.'
+      : 'Perks lists every founder program the platform publishes, each with the provider link to apply. Star the ones you want to track.',
+    el: demoCopy
+      ? 'Η ίδια λίστα με τις Παροχές: AWS Activate, Stripe, HubSpot, Notion, Google Cloud, Intercom, Slack, Mercury. Άνοιξε Παροχές για claim.'
+      : 'Οι Παροχές δείχνουν κάθε πρόγραμμα που δημοσιεύει η πλατφόρμα, με το link του παρόχου για αίτηση. Κάνε αστεράκι όσες θέλεις να παρακολουθείς.',
     href: '/perks',
     links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }],
   };
 }
 
 function resourcesResult(): AssistantResult {
+  const demoCopy = isDemoData();
   return {
     tool: 'resources',
-    en: 'Resources has the same four tabs as the page: Learning (Fundraising, Sales, Legal, PMF), Partner Services, Jobs, and Support. Ask a course name or open Resources.',
-    el: 'Οι Πόροι έχουν τις ίδιες τέσσερις καρτέλες: Learning, Υπηρεσίες, Θέσεις, Υποστήριξη. Πες όνομα μαθήματος ή άνοιξε Πόρους.',
+    en: demoCopy
+      ? 'Resources has the same four tabs as the page: Learning (Fundraising, Sales, Legal, PMF), Partner Services, Jobs, and Support. Ask a course name or open Resources.'
+      : 'Resources has four tabs: Learning (published courses), Partner Services, Jobs — where members post roles — and Support. Open Resources to browse what is live.',
+    el: demoCopy
+      ? 'Οι Πόροι έχουν τις ίδιες τέσσερις καρτέλες: Learning, Υπηρεσίες, Θέσεις, Υποστήριξη. Πες όνομα μαθήματος ή άνοιξε Πόρους.'
+      : 'Οι Πόροι έχουν τέσσερις καρτέλες: Learning (δημοσιευμένα μαθήματα), Υπηρεσίες, Θέσεις — όπου τα μέλη αναρτούν roles — και Υποστήριξη.',
     href: '/resources',
     links: [{ href: '/resources', en: 'Open resources', el: 'Άνοιγμα πόρων' }],
   };
@@ -1097,27 +1505,66 @@ function legalResult(): AssistantResult {
   };
 }
 
+// Same platform spaces the Communities page renders — identical ids, so an
+// assistant join lands on the same Firestore document the page streams.
 const COMMUNITY_CATALOG = [
-  { id: '1', name: 'Fintech Founders' },
-  { id: '2', name: 'AI & Machine Learning' },
-  { id: '3', name: 'SaaS Builders' },
-  { id: '4', name: 'Web3 & Crypto' },
+  { id: 'fintech-founders', name: 'Fintech Founders', description: 'A space for entrepreneurs building the future of finance, banking, and payments.', category: 'Industry' },
+  { id: 'ai-machine-learning', name: 'AI & Machine Learning', description: 'Discussing the latest in LLMs, computer vision, and AI-driven applications.', category: 'Technology' },
+  { id: 'saas-builders', name: 'SaaS Builders', description: 'Everything about building, scaling, and selling software as a service.', category: 'Business Model' },
+  { id: 'web3-crypto', name: 'Web3 & Crypto', description: 'Decentralized applications, blockchain protocols, and the future of the web.', category: 'Technology' },
 ];
 
-function communitiesResult(query?: string): AssistantResult {
+function communitiesResult(query: string | undefined, propose: boolean): AssistantResult {
   const folded = fold(query || '');
   const joining = /\b(join|μπες|κανε join)\b/.test(folded);
   const hit = COMMUNITY_CATALOG.find((item) => folded.includes(fold(item.name)));
   if (joining && hit) {
-    setId(listKeys.communities, hit.id, true);
-    logActivity({ kind: 'community', title: `Joined ${hit.name}`, titleEl: `Έγινε join: ${hit.name}`, href: '/communities', byAssistant: true });
-    return {
-      tool: 'communities',
-      en: `You joined ${hit.name}. Same joined list the Communities page reads. Enter Community there opens Messages.`,
-      el: `Έγινες μέλος στο ${hit.name}. Η ίδια λίστα join με τη σελίδα Κοινότητες.`,
-      href: '/communities',
-      links: [{ href: '/communities', en: 'Open communities', el: 'Άνοιγμα κοινοτήτων' }],
+    const wasJoined = readIds(listKeys.communities).includes(hit.id);
+    let logged: LoggedWrite | null = null;
+    const apply = (): AssistantResult => {
+      setId(listKeys.communities, hit.id, true);
+      logged = { kind: 'community', title: `Joined ${hit.name}`, titleEl: `Έγινε join: ${hit.name}`, href: '/communities' };
+      logActivity({ ...logged, byAssistant: true });
+      // Persist membership the same way the page's Join button does — cloud
+      // document for signed-in members, local mark in demo mode or offline.
+      void import('../firebase').then(({ auth }) => {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        void import('../lib/communities')
+          .then(({ joinCommunity }) => joinCommunity(hit.id, uid, { name: hit.name, description: hit.description, category: hit.category }))
+          .catch(() => { /* offline or permission-denied — the local mark still stands */ });
+      }).catch(() => { /* Firebase not configured (tests, demo) */ });
+      return {
+        tool: 'communities',
+        en: `You joined ${hit.name}. Same joined list the Communities page reads, and the membership is written to your account.`,
+        el: `Έγινες μέλος στο ${hit.name}. Η ίδια λίστα join με τη σελίδα Κοινότητες.`,
+        href: '/communities',
+        links: [{ href: '/communities', en: 'Open communities', el: 'Άνοιγμα κοινοτήτων' }],
+      };
     };
+    if (!propose) return apply();
+    // leaveCommunity exists in lib/communities and mirrors the join.
+    return proposalResult(
+      {
+        summary: { en: `Join ${hit.name}?`, el: `Συμμετοχή στο ${hit.name};` },
+        reversal: 'full',
+        apply,
+        undo: () => {
+          if (!wasJoined) {
+            setId(listKeys.communities, hit.id, false);
+            void import('../firebase').then(({ auth }) => {
+              const uid = auth.currentUser?.uid;
+              if (!uid) return;
+              void import('../lib/communities')
+                .then(({ leaveCommunity }) => leaveCommunity(hit.id, uid))
+                .catch(() => { /* offline — the local mark is already reverted */ });
+            }).catch(() => { /* Firebase not configured (tests, demo) */ });
+          }
+          logUndo(logged);
+        },
+      },
+      { tool: 'communities', href: '/communities', links: [{ href: '/communities', en: 'Open communities', el: 'Άνοιγμα κοινοτήτων' }] },
+    );
   }
   const joined = COMMUNITY_CATALOG.filter((item) => readIds(listKeys.communities).includes(item.id));
   const joinedLine = joined.length ? ` You have joined ${joined.map((item) => item.name).join(', ')}.` : '';
@@ -1142,50 +1589,99 @@ const PLAYBOOK_TASKS = [
   'Ask what the founding team still lacks',
 ];
 
-function playbookResult(): AssistantResult {
+function playbookResult(propose: boolean): AssistantResult {
   const existing = new Set(readTasks().map((item) => item.title.toLowerCase()));
   const added = PLAYBOOK_TASKS.filter((title) => !existing.has(title.toLowerCase()));
-  added.forEach((title) => addStudioTask(title));
-  logActivity({ kind: 'milestone', title: 'Started 7-day match plan', titleEl: 'Ξεκίνησε πλάνο 7 ημερών', href: '/workspace', byAssistant: true });
-  return {
-    tool: 'playbook',
-    en: `Seven tasks are on Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Added ${added.length} new.` : 'They were already there.'} Same board the Task button writes.`,
-    el: `Επτά εργασίες είναι στο Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Προστέθηκαν ${added.length}.` : 'Ήταν ήδη εκεί.'} Ο ίδιος πίνακας με το κουμπί Task.`,
-    href: '/workspace',
-    links: [
-      { href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' },
-      { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
-    ],
+  const links: AssistantLink[] = [
+    { href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' },
+    { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+  ];
+  const created: StudioTask[] = [];
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    added.forEach((title) => created.push(addStudioTask(title)));
+    logged = { kind: 'milestone', title: 'Started 7-day match plan', titleEl: 'Ξεκίνησε πλάνο 7 ημερών', href: '/workspace' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'playbook',
+      en: `Seven tasks are on Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Added ${added.length} new.` : 'They were already there.'} Same board the Task button writes.`,
+      el: `Επτά εργασίες είναι στο Workspace → Dashboard: ${PLAYBOOK_TASKS.join('; ')}. ${added.length ? `Προστέθηκαν ${added.length}.` : 'Ήταν ήδη εκεί.'} Ο ίδιος πίνακας με το κουμπί Task.`,
+      href: '/workspace',
+      links,
+    };
   };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Write the 7-day match plan to Workspace → Dashboard${added.length ? ` (${added.length} new tasks)` : ''}?`,
+        el: `Εγγραφή πλάνου 7 ημερών στο Workspace → Dashboard${added.length ? ` (${added.length} νέες εργασίες)` : ''};`,
+      },
+      reversal: 'full',
+      apply,
+      undo: () => { created.forEach((task) => removeStudioTask(task.id)); logUndo(logged); },
+    },
+    { tool: 'playbook', href: '/workspace', links },
+  );
 }
 
-function inviteResult(): AssistantResult {
-  const seeded = seedFounderInvites(3);
-  const href = seeded[0]?.href || '/quiz';
-  logActivity({ kind: 'request', title: 'Prepared 3 founder invites', titleEl: 'Ετοιμάστηκαν 3 προσκλήσεις ιδρυτών', href: '/network', byAssistant: true });
-  return {
-    tool: 'invite',
-    en: `Three invite slots are ready (${readInvites().length} on this account). Share ${href} — it is the same 60-second fit check, and Matches will read those fields. Copy the link and send it to three people you would actually work with.`,
-    el: `Τρεις θέσεις πρόσκλησης είναι έτοιμες (${readInvites().length} σε αυτόν τον λογαριασμό). Στείλε το ${href} — είναι το ίδιο fit check 60″, και το Matches θα διαβάσει αυτά τα πεδία.`,
-    href: '/network',
-    links: [
-      { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
-      { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' },
-    ],
+function inviteResult(propose: boolean): AssistantResult {
+  const before = readInvites();
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const seeded = seedFounderInvites(3);
+    const href = seeded[0]?.href || '/quiz';
+    logged = { kind: 'request', title: 'Prepared 3 founder invites', titleEl: 'Ετοιμάστηκαν 3 προσκλήσεις ιδρυτών', href: '/network' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'invite',
+      en: `Three invite slots are ready (${readInvites().length} on this account). Share ${href} — it is the same 60-second fit check, and Matches will read those fields. Copy the link and send it to three people you would actually work with.`,
+      el: `Τρεις θέσεις πρόσκλησης είναι έτοιμες (${readInvites().length} σε αυτόν τον λογαριασμό). Στείλε το ${href} — είναι το ίδιο fit check 60″, και το Matches θα διαβάσει αυτά τα πεδία.`,
+      href: '/network',
+      links: [
+        { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+        { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' },
+      ],
+    };
   };
+  if (!propose) return apply();
+  // seedFounderInvites only mints generic /quiz links on the local list —
+  // restoring the previous list reverts it exactly.
+  return proposalResult(
+    {
+      summary: { en: 'Prepare 3 founder invite slots?', el: 'Προετοιμασία 3 προσκλήσεων ιδρυτών;' },
+      reversal: 'full',
+      apply,
+      undo: () => { writeInvites(before); logUndo(logged); },
+    },
+    {
+      tool: 'invite',
+      href: '/network',
+      links: [
+        { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
+        { href: '/network', en: 'Open network', el: 'Άνοιγμα δικτύου' },
+      ],
+    },
+  );
 }
 
 function weekMeetResult(profile: AssistantProfile | null): AssistantResult {
   const ranked = rankPeople(fromProfile(profile ?? {}), cofounderPool()).slice(0, 2);
   const who = ranked[0]?.person;
+  const eventLineEn = isDemoData()
+    ? 'register for Startup Founders Networking Night on Events (London, 28 Mar 2026)'
+    : 'register for the next published session on Events';
+  const eventLineEl = isDemoData()
+    ? 'εγγράψου στο Startup Founders Networking Night στις Εκδηλώσεις (Λονδίνο, 28 Μαρ 2026)'
+    : 'εγγράψου στην επόμενη δημοσιευμένη συνεδρία στις Εκδηλώσεις';
   return {
     tool: 'week-meet',
     en: who
-      ? `This week: talk to ${who.fullName} (${who.headline}), then register for Startup Founders Networking Night on Events (London, 28 Mar 2026). Same people Matches ranks; same event the Events page lists.`
-      : 'This week: open Matches, then register for Startup Founders Networking Night on Events (London, 28 Mar 2026).',
+      ? `This week: talk to ${who.fullName} (${who.headline}), then ${eventLineEn}. Same people Matches ranks; same list Events shows.`
+      : `This week: open Matches, then ${eventLineEn}.`,
     el: who
-      ? `Αυτή την εβδομάδα: μίλα με ${who.fullName} (${who.headline}), μετά εγγράψου στο Startup Founders Networking Night στις Εκδηλώσεις (Λονδίνο, 28 Μαρ 2026). Τα ίδια άτομα με το Matches.`
-      : 'Αυτή την εβδομάδα: άνοιξε Αντιστοιχίσεις, μετά εγγράψου στο Networking Night στις Εκδηλώσεις.',
+      ? `Αυτή την εβδομάδα: μίλα με ${who.fullName} (${who.headline}), μετά ${eventLineEl}. Τα ίδια άτομα με το Matches.`
+      : `Αυτή την εβδομάδα: άνοιξε Αντιστοιχίσεις, μετά ${eventLineEl}.`,
     href: who ? `/profile/${who.id}` : '/matches',
     links: [
       ...(who ? [linkFor(who)] : []),
@@ -1241,11 +1737,11 @@ function attachSources(result: AssistantResult): AssistantResult {
   return result;
 }
 
-export function runAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
-  return attachSources(attachFollowUps(resolveAssistant(text, profile)));
+export function runAssistant(text: string, profile: AssistantProfile | null, options?: { propose?: boolean }): AssistantResult {
+  return attachSources(attachFollowUps(resolveAssistant(text, profile, options?.propose === true)));
 }
 
-function resolveAssistant(text: string, profile: AssistantProfile | null): AssistantResult {
+function resolveAssistant(text: string, profile: AssistantProfile | null, propose: boolean): AssistantResult {
   const query = text.trim();
   const folded = fold(query);
   if (!query) return helpResult();
@@ -1256,39 +1752,39 @@ function resolveAssistant(text: string, profile: AssistantProfile | null): Assis
     const rest = (slash[2] || '').trim();
     if (cmd === 'match' || cmd === 'matches') return matchesResult(profile, rest || 'who is my best match');
     if (cmd === 'scout') return scoutResult(profile);
-    if (cmd === 'need') return needResult(rest || query);
+    if (cmd === 'need') return needResult(rest || query, propose);
     if (cmd === 'next') return nextStepAssistant(profile);
     if (cmd === 'inbox') return inboxResult(rest || query);
-    if (cmd === 'plan') return playbookResult();
-    if (cmd === 'invite') return inviteResult();
+    if (cmd === 'plan') return playbookResult(propose);
+    if (cmd === 'invite') return inviteResult(propose);
     if (cmd === 'round') return roundResult();
     if (cmd === 'quiz') return fitCheckResult();
-    if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue');
+    if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue', propose);
     if (cmd === 'help') return helpResult();
   }
 
   const person = namedPerson(query);
   if (person && /\b(why|γιατι)\b/.test(folded) && /\b(match|ταιριαζ)\b/.test(folded)) return matchDetailResult(profile, person);
-  if (person && /\b(save|watch|αποθηκ)\b/.test(folded)) return saveOrConnect('save', person);
-  if (person && /\b(connect|request|intro|συνδεσ|αιτημ)\b/.test(folded)) return saveOrConnect('connect', person);
-  if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person);
+  if (person && /\b(save|watch|αποθηκ)\b/.test(folded)) return saveOrConnect('save', person, propose);
+  if (person && /\b(connect|request|intro|συνδεσ|αιτημ)\b/.test(folded)) return saveOrConnect('connect', person, propose);
+  if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person, propose);
   if (/\b(still lack|team lack|founding team|τι λειπ|τι χρειάζεται η ομάδα)\b/.test(folded)) return teamGapResult(profile);
   if (/\b(propose|scout|do not send|μην στειλ|προτειν)\b/.test(folded) && /\b(people|three|3|τρεις|συνιδρυτ|match)\b/.test(folded)) return scoutResult(profile);
-  if (hasStem(folded, 'need card', 'καρτα αναγκ', 'draft a need') || (hasStem(folded, 'need', 'καρτα', 'αναγκ') && hasStem(folded, 'draft', 'write', 'close', 'change', 'list', 'γραψ', 'κλεισ', 'αλλαξ'))) return needResult(query);
+  if (hasStem(folded, 'need card', 'καρτα αναγκ', 'draft a need') || (hasStem(folded, 'need', 'καρτα', 'αναγκ') && hasStem(folded, 'draft', 'write', 'close', 'change', 'list', 'γραψ', 'κλεισ', 'αλλαξ'))) return needResult(query, propose);
   if (/\b(search( my)? (messages?|inbox|thread)|ψαξε( στα)? μηνυμ)\b/.test(folded)) return inboxResult(query);
-  if (/\b(open to (a )?(co-?founder|investor|advisor)|ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ))\b/.test(folded)) return openToResult(query);
+  if (/\b(open to (a )?(co-?founder|investor|advisor)|ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ))\b/.test(folded)) return openToResult(query, propose);
   if (/\b(what should i do first|next step|τι να κανω πρωτα)\b/.test(folded)) return nextStepAssistant(profile);
-  if (/\b(7-day|seven-day|playbook|match plan|πλανο 7|πλάνο 7)\b/.test(folded)) return playbookResult();
-  if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three|προσκαλεσ.{0,8}3|προσκάλεσ.{0,8}3)\b/.test(folded)) return inviteResult();
+  if (/\b(7-day|seven-day|playbook|match plan|πλανο 7|πλάνο 7)\b/.test(folded)) return playbookResult(propose);
+  if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three|προσκαλεσ.{0,8}3|προσκάλεσ.{0,8}3)\b/.test(folded)) return inviteResult(propose);
   if (/\b(meet this week|who should i meet|ποιον .{0,20}εβδομαδ|αυτη την εβδομαδα)\b/.test(folded)) return weekMeetResult(profile);
   if (/\b(fit check|archetype|quiz|τι ειδους|τι είδους συνιδρυτ)\b/.test(folded)) return fitCheckResult();
 
-  if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query);
+  if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query, propose);
   if (/\bclaim\b/.test(folded) && /\b(perk|aws|stripe|hubspot|notion|google cloud|gcp|intercom|slack|mercury|amazon web|παροχ)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) {
-    return claimPerkResult(query);
+    return claimPerkResult(query, propose);
   }
-  if (/\brecord\b/.test(folded) && /\binvest/.test(folded)) return recordInvestmentResult(query);
-  if (/\b(add|create|new)\b/.test(folded) && /\b(task|todo)\b/.test(folded)) return addTaskResult(query);
+  if (/\brecord\b/.test(folded) && /\binvest/.test(folded)) return recordInvestmentResult(query, propose);
+  if (/\b(add|create|new)\b/.test(folded) && /\b(task|todo)\b/.test(folded)) return addTaskResult(query, propose);
 
   const about = aboutResult(query);
   if (about) return about;
@@ -1305,14 +1801,14 @@ function resolveAssistant(text: string, profile: AssistantProfile | null): Assis
   if (/\b(become|how do i|πως γιν|γινω)\b/.test(folded) && /\b(mentor|μεντορ)\b/.test(folded)) return becomeMentorResult();
   if (/\b(mentor|μεντορ)\b/.test(folded)) return mentorsResult(query);
   if (/\b(activity|history|notification|τι εγινε)\b/.test(folded)) return activityResult();
-  if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded)) return sessionAddResult(query);
-  if (/\b(events?|meetups?|εκδηλ|διοργανωσ)\b/.test(folded)) return eventsResult(query);
-  if (/\b(communities|community|κοινοτ)/.test(folded)) return communitiesResult(query);
+  if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded)) return sessionAddResult(query, propose);
+  if (/\b(events?|meetups?|εκδηλ|διοργανωσ)\b/.test(folded)) return eventsResult(query, propose);
+  if (/\b(communities|community|κοινοτ)/.test(folded)) return communitiesResult(query, propose);
   if (/\b(programs?|accelerator|bootcamp|προγραμ)\b/.test(folded)) return programsResult();
   if (/\b(perks?|credits|παροχ)\b/.test(folded)) return perksResult();
   if (/\b(legal|template|nda|νομικ)\b/.test(folded)) return legalResult();
   if (/\b(courses?|learning|resources?|μαθημ|πορο)\b/.test(folded)) return resourcesResult();
-  if (/\b(milestone|οροσημ|overdue|εκπροθεσμ|due)\b/.test(folded)) return milestonesResult(query);
+  if (/\b(milestone|οροσημ|overdue|εκπροθεσμ|due)\b/.test(folded)) return milestonesResult(query, propose);
   if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return pipelineResult();
   if (/\b(round|raise|runway|valuation|γυρ|χρηματοδ|επενδυτ)\b/.test(folded)) return roundResult();
   if (/\b(today|status|brief|next|τι να κανω|τι εκκρεμ|επομεν)\b/.test(folded)) return briefingResult(profile);

@@ -1,44 +1,39 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
-import { motion, AnimatePresence } from "motion/react";
-import { 
- TrendingUp, Activity, Award, Star, 
- ChevronRight, Calendar, Users, Target, 
- BarChart3, PieChart, Zap, Rocket,
- ArrowUpRight, ArrowDownRight, Info,
- Cpu,
- Globe,
- Shield
+import { motion } from "motion/react";
+import {
+ TrendingUp, Activity, Award, Star,
+ ChevronRight, Calendar, Users, Target,
+ BarChart3, Zap, Rocket,
+ ArrowUpRight, Info,
 } from "lucide-react";
-import { 
- LineChart, Line, XAxis, YAxis, CartesianGrid, 
+import {
+ XAxis, YAxis, CartesianGrid,
  Tooltip, ResponsiveContainer, AreaChart, Area,
  BarChart, Bar
 } from 'recharts';
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
-import { User } from "../types";
-import { keys, readActivity } from "../lib/localLists";
+import { User, UserProfile } from "../types";
+import { keys, listKeys, readActivity, readIds, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { useT } from "../lib/language";
+import { useAuth } from "../App";
+import { mergeFitIntoViewer } from "../lib/fitCheck";
+import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 
 interface InsightsProps {
  user: User;
 }
 
-const readinessData = [
- { name: 'Jan', score: 45 },
- { name: 'Feb', score: 52 },
- { name: 'Mar', score: 48 },
- { name: 'Apr', score: 61 },
- { name: 'May', score: 58 },
- { name: 'Jun', score: 72 },
- { name: 'Jul', score: 85 },
+// Demo-only series — pretty charts for the demo account, never real members.
+const DEMO_READINESS = [
+ { name: 'Jan', score: 45 }, { name: 'Feb', score: 52 }, { name: 'Mar', score: 48 },
+ { name: 'Apr', score: 61 }, { name: 'May', score: 58 }, { name: 'Jun', score: 72 }, { name: 'Jul', score: 85 },
 ];
-
-const activityData = [
+const DEMO_ACTIVITY = [
  { name: 'Mon', connections: 4, messages: 12, views: 24 },
  { name: 'Tue', connections: 2, messages: 8, views: 18 },
  { name: 'Wed', connections: 6, messages: 15, views: 32 },
@@ -48,26 +43,105 @@ const activityData = [
  { name: 'Sun', connections: 2, messages: 7, views: 15 },
 ];
 
+const DAY_EL = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
+const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type ScorePoint = { at: string; score: number };
+
+/** Readiness = share of the profile fields matching actually reads. */
+function profileCompleteness(profile: UserProfile | null): number {
+ if (!profile) return 0;
+ const fields = [
+  (profile.skills?.length ?? 0) > 0,
+  (profile.lookingFor?.length ?? 0) > 0,
+  Boolean(profile.stage),
+  Boolean(profile.commitment),
+  Boolean(profile.location),
+  Boolean(profile.headline),
+  Boolean(profile.bio),
+  Boolean(profile.company),
+ ];
+ return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+}
+
 export default function Insights({ user }: InsightsProps) {
  const t = useT();
  const navigate = useNavigate();
+ const { profile, isDemoMode } = useAuth();
  const [activeRange, setActiveRange] = useState('7D');
  const studioActivity = useStored(readActivity, [keys.activity]);
+ const saved = useStored(readSaved, [keys.saved]);
+ const requests = useStored(readRequests, [keys.requests]);
+ const tracked = useStored(readTracked, [keys.tracked]);
+ const round = useStored(readRound, [keys.round]);
+ const pitch = useStored(() => readValue<Record<string, string>>(keys.pitch, {}), [keys.pitch]);
+ const history = useStored(() => readValue<ScorePoint[]>(keys.readiness, []), [keys.readiness]);
+
+ const merged = useMemo(() => mergeFitIntoViewer(profile), [profile]);
+ const readinessScore = isDemoMode ? 85 : profileCompleteness(merged);
+
+ // Persist one score point a day so the progression chart is real.
+ useEffect(() => {
+  if (isDemoMode) return;
+  const last = history[history.length - 1];
+  const dayAgo = Date.now() - 20 * 3600 * 1000;
+  if (!last || new Date(last.at).getTime() < dayAgo || last.score !== readinessScore) {
+   writeValue(keys.readiness, [...history, { at: new Date().toISOString(), score: readinessScore }].slice(-60));
+  }
+ }, [isDemoMode, readinessScore]); // eslint-disable-line react-hooks/exhaustive-deps -- history is intentionally read once per score change
+
+ const rangeDays: Record<string, number> = { '24H': 1, '7D': 7, '30D': 30, ALL: 3650 };
+ const days = rangeDays[activeRange] ?? 7;
+ const cutoff = Date.now() - days * 86400000;
+
  const readinessView = useMemo(() => {
-  if (activeRange === '24H') return readinessData.slice(-1);
-  if (activeRange === '7D') return readinessData.slice(-2);
-  if (activeRange === '30D') return readinessData.slice(-4);
-  return readinessData;
- }, [activeRange]);
+  if (isDemoMode) {
+   if (activeRange === '24H') return DEMO_READINESS.slice(-1);
+   if (activeRange === '7D') return DEMO_READINESS.slice(-2);
+   if (activeRange === '30D') return DEMO_READINESS.slice(-4);
+   return DEMO_READINESS;
+  }
+  const points = history.filter((p) => new Date(p.at).getTime() >= cutoff);
+  return points.map((p) => {
+   const d = new Date(p.at);
+   return { name: DAY_EN[d.getDay()] ?? '', score: p.score };
+  });
+ }, [isDemoMode, activeRange, history, cutoff]);
+
+ const readinessDelta = useMemo(() => {
+  if (isDemoMode) return 12;
+  const points = history;
+  if (points.length < 2) return null;
+  return points[points.length - 1]!.score - points[0]!.score;
+ }, [isDemoMode, history]);
+
+ // Real weekly engagement: activity entries grouped by weekday.
  const activityView = useMemo(() => {
-  if (activeRange === '24H') return activityData.slice(-1);
-  if (activeRange === '7D') return activityData.slice(-3);
-  if (activeRange === '30D') return activityData.slice(-5);
-  return activityData;
- }, [activeRange]);
- const lastScore = readinessView[readinessView.length - 1]?.score ?? 85;
+  if (isDemoMode) {
+   if (activeRange === '24H') return DEMO_ACTIVITY.slice(-1);
+   if (activeRange === '7D') return DEMO_ACTIVITY.slice(-3);
+   if (activeRange === '30D') return DEMO_ACTIVITY.slice(-5);
+   return DEMO_ACTIVITY;
+  }
+  const week: { name: string; connections: number; messages: number; views: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+   const d = new Date(Date.now() - i * 86400000);
+   const key = d.toISOString().slice(0, 10);
+   const items = studioActivity.filter((a) => a.at.slice(0, 10) === key);
+   week.push({
+    name: DAY_EN[d.getDay()] ?? '',
+    connections: items.filter((a) => a.kind === 'request' || a.kind === 'connection' || a.kind === 'community').length,
+    messages: items.filter((a) => a.kind === 'message').length,
+    views: items.filter((a) => a.kind !== 'request' && a.kind !== 'connection' && a.kind !== 'community' && a.kind !== 'message').length,
+   });
+  }
+  return week;
+ }, [isDemoMode, activeRange, studioActivity]);
+
+ const lastScore = readinessView[readinessView.length - 1]?.score ?? readinessScore;
  const viewSum = activityView.reduce((sum, row) => sum + row.views, 0);
  const connectSum = activityView.reduce((sum, row) => sum + row.connections, 0);
+
  const axisLabel: Record<string, string> = {
   Jan: t('Jan', 'Ιαν'), Feb: t('Feb', 'Φεβ'), Mar: t('Mar', 'Μαρ'), Apr: t('Apr', 'Απρ'),
   May: t('May', 'Μάι'), Jun: t('Jun', 'Ιουν'), Jul: t('Jul', 'Ιουλ'),
@@ -77,14 +151,23 @@ export default function Insights({ user }: InsightsProps) {
  const readinessChart = readinessView.map((row) => ({ ...row, name: axisLabel[row.name] ?? row.name }));
  const activityChart = activityView.map((row) => ({ ...row, name: axisLabel[row.name] ?? row.name }));
  const you = t('You', 'Εσύ');
- const kpis = [
-  { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: "+12%", icon: Target,    dot: "bg-amber-400",   bar: "bg-amber-400",   pct: lastScore, href: '/profile' },
-  { label: t("Profile Views", "Προβολές προφίλ"),   value: String(viewSum), change: "+24%", icon: Users,     dot: "bg-blue-400",    bar: "bg-blue-400",    pct: Math.min(100, viewSum), href: '/network' },
-  { label: t("Connections", "Συνδέσεις"),     value: String(connectSum), change: "+8%",  icon: Zap,       dot: "bg-violet-400",  bar: "bg-violet-400",  pct: Math.min(100, connectSum * 8), href: '/network' },
-  { label: t("Activity Score", "Δείκτης δραστηριότητας"),  value: `${Math.min(99, 70 + connectSum)}%`,  change: "+5%",  icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
- ];
+
+ const kpis = isDemoMode
+  ? [
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: "+12%", icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
+   { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: "+24%", icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, viewSum), href: '/network' },
+   { label: t("Connections", "Συνδέσεις"), value: String(connectSum), change: "+8%", icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, connectSum * 8), href: '/network' },
+   { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: "+5%", icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
+  ]
+  : [
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/profile' },
+   { label: t("Saved people", "Αποθηκευμένοι"), value: String(saved.length), change: null, icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, saved.length * 10), href: '/network' },
+   { label: t("Requests sent", "Αιτήματα"), value: String(requests.length), change: null, icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, requests.length * 12), href: '/network' },
+   { label: t("Applications", "Αιτήσεις"), value: String(tracked.length), change: null, icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(100, tracked.length * 20), href: '/fundraising' },
+  ];
+
  const feed = [
-  ...studioActivity.slice(0, 4).map((item) => ({
+  ...studioActivity.slice(0, 4).map((item: ActivityItem) => ({
    user: item.byAssistant ? t('Assistant', 'Βοηθός') : (user.fullName?.split(' ')[0] || you),
    action: t(item.title, item.titleEl ?? item.title),
    time: item.at.slice(11, 16) || '',
@@ -93,11 +176,21 @@ export default function Insights({ user }: InsightsProps) {
    ic: 'text-stone-600',
    href: item.href || '/notifications',
   })),
-  { user: 'Alex Rivera',  action: t('connected with you', 'συνδέθηκε μαζί σου'),          time: t('2h ago', 'πριν 2 ώρες'), icon: Users,    bg: 'bg-stone-50',   ic: 'text-stone-600', href: '/network' },
-  { user: you,          action: t('reached 85% Readiness Score', 'έφτασε 85% στον δείκτη ετοιμότητας'), time: t('5h ago', 'πριν 5 ώρες'), icon: Award,    bg: 'bg-amber-50',   ic: 'text-amber-600', href: '/profile' },
-  { user: 'Sarah Chen',   action: t('sent you a message', 'σου έστειλε μήνυμα'),          time: t('1d ago', 'πριν 1 ημέρα'), icon: Zap,      bg: 'bg-violet-50',  ic: 'text-violet-600', href: '/messages' },
-  { user: you,          action: t('registered for Pitch Night', 'εγγράφηκε στη βραδιά pitch'),  time: t('2d ago', 'πριν 2 ημέρες'), icon: Calendar, bg: 'bg-blue-50',    ic: 'text-blue-600', href: '/events' },
+  ...(isDemoMode ? [
+   { user: 'Alex Rivera', action: t('connected with you', 'συνδέθηκε μαζί σου'), time: t('2h ago', 'πριν 2 ώρες'), icon: Users, bg: 'bg-stone-50', ic: 'text-stone-600', href: '/network' },
+   { user: you, action: t('reached 85% Readiness Score', 'έφτασε 85% στον δείκτη ετοιμότητας'), time: t('5h ago', 'πριν 5 ώρες'), icon: Award, bg: 'bg-amber-50', ic: 'text-amber-600', href: '/profile' },
+   { user: 'Sarah Chen', action: t('sent you a message', 'σου έστειλε μήνυμα'), time: t('1d ago', 'πριν 1 ημέρα'), icon: Zap, bg: 'bg-violet-50', ic: 'text-violet-600', href: '/messages' },
+   { user: you, action: t('registered for Pitch Night', 'εγγράφηκε στη βραδιά pitch'), time: t('2d ago', 'πριν 2 ημέρες'), icon: Calendar, bg: 'bg-blue-50', ic: 'text-blue-600', href: '/events' },
+  ] : []),
  ].slice(0, 4);
+
+ const pitchFilled = Object.values(pitch ?? {}).filter((v) => typeof v === 'string' && v.trim()).length;
+ const badges = [
+  { name: t('Early Bird', 'Πρώιμη εγγραφή'), icon: Rocket, unlocked: isDemoMode || Boolean(profile), promptName: 'Early Bird' },
+  { name: t('Networker', 'Δικτύωση'), icon: Users, unlocked: saved.length + requests.length >= 3, promptName: 'Networker' },
+  { name: t('Pitch Master', 'Άσος στο pitch'), icon: Zap, unlocked: pitchFilled >= 3, promptName: 'Pitch Master' },
+  { name: t('Funded', 'Με χρηματοδότηση'), icon: Star, unlocked: round.committedAmount > 0, promptName: 'Funded' },
+ ];
 
  return (
   <PageShell title={t("Insights", "Αναλυτικά στοιχεία")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
@@ -127,9 +220,11 @@ export default function Insights({ user }: InsightsProps) {
         <div className="w-8 h-8 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center shrink-0">
          <stat.icon className="w-4 h-4 text-stone-500" />
         </div>
-        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
-         <ArrowUpRight className="w-2.5 h-2.5" />{stat.change}
-        </div>
+        {stat.change ? (
+         <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
+          <ArrowUpRight className="w-2.5 h-2.5" />{stat.change}
+         </div>
+        ) : null}
        </div>
        <p className="text-base font-bold text-stone-900">{stat.value}</p>
        <p className="text-xs text-stone-400 tracking-wider mt-0.5">{stat.label}</p>
@@ -155,13 +250,21 @@ export default function Insights({ user }: InsightsProps) {
        <div className="flex items-center justify-between mb-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t('Readiness Score Progression', 'Εξέλιξη δείκτη ετοιμότητας')}</h3>
-         <p className="text-xs text-stone-400">{t('Venture maturity over time', 'Ωριμότητα του εγχειρήματος στον χρόνο')}</p>
+         <p className="text-xs text-stone-400">{isDemoMode ? t('Venture maturity over time', 'Ωριμότητα του εγχειρήματος στον χρόνο') : t('How complete your profile is — matching reads these fields', 'Πόσο πλήρες είναι το προφίλ σου — αυτά διαβάζει η αντιστοίχιση')}</p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-50 rounded-lg border border-stone-100">
          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
          <span className="text-xs font-semibold text-stone-500 tracking-wider">{t('Live', 'Ζωντανά')}</span>
         </div>
        </div>
+       {readinessChart.length === 0 ? (
+        <EmptyHint
+         title={t('No score history yet.', 'Δεν υπάρχει ιστορικό δείκτη ακόμη.')}
+         detail={t('Your readiness is recorded once a day — complete profile fields move it.', 'Ο δείκτης καταγράφεται μια φορά την ημέρα — πλήρη πεδία προφίλ τον ανεβάζουν.')}
+        >
+         <AskLink prompt="How do I raise my readiness score?" />
+        </EmptyHint>
+       ) : (
        <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
          <AreaChart data={readinessChart}>
@@ -173,7 +276,7 @@ export default function Insights({ user }: InsightsProps) {
           </defs>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f5f5f4" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dy={8} />
-          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dx={-8} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dx={-8} domain={[0, 100]} />
           <Tooltip
            contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: '11px', padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
            itemStyle={{ color: '#1c1917' }}
@@ -183,6 +286,7 @@ export default function Insights({ user }: InsightsProps) {
          </AreaChart>
         </ResponsiveContainer>
        </div>
+       )}
       </Card>
 
       {/* Weekly Engagement Chart */}
@@ -190,10 +294,10 @@ export default function Insights({ user }: InsightsProps) {
        <div className="flex items-center justify-between mb-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t('Weekly Engagement', 'Εβδομαδιαία δραστηριότητα')}</h3>
-         <p className="text-xs text-stone-400">{t('Connections · Messages · Views', 'Συνδέσεις · Μηνύματα · Προβολές')}</p>
+         <p className="text-xs text-stone-400">{isDemoMode ? t('Connections · Messages · Views', 'Συνδέσεις · Μηνύματα · Προβολές') : t('Your actions this week, by kind', 'Οι ενέργειές σου αυτή την εβδομάδα, ανά είδος')}</p>
         </div>
         <div className="flex items-center gap-3">
-         {[{ label: t("Connect", "Σύνδεση"), color: "bg-stone-900" }, { label: t("Message", "Μήνυμα"), color: "bg-stone-400" }, { label: t("View", "Προβολή"), color: "bg-stone-200" }].map(({ label, color }) => (
+         {[{ label: t("Connect", "Σύνδεση"), color: "bg-stone-900" }, { label: t("Message", "Μήνυμα"), color: "bg-stone-400" }, { label: isDemoMode ? t("View", "Προβολή") : t("Other", "Άλλες"), color: "bg-stone-200" }].map(({ label, color }) => (
           <div key={label} className="flex items-center gap-1">
            <div className={cn("w-2 h-2 rounded-full", color)} />
            <span className="text-xs text-stone-400 tracking-wider">{label}</span>
@@ -206,14 +310,14 @@ export default function Insights({ user }: InsightsProps) {
          <BarChart data={activityChart} barGap={2}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f5f5f4" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dy={8} />
-          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dx={-8} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#a8a29e' }} dx={-8} allowDecimals={false} />
           <Tooltip
            cursor={{ fill: '#fafaf9' }}
            contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: '11px', padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
           />
           <Bar dataKey="connections" name={t('Connections', 'Συνδέσεις')} fill="#1c1917" radius={[4, 4, 0, 0]} barSize={14} />
           <Bar dataKey="messages"    name={t('Messages', 'Μηνύματα')} fill="#78716c" radius={[4, 4, 0, 0]} barSize={14} />
-          <Bar dataKey="views"       name={t('Views', 'Προβολές')} fill="#d6d3d1" radius={[4, 4, 0, 0]} barSize={14} />
+          <Bar dataKey="views"       name={isDemoMode ? t('Views', 'Προβολές') : t('Other actions', 'Λοιπές ενέργειες')} fill="#d6d3d1" radius={[4, 4, 0, 0]} barSize={14} />
          </BarChart>
         </ResponsiveContainer>
        </div>
@@ -230,6 +334,9 @@ export default function Insights({ user }: InsightsProps) {
         <p className="text-xs text-stone-400">{t('Real-time ecosystem updates', 'Ενημερώσεις οικοσυστήματος σε πραγματικό χρόνο')}</p>
        </div>
        <div className="space-y-3">
+        {feed.length === 0 && (
+         <p className="text-sm text-stone-400">{t('Nothing yet — your actions appear here.', 'Τίποτα ακόμη — οι ενέργειές σου εμφανίζονται εδώ.')}</p>
+        )}
         {feed.map((item, i) => (
          <div key={`${item.user}-${item.action}-${i}`} role="button" tabIndex={0} onClick={() => navigate(item.href)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(item.href); }} className="flex items-start gap-2.5 group cursor-pointer">
           <div className={cn("w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border border-stone-100 transition-all group-hover:bg-stone-900 group-hover:text-white", item.bg, item.ic)}>
@@ -253,15 +360,10 @@ export default function Insights({ user }: InsightsProps) {
       <Card className="p-4 border-stone-100 bg-white space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Achievements', 'Επιτεύγματα')}</h3>
-        <p className="text-xs text-stone-400">{t('Verified milestone credentials', 'Επαληθευμένα διαπιστευτήρια οροσήμων')}</p>
+        <p className="text-xs text-stone-400">{t('Unlocked by what you actually do', 'Ξεκλειδώνονται από τις πραγματικές σου ενέργειες')}</p>
        </div>
        <div className="grid grid-cols-2 gap-2">
-        {[
-         { name: t('Early Bird', 'Πρώιμη εγγραφή'),   icon: Rocket, unlocked: true, promptName: 'Early Bird' },
-         { name: t('Networker', 'Δικτύωση'),    icon: Users,  unlocked: true, promptName: 'Networker' },
-         { name: t('Pitch Master', 'Άσος στο pitch'), icon: Zap,    unlocked: false, promptName: 'Pitch Master' },
-         { name: t('Funded', 'Με χρηματοδότηση'),       icon: Star,   unlocked: false, promptName: 'Funded' },
-        ].map((badge, i) => (
+        {badges.map((badge, i) => (
          <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } })); }} className={cn(
           "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
           badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-stone-100 opacity-40 grayscale"
@@ -278,11 +380,11 @@ export default function Insights({ user }: InsightsProps) {
        </div>
       </Card>
 
-      {/* Strategic Insight — light amber version */}
+      {/* Strategic Insight — honest, no fabricated stats */}
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
        <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
-        {t('Teams over 80% readiness are modeled as 3× more likely to close in six months.', 'Ομάδες πάνω από 80% ετοιμότητα εμφανίζονται 3× πιο πιθανό να κλείσουν γύρο σε έξι μήνες.')}
+        {t('Your readiness score is the share of profile fields matching reads — a complete profile produces sharper matches.', 'Ο δείκτης ετοιμότητας είναι το ποσοστό των πεδίων που διαβάζει η αντιστοίχιση — πλήρες προφίλ σημαίνει καλύτερα matches.')}
        </p>
        <p className="text-xs text-stone-500">{t('Next: fill skills and looking-for on Profile so the score can move.', 'Επόμενο: συμπλήρωσε δεξιότητες και τι ζητάς στο προφίλ, ώστε να κινηθεί ο δείκτης.')}</p>
        <div className="flex gap-2">

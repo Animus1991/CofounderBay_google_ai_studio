@@ -1,44 +1,118 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldCheck, Globe, Lock, Save, Plus, Trash2, AlertCircle, CheckCircle2, Info, ArrowRight, ExternalLink, History, Settings2, Key, Server } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { collection, doc, getDoc, onSnapshot, orderBy, query, limit as qLimit, setDoc } from "firebase/firestore";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { User, IdentityProvider, TenantSSOConfig, UserRole } from "../../types";
+import { User, UserRole } from "../../types";
+import { db } from "../../firebase";
+import { useTenant } from "../../context/TenantContext";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
+import { formatDate } from "../../lib/dates";
 
 interface SSOSettingsProps {
  user: User;
 }
 
+interface SsoConfig {
+ enabled: boolean;
+ mandatory: boolean;
+ providerType: 'SAML' | 'OIDC' | 'OAuth';
+ providerName: string;
+ buttonLabel: string;
+ defaultRole: string;
+ domains: string[];
+ mappingRules: { claim: string; value: string; role: string }[];
+ jitProvisioning: boolean;
+ jitDefaultRole: string;
+ updatedAt?: string;
+}
+
 export default function SSOSettings({ user }: SSOSettingsProps) {
  const t = useT();
+ const { tenant } = useTenant();
+ const tenantName = tenant?.name || 'CoFounderBay';
+ const configDocId = `sso-${tenant?.id || 'default'}`;
  const [activeTab, setActiveTab] = useState<'config' | 'mapping' | 'audit'>('config');
- const [ssoEnabled, setSsoEnabled] = useState(true);
+ const [ssoEnabled, setSsoEnabled] = useState(false);
  const [ssoMandatory, setSsoMandatory] = useState(false);
  const [providerType, setProviderType] = useState<'SAML' | 'OIDC' | 'OAuth'>('SAML');
- const [providerName, setProviderName] = useState('Techstars SSO');
- const [buttonLabel, setButtonLabel] = useState('Sign in with Techstars');
+ const [providerName, setProviderName] = useState(`${tenantName} SSO`);
+ const [buttonLabel, setButtonLabel] = useState(`Sign in with ${tenantName}`);
  const [defaultRole, setDefaultRole] = useState<UserRole>(UserRole.FOUNDER);
+ const [domains, setDomains] = useState<string[]>([]);
+ const [newDomain, setNewDomain] = useState('');
+ const [mappingRules, setMappingRules] = useState<SsoConfig['mappingRules']>([]);
+ const [jitProvisioning, setJitProvisioning] = useState(true);
+ const [jitDefaultRole, setJitDefaultRole] = useState('Co-Founder Candidate');
+ const [auditLogs, setAuditLogs] = useState<any[]>([]);
+ const [loaded, setLoaded] = useState(false);
  const [loading, setLoading] = useState(false);
  const [success, setSuccess] = useState(false);
 
+ useEffect(() => {
+  if (loaded) return;
+  getDoc(doc(db, 'systemConfig', configDocId)).then((snap) => {
+   if (snap.exists()) {
+    const cfg = snap.data() as SsoConfig;
+    setSsoEnabled(cfg.enabled ?? false);
+    setSsoMandatory(cfg.mandatory ?? false);
+    setProviderType(cfg.providerType ?? 'SAML');
+    setProviderName(cfg.providerName ?? `${tenantName} SSO`);
+    setButtonLabel(cfg.buttonLabel ?? `Sign in with ${tenantName}`);
+    setDefaultRole((cfg.defaultRole as UserRole) ?? UserRole.FOUNDER);
+    setDomains(cfg.domains ?? []);
+    setMappingRules(cfg.mappingRules ?? []);
+    setJitProvisioning(cfg.jitProvisioning ?? true);
+    setJitDefaultRole(cfg.jitDefaultRole ?? 'Co-Founder Candidate');
+   }
+   setLoaded(true);
+  }).catch(() => setLoaded(true));
+ }, [configDocId, loaded, tenantName]);
+
+ useEffect(() => {
+  const q = query(collection(db, 'ssoAuditLog'), orderBy('createdAt', 'desc'), qLimit(50));
+  const unsub = onSnapshot(q, (snap) => {
+   setAuditLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  }, () => {});
+  return () => unsub();
+ }, []);
+
  const handleSave = async () => {
   setLoading(true);
-  // Mock save
-  setTimeout(() => {
-   setLoading(false);
+  try {
+   await setDoc(doc(db, 'systemConfig', configDocId), {
+    value: {
+     enabled: ssoEnabled,
+     mandatory: ssoMandatory,
+     providerType,
+     providerName,
+     buttonLabel,
+     defaultRole,
+     domains,
+     mappingRules,
+     jitProvisioning,
+     jitDefaultRole,
+    } satisfies SsoConfig,
+    updatedAt: new Date().toISOString(),
+    updatedBy: user.id,
+   });
    setSuccess(true);
    setTimeout(() => setSuccess(false), 3000);
-  }, 1500);
+  } catch (e) {
+   console.error('SSO config save failed:', e);
+  } finally {
+   setLoading(false);
+  }
  };
 
- const auditLogs = [
-  { id: 1, event: "LoginSuccess", user: "alex@stanford.edu", provider: "Stanford SAML", time: t('2 mins ago', 'πριν από 2 λεπτά'), status: "success" },
-  { id: 2, event: "LoginFailure", user: "unknown@stanford.edu", provider: "Stanford SAML", time: t('15 mins ago', 'πριν από 15 λεπτά'), status: "failure", reason: t('Invalid claim mapping', 'Άκυρη αντιστοίχιση claim') },
-  { id: 3, event: "Provisioned", user: "sarah@stanford.edu", provider: "Stanford SAML", time: t('1h ago', 'πριν από 1 ώρα'), status: "success" },
-  { id: 4, event: "SSOInitiated", user: "mike@stanford.edu", provider: "Stanford SAML", time: t('2h ago', 'πριν από 2 ώρες'), status: "success" },
- ];
+ const addDomain = () => {
+  const d = newDomain.trim().toLowerCase();
+  if (!d || domains.includes(d)) return;
+  setDomains([...domains, d]);
+  setNewDomain('');
+ };
 
  return (
   <div className="space-y-6 max-w-6xl mx-auto">
@@ -53,7 +127,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
      <p className="text-stone-500 text-xs font-medium">{t('Configure enterprise Single Sign-On for your organization.', 'Ρύθμισε το SSO του οργανισμού.')}</p>
     </div>
     <div className="flex gap-2">
-     <Button variant="outline" className="gap-1.5 h-9 px-4 text-xs font-medium">
+     <Button variant="outline" className="gap-1.5 h-9 px-4 text-xs font-medium" onClick={() => setActiveTab('audit')}>
       <History className="w-3.5 h-3.5" /> {t('View Full Audit', 'Πλήρες αρχείο ελέγχου')}
      </Button>
      <Button onClick={handleSave} loading={loading} className="gap-1.5 h-9 px-5 text-xs font-medium min-w-[130px]">
@@ -155,7 +229,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
             <Server className="w-4 h-4 text-stone-400" />
             <div className="flex-1">
              <p className="text-micro mb-0.5">{t('Organization Context', 'Πλαίσιο οργανισμού')}</p>
-             <p className="text-xs font-medium text-stone-900">Techstars Ecosystem</p>
+             <p className="text-xs font-medium text-stone-900">{tenantName}</p>
             </div>
             <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium tracking-wider">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
            </div>
@@ -321,15 +395,28 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
             {t('Users with these email domains will be automatically routed to your SSO provider.', 'Τα μέλη με αυτούς τους τομείς email θα οδηγούνται αυτόματα στον πάροχο SSO.')}
            </p>
            <div className="flex flex-wrap gap-2">
-            {['stanford.edu', 'alumni.stanford.edu'].map(domain => (
+            {domains.map(domain => (
              <div key={domain} className="flex items-center gap-2 px-2.5 py-1 bg-stone-900 text-white rounded-lg text-xs font-medium">
               {domain}
-              <button className="hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
+              <button type="button" aria-label={t('Remove domain', 'Αφαίρεση τομέα')} onClick={() => setDomains(domains.filter((d) => d !== domain))} className="hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
              </div>
             ))}
-            <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-wide">
-             <Plus className="w-3 h-3 mr-1" /> {t('Add Domain', 'Προσθήκη τομέα')}
-            </Button>
+            <div className="flex items-center gap-1.5">
+             <input
+              type="text"
+              value={newDomain}
+              onChange={(e) => setNewDomain(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addDomain()}
+              placeholder="org.edu"
+              className="h-7 px-2.5 bg-stone-50/50 border border-stone-200 rounded-lg text-xs font-medium outline-none focus:border-stone-400 w-32"
+             />
+             <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-wide" onClick={addDomain}>
+              <Plus className="w-3 h-3 mr-1" /> {t('Add Domain', 'Προσθήκη τομέα')}
+             </Button>
+            </div>
+            {domains.length === 0 && (
+             <p className="w-full text-xs text-stone-400 font-medium">{t('No domains yet — add the email domains that should route to your IdP.', 'Κανένας τομέας ακόμη — πρόσθεσε τους τομείς email που θα οδηγούνται στον IdP.')}</p>
+            )}
            </div>
           </div>
          </Card>
@@ -358,11 +445,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-             {[
-              { claim: "groups", value: "faculty", role: "Mentor" },
-              { claim: "groups", value: "student", role: "Founder" },
-              { claim: "groups", value: "founders", role: "Founder" },
-             ].map((rule, i) => (
+             {mappingRules.map((rule, i) => (
               <tr key={i} className="hover:bg-stone-50/30 transition-colors">
                <td className="px-5 py-3 text-xs font-mono text-stone-500">{rule.claim}</td>
                <td className="px-5 py-3 text-xs font-medium text-stone-900">{rule.value}</td>
@@ -370,14 +453,25 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <span className="px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-medium tracking-wider">{labelOf(rule.role)}</span>
                </td>
                <td className="px-5 py-3 text-right">
-                <button className="text-stone-400 hover:text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button type="button" aria-label={t('Remove rule', 'Αφαίρεση κανόνα')} onClick={() => setMappingRules(mappingRules.filter((_, j) => j !== i))} className="text-stone-400 hover:text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                </td>
               </tr>
              ))}
+             {mappingRules.length === 0 && (
+              <tr>
+               <td colSpan={4} className="px-5 py-8 text-center text-stone-400 italic font-medium text-xs">
+                {t('No mapping rules yet.', 'Κανένας κανόνας αντιστοίχισης ακόμη.')}
+               </td>
+              </tr>
+             )}
             </tbody>
            </table>
           </div>
-          <Button variant="outline" className="w-full border-dashed gap-2 h-9 text-xs font-medium">
+          <Button
+           variant="outline"
+           className="w-full border-dashed gap-2 h-9 text-xs font-medium"
+           onClick={() => setMappingRules([...mappingRules, { claim: 'groups', value: '', role: 'Founder' }])}
+          >
            <Plus className="w-3.5 h-3.5" /> {t('Add Mapping Rule', 'Προσθήκη κανόνα αντιστοίχισης')}
           </Button>
          </div>
@@ -390,14 +484,24 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
             <h4 className="text-xs font-medium text-stone-900">{t('Just-In-Time (JIT) Provisioning', 'Just-In-Time (JIT) παροχή')}</h4>
             <p className="text-xs text-stone-400 font-medium">{t('Automatically create accounts for new users when they sign in through SSO.', 'Δημιούργησε αυτόματα λογαριασμούς για νέα μέλη όταν μπαίνουν μέσω SSO.')}</p>
            </div>
-           <button className="w-10 h-5 bg-stone-900 rounded-full relative">
-            <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full"></div>
+           <button
+            type="button"
+            role="switch"
+            aria-checked={jitProvisioning}
+            onClick={() => setJitProvisioning(!jitProvisioning)}
+            className={`w-10 h-5 rounded-full relative transition-all ${jitProvisioning ? 'bg-stone-900' : 'bg-stone-200'}`}
+           >
+            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${jitProvisioning ? 'right-0.5' : 'left-0.5'}`}></div>
            </button>
           </div>
           <div className="pt-5 border-t border-stone-100">
            <div className="space-y-1.5">
             <label className="text-micro">{t('Default Role for New Users', 'Προεπιλεγμένος ρόλος για νέα μέλη')}</label>
-            <select className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium">
+            <select
+             value={jitDefaultRole}
+             onChange={(e) => setJitDefaultRole(e.target.value)}
+             className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+            >
              <option value="Co-Founder Candidate">{labelOf('Co-Founder Candidate')}</option>
              <option value="Founder">{labelOf('Founder')}</option>
              <option value="Mentor">{labelOf('Mentor')}</option>
@@ -433,16 +537,24 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                <span className="text-xs font-medium text-stone-400 tracking-wide">{log.event}</span>
               </div>
               <p className="text-xs text-stone-500 font-medium">
-               {t('via', 'μέσω')} {log.provider} • {log.time}
+               {t('via', 'μέσω')} {log.provider} • {log.createdAt ? formatDate(log.createdAt) : ''}
                {log.reason && <span className="text-red-500 ml-2">• {log.reason}</span>}
               </p>
              </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-stone-400 hover:text-stone-900">
+            <Button variant="ghost" size="icon" title={t('Event details', 'Λεπτομέρειες συμβάντος')} className="h-7 w-7 text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Explain SSO event ${log.event} for ${log.user}` } }))}>
              <Info className="w-3.5 h-3.5" />
             </Button>
            </div>
           ))}
+          {auditLogs.length === 0 && (
+           <div className="p-10 text-center">
+            <History className="w-6 h-6 text-stone-300 mx-auto mb-2" />
+            <p className="text-xs text-stone-400 italic font-medium">
+             {t('No SSO events recorded yet. Logins through your identity provider will appear here.', 'Δεν έχουν καταγραφεί συμβάντα SSO ακόμη. Οι είσοδοι μέσω του παρόχου θα εμφανίζονται εδώ.')}
+            </p>
+           </div>
+          )}
          </div>
         </Card>
        </motion.div>
@@ -468,8 +580,12 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
          <p className="text-xs text-stone-400 leading-relaxed">{t("Map your organization's groups to platform roles.", 'Αντιστοίχισε τις ομάδες του οργανισμού σε ρόλους πλατφόρμας.')}</p>
         </div>
        </div>
-       <Button variant="secondary" className="w-full gap-2 h-9 text-xs font-medium shadow-lg shadow-black/20">
-        <ExternalLink className="w-3.5 h-3.5" /> {t('Documentation', 'Τεκμηρίωση')}
+       <Button
+        variant="secondary"
+        className="w-full gap-2 h-9 text-xs font-medium shadow-lg shadow-black/20"
+        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Walk me through setting up SSO for my organization' } }))}
+       >
+        <ExternalLink className="w-3.5 h-3.5" /> {t('Setup guidance', 'Καθοδήγηση ρύθμισης')}
        </Button>
       </div>
      </Card>
@@ -480,14 +596,14 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
         <label className="text-micro">{t('Assertion Consumer Service (ACS)', 'Assertion Consumer Service (ACS)')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/api/auth/sso/callback</code>
-         <button className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
+         <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/api/auth/sso/callback').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
         </div>
        </div>
        <div className="space-y-1.5">
         <label className="text-micro">{t('Entity ID', 'Entity ID')}</label>
         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
          <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/auth/sp</code>
-         <button className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
+         <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/auth/sp').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
         </div>
        </div>
       </div>
@@ -498,7 +614,13 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
        <p className="text-xs text-stone-500 leading-relaxed font-medium">
         {t('Safely test your SSO configuration before enabling it for all members.', 'Δοκίμασε με ασφάλεια τη διαμόρφωση SSO πριν την ενεργοποιήσεις για όλα τα μέλη.')}
        </p>
-       <Button variant="outline" className="w-full gap-2 h-9 text-xs font-medium">
+       <Button
+        variant="outline"
+        className="w-full gap-2 h-9 text-xs font-medium"
+        disabled={!ssoEnabled}
+        title={ssoEnabled ? t('Saves the configuration, then opens a test sign-in window.', 'Αποθηκεύει τη διαμόρφωση και ανοίγει δοκιμαστική είσοδο.') : t('Enable SSO above first.', 'Ενεργοποίησε πρώτα το SSO παραπάνω.')}
+        onClick={async () => { await handleSave(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Test the ${providerName} SSO connection for ${tenantName}` } })); }}
+       >
         <ArrowRight className="w-3.5 h-3.5" /> {t('Run Test Login', 'Δοκιμαστική είσοδος')}
        </Button>
       </div>

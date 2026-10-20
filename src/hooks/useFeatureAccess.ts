@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, BillingPlan, Subscription, TenantMembership } from "../types";
+import { User, BillingPlan, Subscription } from "../types";
 import { billingService, MOCK_PLANS } from "../services/billingService";
 
 export type FeatureKey = string;

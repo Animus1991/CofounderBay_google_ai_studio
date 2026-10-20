@@ -96,7 +96,7 @@ export default function MatchDiscovery() {
    }
    if (state.state === 'incoming' && state.record) {
     await respondToConnection(state.record, true);
-    toastSuccess(t('Connected', 'Συνδεθήκατε'), t(`You and ${person.fullName} can message each other now.`, `Εσύ και ο/η ${person.fullName} μπορείτε πλέον να ανταλλάσσετε μηνύματα.`));
+    toastSuccess(t('Connected', 'Συνδεθήκατε'), t(`You and ${person.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${person.fullName}.`));
     return;
    }
    const result = await sendConnectionRequest({ id: person.id, fullName: person.fullName, headline: person.headline, avatarUrl: avatarOf(person) }, 'Co-Founder');
@@ -121,7 +121,7 @@ export default function MatchDiscovery() {
  const handleHide = (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
   toggleId(keys.hiddenPeople, person.id);
-  toastInfo(t(`${person.fullName.split(' ')[0]} hidden`, `Ο/Η ${person.fullName.split(' ')[0]} κρύφτηκε`), t('Hidden members stay out of Matches and Explore. Undo from Settings › Privacy.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης. Αναίρεση από Ρυθμίσεις › Απόρρητο.'));
+  toastInfo(t(`${person.fullName.split(' ')[0]} hidden`, `Απόκρυψη: ${person.fullName.split(' ')[0]}`), t('Hidden members stay out of Matches and Explore. Undo from Settings › Privacy.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης. Αναίρεση από Ρυθμίσεις › Απόρρητο.'));
  };
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
@@ -199,7 +199,7 @@ export default function MatchDiscovery() {
       <SlidersHorizontal className="w-3.5 h-3.5" />
       {t('Filters', 'Φίλτρα')}
       {Object.values(filters).filter(Boolean).length > 0 && (
-       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-[10px] font-semibold">{Object.values(filters).filter(Boolean).length}</span>
+       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-semibold">{Object.values(filters).filter(Boolean).length}</span>
       )}
      </button>
     </div>
@@ -212,7 +212,7 @@ export default function MatchDiscovery() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3">
        {[{ label: t('Stage', 'Στάδιο'), key: 'stage' as const, opts: STAGES }, { label: t('Role', 'Ρόλος'), key: 'role' as const, opts: ROLES }, { label: t('Commitment', 'Δέσμευση'), key: 'commitment' as const, opts: COMMITMENTS }].map(({ label, key, opts }) => (
         <div key={key} className="space-y-1.5">
-         <label className="text-[10px] font-semibold text-stone-400 tracking-wider" htmlFor={`filter-${key}`}>{label}</label>
+         <label className="text-xs font-semibold text-stone-400 tracking-wider" htmlFor={`filter-${key}`}>{label}</label>
          <select
           id={`filter-${key}`}
           value={filters[key]}
@@ -225,7 +225,7 @@ export default function MatchDiscovery() {
         </div>
        ))}
        <div className="space-y-1.5">
-        <label className="text-[10px] font-semibold text-stone-400 tracking-wider" htmlFor="filter-location">{t('Location', 'Τοποθεσία')}</label>
+        <label className="text-xs font-semibold text-stone-400 tracking-wider" htmlFor="filter-location">{t('Location', 'Τοποθεσία')}</label>
         <input
          id="filter-location"
          type="text"
@@ -294,7 +294,7 @@ export default function MatchDiscovery() {
           <PersonHovercard person={person.id}>
            <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.fullName || t('Founder', 'Ιδρυτής')}</p>
           </PersonHovercard>
-          <p className="text-xs text-stone-400 line-clamp-1">{person.headline || labelOf(person.role)}</p>
+          <p className="text-xs text-stone-400 line-clamp-1">{person.headline ? t(person.headline, person.headlineEl || person.headline) : labelOf(person.role)}</p>
           {fit.headline && <p className="text-xs text-stone-500">{bothText(fit.headline.en, fit.headline.el)}</p>}
          </div>
         </div>
@@ -302,7 +302,7 @@ export default function MatchDiscovery() {
        </div>
 
        <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">
-        {person.bio || t('No bio yet.', 'Δεν υπάρχει περιγραφή ακόμη.')}
+        {person.bio ? t(person.bio, person.bioEl || person.bio) : t('No bio yet.', 'Δεν υπάρχει περιγραφή ακόμη.')}
        </p>
 
        <FactLine className="mb-4" items={[labelOf(person.stage), labelOf(person.commitment), person.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />

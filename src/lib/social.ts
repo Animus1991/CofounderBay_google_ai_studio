@@ -432,7 +432,7 @@ export async function sendConnectionRequest(person: PersonRef, type: ConnectionT
   await notify(person.id, {
     type: mentorship ? 'mentorship' : 'connection',
     title: mentorship ? `${actor.name} asked you for mentorship` : `${actor.name} wants to connect`,
-    titleEl: mentorship ? `Ο/Η ${actor.name} σου ζήτησε καθοδήγηση` : `Ο/Η ${actor.name} θέλει να συνδεθείτε`,
+    titleEl: mentorship ? `Αίτημα καθοδήγησης από ${actor.name}` : `Αίτημα σύνδεσης από ${actor.name}`,
     body: note.trim().slice(0, 280),
     href: '/network?tab=requests',
   });
@@ -452,7 +452,7 @@ export async function respondToConnection(record: ConnectionRecord, accept: bool
   await notify(other.id, {
     type: 'accepted',
     title: `${actor.name} accepted your request`,
-    titleEl: `Ο/Η ${actor.name} αποδέχτηκε το αίτημά σου`,
+    titleEl: `Το αίτημά σου έγινε δεκτό από ${actor.name}`,
     body: 'You can message each other now.',
     bodyEl: 'Μπορείτε πλέον να στείλετε μήνυμα ο ένας στον άλλον.',
     href: `/messages?user=${encodeURIComponent(actor.uid)}`,
@@ -626,7 +626,7 @@ export async function endorseSkill(recipient: { id: string; fullName: string }, 
   await notify(recipient.id, {
     type: 'endorsement',
     title: `${actor.name} confirmed your skill: ${skill}`,
-    titleEl: `Ο/Η ${actor.name} επιβεβαίωσε τη δεξιότητά σου: ${skill}`,
+    titleEl: `Επιβεβαίωση δεξιότητας από ${actor.name}: ${skill}`,
     body: comment.trim().slice(0, 280),
     href: '/profile',
   });

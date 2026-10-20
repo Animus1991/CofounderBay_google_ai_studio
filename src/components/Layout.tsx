@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Menu } from 'lucide-react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Both } from '../lib/both';
 import { LanguageToggle, useLanguage, useT } from '../lib/language';
 import Sidebar from './layout/Sidebar';
 import ChatWidget from './ChatWidget';
+import Tooltip from './ui/Tooltip';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore } from '../stores/useUIStore';
@@ -17,35 +17,37 @@ export default function Layout() {
  const mobileSidebarOpen = useUIStore((s) => s.mobileSidebarOpen);
  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
  const toggleMobileSidebar = useUIStore((s) => s.toggleMobileSidebar);
- const [showDemoHint, setShowDemoHint] = useState(false);
+ const navigate = useNavigate();
  useLanguage();
  const t = useT();
 
  // Build a minimal user object for the Sidebar
+ const isGuest = !user && !isDemoMode;
  const sidebarUser = {
-  id: user?.uid || profile?.uid || 'demo-user',
-  fullName: profile?.fullName || user?.displayName || t('Demo User', 'Δοκιμαστικός χρήστης'),
-  email: user?.email || 'demo@cofounderbay.com',
+  id: user?.uid || profile?.uid || (isGuest ? 'guest' : 'demo-user'),
+  fullName: profile?.fullName || user?.displayName || (isGuest ? t('Guest', 'Επισκέπτης') : t('Demo User', 'Δοκιμαστικός χρήστης')),
+  email: user?.email || (isGuest ? '' : 'demo@cofounderbay.com'),
   roles: profile?.roles || [UserRole.FOUNDER],
   avatarUrl: (profile as any)?.avatarUrl || profile?.profile?.profilePhoto || user?.photoURL || '',
  };
 
  const exitButton = isDemoMode ? (
+  <Tooltip content={t('Demo — sample data, kept only in this browser', 'Demo — δοκιμαστικά δεδομένα, μένουν μόνο σε αυτόν τον browser')} side="bottom" delay={0}>
+   <button
+    type="button"
+    onClick={() => toggleDemoMode(false)}
+    className="inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
+   >
+    <Both en="Exit" el="Έξοδος" />
+   </button>
+  </Tooltip>
+ ) : !user ? (
   <button
    type="button"
-   onClick={() => toggleDemoMode(false)}
-   onMouseEnter={() => setShowDemoHint(true)}
-   onMouseLeave={() => setShowDemoHint(false)}
-   onFocus={() => setShowDemoHint(true)}
-   onBlur={() => setShowDemoHint(false)}
-   className="relative inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
+   onClick={() => navigate('/login')}
+   className="inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
   >
-   <Both en="Exit" el="Έξοδος" />
-   {showDemoHint && (
-    <span className="pointer-events-none absolute right-0 top-full z-[81] mt-2 w-max max-w-[min(16rem,calc(100vw-1.5rem))] rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-medium text-stone-600 shadow-sm">
-     <Both en="Demo — nothing is saved" el="Demo — τίποτα δεν αποθηκεύεται" />
-    </span>
-   )}
+   <Both en="Sign in" el="Είσοδος" />
   </button>
  ) : null;
 
@@ -78,6 +80,7 @@ export default function Layout() {
    <div className="flex min-h-0 min-w-0 flex-1">
     <Sidebar
      user={sidebarUser as any}
+     guest={isGuest}
      collapsed={sidebarCollapsed}
      setCollapsed={setSidebarCollapsed}
      mobileOpen={mobileSidebarOpen}

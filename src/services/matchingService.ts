@@ -1,4 +1,4 @@
-import { User, Profile, UserSkill, ValuesPreferences, MatchProfile, MatchSuggestion } from '../types';
+import { User, Profile, UserSkill, ValuesPreferences, MatchProfile } from '../types';
 
 export interface MatchingResult {
   score: number;

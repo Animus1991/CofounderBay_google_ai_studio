@@ -69,6 +69,50 @@ function createDb(): Firestore {
 
 export const db = createDb();
 
+/**
+ * The persistent IndexedDB cache can become corrupted (e.g. after an SDK or
+ * database-id change), which crashes every listener with an "INTERNAL
+ * ASSERTION FAILED" error (e.g. IDs ca9/b815). There is no in-SDK repair, so
+ * we delete the Firestore databases once and reload — Auth persistence lives
+ * elsewhere and is untouched.
+ */
+const CACHE_REPAIR_FLAG = 'cfb.firestoreCacheRepair';
+
+function isFirestoreAssertion(message: string): boolean {
+  return message.includes('FIRESTORE') && message.includes('INTERNAL ASSERTION FAILED');
+}
+
+async function clearFirestoreIdb(): Promise<void> {
+  const dbs = (await indexedDB.databases?.()) ?? [];
+  await Promise.all(
+    dbs
+      .map(({ name }) => name)
+      .filter((name): name is string => typeof name === 'string' && name.startsWith('firestore'))
+      .map(
+        (name) =>
+          new Promise<void>((resolve) => {
+            const req = indexedDB.deleteDatabase(name);
+            req.onsuccess = req.onerror = req.onblocked = () => resolve();
+          }),
+      ),
+  );
+}
+
+if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv.isTest) {
+  const repair = (message: string) => {
+    if (!isFirestoreAssertion(message)) return;
+    if (sessionStorage.getItem(CACHE_REPAIR_FLAG)) {
+      log.error('firestore cache repair already attempted this session', {});
+      return;
+    }
+    sessionStorage.setItem(CACHE_REPAIR_FLAG, '1');
+    log.warn('corrupted firestore cache — clearing and reloading', {});
+    void clearFirestoreIdb().finally(() => window.location.reload());
+  };
+  window.addEventListener('error', (event) => repair(event.message ?? ''));
+  window.addEventListener('unhandledrejection', (event) => repair(String(event.reason)));
+}
+
 /** Cloud Storage is loaded only when someone uploads a file. */
 export async function getStorageInstance() {
   const { getStorage } = await import('firebase/storage');

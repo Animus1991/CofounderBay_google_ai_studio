@@ -42,8 +42,8 @@ export default function NextMove({
           <Icon className={cn('h-4 w-4', next ? 'text-white' : 'text-amber-700')} />
         </div>
         <div className="min-w-0">
-          <p className={cn('text-[11px] font-medium', next ? 'text-white/60' : 'text-amber-700')}>{label}</p>
-          <p className={cn('text-[12.5px] font-medium leading-snug sm:text-sm', next ? 'text-white' : 'text-stone-900')}>{title}</p>
+          <p className={cn('text-xs font-medium', next ? 'text-white/60' : 'text-amber-700')}>{label}</p>
+          <p className={cn('text-xs font-medium leading-snug sm:text-sm', next ? 'text-white' : 'text-stone-900')}>{title}</p>
           {why ? <p className={cn('mt-0.5 text-xs leading-snug', next ? 'text-white/60' : 'text-stone-600')}>{why}</p> : null}
         </div>
       </div>

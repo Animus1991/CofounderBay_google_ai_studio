@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
        <AlertTriangle className="w-8 h-8 text-red-600" />
       </div>
-      <h1 className="text-lg sm:text-xl font-medium text-stone-900 mb-2">{errorMessage}</h1>
+      <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 mb-2">{errorMessage}</h1>
       <p className="text-stone-600 mb-8">
        {errorDetails 
         ? bothText(`You don't have permission to perform this ${errorDetails.operationType} operation on ${errorDetails.path}.`, `Δεν έχεις δικαίωμα για αυτή την ενέργεια ${errorDetails.operationType} στο ${errorDetails.path}.`)

@@ -140,15 +140,6 @@ export default function LandingPage() {
                 </div>
               ) : user ? (
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <button
-                    onClick={() => {
-                      toggleDemoMode(true);
-                      navigate("/dashboard");
-                    }}
-                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
-                  >
-                    {t("Demo", "Demo")}
-                  </button>
                   <NavLink
                     to="/dashboard"
                     className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"

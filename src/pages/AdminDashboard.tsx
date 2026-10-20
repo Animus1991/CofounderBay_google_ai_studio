@@ -27,17 +27,28 @@ import {
  ResponsiveContainer,
  Cell
 } from 'recharts';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { getAdminAnalytics, detectAbuse } from '../services/adminService';
+import { getAdminAnalytics, detectAbuse, updateSystemConfig } from '../services/adminService';
+import { useAuth } from '../App';
 
 export default function AdminDashboard() {
+ const { user, isDemoMode } = useAuth();
  const [analytics, setAnalytics] = useState<any>(null);
  const [abuseFlags, setAbuseFlags] = useState<any[]>([]);
+ const [dismissedFlags, setDismissedFlags] = useState<Set<number>>(new Set());
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'overview' | 'abuse' | 'config'>('overview');
+ const [configDrafts, setConfigDrafts] = useState<Record<string, number>>({});
+ const [configSaved, setConfigSaved] = useState(false);
 
  useEffect(() => {
+  // The demo account has no Firestore access — the sample numbers below are
+  // rendered without touching the backend.
+  if (isDemoMode || !user) {
+   setLoading(false);
+   return;
+  }
   const fetchData = async () => {
    const [stats, flags] = await Promise.all([
     getAdminAnalytics(),
@@ -48,7 +59,7 @@ export default function AdminDashboard() {
    setLoading(false);
   };
   fetchData();
- }, []);
+ }, [isDemoMode, user]);
 
  const COLORS = ['#1c1917', '#44403c', '#78716c', '#a8a29e', '#d6d3d1'];
 
@@ -74,7 +85,7 @@ export default function AdminDashboard() {
       <ShieldCheck className="w-4 h-4" />
       Admin Control Center
      </div>
-     <h1 className="text-lg font-medium text-stone-900 tracking-tight">Ecosystem Health</h1>
+     <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">Ecosystem Health</h1>
      <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What is overdue?' } }))}>
       Ask the studio assistant
      </button>
@@ -94,8 +105,13 @@ export default function AdminDashboard() {
        </button>
       ))}
      </div>
-     <button className="p-3 bg-white text-stone-900 rounded-xl hover:bg-stone-50 transition-all border border-stone-100 shadow-sm">
-      <MoreVertical className="w-5 h-5" />
+     <button
+      type="button"
+      title="Refresh analytics"
+      onClick={() => { if (isDemoMode || !user) return; setLoading(true); Promise.all([getAdminAnalytics(), detectAbuse()]).then(([a, f]) => { setAnalytics(a); setAbuseFlags(f); setDismissedFlags(new Set()); setLoading(false); }); }}
+      className="p-3 bg-white text-stone-900 rounded-xl hover:bg-stone-50 transition-all border border-stone-100 shadow-sm"
+     >
+      <Activity className="w-5 h-5" />
      </button>
     </div>
    </div>
@@ -105,31 +121,27 @@ export default function AdminDashboard() {
      {/* Stats Grid */}
      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {[
-       { label: 'Total Users', value: analytics?.totalUsers, icon: Users, trend: '+5.2%', color: 'blue' },
-       { label: 'Ecosystem XP', value: analytics?.totalXP.toLocaleString(), icon: TrendingUp, trend: '+12.4%', color: 'green' },
-       { label: 'Badges Earned', value: analytics?.totalBadgesAwarded, icon: Award, trend: '+8.1%', color: 'amber' },
-       { label: 'Active Events', value: analytics?.xpEventsCount, icon: Activity, trend: '+15.3%', color: 'purple' },
+       { label: 'Total Users', value: analytics?.totalUsers, icon: Users, color: 'blue' },
+       { label: 'Ecosystem XP', value: analytics?.totalXP.toLocaleString(), icon: TrendingUp, color: 'green' },
+       { label: 'Badges Earned', value: analytics?.totalBadgesAwarded, icon: Award, color: 'amber' },
+       { label: 'XP Events', value: analytics?.xpEventsCount, icon: Activity, color: 'purple' },
       ].map((stat, idx) => (
        <motion.div 
         key={stat.label}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: idx * 0.1 }}
-        className="bg-white p-8 rounded-3xl border border-stone-100 shadow-sm hover:shadow-md transition-all group"
+        className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all group"
        >
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex justify-between items-start mb-3">
          <div className={cn(
-          "p-4 rounded-2xl transition-all",
+          "p-3 rounded-xl transition-all",
           stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
           stat.color === 'green' ? "bg-green-50 text-green-600" :
           stat.color === 'amber' ? "bg-amber-50 text-amber-600" :
           "bg-purple-50 text-purple-600"
          )}>
-          <stat.icon className="w-6 h-6" />
-         </div>
-         <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-green-50 text-green-600">
-          <ArrowUpRight className="w-3 h-3" />
-          {stat.trend}
+          <stat.icon className="w-5 h-5" />
          </div>
         </div>
         <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
@@ -172,20 +184,21 @@ export default function AdminDashboard() {
       {/* Momentum Insights */}
       <div className="space-y-8">
        <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm space-y-6">
-        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Momentum Insights</h3>
+        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">Derived metrics</h3>
         <div className="space-y-4">
          {[
-          { title: 'Diderot Conversion', value: '68%', status: 'high', desc: 'Users following recommended next steps.' },
-          { title: 'Artifact Velocity', value: '4.2/wk', status: 'medium', desc: 'Average artifacts created per active team.' },
-          { title: 'Feedback Latency', value: '18h', status: 'high', desc: 'Avg time to apply mentor feedback.' },
-          { title: 'Readiness Growth', value: '+12pts', status: 'high', desc: 'Avg readiness improvement per month.' },
+          { title: 'Events per user', value: analytics?.totalUsers ? (analytics.xpEventsCount / analytics.totalUsers).toFixed(1) : '—', desc: 'XP events recorded per registered user.' },
+          { title: 'Badges per user', value: analytics?.totalUsers ? (analytics.totalBadgesAwarded / analytics.totalUsers).toFixed(2) : '—', desc: 'Average badges awarded per user.' },
+          { title: 'AI chats', value: analytics?.aiUsageCount?.toLocaleString() ?? '—', desc: 'Assistant messages sent by real accounts.' },
+          { title: 'Top event type', value: distributionData[0]?.name ?? '—', desc: 'Most frequent behavioral event.' },
+          { title: 'Abuse flags', value: String(abuseFlags.length), desc: 'Users over the same-event threshold in the latest window.' },
          ].map((insight) => (
           <div key={insight.title} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
            <div className="flex justify-between items-start mb-1">
             <h4 className="font-medium text-stone-900 text-sm">{insight.title}</h4>
             <span className="text-lg font-medium text-stone-900">{insight.value}</span>
            </div>
-           <p className="text-xs text-stone-50">{insight.desc}</p>
+           <p className="text-xs text-stone-500">{insight.desc}</p>
           </div>
          ))}
         </div>
@@ -193,21 +206,21 @@ export default function AdminDashboard() {
 
        <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-sm space-y-6">
         <div className="flex items-center justify-between">
-         <h3 className="text-xl font-medium text-white">System Health</h3>
+         <h3 className="text-base font-semibold text-white">System Health</h3>
          <Activity className="w-6 h-6 text-green-400" />
         </div>
         <div className="space-y-4">
          {[
-          { label: 'Scoring Engine', status: 'healthy', latency: '12ms' },
-          { label: 'Behavioral AI', status: 'healthy', latency: '45ms' },
-          { label: 'Anti-Abuse', status: 'healthy', latency: '8ms' },
+          { label: 'Scoring Engine', ok: analytics != null },
+          { label: 'Behavioral AI', ok: analytics != null },
+          { label: 'Anti-Abuse', ok: abuseFlags != null },
          ].map((service) => (
           <div key={service.label} className="flex items-center justify-between">
            <div className="flex items-center gap-3">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            <div className={cn("w-1.5 h-1.5 rounded-full", service.ok ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-400")} />
             <span className="text-sm font-medium">{service.label}</span>
            </div>
-           <span className="text-xs font-mono text-stone-500">{service.latency}</span>
+           <span className="text-xs font-mono text-stone-500">{service.ok ? 'ok' : 'down'}</span>
           </div>
          ))}
         </div>
@@ -260,17 +273,27 @@ export default function AdminDashboard() {
           </td>
           <td className="px-8 py-5 text-right">
            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="p-2 text-stone-400 hover:text-green-600 hover:bg-white rounded-lg transition-all shadow-sm">
+            <button
+             type="button"
+             title="Mark reviewed — flag clears until the next detection pass"
+             onClick={() => setDismissedFlags((prev) => new Set(prev).add(idx))}
+             className="p-2 text-stone-400 hover:text-green-600 hover:bg-white rounded-lg transition-all shadow-sm"
+            >
              <CheckCircle className="w-4 h-4" />
             </button>
-            <button className="p-2 text-stone-400 hover:text-red-600 hover:bg-white rounded-lg transition-all shadow-sm">
+            <button
+             type="button"
+             title="Inspect this user's score and events"
+             onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Inspect user ${flag.userId} for XP farming` } }))}
+             className="p-2 text-stone-400 hover:text-red-600 hover:bg-white rounded-lg transition-all shadow-sm"
+            >
              <XCircle className="w-4 h-4" />
             </button>
            </div>
           </td>
          </tr>
-        ))}
-        {abuseFlags.length === 0 && (
+        )).filter((_, idx) => !dismissedFlags.has(idx))}
+        {abuseFlags.filter((_, idx) => !dismissedFlags.has(idx)).length === 0 && (
          <tr>
           <td colSpan={5} className="px-8 py-12 text-center text-stone-400 italic font-medium">
            No suspicious activity detected in the current window.
@@ -293,24 +316,38 @@ export default function AdminDashboard() {
         { label: 'Mentor Feedback Multiplier', value: 1.5, key: 'multiplier_mentor' },
         { label: 'Streak Bonus (Daily)', value: 20, key: 'bonus_streak' },
         { label: 'Team Collaboration Weight', value: 0.3, key: 'weight_collab' },
-       ].map((config) => (
+       ].map((config) => {
+        const draft = configDrafts[config.key] ?? config.value;
+        return (
         <div key={config.key} className="space-y-4">
          <div className="flex justify-between items-center">
-          <label className="text-sm font-medium text-stone-700">{config.label}</label>
-          <span className="text-sm font-mono font-medium text-stone-900 bg-stone-50 px-2 py-1 rounded-lg">{config.value}</span>
+          <label htmlFor={`cfg-${config.key}`} className="text-sm font-medium text-stone-700">{config.label}</label>
+          <span className="text-sm font-mono font-medium text-stone-900 bg-stone-50 px-2 py-1 rounded-lg">{draft}</span>
          </div>
-         <input 
-          type="range" 
-          className="w-full h-1.5 bg-stone-100 rounded-lg appearance-none cursor-pointer accent-stone-900" 
-          min={0} 
-          max={config.value * 2} 
+         <input
+          id={`cfg-${config.key}`}
+          type="range"
+          className="w-full h-1.5 bg-stone-100 rounded-lg appearance-none cursor-pointer accent-stone-900"
+          min={0}
+          max={config.value * 2}
           step={config.value / 10}
-          defaultValue={config.value}
+          value={draft}
+          onChange={(e) => setConfigDrafts((prev) => ({ ...prev, [config.key]: Number(e.target.value) }))}
          />
         </div>
-       ))}
-       <button className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm">
-        Save Configuration
+        );
+       })}
+       <button
+        type="button"
+        className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm"
+        onClick={async () => {
+         const entries = Object.entries(configDrafts);
+         if (entries.length === 0) return;
+         const results = await Promise.all(entries.map(([key, value]) => updateSystemConfig(key, value)));
+         if (results.every(Boolean)) { setConfigSaved(true); setTimeout(() => setConfigSaved(false), 2500); }
+        }}
+       >
+        {configSaved ? 'Saved to systemConfig' : 'Save Configuration'}
        </button>
       </div>
      </div>
@@ -320,13 +357,17 @@ export default function AdminDashboard() {
        <Settings className="w-8 h-8 text-stone-400" />
       </div>
       <div>
-       <h4 className="text-lg font-medium text-stone-900">Advanced Tuning</h4>
+       <h4 className="text-base font-semibold text-stone-900">Advanced Tuning</h4>
        <p className="text-sm text-stone-500 max-w-xs mx-auto">
         Modify the underlying behavioral models and scoring heuristics. Changes take effect immediately.
        </p>
       </div>
-      <button className="px-6 py-2.5 bg-white text-stone-900 border border-stone-200 rounded-xl text-sm font-medium hover:bg-stone-100 transition-all">
-       Open Advanced Editor
+      <button
+       type="button"
+       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Explain the scoring weights on this page' } }))}
+       className="px-6 py-2.5 bg-white text-stone-900 border border-stone-200 rounded-xl text-sm font-medium hover:bg-stone-100 transition-all"
+      >
+       Ask the assistant
       </button>
      </div>
     </div>

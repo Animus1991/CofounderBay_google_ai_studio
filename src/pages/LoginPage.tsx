@@ -4,7 +4,6 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPa
 import { bootstrapAccount } from '../lib/account';
 import { Zap, Mail, Lock, ArrowRight, Chrome } from 'lucide-react';
 import { auth } from '../firebase';
-import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { LanguageToggle, useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
@@ -96,7 +95,7 @@ export default function LoginPage() {
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-lg font-medium tracking-tight text-stone-900">
+    <h2 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      <Both en="Welcome back" el="Καλώς ήρθες ξανά" />
     </h2>
     <p className="mt-2 text-center text-sm text-stone-500">

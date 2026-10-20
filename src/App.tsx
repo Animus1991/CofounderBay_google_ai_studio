@@ -122,7 +122,7 @@ function demoProfile(): UserProfile {
     stage: 'Pre-seed',
     role: 'Founder',
     commitment: 'Full-time',
-    avatarUrl: 'https://picsum.photos/seed/demo/100/100',
+    avatarUrl: '',
     profileStatus: ProfileStatus.PUBLISHED,
     verificationStatus: VerificationStatus.VERIFIED,
     profileCompletionScore: 100,
@@ -284,6 +284,8 @@ export default function App() {
   });
 
   const toggleDemoMode = (enabled: boolean) => {
+    // A signed-in account must not be swapped for the demo identity.
+    if (enabled && auth.currentUser) return;
     setIsDemoMode(enabled);
     if (enabled) {
       localStorage.setItem('demo_mode', 'true');
@@ -398,7 +400,7 @@ export default function App() {
         uid: DEMO_USER_ID,
         email: 'demo@cofounderbay.com',
         displayName: 'Demo User',
-        photoURL: 'https://picsum.photos/seed/demo/100/100',
+        photoURL: '',
       } as FirebaseUser,
       profile: demoProfile(),
     };

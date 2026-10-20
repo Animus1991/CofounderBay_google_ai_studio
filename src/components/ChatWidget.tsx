@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bot, Check, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -6,54 +6,25 @@ import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { bothText, labelOf } from '../lib/labels';
 import { useLanguage, useT } from '../lib/language';
-import { appendAssistant, clearAssistant, readAssistant, type AssistantTurn } from '../lib/localLists';
+import { appendAssistant, clearAssistant, readAssistant, updateAssistantTurn, type AssistantTurn } from '../lib/localLists';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
-import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantResult } from '../services/assistantOps';
+import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
+import { startersFor } from '../lib/assistantStarters';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { directoryPeople } from '../lib/peopleSource';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
+import { onPageControlsChange, readPageControls } from '../lib/pageControls';
 
-const STARTERS: { en: string; el: string }[] = [
-  { en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' },
-  { en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' },
-  { en: 'How is my round?', el: 'Πώς πάει ο γύρος;' },
-  { en: 'Find a fundraising mentor', el: 'Βρες μέντορα για χρηματοδότηση' },
-];
-
-const PAGE_STARTERS: Record<string, { en: string; el: string }[]> = {
-  '/matches': [{ en: 'Propose three people — do not send', el: 'Πρότεινε τρεις — χωρίς αποστολή' }, { en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' }],
-  '/discovery': [{ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' }],
-  '/mentors': [{ en: 'Find a fundraising mentor', el: 'Βρες μέντορα για χρηματοδότηση' }],
-  '/fundraising': [{ en: 'How is my round?', el: 'Πώς πάει ο γύρος;' }, { en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
-  '/events': [{ en: 'What events are coming?', el: 'Ποιες εκδηλώσεις έρχονται;' }],
-  '/programs': [{ en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
-  '/perks': [{ en: 'What perks can I claim?', el: 'Ποιες παροχές μπορώ να διεκδικήσω;' }],
-  '/milestones': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }],
-  '/calendar': [{ en: 'What events are coming?', el: 'Ποιες εκδηλώσεις έρχονται;' }],
-  '/insights': [{ en: 'Tell me about readiness score', el: 'Πες μου για το readiness score' }],
-  '/profile': [{ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' }],
-  '/network': [{ en: 'Draft a need card for a co-founder', el: 'Γράψε κάρτα ανάγκης για συνιδρυτή' }, { en: 'Invite 3 founders', el: 'Προσκάλεσε 3 ιδρυτές' }],
-  '/workspace': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }, { en: 'Give me a 7-day match plan', el: 'Δώσε μου πλάνο 7 ημερών' }],
-  '/dashboard': [{ en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' }, { en: 'Who should I meet this week?', el: 'Ποιον να γνωρίσω αυτή την εβδομάδα;' }],
-  '/legal': [{ en: 'Tell me about SAFE agreement', el: 'Πες μου για το SAFE' }],
-  '/resources': [{ en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
-  '/messages': [{ en: 'Search my messages for intro', el: 'Ψάξε στα μηνύματα για intro' }, { en: 'How do I start a voice call?', el: 'Πώς ξεκινάω φωνητική κλήση;' }],
-  '/communities': [{ en: 'How do I create a community?', el: 'Πώς δημιουργώ κοινότητα;' }],
-  '/founder-tools': [{ en: 'How do I export my pitch deck?', el: 'Πώς εξάγω το pitch;' }],
-  '/notifications': [{ en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' }],
-  '/settings': [{ en: 'What am I marked open to?', el: 'Σε τι είμαι ανοιχτός;' }],
-  '/quiz': [{ en: 'What is my fit check?', el: 'Ποιο είναι το fit check μου;' }],
+type Bubble = AssistantTurn & {
+  links?: AssistantLink[];
+  followUps?: AssistantFollowUp[];
+  /** In-memory only — never written into the persisted transcript. */
+  proposal?: AssistantProposal;
+  resolved?: 'confirmed' | 'cancelled' | 'undone';
+  /** Epoch ms until which the inline Undo button shows under a confirmed card. */
+  undoUntil?: number;
 };
-
-function startersFor(pathname: string): { en: string; el: string }[] {
-  const path = pathname.split('?')[0]?.replace(/\/+$/, '') || '/dashboard';
-  const page = PAGE_STARTERS[path] ?? PAGE_STARTERS[path.split('/').slice(0, 2).join('/')] ?? [];
-  const rest = STARTERS.filter((item) => !page.some((p) => p.en === item.en));
-  return [...page, ...rest].slice(0, 4);
-}
-
-type Bubble = AssistantTurn & { links?: AssistantLink[]; followUps?: AssistantFollowUp[] };
 
 function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
   const base = profile
@@ -76,7 +47,7 @@ function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
 export default function ChatWidget() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile } = useAuth();
+  const { profile, user, isDemoMode } = useAuth();
   const { mode } = useLanguage();
   const t = useT();
   const toast = useToast();
@@ -96,10 +67,15 @@ export default function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const runRef = useRef<(raw: string) => Promise<void>>(async () => undefined);
   const stopRef = useRef(false);
+  const turnsRef = useRef<Bubble[]>(turns);
+  const undoingRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => { turnsRef.current = turns; }, [turns]);
 
   const visibleTurns = tab === 'studio' ? turns : agentTurns;
   const agent = MOCK_AGENTS.find((item) => item.id === agentId);
   const page = useMemo(() => pageContext(location.pathname), [location.pathname]);
+  const pageControls = useSyncExternalStore(onPageControlsChange, readPageControls);
   const pageStarters = useMemo(() => startersFor(location.pathname), [location.pathname]);
   const slashQuery = inputText.startsWith('/') ? inputText.trim().toLowerCase() : '';
   const slashHits = slashQuery && !slashQuery.includes(' ')
@@ -182,6 +158,104 @@ export default function ChatWidget() {
     }
   };
 
+  /** The same Gemini "polish" step the direct answer path runs. */
+  const polishReply = async (replyId: string, payload: string, result: AssistantResult) => {
+    setIsTyping(true);
+    try {
+      const polished = await Promise.race([
+        AIService.chat(
+          `The founder said: ${payload}\nYou already ran the tool "${result.tool}". Restate this result in ${mode === 'el' ? 'Greek' : 'English'} only. Do not invent people, scores, or amounts that are not in the result.\nResult:\n${mode === 'el' ? result.el : result.en}`,
+          `On page ${page.en} (${page.href}).\n${assistantContextBlock(viewerFromAuth(profile))}`,
+        ),
+        new Promise<{ text: string }>((_, reject) => { window.setTimeout(() => reject(new Error('timeout')), 4500); }),
+      ]);
+      if (stopRef.current) return;
+      if (polished.text?.trim()) {
+        const text = polished.text.trim();
+        setTurns((prev) => prev.map((item) => (item.id === replyId ? { ...item, text } : item)));
+        updateAssistantTurn(replyId, { text });
+      }
+    } catch {
+      /* the deterministic answer stays */
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const cancelProposal = (msg: Bubble) => {
+    const text = t('Cancelled — nothing changed.', 'Ακυρώθηκε — τίποτα δεν άλλαξε.');
+    setTurns((prev) => prev.map((item) => (item.id === msg.id
+      ? { ...item, text, resolved: 'cancelled' as const }
+      : item)));
+    updateAssistantTurn(msg.id, { text });
+  };
+
+  const undoProposal = async (id: string) => {
+    const msg = turnsRef.current.find((item) => item.id === id);
+    if (!msg?.proposal?.undo || msg.resolved !== 'confirmed' || undoingRef.current.has(id)) return;
+    // Mark undone synchronously — a second click from the toast or the inline
+    // button before the async undo settles must not run the write twice.
+    undoingRef.current.add(id);
+    setIsTyping(true);
+    setTurns((prev) => prev.map((item) => (item.id === id ? { ...item, resolved: 'undone' as const, undoUntil: 0 } : item)));
+    try {
+      await msg.proposal.undo();
+    } catch {
+      undoingRef.current.delete(id);
+      setTurns((prev) => prev.map((item) => (item.id === id ? { ...item, resolved: 'confirmed' as const } : item)));
+      toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), t('Nothing changed.', 'Τίποτα δεν άλλαξε.'));
+      setIsTyping(false);
+      return;
+    }
+    setIsTyping(false);
+    pushStudio({ id: `a-undone-${Date.now()}`, role: 'assistant', text: t('Undone.', 'Αναιρέθηκε.'), at: new Date().toISOString() });
+  };
+
+  const confirmProposal = async (msg: Bubble) => {
+    const proposal = msg.proposal;
+    if (!proposal || msg.resolved) return;
+    setIsTyping(true);
+    let final: AssistantResult;
+    try {
+      final = await proposal.apply();
+    } catch {
+      const text = t('That did not go through — nothing changed.', 'Δεν ολοκληρώθηκε — τίποτα δεν άλλαξε.');
+      setTurns((prev) => prev.map((item) => (item.id === msg.id ? { ...item, text, resolved: 'cancelled' as const } : item)));
+      updateAssistantTurn(msg.id, { text });
+      toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), t('Nothing changed.', 'Τίποτα δεν άλλαξε.'));
+      setIsTyping(false);
+      return;
+    }
+    setIsTyping(false);
+    const text = speak(final);
+    setTurns((prev) => prev.map((item) => (item.id === msg.id
+      ? {
+          ...item,
+          text,
+          href: final.href,
+          links: final.links,
+          followUps: final.followUps,
+          sources: final.sources,
+          resolved: 'confirmed' as const,
+          undoUntil: proposal.undo ? Date.now() + 60_000 : 0,
+        }
+      : item)));
+    updateAssistantTurn(msg.id, { text, href: final.href, links: final.links, followUps: final.followUps, sources: final.sources, tool: final.tool });
+    if (proposal.undo) {
+      toast.toast({
+        type: 'success',
+        title: t('Done', 'Έγινε'),
+        description: mode === 'el' ? proposal.summary.el : proposal.summary.en,
+        duration: 8000,
+        action: { label: t('Undo', 'Αναίρεση'), run: () => { void undoProposal(msg.id); } },
+      });
+      window.setTimeout(() => setTurns((prev) => prev.map((item) => (item.id === msg.id ? { ...item, undoUntil: 0 } : item))), 60_000);
+    }
+    const index = turnsRef.current.findIndex((item) => item.id === msg.id);
+    const userSaid = turnsRef.current.slice(0, index).reverse().find((item) => item.role === 'user')?.text ?? '';
+    void polishReply(msg.id, userSaid, final);
+  };
+
   const run = async (raw: string) => {
     const text = raw.trim();
     if (!text || isTyping) return;
@@ -224,9 +298,24 @@ export default function ChatWidget() {
       return;
     }
 
+    // A new message cancels every pending proposal — only the newest is actionable.
+    const cancelledText = t('Cancelled — nothing changed.', 'Ακυρώθηκε — τίποτα δεν άλλαξε.');
+    for (const item of turnsRef.current) {
+      if (item.role === 'assistant' && item.proposal && !item.resolved) updateAssistantTurn(item.id, { text: cancelledText });
+    }
+    setTurns((prev) => prev.map((item) => (item.role === 'assistant' && item.proposal && !item.resolved
+      ? { ...item, text: cancelledText, resolved: 'cancelled' as const }
+      : item)));
+
     const userBubble: Bubble = { id: `u-${Date.now()}`, role: 'user', text: payload, at: new Date().toISOString() };
     pushStudio(userBubble);
-    const result = runAssistant(payload, viewerFromAuth(profile));
+    if (user && !isDemoMode) {
+      void import('../firebase').then(async ({ db }) => {
+        const { collection, addDoc } = await import('firebase/firestore');
+        await addDoc(collection(db, 'aiUsage'), { userId: user.uid, kind: 'chat', at: new Date().toISOString() });
+      }).catch(() => undefined);
+    }
+    const result = runAssistant(payload, viewerFromAuth(profile), { propose: true });
     const replyId = `a-${Date.now()}`;
     pushStudio({
       id: replyId,
@@ -237,27 +326,13 @@ export default function ChatWidget() {
       followUps: result.followUps,
       tool: result.tool,
       sources: result.sources,
+      proposal: result.proposal,
       at: new Date().toISOString(),
     });
     if (result.tool === 'navigate' && result.href) navigate(result.href);
-    setIsTyping(true);
-    try {
-      const polished = await Promise.race([
-        AIService.chat(
-          `The founder said: ${payload}\nYou already ran the tool "${result.tool}". Restate this result in ${mode === 'el' ? 'Greek' : 'English'} only. Do not invent people, scores, or amounts that are not in the result.\nResult:\n${mode === 'el' ? result.el : result.en}`,
-          `On page ${page.en} (${page.href}).\n${assistantContextBlock(viewerFromAuth(profile))}`,
-        ),
-        new Promise<{ text: string }>((_, reject) => { window.setTimeout(() => reject(new Error('timeout')), 4500); }),
-      ]);
-      if (stopRef.current) return;
-      if (polished.text?.trim()) {
-        setTurns((prev) => prev.map((item) => (item.id === replyId ? { ...item, text: polished.text.trim() } : item)));
-      }
-    } catch {
-      /* the deterministic answer stays */
-    } finally {
-      setIsTyping(false);
-    }
+    // A proposal is a question — it stays verbatim until confirmed, no polish.
+    if (result.proposal) return;
+    void polishReply(replyId, payload, result);
   };
 
   runRef.current = run;
@@ -339,7 +414,11 @@ export default function ChatWidget() {
                       onClick={() => { setAgentId(item.id); setAgentTurns([]); }}
                       className="w-full p-3 bg-white rounded-xl border border-stone-100 hover:border-stone-300 text-left flex items-start gap-3"
                     >
-                      <img src={item.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                      {item.avatar ? (
+                        <img src={item.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <span className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center text-base shrink-0" aria-hidden="true">{item.icon}</span>
+                      )}
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-stone-900">{item.name}</p>
                         <p className="text-xs text-stone-500 line-clamp-2">{item.description}</p>
@@ -384,14 +463,14 @@ export default function ChatWidget() {
                                 {msg.tool ? ` · ${msg.tool}` : ''}
                               </span>
                             )}
-                            <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-[10px] font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
+                            <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
                               {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                             </button>
                           </div>
                         )}
                         {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
                           <details className="w-full">
-                            <summary className="cursor-pointer text-[10px] font-medium text-stone-500 hover:text-stone-900">
+                            <summary className="cursor-pointer text-xs font-medium text-stone-500 hover:text-stone-900">
                               {t(`Read from (${msg.sources.length})`, `Ανάγνωση από (${msg.sources.length})`)}
                             </summary>
                             <ul className="mt-1 flex flex-col gap-0.5">
@@ -401,12 +480,12 @@ export default function ChatWidget() {
                                     <button
                                       type="button"
                                       onClick={() => { navigate(source.href!); setIsMinimized(true); }}
-                                      className="text-[10px] font-medium text-stone-600 hover:text-stone-900 hover:underline"
+                                      className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
                                     >
                                       {bothText(source.en, source.el)}
                                     </button>
                                   ) : (
-                                    <span className="text-[10px] text-stone-500">{bothText(source.en, source.el)}</span>
+                                    <span className="text-xs text-stone-500">{bothText(source.en, source.el)}</span>
                                   )}
                                 </li>
                               ))}
@@ -427,6 +506,44 @@ export default function ChatWidget() {
                             ))}
                           </div>
                         )}
+                        {msg.proposal && !msg.resolved && (
+                          <div className="w-full bg-white border border-stone-200 rounded-xl p-3 space-y-2">
+                            <p className="text-xs font-medium text-stone-900">{bothText(msg.proposal.summary.en, msg.proposal.summary.el)}</p>
+                            <p className="text-xs text-stone-500">
+                              {msg.proposal.reversal === 'full'
+                                ? t('Reversible — Undo available', 'Αναστρέψιμο — διαθέσιμη Αναίρεση')
+                                : msg.proposal.reversal === 'partial'
+                                  ? t('Partly reversible', 'Μερικώς αναστρέψιμο')
+                                  : t('Not reversible', 'Μη αναστρέψιμο')}
+                              {msg.proposal.reversalNote ? ` — ${bothText(msg.proposal.reversalNote.en, msg.proposal.reversalNote.el)}` : ''}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => { void confirmProposal(msg); }}
+                                className="min-h-8 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800"
+                              >
+                                {t('Confirm', 'Επιβεβαίωση')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => cancelProposal(msg)}
+                                className="min-h-8 px-3 bg-white border border-stone-200 text-stone-700 rounded-lg text-xs font-medium hover:border-stone-400"
+                              >
+                                {t('Cancel', 'Ακύρωση')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {msg.resolved === 'confirmed' && msg.proposal?.undo && msg.undoUntil ? (
+                          <button
+                            type="button"
+                            onClick={() => { void undoProposal(msg.id); }}
+                            className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline"
+                          >
+                            {t('Undo', 'Αναίρεση')}
+                          </button>
+                        ) : null}
                         {lastAssistant && msg.followUps && msg.followUps.length > 0 && (
                           <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρώτα μετά')}>
                             {msg.followUps.map((prompt) => (
@@ -449,7 +566,7 @@ export default function ChatWidget() {
                         <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
                           <Bot className="w-3 h-3" />
                         </div>
-                        <p className="text-[10px] font-medium">
+                        <p className="text-xs font-medium">
                           <Both en="Studio is answering…" el="Ο βοηθός απαντά…" />
                         </p>
                         <div className="flex gap-1">
@@ -470,14 +587,14 @@ export default function ChatWidget() {
                           <button
                             type="button"
                             onClick={() => setPageOpen((open) => !open)}
-                            className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-[10px] font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
+                            className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
                             aria-expanded={pageOpen}
                             aria-label={t('Page this chat is on', 'Σελίδα αυτής της συνομιλίας')}
                           >
                             {bothText(page.en, page.el)}
                           </button>
                           {pinnedContext && (
-                            <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-[10px] font-medium inline-flex items-center gap-1">
+                            <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-xs font-medium inline-flex items-center gap-1">
                               {pinnedContext}
                               <X className="w-3 h-3" />
                             </button>
@@ -515,7 +632,7 @@ export default function ChatWidget() {
                             className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
                           >
                             <span className="text-xs font-mono font-medium text-stone-900">{item.cmd}</span>
-                            <span className="text-[10px] text-stone-400 truncate">{bothText(item.en, item.el)}</span>
+                            <span className="text-xs text-stone-400 truncate">{bothText(item.en, item.el)}</span>
                           </button>
                         ))}
                       </div>
@@ -530,7 +647,7 @@ export default function ChatWidget() {
                             className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
                           >
                             <span className="text-xs font-medium text-stone-900">{person.fullName}</span>
-                            <span className="text-[10px] text-stone-400 truncate">{labelOf(person.role)}</span>
+                            <span className="text-xs text-stone-400 truncate">{labelOf(person.role)}</span>
                           </button>
                         ))}
                       </div>
@@ -577,6 +694,22 @@ export default function ChatWidget() {
                         </button>
                       )}
                     </div>
+                    {pageControls.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-stone-400 mr-0.5">{bothText('On this page:', 'Σε αυτή τη σελίδα:')}</span>
+                        {pageControls.map((control) => (
+                          <button
+                            key={control.id}
+                            type="button"
+                            onClick={() => control.run()}
+                            className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3 text-stone-400" />
+                            {bothText(control.en, control.el)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {!agent && visibleTurns.length === 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {pageStarters.map((prompt) => (
@@ -600,7 +733,7 @@ export default function ChatWidget() {
                         ))}
                       </div>
                     )}
-                    <p className="mt-1.5 text-[10px] text-stone-400">
+                    <p className="mt-1.5 text-xs text-stone-400">
                       <Both en="Enter send · / shortcuts · @ person · Stop while answering · ⌘K" el="Enter αποστολή · / συντομεύσεις · @ άτομο · Διακοπή όσο απαντά · ⌘K" />
                     </p>
                   </div>

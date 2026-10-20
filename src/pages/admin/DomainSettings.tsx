@@ -1,71 +1,40 @@
 import { useState, useEffect } from "react";
-import { Globe, ShieldCheck, AlertCircle, CheckCircle2, ExternalLink, Plus, Trash2, RefreshCw, Copy, Info } from "lucide-react";
+import { Globe, ShieldCheck, ExternalLink, Plus, Trash2, RefreshCw, Copy, Info } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { TenantDomain, DomainVerification } from "../../types";
+import { TenantDomain } from "../../types";
+import { db } from "../../firebase";
+import { useTenant } from "../../context/TenantContext";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 
 export default function DomainSettings() {
  const t = useT();
+ const { tenant } = useTenant();
  const [domains, setDomains] = useState<TenantDomain[]>([]);
  const [loading, setLoading] = useState(true);
  const [showAddModal, setShowAddModal] = useState(false);
  const [newDomain, setNewDomain] = useState("");
  const [domainType, setDomainType] = useState<'Subdomain' | 'Custom'>('Custom');
+ const [copiedId, setCopiedId] = useState<string | null>(null);
 
  useEffect(() => {
-  // Mock fetch domains
-  const fetchDomains = async () => {
-   setLoading(true);
-   // Simulate API call
-   setTimeout(() => {
-    setDomains([
-     {
-      id: "dom_1",
-      tenantId: "techstars",
-      domainType: "Subdomain",
-      domain: "techstars.cofounderbay.com",
-      domainName: "techstars.cofounderbay.com",
-      isCustom: false,
-      isPrimary: true,
-      status: "Verified",
-      sslStatus: "Active",
-      verificationStatus: "Verified",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-     },
-     {
-      id: "dom_2",
-      tenantId: "techstars",
-      domainType: "Custom",
-      domain: "founders.techstars.com",
-      domainName: "founders.techstars.com",
-      isCustom: true,
-      isPrimary: false,
-      status: "Pending",
-      sslStatus: "Pending",
-      verificationStatus: "Pending",
-      verificationToken: "cfb-verification=xyz123abc789",
-      dnsInstructions: "Add a TXT record to your DNS settings with the value provided.",
-      isActive: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-     }
-    ]);
-    setLoading(false);
-   }, 800);
-  };
-  fetchDomains();
- }, []);
+  if (!tenant?.id) return;
+  setLoading(true);
+  const q = query(collection(db, 'tenantDomains'), where('tenantId', '==', tenant.id));
+  const unsub = onSnapshot(q, (snap) => {
+   setDomains(snap.docs.map((d) => ({ ...(d.data() as TenantDomain), id: d.id })));
+   setLoading(false);
+  }, () => setLoading(false));
+  return () => unsub();
+ }, [tenant?.id]);
 
- const handleAddDomain = () => {
-  if (!newDomain) return;
-  const domain: TenantDomain = {
-   id: `dom_${Math.random().toString(36).substr(2, 9)}`,
-   tenantId: "techstars",
+ const handleAddDomain = async () => {
+  if (!newDomain || !tenant?.id) return;
+  const domain: Omit<TenantDomain, 'id'> = {
+   tenantId: tenant.id,
    domain: domainType === 'Subdomain' ? `${newDomain}.cofounderbay.com` : newDomain,
    domainName: domainType === 'Subdomain' ? `${newDomain}.cofounderbay.com` : newDomain,
    isCustom: domainType === 'Custom',
@@ -79,21 +48,34 @@ export default function DomainSettings() {
    createdAt: new Date().toISOString(),
    updatedAt: new Date().toISOString(),
   };
-  setDomains([...domains, domain]);
+  await addDoc(collection(db, 'tenantDomains'), domain).catch((e) => console.error('Add domain failed:', e));
   setNewDomain("");
   setShowAddModal(false);
  };
 
- const handleVerify = (id: string) => {
-  setDomains(domains.map(d => d.id === id ? { ...d, verificationStatus: 'Verified', sslStatus: 'Active', isActive: true } : d));
+ const handleVerify = async (id: string) => {
+  // Manual confirmation until automated DNS checks exist — records who marked it.
+  await updateDoc(doc(db, 'tenantDomains', id), {
+   verificationStatus: 'Verified', sslStatus: 'Active', isActive: true, status: 'Verified',
+   verifiedManuallyAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }).catch((e) => console.error('Verify domain failed:', e));
  };
 
- const handleDelete = (id: string) => {
-  setDomains(domains.filter(d => d.id !== id));
+ const handleDelete = async (id: string) => {
+  await deleteDoc(doc(db, 'tenantDomains', id)).catch((e) => console.error('Delete domain failed:', e));
  };
 
- const handleSetPrimary = (id: string) => {
-  setDomains(domains.map(d => ({ ...d, isPrimary: d.id === id })));
+ const handleSetPrimary = async (id: string) => {
+  await Promise.all(domains.map((d) =>
+   updateDoc(doc(db, 'tenantDomains', d.id), { isPrimary: d.id === id, updatedAt: new Date().toISOString() })
+  )).catch((e) => console.error('Set primary failed:', e));
+ };
+
+ const copyToken = (id: string, token?: string) => {
+  if (!token) return;
+  navigator.clipboard?.writeText(token).catch(() => {});
+  setCopiedId(id);
+  setTimeout(() => setCopiedId(null), 1500);
  };
 
  return (
@@ -114,6 +96,13 @@ export default function DomainSettings() {
     </div>
    ) : (
     <div className="space-y-4">
+     {domains.length === 0 && (
+      <Card className="p-10 text-center border-dashed">
+       <Globe className="w-8 h-8 text-stone-300 mx-auto mb-3" />
+       <p className="text-sm font-medium text-stone-700">{t('No domains configured', 'Δεν έχουν ρυθμιστεί τομείς')}</p>
+       <p className="text-xs text-stone-500 mt-1">{t('Add a subdomain or custom domain to give your ecosystem its own address.', 'Πρόσθεσε υποτομέα ή προσαρμοσμένο τομέα για δική σου διεύθυνση.')}</p>
+      </Card>
+     )}
      {domains.map((domain) => (
       <Card key={domain.id} className={`p-5 transition-all border ${domain.isPrimary ? 'border-stone-900 ring-4 ring-stone-900/5' : 'border-stone-100'}`}>
        <div className="flex flex-col lg:flex-row gap-6">
@@ -166,19 +155,31 @@ export default function DomainSettings() {
            </div>
            <div className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-stone-200">
             <code className="flex-1 text-xs font-mono text-stone-900 break-all">{domain.verificationToken}</code>
-            <button className="p-1.5 hover:bg-stone-100 rounded-md transition-colors text-stone-400 hover:text-stone-900">
-             <Copy className="w-3.5 h-3.5" />
+            <button
+             type="button"
+             title={t('Copy token', 'Αντιγραφή token')}
+             onClick={() => copyToken(domain.id, domain.verificationToken)}
+             className="p-1.5 hover:bg-stone-100 rounded-md transition-colors text-stone-400 hover:text-stone-900"
+            >
+             {copiedId === domain.id ? <span className="text-xs text-green-700 font-medium">{t('Copied', 'Αντιγράφηκε')}</span> : <Copy className="w-3.5 h-3.5" />}
             </button>
            </div>
            <div className="flex gap-2">
-            <Button onClick={() => handleVerify(domain.id)} variant="primary" size="sm" className="text-xs h-8 font-medium tracking-wider">{t('Check DNS Records', 'Έλεγχος εγγραφών DNS')}</Button>
-            <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider">{t('View DNS Instructions', 'Οδηγίες DNS')}</Button>
+            <Button onClick={() => handleVerify(domain.id)} variant="primary" size="sm" className="text-xs h-8 font-medium tracking-wider">{t('Mark Verified (manual)', 'Σήμανση επαληθευμένου (χειροκίνητα)')}</Button>
+            <Button
+             variant="outline"
+             size="sm"
+             className="text-xs h-8 font-medium tracking-wider"
+             onClick={() => copyToken(`instr-${domain.id}`, `TXT @ ${domain.domainName} → ${domain.verificationToken}`)}
+            >
+             {copiedId === `instr-${domain.id}` ? t('Copied!', 'Αντιγράφηκε!') : t('Copy DNS Instructions', 'Αντιγραφή οδηγιών DNS')}
+            </Button>
            </div>
           </div>
          )}
 
          <div className="flex items-center gap-3 pt-2">
-          <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider gap-1.5" onClick={() => window.open(`https://${domain.domainName}?tenant_preview=techstars`, '_blank')}>
+          <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider gap-1.5" onClick={() => window.open(`https://${domain.domainName}?tenant_preview=${tenant?.slug || tenant?.id}`, '_blank')}>
            <ExternalLink className="w-3 h-3" /> {t('Preview Routing', 'Προεπισκόπηση δρομολόγησης')}
           </Button>
           {!domain.isPrimary && domain.verificationStatus === 'Verified' && (
@@ -209,7 +210,7 @@ export default function DomainSettings() {
       >
        <div className="p-6 space-y-5">
         <div className="space-y-1">
-         <h3 className="text-lg font-medium tracking-tight">{t('Add New Domain', 'Προσθήκη τομέα')}</h3>
+         <h3 className="text-base font-semibold tracking-tight">{t('Add New Domain', 'Προσθήκη τομέα')}</h3>
          <p className="text-stone-500 text-xs">{t('Choose between a platform subdomain or your own custom domain.', 'Διάλεξε υποτομέα πλατφόρμας ή δικό σου προσαρμοσμένο τομέα.')}</p>
         </div>
 

@@ -45,6 +45,11 @@ test.describe('404 handling', () => {
 test.describe('offline indicator', () => {
   test('shows the offline pill when connectivity drops', async ({ page, context }) => {
     await page.goto('/');
+    // Wait for the lazy page chunk to render before cutting the network —
+    // `goto` resolves at `load` while the lazy LandingPage import can still be
+    // in flight, so going offline immediately raced the chunk request.
+    await expect(page).toHaveTitle(/CoFounderBay — Find Your Co-Founder/);
+    await expect(page.locator('#root')).not.toBeEmpty();
     await context.setOffline(true);
     await expect(page.getByText(/You are offline/i)).toBeVisible();
     // Restore connectivity — the offline warning must clear. (The transient

@@ -705,9 +705,13 @@ export type Tenant = TenantConfig;
 export type UserProfile = User & {
   uid: string;
   headline: string;
+  headlineEl?: string;
   bio: string;
+  bioEl?: string;
+  avatarUrl?: string;
   location: string;
   stage: string;
+  company?: string;
   role: string;
   commitment: string;
   industry?: string;
