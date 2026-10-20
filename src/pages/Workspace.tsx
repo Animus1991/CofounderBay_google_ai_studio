@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { 
  Layout, 
  CheckSquare, 
@@ -49,6 +50,7 @@ import { cn } from "../lib/utils";
 import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue, type StudioTask } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { usePageControls } from "../lib/pageControls";
+import { BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { formatDate } from "../lib/dates";
@@ -129,6 +131,7 @@ export default function Workspace({ user }: WorkspaceProps) {
  const milestones = useStored(readMilestones, [keys.milestones]);
  const sessions = useStored(readSessions, [keys.sessions]);
  const canvas = useStored(() => readValue<CanvasDraft>(keys.canvas, {}), [keys.canvas]);
+ const builderInputs = useStored(readBuilderInputs, [keys.builderInputs]);
 
  usePageControls(() => [
   { id: 'toggle-focus', en: focusMode ? 'Exit focus mode' : 'Start focus mode', el: focusMode ? 'Έξοδος από εστίαση' : 'Έναρξη εστίασης', run: () => setFocusMode((prev) => !prev) },
@@ -996,8 +999,14 @@ export default function Workspace({ user }: WorkspaceProps) {
      </motion.div>
     )}
 
-    {/* ── BUILDER TAB (Placeholder) ────────────────────────── */}
-    {activeTab === "Builder" && (
+    {/* ── BUILDER TAB ────────────────────────── */}
+    {activeTab === "Builder" && (() => {
+     const moduleStats = BUILDER_MODULES.map((module) => ({ module, ...builderStatus(module.id, builderInputs) }));
+     const done = moduleStats.filter((stat) => stat.status === 'Completed').length;
+     const firstIncomplete = moduleStats.find((stat) => stat.status !== 'Completed') ?? moduleStats[0];
+     const askPrompt = t('Help me with the {title} module', 'Βοήθησέ με με την ενότητα {title}')
+      .replace('{title}', firstIncomplete ? t(firstIncomplete.module.title, firstIncomplete.module.titleEl) : '');
+     return (
      <motion.div
       key="builder"
       initial={{ opacity: 0, y: 10 }}
@@ -1010,11 +1019,36 @@ export default function Workspace({ user }: WorkspaceProps) {
       </div>
       <h3 className="text-base font-semibold text-stone-900 mb-2">{t("Builder Mode", "Λειτουργία κατασκευής")}</h3>
       <p className="text-sm text-stone-400 max-w-xs">{t("Canvas and task tools on this tab stay here. Ask the studio assistant to add a milestone, book time, or open Founder Tools.", "Τα εργαλεία canvas και εργασιών μένουν σε αυτή την καρτέλα. Ζήτα από τον βοηθό να προσθέσει ορόσημο, να κλείσει ώρα ή να ανοίξει τα εργαλεία ιδρυτή.")}</p>
-      <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone ship the MVP' } }))}>
+      <div className="w-full max-w-xl mt-6 space-y-3 text-left">
+       <p className="text-sm text-stone-500">
+        {t('{n} of {total} modules complete', '{n} από {total} ενότητες ολοκληρωμένες')
+         .replace('{n}', String(done)).replace('{total}', String(BUILDER_MODULES.length))}
+       </p>
+       <Card className="p-2 border-stone-100 rounded-2xl space-y-1">
+        {moduleStats.map(({ module, status, filled, total }) => (
+         <div key={module.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-all">
+          <span className="text-stone-400 font-mono font-semibold text-sm w-6">{String(module.id).padStart(2, '0')}</span>
+          <div className="flex-1 min-w-0">
+           <h4 className="text-sm font-semibold text-stone-900 truncate">{t(module.title, module.titleEl)}</h4>
+           <p className="text-xs text-stone-400">{filled}/{total}</p>
+          </div>
+          <span className={cn(
+           "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
+           status === "Completed" ? "text-emerald-600 border-transparent" :
+           status === "In-Progress" ? "text-amber-600 border-transparent" :
+           "text-stone-400 border-transparent"
+          )}>{labelOf(status)}</span>
+          <Link to={`/founder-tools?step=${module.id}`} className="text-xs font-medium text-stone-900 hover:underline shrink-0">{t('Continue', 'Συνέχεια')}</Link>
+         </div>
+        ))}
+       </Card>
+      </div>
+      <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: askPrompt } }))}>
        {t("Ask the studio assistant", "Ρώτα τον βοηθό")}
       </Button>
      </motion.div>
-    )}
+     );
+    })()}
    </AnimatePresence>
   </PageShell>
  );

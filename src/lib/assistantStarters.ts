@@ -13,7 +13,7 @@ export const PAGE_STARTERS: Record<string, { en: string; el: string }[]> = {
   '/matches': [{ en: 'Propose three people — do not send', el: 'Πρότεινε τρεις — χωρίς αποστολή' }, { en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμα στην ιδρυτική ομάδα;' }],
   '/discovery': [{ en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' }],
   '/mentors': [{ en: 'Find a fundraising mentor', el: 'Βρες μέντορα για χρηματοδότηση' }],
-  '/fundraising': [{ en: 'How is my round?', el: 'Πώς πάει ο γύρος;' }, { en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
+  '/fundraising': [{ en: 'How is my round?', el: 'Πώς πάει ο γύρος;' }, { en: 'Set monthly burn to 18k', el: 'Όρισε το burn σε 18k' }, { en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
   '/events': [{ en: 'What events are coming?', el: 'Ποιες εκδηλώσεις έρχονται;' }],
   '/programs': [{ en: 'What programs can I apply to?', el: 'Σε ποια προγράμματα μπορώ να κάνω αίτηση;' }],
   '/perks': [{ en: 'What perks can I claim?', el: 'Ποιες παροχές μπορώ να διεκδικήσω;' }],

@@ -18,6 +18,7 @@ import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { keys, listKeys, readIds, readValue, writeValue } from "../lib/localLists";
+import { perkDollarTotal } from "../lib/perks";
 import { useStored } from "../lib/useStored";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
@@ -184,7 +185,7 @@ export default function Perks() {
     <Card className="bg-stone-900 text-white border-none flex items-center justify-between p-6">
      <div>
       <p className="text-md font-medium text-white/40 tracking-wide">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
-      <h4 className="text-lg font-semibold">{isDemoMode ? '$450k+' : perks.length}</h4>
+      <h4 className="text-lg font-semibold">{isDemoMode ? perkDollarTotal(DEMO_PERKS) : perks.length}</h4>
      </div>
      <Zap className="w-8 h-8 text-amber-500 fill-current" />
     </Card>

@@ -12,6 +12,7 @@ import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { useAuth } from '../App';
 import { useNotificationFeed, type FeedNote, type FeedNoteType } from '../lib/notificationFeed';
+import { usePageControls } from '../lib/pageControls';
 import { useToast } from '../context/ToastContext';
 
 type Filter = 'all' | 'unread' | 'people' | 'activity';
@@ -23,6 +24,12 @@ export default function Notifications() {
   const toast = useToast();
   const feed = useNotificationFeed();
   const [filter, setFilter] = useState<Filter>('all');
+
+  usePageControls(() => [
+    { id: 'show-unread', en: 'Show unread only', el: 'Μόνο αδιάβαστες', run: () => setFilter('unread') },
+    { id: 'show-all', en: 'Show all', el: 'Εμφάνιση όλων', run: () => setFilter('all') },
+    { id: 'mark-all-read', en: 'Mark all read', el: 'Σήμανση όλων ως αναγνωσμένων', run: feed.markAllRead },
+  ], [feed.markAllRead]);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported',
   );

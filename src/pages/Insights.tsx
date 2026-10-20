@@ -19,29 +19,16 @@ import { cn } from "../lib/utils";
 import { User, UserProfile } from "../types";
 import { keys, listKeys, readActivity, readIds, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
+import { usePageControls } from "../lib/pageControls";
 import { useT } from "../lib/language";
 import { useAuth } from "../App";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import { DEMO_ACTIVITY, DEMO_READINESS, demoActivityDelta, demoReadinessDelta } from "../data/demoStats";
 
 interface InsightsProps {
  user: User;
 }
-
-// Demo-only series — pretty charts for the demo account, never real members.
-const DEMO_READINESS = [
- { name: 'Jan', score: 45 }, { name: 'Feb', score: 52 }, { name: 'Mar', score: 48 },
- { name: 'Apr', score: 61 }, { name: 'May', score: 58 }, { name: 'Jun', score: 72 }, { name: 'Jul', score: 85 },
-];
-const DEMO_ACTIVITY = [
- { name: 'Mon', connections: 4, messages: 12, views: 24 },
- { name: 'Tue', connections: 2, messages: 8, views: 18 },
- { name: 'Wed', connections: 6, messages: 15, views: 32 },
- { name: 'Thu', connections: 3, messages: 10, views: 28 },
- { name: 'Fri', connections: 5, messages: 20, views: 45 },
- { name: 'Sat', connections: 1, messages: 5, views: 12 },
- { name: 'Sun', connections: 2, messages: 7, views: 15 },
-];
 
 const DAY_EL = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
 const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -69,6 +56,12 @@ export default function Insights({ user }: InsightsProps) {
  const navigate = useNavigate();
  const { profile, isDemoMode } = useAuth();
  const [activeRange, setActiveRange] = useState('7D');
+
+ usePageControls(() => [
+  { id: 'range-24h', en: 'Last 24 hours', el: 'Τελευταίες 24 ώρες', run: () => setActiveRange('24H') },
+  { id: 'range-7d', en: 'Last 7 days', el: 'Τελευταίες 7 ημέρες', run: () => setActiveRange('7D') },
+  { id: 'range-30d', en: 'Last 30 days', el: 'Τελευταίες 30 ημέρες', run: () => setActiveRange('30D') },
+ ], []);
  const studioActivity = useStored(readActivity, [keys.activity]);
  const saved = useStored(readSaved, [keys.saved]);
  const requests = useStored(readRequests, [keys.requests]);
@@ -96,9 +89,8 @@ export default function Insights({ user }: InsightsProps) {
 
  const readinessView = useMemo(() => {
   if (isDemoMode) {
+   // The sample covers one week: 24H shows the last point, wider ranges show it all.
    if (activeRange === '24H') return DEMO_READINESS.slice(-1);
-   if (activeRange === '7D') return DEMO_READINESS.slice(-2);
-   if (activeRange === '30D') return DEMO_READINESS.slice(-4);
    return DEMO_READINESS;
   }
   const points = history.filter((p) => new Date(p.at).getTime() >= cutoff);
@@ -109,7 +101,7 @@ export default function Insights({ user }: InsightsProps) {
  }, [isDemoMode, activeRange, history, cutoff]);
 
  const readinessDelta = useMemo(() => {
-  if (isDemoMode) return 12;
+  if (isDemoMode) return demoReadinessDelta();
   const points = history;
   if (points.length < 2) return null;
   return points[points.length - 1]!.score - points[0]!.score;
@@ -119,8 +111,6 @@ export default function Insights({ user }: InsightsProps) {
  const activityView = useMemo(() => {
   if (isDemoMode) {
    if (activeRange === '24H') return DEMO_ACTIVITY.slice(-1);
-   if (activeRange === '7D') return DEMO_ACTIVITY.slice(-3);
-   if (activeRange === '30D') return DEMO_ACTIVITY.slice(-5);
    return DEMO_ACTIVITY;
   }
   const week: { name: string; connections: number; messages: number; views: number }[] = [];
@@ -151,13 +141,14 @@ export default function Insights({ user }: InsightsProps) {
  const readinessChart = readinessView.map((row) => ({ ...row, name: axisLabel[row.name] ?? row.name }));
  const activityChart = activityView.map((row) => ({ ...row, name: axisLabel[row.name] ?? row.name }));
  const you = t('You', 'Εσύ');
+ const signedPct = (n: number | null) => (n == null ? null : `${n >= 0 ? '+' : ''}${n}%`);
 
  const kpis = isDemoMode
   ? [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: "+12%", icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
-   { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: "+24%", icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, viewSum), href: '/network' },
-   { label: t("Connections", "Συνδέσεις"), value: String(connectSum), change: "+8%", icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, connectSum * 8), href: '/network' },
-   { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: "+5%", icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: `+${demoReadinessDelta()}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
+   { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: signedPct(demoActivityDelta('views')), icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, viewSum), href: '/network' },
+   { label: t("Connections", "Συνδέσεις"), value: String(connectSum), change: signedPct(demoActivityDelta('connections')), icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, connectSum * 8), href: '/network' },
+   { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: signedPct(demoActivityDelta('messages')), icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
   ]
   : [
    { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/profile' },
@@ -322,6 +313,9 @@ export default function Insights({ user }: InsightsProps) {
         </ResponsiveContainer>
        </div>
       </Card>
+      {isDemoMode && (activeRange === '30D' || activeRange === 'ALL') && (
+       <p className="text-xs text-stone-400 text-center">{t('Sample covers one week', 'Το δείγμα καλύπτει μία εβδομάδα')}</p>
+      )}
      </div>
 
      {/* Sidebar */}

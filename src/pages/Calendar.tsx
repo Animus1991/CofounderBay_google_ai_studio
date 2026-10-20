@@ -43,7 +43,7 @@ export default function Calendar() {
  const [searchQuery, setSearchQuery] = useState('');
  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
  const [dismissedStarterIds, setDismissedStarterIds] = useState<string[]>([]);
- const [briefingEnabled, setBriefingEnabled] = useState(() => readValue<boolean>(keys.calendarBriefing, false));
+ const briefingEnabled = useStored(() => readValue<boolean>(keys.calendarBriefing, false), [keys.calendarBriefing]);
 
  useEffect(() => {
   if (!openMenuId) return;
@@ -250,9 +250,7 @@ export default function Calendar() {
  );
 
  const toggleBriefing = () => {
-  const next = !briefingEnabled;
-  setBriefingEnabled(next);
-  writeValue(keys.calendarBriefing, next);
+  writeValue(keys.calendarBriefing, !briefingEnabled);
  };
 
  usePageControls(() => [

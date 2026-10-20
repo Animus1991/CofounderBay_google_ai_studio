@@ -31,6 +31,7 @@ import { sendConnectionRequest } from '../lib/social';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../App';
 import { useStored } from '../lib/useStored';
+import { usePageControls } from '../lib/pageControls';
 
 type MentorCard = {
   id: string;
@@ -119,6 +120,12 @@ export default function MentorsPage() {
  const sessions = useStored(() => readSessions(), [keys.sessions]);
  const navigate = useNavigate();
 
+ usePageControls(() => [
+  { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => document.getElementById('mentor-filters')?.scrollIntoView({ behavior: 'smooth' }) },
+  ...(selectedMentor ? [{ id: 'request-mentorship', en: 'Request mentorship', el: 'Αίτημα καθοδήγησης', run: () => setIsMentorshipModalOpen(true) }] : []),
+  { id: 'become-a-mentor', en: 'Become a mentor', el: 'Γίνε μέντορας', run: () => navigate('/profile') },
+ ], [selectedMentor]);
+
  const availableFilters = ['All', 'Immediate', 'Flexible', '1 month notice'];
  const expertiseFilters = ['All', 'Product', 'Growth', 'Fundraising', 'Engineering', 'Marketing'];
 
@@ -168,7 +175,7 @@ export default function MentorsPage() {
        {t('Find Mentor', 'Βρες μέντορα')}
       </button>
      </div>
-     <div className="flex flex-wrap gap-y-3 gap-x-6 pt-2 relative z-20">
+     <div id="mentor-filters" className="flex flex-wrap gap-y-3 gap-x-6 pt-2 relative z-20">
       <div className="space-y-2 flex-1">
        <span className="text-xs font-semibold text-stone-400 tracking-wide block">{t('Expertise', 'Εξειδίκευση')}</span>
        <div className="flex flex-wrap gap-2">

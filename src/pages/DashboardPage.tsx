@@ -27,6 +27,7 @@ import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestActio
 import { db } from '../firebase';
 import { ReadinessScore, Streak } from '../types';
 import { CAST, avatarFor } from '../data/cast';
+import { demoWeeklyViews } from '../data/demoStats';
 import { usePeople } from '../lib/directory';
 import { avatarOf, cofounderPool, type Person } from '../lib/peopleSource';
 import { profileViews as loadProfileViews, sendConnectionRequest, useConnections } from '../lib/social';
@@ -460,9 +461,9 @@ export default function DashboardPage() {
     ? rankedCircles[0] ?? null
     : (rankedCircles[0] ?? live.prospect);
   const streakDays = isDemoMode ? (streak?.currentStreak ?? 12) : (streak?.currentStreak ?? 0);
-  const profileViews = isDemoMode ? 124 : (viewCount ?? live.profileViews);
+  const profileViews = isDemoMode ? demoWeeklyViews() : (viewCount ?? live.profileViews);
   const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
-  const unread = isDemoMode ? 3 : (messaging?.totalUnread ?? live.unreadMessages);
+  const unread = messaging?.totalUnread ?? 0;
   const pendingRequests = isDemoMode
     ? localRequests.filter((item) => item.status === 'pending').length
     : connections.incoming.length;

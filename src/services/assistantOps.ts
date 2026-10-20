@@ -50,12 +50,14 @@ import {
   type ActivityKind,
   type NeedCard,
   type NeedField,
+  type Round,
   type OpenToKind,
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
 import { milestoneService } from './milestoneService';
 import { readFitCheck } from '../lib/fitCheck';
+import { roundMetrics } from '../lib/roundMetrics';
 import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
@@ -151,6 +153,7 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   round: [SOURCE.round],
   pipeline: [SOURCE.round],
   'record-investment': [SOURCE.round],
+  'round-set': [SOURCE.round],
   activity: [SOURCE.activity],
   events: [SOURCE.events],
   'session-add': [SOURCE.calendar],
@@ -1083,14 +1086,91 @@ function milestonesResult(query: string, propose: boolean): AssistantResult {
   };
 }
 
+type RoundSet = { field: keyof Round; value: number | string; kind: 'money' | 'date' | 'text' | 'percent'; labelEn: string; labelEl: string };
+
+/** "set monthly burn to 12k" / "όρισε στόχο γύρου 1.5M" → the round field + parsed value, or null. */
+function parseRoundSet(query: string): RoundSet | null {
+  const folded = fold(query);
+  const isSet = /\b(set|rename|update|change)\b/.test(folded) || hasStem(folded, 'ορισε', 'αλλαξ', 'μετονομασ');
+  if (!isSet) return null;
+  const rename = folded.match(/\brename(?:\s+the)?\s+round\s+(?:to|as)\s+(.+)/)
+    ?? folded.match(/μετονομασ[^\s]*\s+(?:τον?\s+)?γυρο[^\s]*\s+σε\s+(.+)/);
+  if (rename?.[1]) {
+    const name = rename[1].trim().replace(/^["'«]|["'»]$/g, '');
+    if (name) return { field: 'name', value: name[0]!.toUpperCase() + name.slice(1), kind: 'text', labelEn: 'round name', labelEl: 'το όνομα του γύρου' };
+    return null;
+  }
+  const amount = parseMoney(folded);
+  const date = folded.match(/\b(\d{4}-\d{1,2}-\d{1,2})\b/)?.[1];
+  if (hasStem(folded, 'ημερομην', 'κλεισιματ') || /\b(close|closing)\b/.test(folded)) {
+    return date ? { field: 'closeDate', value: date, kind: 'date', labelEn: 'close date', labelEl: 'την ημερομηνία κλεισίματος' } : null;
+  }
+  if (/\bburn\b|καυσ/.test(folded)) {
+    return amount != null ? { field: 'monthlyBurn', value: amount, kind: 'money', labelEn: 'monthly burn', labelEl: 'το μηνιαίο burn' } : null;
+  }
+  if (/\bcash\b|διαθεσιμ/.test(folded)) {
+    return amount != null ? { field: 'cashOnHand', value: amount, kind: 'money', labelEn: 'cash on hand', labelEl: 'τα διαθέσιμα' } : null;
+  }
+  if (/\btarget\b|στοχο/.test(folded)) {
+    return amount != null ? { field: 'targetAmount', value: amount, kind: 'money', labelEn: 'round target', labelEl: 'τον στόχο του γύρου' } : null;
+  }
+  if (/\bcommitted\b|δεσμευ/.test(folded)) {
+    return amount != null ? { field: 'committedAmount', value: amount, kind: 'money', labelEn: 'committed', labelEl: 'τα δεσμευμένα' } : null;
+  }
+  if (/\bvaluation\b|αποτιμ/.test(folded)) {
+    return amount != null ? { field: 'valuationCap', value: amount, kind: 'money', labelEn: 'valuation cap', labelEl: 'την ανώτατη αποτίμηση' } : null;
+  }
+  if (/\bdiscount\b|εκπτωσ/.test(folded)) {
+    return amount != null ? { field: 'discountPct', value: amount, kind: 'percent', labelEn: 'discount', labelEl: 'την έκπτωση' } : null;
+  }
+  return null;
+}
+
+const roundSetDisplay = (set: RoundSet, value: unknown): string => {
+  if (set.kind === 'money') return `$${Number(value || 0).toLocaleString()}`;
+  if (set.kind === 'percent') return `${value}%`;
+  return String(value ?? '—');
+};
+
+function roundSetResult(set: RoundSet, propose: boolean): AssistantResult {
+  const previous = readRound();
+  const before = roundSetDisplay(set, previous[set.field]);
+  const after = roundSetDisplay(set, set.value);
+  const links: AssistantLink[] = [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }];
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    writeRound({ [set.field]: set.value });
+    logged = { kind: 'round', title: `Set ${set.labelEn} ${before} → ${after}`, titleEl: `${set.labelEl}: ${before} → ${after}`, href: '/fundraising' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'round-set',
+      en: `${set.labelEn}: ${before} → ${after}. Same number Fundraising shows.`,
+      el: `${set.labelEl}: ${before} → ${after}. Το ίδιο νούμερο με τη Χρηματοδότηση.`,
+      href: '/fundraising',
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Set ${set.labelEn} to ${after} (now ${before})?`, el: `${set.labelEl} σε ${after} (τώρα ${before});` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeRound(previous); logUndo(logged); },
+    },
+    { tool: 'round-set', href: '/fundraising', links },
+  );
+}
+
 function roundResult(): AssistantResult {
   const round = readRound();
-  const runway = round.monthlyBurn > 0 ? Math.floor(round.cashOnHand / round.monthlyBurn) : null;
-  const pct = round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0;
+  const metrics = roundMetrics(round);
+  const runway = metrics.runwayMonths;
+  const pct = metrics.pct;
   return {
     tool: 'round',
-    en: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` About ${runway} months of runway.` : ''} Open Fundraising to edit the numbers.`,
-    el: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` Περίπου ${runway} μήνες runway.` : ''} Άνοιξε τη Χρηματοδότηση για να αλλάξεις τα νούμερα.`,
+    en: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` About ${runway} months of runway.` : ''} Edit round on Fundraising, or tell me the new number.`,
+    el: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` Περίπου ${runway} μήνες runway.` : ''} Επεξεργασία γύρου στη Χρηματοδότηση, ή πες μου το νέο νούμερο.`,
     href: '/fundraising',
     links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }],
   };
@@ -1746,8 +1826,8 @@ function fitCheckResult(): AssistantResult {
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
+    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, “set monthly burn to 18k”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
@@ -1792,6 +1872,9 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue', propose);
     if (cmd === 'help') return helpResult();
   }
+
+  const roundSet = parseRoundSet(query);
+  if (roundSet) return roundSetResult(roundSet, propose);
 
   const person = namedPerson(query);
   if (person && /\b(why|γιατι)\b/.test(folded) && /\b(match|ταιριαζ)\b/.test(folded)) return matchDetailResult(profile, person);

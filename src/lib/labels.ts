@@ -84,6 +84,7 @@ const EL: Record<string, string> = {
   Completed: 'Ολοκληρώθηκε',
   'In Progress': 'Σε εξέλιξη',
   'In-Progress': 'Σε εξέλιξη',
+  'Not started': 'Δεν έχει ξεκινήσει',
   Planned: 'Προγραμματισμένο',
   Upcoming: 'Επερχόμενο',
   Overdue: 'Εκπρόθεσμο',

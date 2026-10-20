@@ -16,6 +16,8 @@ import { toMillis } from "../lib/peopleSource";
 import { formatDate, formatTime } from "../lib/dates";
 import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
 import { useToast } from "../context/ToastContext";
+import { useStored } from "../lib/useStored";
+import { usePageControls } from "../lib/pageControls";
 import { coverFor } from "../data/photos";
 import { useAuth } from "../App";
 import { User } from "../types";
@@ -24,6 +26,7 @@ const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
  'My Events': 'Οι εκδηλώσεις μου',
  Past: 'Παλαιότερες',
+ Bookmarked: 'Αποθηκευμένες',
 };
 
 interface EventsProps {
@@ -84,12 +87,18 @@ export default function Events(_props: EventsProps = {}) {
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
  const [showTypes, setShowTypes] = useState(false);
- const [registeredEvents, setRegisteredEvents] = useState<string[]>(() => readIds(eventListKeys.registered));
- const [bookmarkedEvents, setBookmarkedEvents] = useState<string[]>(() => readIds(eventListKeys.bookmarked));
+ const registeredEvents = useStored(() => readIds(eventListKeys.registered), [eventListKeys.registered]);
+ const bookmarkedEvents = useStored(() => readIds(eventListKeys.bookmarked), [eventListKeys.bookmarked]);
+
+ usePageControls(() => [
+  { id: 'show-my-events', en: 'Show my events', el: 'Οι εκδηλώσεις μου', run: () => setActiveTab('My Events') },
+  { id: 'show-bookmarked', en: 'Show bookmarked', el: 'Αποθηκευμένες', run: () => setActiveTab('Bookmarked') },
+  { id: 'all-events', en: 'All events', el: 'Όλες οι εκδηλώσεις', run: () => { setActiveTab('Upcoming'); setTypeFilter('All'); } },
+  { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowTypes(true) },
+ ], []);
 
  const toggleRegistration = (eventId: string) => {
   const next = toggleId(eventListKeys.registered, eventId);
-  setRegisteredEvents(next);
   const listed = allEvents.find((item) => item.id === eventId);
   if (!listed) return;
   if (next.includes(eventId)) {
@@ -109,7 +118,7 @@ export default function Events(_props: EventsProps = {}) {
   }
  };
  const toggleBookmark = (eventId: string) => {
-  setBookmarkedEvents(toggleId(eventListKeys.bookmarked, eventId));
+  toggleId(eventListKeys.bookmarked, eventId);
  };
 
  // One .ics file per card — disabled when the event has no real start time.
@@ -188,10 +197,11 @@ export default function Events(_props: EventsProps = {}) {
  const visibleEvents = useMemo(() => {
    let filtered = typeFilter === 'All' ? allEvents : allEvents.filter((e) => e.type === typeFilter);
    if (activeTab === 'My Events') filtered = filtered.filter((e) => registeredEvents.includes(e.id));
+   if (activeTab === 'Bookmarked') filtered = filtered.filter((e) => bookmarkedEvents.includes(e.id));
    if (activeTab === 'Past') filtered = filtered.filter((e) => e.startsAt != null && e.startsAt < now);
    if (activeTab === 'Upcoming' && !isDemoMode) filtered = filtered.filter((e) => e.startsAt == null || e.startsAt >= now);
    return filtered;
-  }, [allEvents, typeFilter, activeTab, registeredEvents, isDemoMode, now]);
+  }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, isDemoMode, now]);
 
  const featured = allEvents[0] ?? null;
  const typeCounts = useMemo(() => {
@@ -229,7 +239,7 @@ export default function Events(_props: EventsProps = {}) {
     {/* Main Events List */}
     <div className="lg:col-span-8 space-y-4">
      <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
-      {['Upcoming', 'My Events', 'Past'].map((tab) => (
+      {['Upcoming', 'My Events', 'Past', 'Bookmarked'].map((tab) => (
        <button
         key={tab}
         onClick={() => setActiveTab(tab)}

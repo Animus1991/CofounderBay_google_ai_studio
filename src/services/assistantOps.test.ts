@@ -280,6 +280,33 @@ describe('proposals', () => {
     expect(readMilestones()).toHaveLength(0);
   });
 
+  it('round-set proposes the field change and undo restores it', async () => {
+    const cases: Array<[string, keyof ReturnType<typeof readRound>, unknown]> = [
+      ['set monthly burn to 12k', 'monthlyBurn', 12_000],
+      ['set cash on hand to 180k', 'cashOnHand', 180_000],
+      ['set round target to 1.5M', 'targetAmount', 1_500_000],
+      ['set committed to 450k', 'committedAmount', 450_000],
+      ['set close date to 2026-03-31', 'closeDate', '2026-03-31'],
+      ['rename the round to Seed', 'name', 'Seed'],
+      ['όρισε το burn σε 12k', 'monthlyBurn', 12_000],
+      ['όρισε τα διαθέσιμα σε 180k', 'cashOnHand', 180_000],
+      ['όρισε στόχο γύρου 1.5M', 'targetAmount', 1_500_000],
+      ['όρισε ημερομηνία κλεισίματος σε 2026-03-31', 'closeDate', '2026-03-31'],
+      ['μετονόμασε τον γύρο σε Seed', 'name', 'Seed'],
+    ];
+    for (const [phrase, field, value] of cases) {
+      const before = readRound()[field];
+      const result = runAssistant(phrase, demo, { propose: true });
+      expect(result.tool, phrase).toBe('round-set');
+      expect(result.proposal?.reversal, phrase).toBe('full');
+      expect(readRound()[field], phrase).toBe(before);
+      await result.proposal!.apply();
+      expect(readRound()[field], phrase).toBe(value);
+      await result.proposal!.undo!();
+      expect(readRound()[field], phrase).toBe(before);
+    }
+  });
+
   it('proposes an investment and restores the round on undo', async () => {
     const before = readRound().committedAmount;
     const result = runAssistant('record a $50k investment', demo, { propose: true });

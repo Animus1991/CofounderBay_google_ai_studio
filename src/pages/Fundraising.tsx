@@ -43,20 +43,23 @@ import {
  MoreHorizontal,
  Plus,
  X,
+ Pencil,
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
-import { User, FundraisingTracker } from "../types";
+import { User } from "../types";
 import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { formatDate } from "../lib/dates";
-import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type RoundInvestor } from "../lib/localLists";
+import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
+import { usePageControls } from "../lib/pageControls";
+import { roundMetrics } from "../lib/roundMetrics";
 import type { Person } from "../lib/peopleSource";
 import { useAuth } from "../App";
 
@@ -87,6 +90,9 @@ const STAGE_META: Record<string, { color: string; dot: string }> = {
 };
 
 // Sample investors shown to the demo account only — real accounts see the live member directory.
+const inputClass =
+ "w-full min-h-11 bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-400";
+
 const mockInvestors: InvestorCard[] = [
  { id: "inv_1", name: "Sequoia Capital",       type: "VC",    focus: ["SaaS", "FinTech", "AI"],              stage: ["Seed", "Series A"],              location: "Menlo Park, CA",   checkSize: "$500k–$5M",   portfolio: "312" },
  { id: "inv_2", name: "Naval Ravikant",         type: "Angel", focus: ["Crypto", "Marketplaces", "DeepTech"], stage: ["Pre-Seed", "Seed"],               location: "San Francisco, CA", checkSize: "$25k–$250k",  portfolio: "84" },
@@ -125,6 +131,24 @@ export default function Fundraising({ user }: FundraisingProps) {
   return [...extra, ...seedRoomFiles.filter((file) => !names.has(file.name))];
  });
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
+ const [roundEditing, setRoundEditing] = useState(false);
+ const [roundDraft, setRoundDraft] = useState<Round | null>(null);
+
+ const openRoundEditor = () => { setActiveTab('tracker'); setRoundDraft({ ...round }); setRoundEditing(true); };
+ const saveRound = () => {
+  if (!roundDraft) return;
+  writeRound(roundDraft);
+  setRoundEditing(false);
+  showToast(t('Round updated', 'Ο γύρος ενημερώθηκε'));
+ };
+
+ usePageControls(() => [
+  { id: 'show-tracker', en: 'Show tracker', el: 'Εμφάνιση παρακολούθησης', run: () => setActiveTab('tracker') },
+  { id: 'show-investors', en: 'Show investors', el: 'Εμφάνιση επενδυτών', run: () => setActiveTab('investors') },
+  { id: 'show-programs', en: 'Show programs', el: 'Εμφάνιση προγραμμάτων', run: () => setActiveTab('programs') },
+  { id: 'show-opportunities', en: 'Show opportunities', el: 'Εμφάνιση ευκαιριών', run: () => setActiveTab('opportunities') },
+  { id: 'edit-round', en: 'Edit round', el: 'Επεξεργασία γύρου', run: openRoundEditor },
+ ], [round]);
  const [investorSearch, setInvestorSearch] = useState("");
  const investorSearchRef = useRef<HTMLInputElement>(null);
  const [showMeetingScheduler, setShowMeetingScheduler] = useState(false);
@@ -151,21 +175,9 @@ export default function Fundraising({ user }: FundraisingProps) {
  const pipeline: RoundInvestor[] = round.pipeline ?? [];
  const stageIndex = (stage: string) => Math.max(0, PIPELINE_STAGES.indexOf(stage as (typeof PIPELINE_STAGES)[number]));
 
- const mockTracker: FundraisingTracker = {
-  id: isDemoMode ? "tracker_1" : `tracker-${user.id}`,
-  startupId: isDemoMode ? "startup_1" : user.id,
-  targetAmount: isDemoMode ? 1500000 : round.targetAmount,
-  raisedAmount: isDemoMode ? 450000 : round.committedAmount,
-  currency: "USD",
-  stage: isDemoMode ? "Seed" : (round.name || "Pre-seed"),
-  investors: pipeline.map((item) => item.investorId),
-  status: "Active",
-  investorPipeline: pipeline.map((item) => ({ investorId: item.investorId, name: item.name, stage: item.stage, notes: item.notes, updatedAt: item.updatedAt })),
- };
-
- const pct = mockTracker.targetAmount ? Math.round((mockTracker.raisedAmount / mockTracker.targetAmount) * 100) : 0;
- const burn = round.monthlyBurn || 12000;
- const runway = burn > 0 ? Math.round(((round.cashOnHand || (mockTracker.targetAmount - mockTracker.raisedAmount)) / burn)) : 0;
+ // One source for every round number — the KPI grid, the progress bar and the
+ // assistant's round answer all read from the same metrics.
+ const metrics = roundMetrics(round);
 
  // The investors directory: sample funds in the demo, the platform's real investor members otherwise.
  const investorDirectory = useMemo<InvestorCard[]>(() => {
@@ -427,38 +439,80 @@ export default function Fundraising({ user }: FundraisingProps) {
        <Card className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Seed Round Progress", "Πρόοδος γύρου Seed")}</p>
-         <span className="px-2 py-0.5 text-emerald-700 text-xs font-semibold rounded-md">
-          {labelOf(mockTracker.status)}
-         </span>
+         <p className="text-xs font-semibold text-stone-400 tracking-wide">{`${round.name} ${t('round progress', 'πρόοδος γύρου')}`}</p>
+         <div className="flex items-center gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 rounded-lg" onClick={openRoundEditor} title={t('Edit round', 'Επεξεργασία γύρου')} aria-label={t('Edit round', 'Επεξεργασία γύρου')}>
+           <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <span className="px-2 py-0.5 text-emerald-700 text-xs font-semibold rounded-md">
+           {labelOf('Active')}
+          </span>
+         </div>
         </div>
 
+        {roundEditing && roundDraft ? (
+         <div className="space-y-3">
+          <label className="block space-y-1">
+           <span className="text-xs text-stone-400">{t('Round name', 'Όνομα γύρου')}</span>
+           <input className={inputClass} value={roundDraft.name} onChange={(e) => setRoundDraft({ ...roundDraft, name: e.target.value })} />
+          </label>
+          <label className="block space-y-1">
+           <span className="text-xs text-stone-400">{t('Instrument', 'Εργαλείο')}</span>
+           <select className={inputClass} value={roundDraft.instrument} onChange={(e) => setRoundDraft({ ...roundDraft, instrument: e.target.value as Round['instrument'] })}>
+            <option value="SAFE">SAFE</option>
+            <option value="Priced">Priced</option>
+           </select>
+          </label>
+          {([
+           ['targetAmount', t('Target ($)', 'Στόχος ($)')],
+           ['committedAmount', t('Committed ($)', 'Δεσμευμένα ($)')],
+           ['valuationCap', t('Valuation cap ($)', 'Ανώτατη αποτίμηση ($)')],
+           ['discountPct', t('Discount %', 'Έκπτωση %')],
+           ['cashOnHand', t('Cash on hand ($)', 'Διαθέσιμα ($)')],
+           ['monthlyBurn', t('Monthly burn ($)', 'Μηνιαίο burn ($)')],
+          ] as const).map(([field, label]) => (
+           <label key={field} className="block space-y-1">
+            <span className="text-xs text-stone-400">{label}</span>
+            <input type="number" min={0} className={inputClass} value={roundDraft[field]} onChange={(e) => setRoundDraft({ ...roundDraft, [field]: Number(e.target.value) })} />
+           </label>
+          ))}
+          <label className="block space-y-1">
+           <span className="text-xs text-stone-400">{t('Close date', 'Ημερομηνία κλεισίματος')}</span>
+           <input type="date" className={inputClass} value={roundDraft.closeDate} onChange={(e) => setRoundDraft({ ...roundDraft, closeDate: e.target.value })} />
+          </label>
+          <div className="flex gap-2 pt-1">
+           <Button type="button" className="flex-1 h-9 text-sm rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={saveRound}>{t('Save', 'Αποθήκευση')}</Button>
+           <Button type="button" variant="outline" className="flex-1 h-9 text-sm rounded-lg" onClick={() => setRoundEditing(false)}>{t('Cancel', 'Άκυρο')}</Button>
+          </div>
+         </div>
+        ) : (
+        <>
         {/* Amount & Bar */}
         <div className="space-y-1.5">
          <div className="flex items-baseline gap-1.5">
-          <span className="text-lg font-semibold text-stone-900">${(mockTracker.raisedAmount / 1000).toFixed(0)}k</span>
-          <span className="text-sm text-stone-400">{t("of", "από")} ${(mockTracker.targetAmount / 1000000).toFixed(1)}M</span>
+          <span className="text-lg font-semibold text-stone-900">${(round.committedAmount / 1000).toFixed(0)}k</span>
+          <span className="text-sm text-stone-400">{t("of", "από")} ${(round.targetAmount / 1000000).toFixed(1)}M</span>
          </div>
          <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
-          <div className="h-full bg-stone-900 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+          <div className="h-full bg-stone-900 rounded-full transition-all duration-700" style={{ width: `${metrics.pct}%` }} />
          </div>
          <div className="flex justify-between text-xs text-stone-400">
-          <span>{pct}% {t("raised", "συγκεντρώθηκε")}</span>
-          <span>${((mockTracker.targetAmount - mockTracker.raisedAmount) / 1000).toFixed(0)}k {t("remaining", "απομένουν")}</span>
+          <span>{metrics.pct}% {t("raised", "συγκεντρώθηκε")}</span>
+          <span>${(metrics.remaining / 1000).toFixed(0)}k {t("remaining", "απομένουν")}</span>
          </div>
         </div>
 
         {/* KPI Grid */}
         <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-100">
          {[
-          { label: t("Active Leads", "Ενεργά leads"),  value: "3",        color: "" },
-          { label: t("Days in Round", "Ημέρες στον γύρο"), value: "42",       color: "" },
-          { label: t("Meetings", "Συναντήσεις"),      value: "18",       color: "" },
-          { label: t("Burn Rate", "Ρυθμός καύσης"),     value: "$12k/mo",  color: "text-red-500" },
-          { label: t("Runway Left", "Υπόλοιπο περιθώριο"),   value: `${runway}mo`, color: runway < 6 ? "text-amber-600" : "" },
-          { label: t("Close Rate", "Ρυθμός κλεισίματος"),    value: "38%",      color: "" },
+          { label: t("Active Leads", "Ενεργά leads"),  value: String(metrics.activeLeads),        color: "" },
+          { label: t("Closes in", "Κλείνει σε"), value: metrics.daysToClose != null ? `${metrics.daysToClose} ${t('days', 'ημέρες')}` : "—",       color: "" },
+          { label: t("Meetings", "Συναντήσεις"),      value: String(metrics.meetings),       color: "" },
+          { label: t("Burn Rate", "Ρυθμός καύσης"),     value: round.monthlyBurn > 0 ? `$${Math.round(round.monthlyBurn / 1000)}k/mo` : "—",  color: "text-red-500" },
+          { label: t("Runway Left", "Υπόλοιπο περιθώριο"),   value: metrics.runwayMonths != null ? `${metrics.runwayMonths}mo` : "—", color: metrics.runwayMonths != null && metrics.runwayMonths < 6 ? "text-amber-600" : "" },
+          { label: t("Close Rate", "Ρυθμός κλεισίματος"),    value: metrics.closeRate != null ? `${Math.round(metrics.closeRate * 100)}%` : "—",      color: "" },
          ].map(({ label, value, color }) => (
-          <div key={label} className="space-y-0.5 py-1.5">
+          <div key={label} className="space-y-0.5 py-1.5" title={value === "—" ? t('Set it with Edit round or ask the assistant', 'Όρισέ το με την επεξεργασία γύρου ή ρώτα τον βοηθό') : undefined}>
            <p className="text-xs text-stone-400 tracking-wider">{label}</p>
            <p className={cn("text-base font-bold text-stone-900", color)}>{value}</p>
           </div>
@@ -573,6 +627,8 @@ export default function Fundraising({ user }: FundraisingProps) {
           {t("View All", "Όλα")} {upcomingMeetings.length} {t("Meetings", "συναντήσεις")}
          </button>
         </div>
+        </>
+        )}
        </Card>
 
        {/* Stage Funnel */}
@@ -644,7 +700,7 @@ export default function Fundraising({ user }: FundraisingProps) {
        {/* Investor Pipeline Table */}
        <Card title={t("Investor Pipeline", "Ροή επενδυτών")} subtitle={t("Manage your investor relationships and deal stages", "Διαχείριση σχέσεων με επενδυτές και σταδίων συμφωνίας")}>
         <ul className="divide-y divide-stone-100 sm:hidden">
-         {(mockTracker.investorPipeline ?? []).map((item, i) => {
+         {(pipeline ?? []).map((item, i) => {
           const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
           return (
            <li key={i} className="flex items-start gap-3 px-3 py-3">
@@ -674,7 +730,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            </li>
           );
          })}
-         {(mockTracker.investorPipeline ?? []).length === 0 && (
+         {(pipeline ?? []).length === 0 && (
           <li className="px-3 py-4">
            <EmptyHint
             title={t("No investors tracked yet.", "Δεν παρακολουθείς ακόμη επενδυτές.")}
@@ -696,7 +752,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            </tr>
           </thead>
           <tbody className="divide-y divide-stone-50">
-           {(mockTracker.investorPipeline ?? []).map((item, i) => {
+           {(pipeline ?? []).map((item, i) => {
             const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
             return (
              <tr key={i} className="hover:bg-stone-50 transition-colors group">
@@ -738,7 +794,7 @@ export default function Fundraising({ user }: FundraisingProps) {
              </tr>
             );
            })}
-           {(mockTracker.investorPipeline ?? []).length === 0 && (
+           {(pipeline ?? []).length === 0 && (
             <tr>
              <td colSpan={4} className="px-3 py-3">
               <EmptyHint

@@ -29,6 +29,7 @@ import {
   type NeedField,
 } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
+import { usePageControls } from '../lib/pageControls';
 import { rememberPerson } from '../lib/people';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
@@ -154,6 +155,18 @@ export default function Network({ user }: NetworkProps) {
   const [given, setGiven] = useState<EndorsementRecord[]>([]);
   const [endorsementsLoaded, setEndorsementsLoaded] = useState(false);
 
+  usePageControls(() => [
+    { id: 'show-connections', en: 'Show connections', el: 'Εμφάνιση συνδέσεων', run: () => setActiveTab('connections') },
+    { id: 'show-saved', en: 'Show saved', el: 'Εμφάνιση αποθηκευμένων', run: () => setActiveTab('saved') },
+    { id: 'show-intros', en: 'Show endorsements', el: 'Εμφάνιση συστάσεων', run: () => setActiveTab('endorsements') },
+    { id: 'show-compare', en: 'Compare profiles', el: 'Σύγκριση προφίλ', run: () => setActiveTab('compare') },
+    { id: 'show-need-cards', en: 'Show need cards', el: 'Εμφάνιση καρτών ανάγκης', run: () => setActiveTab('needs') },
+    { id: 'status-all', en: 'All statuses', el: 'Όλες οι καταστάσεις', run: () => setStatusFilter('All') },
+    { id: 'status-connected', en: 'Connected only', el: 'Μόνο σε σύνδεση', run: () => setStatusFilter('Connected') },
+    { id: 'status-pending', en: 'Pending only', el: 'Μόνο σε αναμονή', run: () => setStatusFilter('Pending') },
+    { id: 'status-incoming', en: 'Incoming only', el: 'Μόνο εισερχόμενα', run: () => setStatusFilter('Incoming') },
+  ], []);
+
   // Endorsements come from Firestore for a real account; the demo shows the sample set.
   useEffect(() => {
     let cancelled = false;
@@ -218,7 +231,7 @@ export default function Network({ user }: NetworkProps) {
   const incomingCount = connectionPool.filter((conn) => conn.status === 'Incoming').length;
 
   const statusLabel = (status: ConnectionStatus) =>
-    status === 'Connected' ? t('Connected', 'Συνδεδεμένοι') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
+    status === 'Connected' ? t('Connected', 'Σε σύνδεση') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
 
   const act = async (work: () => Promise<unknown>, okTitle: string, okBody?: string) => {
     try {

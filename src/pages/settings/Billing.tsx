@@ -10,6 +10,7 @@ import { keys, readIds, readSessions, readValue, writeValue } from "../../lib/lo
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
+import { useStored } from "../../lib/useStored";
 import { useAuth } from "../../App";
 
 type PayCard = { id: string; brand: string; last4: string; expiry: string };
@@ -22,7 +23,7 @@ export default function Billing({ user }: BillingProps) {
  const t = useT();
  const [subscription, setSubscription] = useState<Subscription | null>(null);
  const [invoices, setInvoices] = useState<Invoice[]>([]);
- const [cards, setCards] = useState<PayCard[]>(() => readValue<PayCard[]>(keys.paymentCards, []));
+ const cards = useStored(() => readValue<PayCard[]>(keys.paymentCards, []), [keys.paymentCards]);
  const [billingInfo, setBillingInfo] = useState<{ name: string; country: string }>(() => {
   const stored = readValue<{ billingName?: string; billingCountry?: string }>(keys.accountForm, {});
   return { name: stored.billingName || user.fullName || '', country: stored.billingCountry || '' };
@@ -305,7 +306,6 @@ export default function Billing({ user }: BillingProps) {
              className="text-xs px-3 py-1.5 text-red-500 hover:text-red-600"
              onClick={() => {
               const next = cards.filter((item) => item.id !== card.id);
-              setCards(next);
               writeValue(keys.paymentCards, next);
              }}
             >

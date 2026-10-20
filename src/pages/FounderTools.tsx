@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "motion/react";
 import { 
  Rocket, 
@@ -59,6 +59,7 @@ import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, type TrackedApplication } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
+import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
 
 interface FounderToolsProps {
@@ -147,16 +148,17 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
- const [activeTab, setActiveTab] = useState<'dashboard' | 'builder' | 'pitch' | 'applications' | 'tools' | 'templates'>('dashboard');
+ const [searchParams] = useSearchParams();
+ const [activeTab, setActiveTab] = useState<'dashboard' | 'builder' | 'pitch' | 'applications' | 'tools' | 'templates'>(() => (searchParams.get('step') ? 'builder' : 'dashboard'));
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
  const pinnedTools = useStored(() => readValue<string[]>('cfb.pinnedTools', []), ['cfb.pinnedTools']);
  const setPinnedTools = (next: string[]) => writeValue('cfb.pinnedTools', next);
  const [recentlyUsed, setRecentlyUsed] = useState<string[]>([]);
  const [searchQuery, setSearchQuery] = useState('');
  const [showAssessment, setShowAssessment] = useState(false);
- const builderInputs = useStored(() => readValue<Record<string, string>>(keys.builderInputs, {}), [keys.builderInputs]);
+ const builderInputs = useStored(readBuilderInputs, [keys.builderInputs]);
  const setBuilderInputs = (updater: (prev: Record<string, string>) => Record<string, string>) => {
-  writeValue(keys.builderInputs, updater(readValue<Record<string, string>>(keys.builderInputs, {})));
+  writeValue(keys.builderInputs, updater(readBuilderInputs()));
  };
  const [templateSearch, setTemplateSearch] = useState('');
  const [showNewAppModal, setShowNewAppModal] = useState(false);
@@ -217,13 +219,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
      };
     });
 
- const builderSteps = [
-  { id: 1, title: "Problem Definition", status: "Completed", icon: Lightbulb },
-  { id: 2, title: "Solution & Value Prop", status: "Completed", icon: Layers },
-  { id: 3, title: "Market Analysis", status: "In-Progress", icon: Target },
-  { id: 4, title: "Business Model", status: "Planned", icon: BarChart3 },
-  { id: 5, title: "Go-to-Market Strategy", status: "Planned", icon: Rocket },
- ];
+ const builderSteps = BUILDER_MODULES.map((module, index) => ({
+  ...module,
+  status: builderStatus(module.id, builderInputs).status,
+  icon: [Lightbulb, Layers, Target, BarChart3, Rocket][index] ?? Lightbulb,
+ }));
 
  const assessmentQuestions = [
   {
@@ -271,65 +271,19 @@ export default function FounderTools({ user }: FounderToolsProps) {
   setAssessmentStep(0);
  };
 
- /** Real step status comes from the founder's own saved answers; demo keeps the staged statuses. */
- const builderStepStatus = (id: number, fallback: string) => {
-  if (isDemoMode) return fallback;
-  const total = builderContent[id]?.questions.length ?? 0;
-  if (!total) return 'Planned';
-  const filled = Array.from({ length: total }, (_, i) => (builderInputs[`${id}-${i}`] ?? '').trim()).filter(Boolean).length;
-  return filled === 0 ? 'Planned' : filled >= total ? 'Completed' : 'In-Progress';
- };
-
- const [builderStep, setBuilderStep] = useState(1);
+ const [builderStep, setBuilderStep] = useState(() => {
+  const step = Number(searchParams.get('step'));
+  return step >= 1 && step <= BUILDER_MODULES.length ? step : 1;
+ });
  const [pitchSlide, setPitchSlide] = useState(1);
 
- const builderContent: Record<number, { title: string; description: string; questions: string[] }> = {
-  1: {
-   title: moduleName("Problem Definition"),
-   description: t("What is the core problem you are solving? Who suffers from it most?", "Ποιο είναι το βασικό πρόβλημα που λύνεις; Ποιος το ζει πιο έντονα;"),
-   questions: [
-    t("Describe the problem in one sentence.", "Περίγραψε το πρόβλημα σε μία πρόταση."),
-    t("How do people solve this today?", "Πώς το λύνουν σήμερα;"),
-    t("What is the cost of the problem (time, money, health)?", "Ποιο είναι το κόστος του προβλήματος (χρόνος, χρήμα, υγεία);")
-   ]
-  },
-  2: {
-   title: moduleName("Solution & Value Prop"),
-   description: t("How does your product solve the problem? What makes it unique?", "Πώς το προϊόν σου λύνει το πρόβλημα; Τι το κάνει μοναδικό;"),
-   questions: [
-    t("What is your unique solution?", "Ποια είναι η μοναδική σου λύση;"),
-    t("What are the top 3 features?", "Ποια είναι τα 3 βασικά χαρακτηριστικά;"),
-    t("Why will customers choose you over alternatives?", "Γιατί θα σε διαλέξουν οι πελάτες αντί για εναλλακτικές;")
-   ]
-  },
-  3: {
-   title: moduleName("Market Analysis"),
-   description: t("How big is the opportunity? Who are your competitors?", "Πόσο μεγάλη είναι η ευκαιρία; Ποιοι είναι οι ανταγωνιστές σου;"),
-   questions: [
-    t("What is your TAM, SAM, and SOM?", "Ποιο είναι το TAM, SAM και SOM σου;"),
-    t("Who are your top 3 competitors?", "Ποιοι είναι οι 3 βασικοί ανταγωνιστές σου;"),
-    t("What is your market entry strategy?", "Ποια είναι η στρατηγική εισόδου στην αγορά;")
-   ]
-  },
-  4: {
-   title: moduleName("Business Model"),
-   description: t("How does your startup generate revenue and sustain growth?", "Πώς το startup σου βγάζει έσοδα και στηρίζει την ανάπτυξη;"),
-   questions: [
-    t("What is your primary revenue model (subscription, transactional, freemium)?", "Ποιο είναι το βασικό μοντέλο εσόδων (subscription, transactional, freemium);"),
-    t("What is your projected LTV:CAC ratio?", "Ποιος είναι ο προβλεπόμενος λόγος LTV:CAC;"),
-    t("What are your unit economics at scale?", "Ποια είναι τα unit economics σε κλίμακα;")
-   ]
-  },
-  5: {
-   title: moduleName("Go-to-Market Strategy"),
-   description: t("How will you acquire your first 100, then 1,000 customers?", "Πώς θα αποκτήσεις τους πρώτους 100, και μετά τους 1.000 πελάτες;"),
-   questions: [
-    t("What are your primary acquisition channels?", "Ποια είναι τα βασικά κανάλια απόκτησης;"),
-    t("Who is your ideal customer profile (ICP)?", "Ποιο είναι το ideal customer profile (ICP) σου;"),
-    t("What is your 90-day launch plan?", "Ποιο είναι το πλάνο launch 90 ημερών;")
-   ]
-  }
- };
+ const builderContent: Record<number, { title: string; description: string; questions: string[] }> = Object.fromEntries(
+  Object.entries(BUILDER_CONTENT).map(([id, content]) => [id, {
+   title: t(content.title.en, content.title.el),
+   description: t(content.description.en, content.description.el),
+   questions: content.questions.map((question) => t(question.en, question.el)),
+  }])
+ );
 
  const pitchSlides = [
   { id: 1, title: "Cover & Hook", icon: Presentation, status: "complete", tip: t("Lead with a bold statement that captures the problem's magnitude.", "Ξεκίνα με μια τολμηρή δήλωση που δείχνει το μέγεθος του προβλήματος.") },
@@ -677,7 +631,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
        <div className="space-y-2">
         {builderSteps.map((step) => {
-         const status = builderStepStatus(step.id, step.status);
+         const status = step.status;
          return (
          <div key={step.id} className="flex items-center gap-4 group cursor-pointer p-2.5 rounded-xl hover:bg-stone-50 transition-all" onClick={() => { setBuilderStep(step.id); setActiveTab('builder'); }}>
           <div className={cn(
@@ -797,11 +751,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
           )}>{t("Module", "Ενότητα")} {step.id}</p>
           <h4 className={cn("min-w-0 text-sm font-semibold", builderStep === step.id ? "text-white" : "text-stone-900")}>{moduleName(step.title)}</h4>
          </div>
-         {builderStepStatus(step.id, step.status) === "Completed" ? (
+         {step.status === "Completed" ? (
           <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
            <Check className="w-2.5 h-2.5 text-white" />
           </div>
-         ) : builderStepStatus(step.id, step.status) === "In-Progress" ? (
+         ) : step.status === "In-Progress" ? (
           <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
            <div className="w-1.5 h-1.5 rounded-full bg-white" />
           </div>

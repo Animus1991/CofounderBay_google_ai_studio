@@ -59,6 +59,7 @@ import { persistProfilePatch } from '../lib/account';
 import { lookupPerson } from '../lib/people';
 import { useAuth, DEMO_USER_ID } from '../App';
 import { avatarFor, findCast } from '../data/cast';
+import { demoWeeklyViews } from '../data/demoStats';
 import FactLine from '../components/ui/FactLine';
 import Avatar from '../components/ui/Avatar';
 import { useToast } from '../context/ToastContext';
@@ -1280,15 +1281,8 @@ export default function ProfilePage() {
         const connectedCount = connections.accepted.length;
         const connectedWeek = connections.accepted.filter((record) => (record.respondedAt || record.updatedAt) >= weekAgo).length;
         const endorsedWeek = displayEndorsements.filter((item) => item.createdAt && Date.parse(item.createdAt) >= weekAgo).length;
-        const rows = isDemoMode
-         ? [
-          { label: 'Views', labelEl: 'Προβολές', value: '1.2k', sub: `+18% ${t('this week', 'αυτή την εβδομάδα')}` },
-          { label: 'Matches', labelEl: 'Αντιστοιχίσεις', value: '48', sub: `+6 ${t('this week', 'αυτή την εβδομάδα')}` },
-          { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: `+3 ${t('this week', 'αυτή την εβδομάδα')}` },
-          { label: 'Connections', labelEl: 'Συνδέσεις', value: '67', sub: `+9 ${t('this week', 'αυτή την εβδομάδα')}` },
-         ]
-         : [
-          { label: 'Views', labelEl: 'Προβολές', value: String(views.length), sub: isOwnProfile ? (viewsWeek ? `+${viewsWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Last 30 days', 'Τελευταίες 30 ημέρες')) : t('Visible to the owner', 'Ορατό μόνο στον κάτοχο') },
+        const rows = [
+          { label: 'Views', labelEl: 'Προβολές', value: String(isDemoMode ? demoWeeklyViews() : views.length), sub: isDemoMode ? t('Last 7 days', 'Τελευταίες 7 ημέρες') : isOwnProfile ? (viewsWeek ? `+${viewsWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Last 30 days', 'Τελευταίες 30 ημέρες')) : t('Visible to the owner', 'Ορατό μόνο στον κάτοχο') },
           { label: 'Strong matches', labelEl: 'Δυνατές αντιστοιχίσεις', value: String(strongMatches), sub: t('Members scoring 60%+', 'Μέλη με σκορ 60%+') },
           { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: endorsedWeek ? `+${endorsedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('All time', 'Συνολικά') },
           { label: 'Connections', labelEl: 'Συνδέσεις', value: isOwnProfile ? String(connectedCount) : String(((profile as unknown as { connectionIds?: string[] }).connectionIds ?? []).length), sub: isOwnProfile && connectedWeek ? `+${connectedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Accepted requests', 'Αποδεκτά αιτήματα') },
