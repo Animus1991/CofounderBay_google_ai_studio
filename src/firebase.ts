@@ -5,8 +5,6 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  doc,
-  getDocFromServer,
   type Firestore,
 } from 'firebase/firestore';
 import bundledConfig from '../firebase-applet-config.json';
@@ -50,6 +48,10 @@ export const auth = getAuth(app);
  * Firestore with an on-device cache, so pages open instantly from the last
  * known data and keep working through a flaky connection. Browsers without
  * IndexedDB (some private modes, tests) fall back to the in-memory cache.
+ *
+ * Do not issue a one-shot getDoc/getDocFromServer as the first operation on a
+ * cold client: Firebase JS 12.x can then assert (ca9, target id -1) while the
+ * watch target is torn down, which bricks every later listener (b815).
  */
 function createDb(): Firestore {
   const canPersist = typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv.isTest;
@@ -78,7 +80,8 @@ export const db = createDb();
  */
 const CACHE_REPAIR_FLAG = 'cfb.firestoreCacheRepair';
 
-function isFirestoreAssertion(message: string): boolean {
+export function isFirestoreAssertion(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
   return message.includes('FIRESTORE') && message.includes('INTERNAL ASSERTION FAILED');
 }
 
@@ -98,19 +101,25 @@ async function clearFirestoreIdb(): Promise<void> {
   );
 }
 
+/**
+ * First assertion this tab: clear IndexedDB and reload. A second assertion
+ * in the same tab is left for the UI — the Firestore client is already dead
+ * for this page lifetime (ca9 poisons the AsyncQueue, then every listen is b815).
+ * Returns true when a reload was scheduled.
+ */
+export function recoverFromFirestoreAssertion(error?: unknown): boolean {
+  if (typeof window === 'undefined' || appEnv.isTest) return false;
+  if (error !== undefined && !isFirestoreAssertion(error)) return false;
+  if (sessionStorage.getItem(CACHE_REPAIR_FLAG)) return false;
+  sessionStorage.setItem(CACHE_REPAIR_FLAG, '1');
+  log.warn('firestore client assertion — clearing cache and reloading', {});
+  void clearFirestoreIdb().finally(() => window.location.reload());
+  return true;
+}
+
 if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv.isTest) {
-  const repair = (message: string) => {
-    if (!isFirestoreAssertion(message)) return;
-    if (sessionStorage.getItem(CACHE_REPAIR_FLAG)) {
-      log.error('firestore cache repair already attempted this session', {});
-      return;
-    }
-    sessionStorage.setItem(CACHE_REPAIR_FLAG, '1');
-    log.warn('corrupted firestore cache — clearing and reloading', {});
-    void clearFirestoreIdb().finally(() => window.location.reload());
-  };
-  window.addEventListener('error', (event) => repair(event.message ?? ''));
-  window.addEventListener('unhandledrejection', (event) => repair(String(event.reason)));
+  window.addEventListener('error', (event) => recoverFromFirestoreAssertion(event.message ?? event.error));
+  window.addEventListener('unhandledrejection', (event) => recoverFromFirestoreAssertion(event.reason));
 }
 
 /** Cloud Storage is loaded only when someone uploads a file. */
@@ -118,19 +127,3 @@ export async function getStorageInstance() {
   const { getStorage } = await import('firebase/storage');
   return getStorage(app);
 }
-
-// Test Connection (dev-only diagnostic — silent in production)
-async function testConnection() {
-  if (appEnv.isProduction || appEnv.isTest) return;
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    log.info('connection successful');
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      log.error('configuration error: the client is offline — check your config');
-    }
-    // Other errors are ignored as this is just a diagnostic probe.
-  }
-}
-
-testConnection();

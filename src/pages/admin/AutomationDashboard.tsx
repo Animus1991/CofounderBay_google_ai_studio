@@ -1,27 +1,28 @@
-import { useState, useEffect } from "react";
+import {
+ useState,
+ useEffect } from "react";
 import { 
- Zap, 
- Play, 
- Pause, 
- Settings2, 
- History, 
- AlertCircle, 
- CheckCircle2, 
- Search, 
- Filter, 
- Plus, 
- MoreVertical, 
- ArrowRight, 
- Clock, 
- BarChart3, 
- Activity, 
- ShieldCheck, 
- Mail, 
- Bell, 
- Webhook, 
- UserPlus, 
- Users, 
- RefreshCw,
+ Zap,
+ Play,
+ Pause,
+ Settings2,
+ History,
+ AlertCircle,
+ CheckCircle2,
+ Search,
+ Filter,
+ Plus,
+ MoreVertical,
+ ArrowRight,
+ Clock,
+ BarChart3,
+ Activity,
+ ShieldCheck,
+ Mail,
+ Bell,
+ Webhook,
+ UserPlus,
+ Users,
  Info,
  ChevronRight,
  ChevronDown
@@ -29,6 +30,8 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
+import EmptyHint from "../../components/ui/EmptyHint";
+import { SkeletonList } from "../../components/ui/Skeleton";
 import { automationService } from "../../services/automationService";
 import { AutomationRule, AutomationExecution, AutomationLog, User, EmailTemplate, NotificationTemplate } from "../../types";
 import { cn } from "../../lib/utils";
@@ -41,7 +44,7 @@ interface AutomationDashboardProps {
  user: User;
 }
 
-export default function AutomationDashboard({ user }: AutomationDashboardProps) {
+export default function AutomationDashboard({ user: _user }: AutomationDashboardProps) {
  const t = useT();
  const [activeTab, setActiveTab] = useState<'rules' | 'executions' | 'logs' | 'templates'>('rules');
  const [rules, setRules] = useState<AutomationRule[]>([]);
@@ -52,7 +55,6 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
  const [loading, setLoading] = useState(true);
  const [searchQuery, setSearchQuery] = useState("");
  const [filterStatus, setFilterStatus] = useState<'All' | 'Active' | 'Inactive'>('All');
- const [selectedRule, setSelectedRule] = useState<string | null>(null);
  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
  const { isDemoMode } = useAuth();
 
@@ -121,6 +123,8 @@ export default function AutomationDashboard({ user }: AutomationDashboardProps) 
   const matchesFilter = filterStatus === 'All' || (filterStatus === 'Active' ? rule.status === 'Active' : rule.status === 'Inactive');
   return matchesSearch && matchesFilter;
  });
+
+ const rulesFiltersActive = Boolean(searchQuery) || filterStatus !== 'All';
 
  const workflowName = (name: string) => {
   if (name === 'Onboarding Reminder') return t('Onboarding Reminder', 'Υπενθύμιση onboarding');
@@ -247,7 +251,7 @@ const logMessage = (message: string) => {
     {[
      { label: t('Active Workflows', 'Ενεργές ροές'), value: rules.filter(r => r.status === 'Active').length, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
      { label: t('Total Executions', 'Σύνολο εκτελέσεων'), value: executions.length, icon: Activity, color: "text-blue-600", bg: "bg-blue-50" },
-     { label: t('Success Rate', 'Ποσοστό επιτυχίας'), value: "98.2%", icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
+     { label: t('Success Rate', 'Ποσοστό επιτυχίας'), value: executions.length ? `${Math.round((100 * executions.filter((item) => item.status === 'Success').length) / executions.length)}%` : '—', icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
      { label: t('Failed (24h)', 'Αποτυχίες (24ω)'), value: rules.reduce((acc, r) => acc + (r.failureCount ?? 0), 0), icon: AlertCircle, color: "text-red-600", bg: "bg-red-50" },
     ].map((stat) => (
      <Card key={stat.label} className="p-4 border border-stone-100">
@@ -319,13 +323,46 @@ const logMessage = (message: string) => {
            <option value="Active">{t('Active Only', 'Μόνο ενεργές')}</option>
            <option value="Inactive">{t('Inactive Only', 'Μόνο ανενεργές')}</option>
           </select>
-          <Button variant="outline" className="gap-2 h-9 px-4 text-xs font-medium">
-           <Filter className="w-3.5 h-3.5" /> {t('Advanced', 'Προχωρημένα')}
+          <Button
+           variant="outline"
+           className="gap-2 h-9 px-4 text-xs font-medium"
+           disabled={!rulesFiltersActive}
+           onClick={() => { setSearchQuery(''); setFilterStatus('All'); }}
+          >
+           <Filter className="w-3.5 h-3.5" /> {t('Clear filters', 'Καθάρισε τα φίλτρα')}
           </Button>
          </div>
         </div>
 
         {/* Rules List */}
+        {loading ? (
+         <div className="bg-white rounded-2xl border border-stone-100 p-3">
+          <SkeletonList count={4} />
+         </div>
+        ) : filteredRules.length === 0 ? (
+         <EmptyHint
+          title={rulesFiltersActive
+           ? t('No workflow matches these filters', 'Καμία ροή δεν ταιριάζει με αυτά τα φίλτρα')
+           : isDemoMode
+            ? t('Workflows are not part of the sample', 'Οι ροές δεν περιλαμβάνονται στο δείγμα')
+            : t('No workflows yet', 'Δεν υπάρχουν ροές ακόμη')}
+          detail={rulesFiltersActive
+           ? t('Clear the filters to see every workflow.', 'Καθάρισε τα φίλτρα για να δεις όλες τις ροές.')
+           : isDemoMode
+            ? t('Sign in with an admin account to create and run real workflows.', 'Συνδέσου με λογαριασμό διαχειριστή για να δημιουργήσεις και να εκτελέσεις πραγματικές ροές.')
+            : t('Create a workflow to send reminders and follow-ups automatically.', 'Δημιούργησε μια ροή για να στέλνονται υπενθυμίσεις και follow-up αυτόματα.')}
+         >
+          {rulesFiltersActive ? (
+           <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('All'); }} className="text-xs font-medium text-stone-900 hover:underline">
+            {t('Clear filters', 'Καθάρισε τα φίλτρα')}
+           </button>
+          ) : !isDemoMode ? (
+           <button type="button" onClick={() => setIsCreateModalOpen(true)} className="text-xs font-medium text-stone-900 hover:underline">
+            {t('New workflow', 'Νέα ροή')}
+           </button>
+          ) : null}
+         </EmptyHint>
+        ) : (
         <div className="grid grid-cols-1 gap-3">
          {filteredRules.map((rule) => (
           <Card key={rule.id} className={cn(
@@ -421,7 +458,12 @@ const logMessage = (message: string) => {
                 {t('Failures:', 'Αποτυχίες:')} {rule.failureCount || 0}
                </div>
               </div>
-              <Button variant="ghost" size="sm" className="text-xs font-medium tracking-wider gap-1.5 h-8 px-3">
+              <Button
+               variant="ghost"
+               size="sm"
+               className="text-xs font-medium tracking-wider gap-1.5 h-8 px-3"
+               onClick={() => setActiveTab('logs')}
+              >
                {t('View Logs', 'Προβολή καταγραφών')} <ChevronRight className="w-3 h-3" />
               </Button>
              </div>
@@ -430,6 +472,7 @@ const logMessage = (message: string) => {
           </Card>
          ))}
         </div>
+        )}
        </motion.div>
       )}
 
@@ -501,6 +544,16 @@ const logMessage = (message: string) => {
         exit={{ opacity: 0, y: -10 }}
         className="space-y-4"
        >
+        {loading ? (
+         <div className="bg-white rounded-2xl border border-stone-100 p-3"><SkeletonList count={3} /></div>
+        ) : logs.length === 0 ? (
+         <EmptyHint
+          title={t('No log entries', 'Δεν υπάρχουν καταγραφές')}
+          detail={isDemoMode
+           ? t('Logs appear once real workflows start running.', 'Οι καταγραφές εμφανίζονται μόλις αρχίσουν να εκτελούνται πραγματικές ροές.')
+           : t('Every workflow run will be recorded here, with its trigger, conditions and result.', 'Κάθε εκτέλεση ροής καταγράφεται εδώ, με την εκδήλωση, τις συνθήκες και το αποτέλεσμα.')}
+         />
+        ) : null}
         {logs.map((log) => (
          <div key={log.id} className={cn(
           "p-4 rounded-xl border flex items-start gap-4 transition-all hover:shadow-sm",

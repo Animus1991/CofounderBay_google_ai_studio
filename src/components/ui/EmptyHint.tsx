@@ -24,6 +24,22 @@ export default function EmptyHint({
   );
 }
 
+/** Shared “clear the filters” control used by list empty states. */
+export function ClearFiltersButton({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children?: ReactNode;
+}) {
+  const t = useT();
+  return (
+    <button type="button" onClick={onClick} className="text-xs font-medium text-stone-900 hover:underline">
+      {children ?? t('Clear filters', 'Καθάρισε τα φίλτρα')}
+    </button>
+  );
+}
+
 export function AskLink({
   prompt,
   children,

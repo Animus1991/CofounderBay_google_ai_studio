@@ -1,39 +1,27 @@
-import { useEffect, useState } from "react";
+import {
+ useEffect,
+ useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import { 
- BookOpen, 
- Briefcase, 
- Star, 
- Search, 
- Filter, 
- SlidersHorizontal, 
- ArrowRight, 
- CheckCircle2, 
- Clock, 
- TrendingUp, 
- Users, 
- Target, 
- BarChart3, 
- Plus, 
- ChevronRight, 
- AlertCircle, 
- FileText, 
- Globe, 
- PieChart, 
- Zap, 
- GraduationCap, 
- Wrench, 
- HelpCircle, 
- MessageSquare,
- Award,
+ Briefcase,
+ Star,
+ Search,
+ SlidersHorizontal,
+ Clock,
+ Plus,
+ ChevronRight,
+ GraduationCap,
+ Wrench,
+ HelpCircle,
  PlayCircle
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import FactLine from "../components/ui/FactLine";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
+import { usePageControls } from "../lib/pageControls";
 import { User } from "../types";
 import { cn } from "../lib/utils";
 import { motion } from "motion/react";
@@ -89,7 +77,7 @@ type Course = { id: string; title: string; instructor: string; duration: string;
 type Service = { id: string; name: string; provider: string; price: string; rating: number; type: string };
 type Job = { id: string; title: string; company: string; type: string; location: string; salary: string; authorId?: string; mine?: boolean };
 
-export default function Resources({ user }: ResourcesProps) {
+export default function Resources({ user: _user }: ResourcesProps) {
  const t = useT();
  const navigate = useNavigate();
  const { user: authUser, isDemoMode } = useAuth();
@@ -99,6 +87,13 @@ export default function Resources({ user }: ResourcesProps) {
  const [courseLevel, setCourseLevel] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
  const [jobModalOpen, setJobModalOpen] = useState(false);
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ usePageControls(() => [
+  { id: 'tab-learning', en: 'Show learning', el: 'Εμφάνιση μάθησης', run: () => setActiveTab('learning') },
+  { id: 'tab-services', en: 'Show services', el: 'Εμφάνιση υπηρεσιών', run: () => setActiveTab('services') },
+  { id: 'tab-jobs', en: 'Show jobs', el: 'Εμφάνιση θέσεων', run: () => setActiveTab('jobs') },
+  { id: 'tab-support', en: 'Show support', el: 'Εμφάνιση υποστήριξης', run: () => setActiveTab('support') },
+  { id: 'clear-course-filters', en: 'Clear course filters', el: 'Καθάρισε τα φίλτρα μαθημάτων', run: () => { setCourseQuery(''); setCourseLevel('All'); } },
+ ], []);
 
  // Real accounts read platform-published catalogues; demo keeps the samples.
  const [liveCourses, setLiveCourses] = useState<Course[] | null>(null);
@@ -106,31 +101,22 @@ export default function Resources({ user }: ResourcesProps) {
  const [liveJobs, setLiveJobs] = useState<Job[] | null>(null);
  useEffect(() => {
   if (isDemoMode) { setLiveCourses(null); setLiveServices(null); setLiveJobs(null); return; }
-  const stops: (() => void)[] = [];
-  let cancelled = false;
-  void (async () => {
-   const safe = async (name: string, apply: (docs: CatalogDoc[]) => void, empty: () => void) => {
-    const stop = await onCatalog(name, apply, () => empty());
-    if (cancelled) { stop(); return; }
-    stops.push(stop);
-   };
-   try {
-    await safe('learningResources', (docs) => setLiveCourses(docs.map((doc) => ({
-     id: doc.id, title: str(doc.title, 'Course'), instructor: str(doc.instructor ?? doc.author, 'CoFounderBay'),
-     duration: str(doc.duration, '—'), level: (['Beginner', 'Intermediate', 'Advanced'] as const).includes(doc.level as Course['level']) ? doc.level as Course['level'] : 'Beginner',
-     rating: num(doc.rating) ?? 0, image: str(doc.image ?? doc.imageUrl),
-    }))), () => setLiveCourses([]));
-    await safe('services', (docs) => setLiveServices(docs.map((doc) => ({
-     id: doc.id, name: str(doc.name ?? doc.title, 'Service'), provider: str(doc.provider ?? doc.providerName, 'Partner'),
-     price: str(doc.price, '—'), rating: num(doc.rating) ?? 0, type: str(doc.type, 'Other'),
-    }))), () => setLiveServices([]));
-    await safe('jobs', (docs) => setLiveJobs(docs.map((doc) => ({
-     id: doc.id, title: str(doc.title, 'Role'), company: str(doc.company, ''), type: str(doc.type, 'Full-time'),
-     location: str(doc.location, ''), salary: str(doc.salary, ''), authorId: str(doc.authorId), mine: doc.authorId === authUser?.uid,
-    }))), () => setLiveJobs([]));
-   } catch { /* catalogues stay empty */ }
-  })();
-  return () => { cancelled = true; stops.forEach((stop) => stop()); };
+  const stops = [
+   onCatalog('learningResources', (docs) => setLiveCourses(docs.map((doc) => ({
+    id: doc.id, title: str(doc.title, 'Course'), instructor: str(doc.instructor ?? doc.author, 'CoFounderBay'),
+    duration: str(doc.duration, '—'), level: (['Beginner', 'Intermediate', 'Advanced'] as const).includes(doc.level as Course['level']) ? doc.level as Course['level'] : 'Beginner',
+    rating: num(doc.rating) ?? 0, image: str(doc.image ?? doc.imageUrl),
+   }))), () => setLiveCourses([])),
+   onCatalog('services', (docs) => setLiveServices(docs.map((doc) => ({
+    id: doc.id, name: str(doc.name ?? doc.title, 'Service'), provider: str(doc.provider ?? doc.providerName, 'Partner'),
+    price: str(doc.price, '—'), rating: num(doc.rating) ?? 0, type: str(doc.type, 'Other'),
+   }))), () => setLiveServices([])),
+   onCatalog('jobs', (docs) => setLiveJobs(docs.map((doc) => ({
+    id: doc.id, title: str(doc.title, 'Role'), company: str(doc.company, ''), type: str(doc.type, 'Full-time'),
+    location: str(doc.location, ''), salary: str(doc.salary, ''), authorId: str(doc.authorId), mine: doc.authorId === authUser?.uid,
+   }))), () => setLiveJobs([])),
+  ];
+  return () => { stops.forEach((stop) => stop()); };
  }, [isDemoMode, authUser?.uid]);
 
  // A real mentor from the live directory powers the coaching card.
@@ -235,7 +221,7 @@ export default function Resources({ user }: ResourcesProps) {
           ? t('The learning library is being curated.', 'Η βιβλιοθήκη μάθησης ετοιμάζεται.')
           : t("No courses match this filter.", "Δεν υπάρχουν μαθήματα με αυτό το φίλτρο.")}
           detail={t("Clear the search, or ask the assistant which program to start.", "Καθάρισε την αναζήτηση, ή ρώτα τον βοηθό ποιο πρόγραμμα να ξεκινήσεις.")}>
-          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => { setCourseQuery(''); setCourseLevel('All'); }}>{t('Clear filters', 'Καθαρισμός φίλτρων')}</button>
+          <ClearFiltersButton onClick={() => { setCourseQuery(''); setCourseLevel('All'); }} />
           <AskLink prompt="What programs can I apply to?" />
          </EmptyHint>
         );

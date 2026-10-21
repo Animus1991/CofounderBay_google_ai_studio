@@ -10,7 +10,7 @@ interface BrandingSettingsProps {
  user: User;
 }
 
-export default function BrandingSettings({ user }: BrandingSettingsProps) {
+export default function BrandingSettings({ user: _user }: BrandingSettingsProps) {
  const t = useT();
  const { tenant, updateBranding, updateContent } = useTenant();
  const [activeTab, setActiveTab] = useState<'theme' | 'content' | 'preview'>('theme');

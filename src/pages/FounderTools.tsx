@@ -1,15 +1,20 @@
-import { useState, useCallback, useMemo } from "react";
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from "motion/react";
+import {
+ useState,
+ useCallback,
+ useMemo } from "react";
+import { useNavigate,
+ useSearchParams } from 'react-router-dom';
+import { motion,
+ AnimatePresence } from "motion/react";
 import { 
- Rocket, 
- Target, 
- FileText, 
- Trophy, 
- BarChart3, 
- Plus, 
- ArrowRight, 
- CheckCircle2, 
+ Rocket,
+ Target,
+ FileText,
+ Trophy,
+ BarChart3,
+ Plus,
+ ArrowRight,
+ CheckCircle2,
  Clock,
  Lightbulb,
  Layers,
@@ -28,14 +33,11 @@ import {
  ChevronRight,
  AlertCircle,
  Check,
- Circle,
  TrendingUp,
  Users,
  DollarSign,
  Globe,
  Map,
- Briefcase,
- Wrench,
  FileCode,
  Scale,
  CreditCard,
@@ -43,7 +45,6 @@ import {
  Headphones,
  Sparkles,
  Pin,
- History,
  Search,
  Copy,
  ExternalLink,
@@ -53,6 +54,8 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import EmptyHint, { ClearFiltersButton } from "../components/ui/EmptyHint";
+import { usePageControls } from "../lib/pageControls";
 import { User, Startup, FounderStage } from "../types";
 import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
@@ -153,15 +156,25 @@ export default function FounderTools({ user }: FounderToolsProps) {
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
  const pinnedTools = useStored(() => readValue<string[]>('cfb.pinnedTools', []), ['cfb.pinnedTools']);
  const setPinnedTools = (next: string[]) => writeValue('cfb.pinnedTools', next);
- const [recentlyUsed, setRecentlyUsed] = useState<string[]>([]);
+ // Recents are account-scoped like the pins above, so the quick-access strip
+ // survives a reload instead of resetting on every visit.
+ const recentlyUsed = useStored(() => readValue<string[]>('cfb.recentTools', []), ['cfb.recentTools']);
  const [searchQuery, setSearchQuery] = useState('');
+ usePageControls(() => [
+  { id: 'tab-dashboard', en: 'Show tools dashboard', el: 'Πίνακας εργαλείων', run: () => setActiveTab('dashboard') },
+  { id: 'tab-builder', en: 'Open builder', el: 'Άνοιγμα δημιουργού', run: () => setActiveTab('builder') },
+  { id: 'tab-pitch', en: 'Open pitch', el: 'Άνοιγμα pitch', run: () => setActiveTab('pitch') },
+  { id: 'tab-applications', en: 'Open applications', el: 'Άνοιγμα αιτήσεων', run: () => setActiveTab('applications') },
+  { id: 'tab-tools', en: 'Open tool library', el: 'Βιβλιοθήκη εργαλείων', run: () => setActiveTab('tools') },
+  { id: 'tab-templates', en: 'Open templates', el: 'Πρότυπα', run: () => setActiveTab('templates') },
+  { id: 'clear-tool-search', en: 'Clear tool search', el: 'Καθάρισε την αναζήτηση εργαλείων', run: () => setSearchQuery('') },
+ ], []);
  const [showAssessment, setShowAssessment] = useState(false);
  const builderInputs = useStored(readBuilderInputs, [keys.builderInputs]);
  const setBuilderInputs = (updater: (prev: Record<string, string>) => Record<string, string>) => {
   writeValue(keys.builderInputs, updater(readBuilderInputs()));
  };
  const [templateSearch, setTemplateSearch] = useState('');
- const [showNewAppModal, setShowNewAppModal] = useState(false);
  const [expandedAppId, setExpandedAppId] = useState<number | null>(null);
  const [assessmentStep, setAssessmentStep] = useState(0);
 
@@ -407,8 +420,24 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
 
  const markToolUsed = (toolId: string) => {
-  setRecentlyUsed(prev => [toolId, ...prev.filter(id => id !== toolId)].slice(0, 5));
+  writeValue('cfb.recentTools', [toolId, ...readValue<string[]>('cfb.recentTools', []).filter(id => id !== toolId)].slice(0, 5));
  };
+
+ const findTool = (toolId: string) => toolCategories.flatMap(c => c.tools).find(tool => tool.id === toolId);
+
+ // The search box filters both the categories and the tools inside them, and a
+ // query also expands each category past its default three entries.
+ const toolQuery = searchQuery.trim().toLowerCase();
+ const visibleCategories = toolQuery
+  ? toolCategories
+    .map((category) => ({
+     ...category,
+     tools: category.tools.filter((tool) =>
+      tool.name.toLowerCase().includes(toolQuery) || tool.desc.toLowerCase().includes(toolQuery)),
+    }))
+    .filter((category) =>
+     category.tools.length > 0 || category.name.toLowerCase().includes(toolQuery))
+  : toolCategories;
 
  return (
   <>
@@ -1102,11 +1131,48 @@ export default function FounderTools({ user }: FounderToolsProps) {
         className="w-full pl-9 pr-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-400"
        />
       </div>
+      {toolQuery && (
+       <button type="button" onClick={() => setSearchQuery('')} className="text-xs font-medium text-stone-500 hover:text-stone-900">
+        {t('Clear', 'Καθάρισε')}
+       </button>
+      )}
      </div>
 
+     {/* Quick access: the tools this account opened most recently */}
+     {recentlyUsed.length > 0 && !toolQuery && (
+      <div className="space-y-2">
+       <h4 className="text-xs font-semibold text-stone-500 tracking-wider">{t("Recently used", "Πρόσφατα")}</h4>
+       <div className="flex flex-wrap gap-2">
+        {recentlyUsed.map((toolId) => {
+         const tool = findTool(toolId);
+         if (!tool) return null;
+         return (
+          <button
+           key={toolId}
+           type="button"
+           onClick={() => markToolUsed(toolId)}
+           className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-200 hover:border-stone-400 rounded-lg text-xs font-medium text-stone-700 transition-colors"
+          >
+           <tool.icon className="w-3 h-3 text-stone-400" />
+           {tool.name}
+          </button>
+         );
+        })}
+       </div>
+      </div>
+     )}
+
      {/* Tool Categories Grid */}
+     {visibleCategories.length === 0 ? (
+      <EmptyHint
+       title={t('No tool matches that search', 'Κανένα εργαλείο δεν ταιριάζει με την αναζήτηση')}
+       detail={t('Try a shorter word, or clear the search to see every category.', 'Δοκίμασε μια πιο σύντομη λέξη, ή καθάρισε την αναζήτηση για να δεις όλες τις κατηγορίες.')}
+      >
+       <ClearFiltersButton onClick={() => setSearchQuery('')}>{t('Clear search', 'Καθάρισε την αναζήτηση')}</ClearFiltersButton>
+      </EmptyHint>
+     ) : (
      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {toolCategories.map((category) => (
+      {visibleCategories.map((category) => (
        <motion.div
         key={category.id}
         initial={{ opacity: 0, y: 10 }}
@@ -1124,7 +1190,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <p className="text-xs opacity-70 mb-4">{category.description}</p>
 
          <div className="space-y-2">
-          {category.tools.slice(0, 3).map((tool) => (
+          {(toolQuery ? category.tools : category.tools.slice(0, 3)).map((tool) => (
            <button
             key={tool.id}
             onClick={() => markToolUsed(tool.id)}
@@ -1144,7 +1210,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
             />
            </button>
           ))}
-          {category.tools.length > 3 && (
+          {!toolQuery && category.tools.length > 3 && (
            <p className="text-xs opacity-50 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
           )}
          </div>
@@ -1152,6 +1218,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
        </motion.div>
       ))}
      </div>
+     )}
     </div>
    )}
 
@@ -1259,11 +1326,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
       <div className="space-y-3">
        <div className="flex items-center gap-2">
         <Pin className="w-3.5 h-3.5 text-stone-500" />
-        <h4 className="text-sm font-semibold text-stone-700">{t("Pinned & Recently Used", "Καρφιτσωμένα και πρόσφατα")}</h4>
+        <h4 className="text-sm font-semibold text-stone-700">{t("Pinned", "Καρφιτσωμένα")}</h4>
        </div>
        <div className="flex flex-wrap gap-2">
         {pinnedTools.map((toolId) => {
-         const tool = toolCategories.flatMap(c => c.tools).find(t => t.id === toolId);
+         const tool = findTool(toolId);
          if (!tool) return null;
          return (
           <button

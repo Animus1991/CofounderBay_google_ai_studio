@@ -1,13 +1,24 @@
-import { useEffect, useState, useMemo } from "react";
 import {
- Calendar as CalendarIcon, MapPin, Users, Video,
- Plus, Filter, ChevronRight,
- Clock, Share2, Bookmark, Rocket, Zap, Globe, CalendarPlus
+ useEffect,
+ useState,
+ useMemo } from "react";
+import {
+ Calendar as CalendarIcon,
+ MapPin,
+ Users,
+ Video,
+ Plus,
+ Filter,
+ Clock,
+ Share2,
+ Bookmark,
+ Rocket,
+ Zap,
+ Globe,
+ CalendarPlus
 } from "lucide-react";
-import Card from "../components/ui/Card";
-import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
@@ -21,6 +32,8 @@ import { usePageControls } from "../lib/pageControls";
 import { coverFor } from "../data/photos";
 import { useAuth } from "../App";
 import { User } from "../types";
+import { collection, limit, onSnapshot, query } from "firebase/firestore";
+import { db } from "../firebase";
 
 const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
@@ -172,23 +185,11 @@ export default function Events(_props: EventsProps = {}) {
  const [liveEvents, setLiveEvents] = useState<Event[] | null>(null);
  useEffect(() => {
   if (isDemoMode) { setLiveEvents(null); return; }
-  let unsub: (() => void) | undefined;
-  let cancelled = false;
-  void (async () => {
-   try {
-    const { db } = await import('../firebase');
-    const { collection, onSnapshot, query, limit } = await import('firebase/firestore');
-    if (!db) { setLiveEvents([]); return; }
-    const stop = onSnapshot(
-     query(collection(db, 'events'), limit(50)),
-     (snapshot) => setLiveEvents(snapshot.docs.map((entry) => eventFromDoc(entry.id, entry.data()))),
-     () => setLiveEvents([]),
-    );
-    if (cancelled) { stop(); return; }
-    unsub = stop;
-   } catch { if (!cancelled) setLiveEvents([]); }
-  })();
-  return () => { cancelled = true; unsub?.(); };
+  return onSnapshot(
+   query(collection(db, 'events'), limit(50)),
+   (snapshot) => setLiveEvents(snapshot.docs.map((entry) => eventFromDoc(entry.id, entry.data()))),
+   () => setLiveEvents([]),
+  );
  }, [isDemoMode]);
 
  const allEvents = useMemo(() => (isDemoMode ? mockEvents : (liveEvents ?? [])), [isDemoMode, mockEvents, liveEvents]);
@@ -276,6 +277,9 @@ export default function Events(_props: EventsProps = {}) {
      <div id="event-list" className="space-y-4">
       {(visibleEvents.length === 0) && (
        <EmptyHint title={t("No events in this category yet.", "Δεν υπάρχουν ακόμη εκδηλώσεις σε αυτή την κατηγορία.")} detail={t("Ask the studio assistant to host one.", "Ζήτα από τον βοηθό να διοργανώσει μία.")}>
+        {(typeFilter !== 'All' || activeTab !== 'Upcoming') && (
+         <ClearFiltersButton onClick={() => { setTypeFilter('All'); setActiveTab('Upcoming'); setShowTypes(false); }} />
+        )}
         <AskLink prompt="Schedule a new event on my calendar">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
        </EmptyHint>
       )}

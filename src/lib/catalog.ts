@@ -2,23 +2,20 @@
  * Platform-published catalogues (programs, learning resources, services, jobs).
  * Admins publish documents; members read them. Every mapper is defensive —
  * partial documents render with the fields they have.
+ *
+ * Listeners are synchronous so React can unsubscribe in the same effect tick
+ * (an async subscribe + immediate unsubscribe is the Firestore ca9 race).
  */
+import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { toMillis } from './peopleSource';
 
 export type CatalogDoc = { id: string } & Record<string, unknown>;
 
-async function db() {
-  const { db } = await import('../firebase');
-  if (!db) throw new Error('Firestore is not configured');
-  return db;
-}
-
 /** Live documents of one platform catalogue collection. */
-export async function onCatalog(collection: string, cb: (docs: CatalogDoc[]) => void, onError?: (error: unknown) => void): Promise<() => void> {
-  const firestore = await db();
-  const { collection: col, onSnapshot, query, limit } = await import('firebase/firestore');
+export function onCatalog(name: string, cb: (docs: CatalogDoc[]) => void, onError?: (error: unknown) => void): () => void {
   return onSnapshot(
-    query(col(firestore, collection), limit(100)),
+    query(collection(db, name), limit(100)),
     (snapshot) => cb(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))),
     (error) => onError?.(error),
   );
@@ -31,9 +28,7 @@ export { toMillis };
 
 /** Member-posted job listing (authorId enforced by the rules). */
 export async function postJob(input: { authorId: string; title: string; company: string; type: string; location: string; salary: string; authorName?: string }): Promise<string> {
-  const firestore = await db();
-  const { collection, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-  const ref = doc(collection(firestore, 'jobs'));
+  const ref = doc(collection(db, 'jobs'));
   await setDoc(ref, {
     id: ref.id,
     authorId: input.authorId,

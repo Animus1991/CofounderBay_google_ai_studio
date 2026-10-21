@@ -1,5 +1,6 @@
 import { Menu } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { RouteErrorBoundary } from './ErrorBoundary';
 import { Both } from '../lib/both';
 import { LanguageToggle, useLanguage, useT } from '../lib/language';
 import Sidebar from './layout/Sidebar';
@@ -32,7 +33,7 @@ export default function Layout() {
  };
 
  const exitButton = isDemoMode ? (
-  <Tooltip content={t('Demo — sample data, kept only in this browser', 'Demo — δοκιμαστικά δεδομένα, μένουν μόνο σε αυτόν τον browser')} side="bottom" delay={0}>
+  <Tooltip content={t('Demo — sample data, kept only in this browser', 'Demo — δοκιμαστικά δεδομένα, μένουν μόνο σε αυτόν τον περιηγητή')} side="bottom" delay={0}>
    <button
     type="button"
     onClick={() => toggleDemoMode(false)}
@@ -92,7 +93,9 @@ export default function Layout() {
      tabIndex={-1}
      className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none sm:pb-28 lg:pb-0"
     >
-     <Outlet />
+     <RouteErrorBoundary>
+      <Outlet />
+     </RouteErrorBoundary>
     </main>
    </div>
    {/* Phone-only strip. The assistant button is fixed into this band, so page controls scroll above it. */}

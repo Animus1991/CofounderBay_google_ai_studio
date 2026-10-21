@@ -957,6 +957,12 @@ export function clearAssistant(): AssistantTurn[] {
   return [];
 }
 
+export function writeAssistant(turns: AssistantTurn[]): AssistantTurn[] {
+  const next = turns.slice(-80);
+  writeJson(keys.assistant, next);
+  return next;
+}
+
 export type AssistantFeedback = { turnId: string; value: 'up' | 'down'; at: string };
 
 export function readAssistantFeedback(): AssistantFeedback[] {

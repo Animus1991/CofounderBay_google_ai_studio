@@ -1,17 +1,16 @@
-import { useNotificationFeed } from "../../lib/notificationFeed";
+import {
+ useNotificationFeed } from "../../lib/notificationFeed";
 import { 
- LayoutDashboard, 
- Users, 
- GraduationCap, 
- MessageSquare, 
- Trophy, 
- User as UserIcon, 
- Settings, 
+ LayoutDashboard,
+ Users,
+ GraduationCap,
+ MessageSquare,
+ Trophy,
+ User as UserIcon,
+ Settings,
  ShieldCheck,
  Globe,
  Zap,
- CreditCard,
- BarChart3,
  Rocket,
  DollarSign,
  Briefcase,

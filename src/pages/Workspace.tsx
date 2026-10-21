@@ -1,24 +1,22 @@
-import { useState, useEffect, useMemo } from "react";
+import {
+ useState,
+ useEffect,
+ useMemo } from "react";
 import { Link } from "react-router-dom";
 import { 
- Layout, 
- CheckSquare, 
- Target, 
- Trophy, 
- Calendar as CalendarIcon, 
- Plus, 
- Search, 
- Filter, 
- MoreVertical, 
- ChevronRight, 
- Clock, 
- AlertCircle, 
- Sparkles, 
+ CheckSquare,
+ Target,
+ Calendar as CalendarIcon,
+ Plus,
+ Search,
+ Filter,
+ ChevronRight,
+ Clock,
+ Sparkles,
  Zap,
  ArrowRight,
  FileText,
  Layers,
- MessageSquare,
  Save,
  Timer,
  Play,
@@ -26,8 +24,6 @@ import {
  Square,
  LayoutGrid,
  List,
- Columns,
- TrendingUp,
  Focus,
  Coffee,
  Moon,
@@ -35,11 +31,7 @@ import {
  GripVertical,
  CalendarDays,
  Clock3,
- CheckCircle,
- BarChart3,
- Flame,
- Music,
- Headphones,
+ CheckCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Card from "../components/ui/Card";
@@ -47,13 +39,13 @@ import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { User } from "../types";
 import { cn } from "../lib/utils";
-import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue, type StudioTask } from "../lib/localLists";
+import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { usePageControls } from "../lib/pageControls";
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
-import { formatDate } from "../lib/dates";
+import { formatDate, formatTime } from "../lib/dates";
 import { useAuth } from "../App";
 import { studioNextStep } from "../lib/nextStep";
 import { uploadFile, formatBytes, type UploadFolder } from "../lib/files";
@@ -67,8 +59,6 @@ interface WorkspaceProps {
 type TabType = "Dashboard" | "Builder" | "Canvas" | "Milestones" | "Calendar";
 type TaskView = "list" | "kanban";
 type FocusMode = "work" | "shortBreak" | "longBreak";
-
-type Task = StudioTask;
 
 type FocusStats = { date: string; seconds: number; sessions: number };
 type CanvasDraft = Record<string, string>;
@@ -805,7 +795,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         {visibleRoadmap.length === 0 && (
          <p className="text-sm text-stone-400 py-3 px-1">{t('No milestones on the roadmap yet — add one and its bar appears here.', 'Κανένα ορόσημο στον οδικό χάρτη ακόμη — πρόσθεσε ένα και η μπάρα του εμφανίζεται εδώ.')}</p>
         )}
-        {visibleRoadmap.map((milestone, idx) => (
+        {visibleRoadmap.map((milestone) => (
          <div key={milestone.name} className="grid grid-cols-12 gap-1 items-center py-2 hover:bg-stone-50 rounded-lg transition-colors group min-w-[640px]">
           <div className="col-span-3 px-2">
            <p className="text-sm font-medium text-stone-900">{milestone.name}</p>
@@ -908,13 +898,20 @@ export default function Workspace({ user }: WorkspaceProps) {
           if (day === null) return <div key={`pad-${i}`} />;
           const isToday = dayKey(day) === todayKey();
           const hasEvent = sessionDays.has(dayKey(day));
+          // Hovering a marked day names what is booked on it, so the dot is
+          // readable without opening the full session list.
+          const dayAgenda = hasEvent
+           ? sessionsOn(day).map((s) => `${formatTime(s.time)} · ${s.title}`).join('\n')
+           : undefined;
           return (
            <div
             key={day}
+            title={dayAgenda}
+            aria-label={dayAgenda ? `${day}: ${dayAgenda.replace(/\n/g, ', ')}` : undefined}
             className={cn(
              "aspect-square p-1 rounded-lg border transition-all relative",
              isToday ? "border-stone-900 bg-stone-50" : "border-stone-100 hover:border-stone-300",
-             hasEvent && "cursor-pointer"
+             hasEvent && "cursor-help"
             )}
            >
             <span className={cn(

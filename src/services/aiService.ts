@@ -346,7 +346,7 @@ export class AIService {
         source: 'Local (Ollama)',
         model: model
       };
-    } catch (error) {
+    } catch {
       console.warn('Local Ollama connection failed, falling back to Cloud AI.');
       return null;
     }

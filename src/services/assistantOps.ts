@@ -219,7 +219,7 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/scout', en: 'Propose three people — never send', el: 'Πρότεινε τρεις — χωρίς αποστολή' },
   { cmd: '/need', en: 'List or draft a need card', el: 'Δείξε ή γράψε κάρτα ανάγκης' },
   { cmd: '/next', en: 'What to do first', el: 'Τι να κάνεις πρώτα' },
-  { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον browser' },
+  { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον περιηγητή' },
   { cmd: '/plan', en: 'Write a 7-day match plan', el: 'Γράψε πλάνο 7 ημερών' },
   { cmd: '/invite', en: 'Prepare three founder invites', el: 'Ετοίμασε τρεις προσκλήσεις ιδρυτών' },
   { cmd: '/round', en: 'Read the fundraising round', el: 'Διάβασε τον γύρο χρηματοδότησης' },
@@ -682,8 +682,8 @@ function inboxResult(query: string): AssistantResult {
           ? 'No unread messages in this browser’s store. Open Messages to read the latest threads.'
           : 'No messages stored in this browser yet. Open Messages, then ask me to search a word in the thread.',
         el: wantsUnread
-          ? 'Κανένα αδιάβαστο μήνυμα σε αυτόν τον browser. Άνοιξε τα Μηνύματα για τα τελευταία νήματα.'
-          : 'Δεν υπάρχουν μηνύματα σε αυτόν τον browser. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
+          ? 'Κανένα αδιάβαστο μήνυμα σε αυτόν τον περιηγητή. Άνοιξε τα Μηνύματα για τα τελευταία νήματα.'
+          : 'Δεν υπάρχουν μηνύματα σε αυτόν τον περιηγητή. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
         href: '/messages',
         links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
       };
@@ -692,7 +692,7 @@ function inboxResult(query: string): AssistantResult {
     return {
       tool: 'inbox',
       en: wantsUnread ? `Unread in this browser's store:\n${lines.join('\n')}` : `Latest messages in this browser's store:\n${lines.join('\n')}`,
-      el: wantsUnread ? `Αδιάβαστα σε αυτόν τον browser:\n${lines.join('\n')}` : `Τελευταία μηνύματα σε αυτόν τον browser:\n${lines.join('\n')}`,
+      el: wantsUnread ? `Αδιάβαστα σε αυτόν τον περιηγητή:\n${lines.join('\n')}` : `Τελευταία μηνύματα σε αυτόν τον περιηγητή:\n${lines.join('\n')}`,
       href: '/messages',
       links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
     };
@@ -706,7 +706,7 @@ function inboxResult(query: string): AssistantResult {
         : 'No messages stored in this browser yet. Open Messages, then ask me to search a word in the thread.',
       el: needle
         ? `Κανένα αποθηκευμένο μήνυμα δεν περιέχει «${needle}». Άνοιξε τα Μηνύματα — τα Call/Video δεν ανοίγουν ζωντανή κλήση.`
-        : 'Δεν υπάρχουν μηνύματα σε αυτόν τον browser. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
+        : 'Δεν υπάρχουν μηνύματα σε αυτόν τον περιηγητή. Άνοιξε τα Μηνύματα και ζήτα αναζήτηση λέξης στο νήμα.',
       href: '/messages',
       links: [{ href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' }],
     };
@@ -922,7 +922,7 @@ function saveOrConnect(kind: 'save' | 'connect', person: Person, propose: boolea
       return {
         tool: 'connect',
         en: `${person.fullName} had already asked — you are now connected.`,
-        el: `${person.fullName} είχε ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.`,
+        el: `${person.fullName} είχε ήδη ζητήσει σύνδεση — η σύνδεση ολοκληρώθηκε.`,
         href: '/network',
         links,
       };
@@ -2031,7 +2031,7 @@ function inviteResult(propose: boolean): AssistantResult {
     return {
       tool: 'invite',
       en: `Three invite slots are ready (${readInvites().length} on this account). Share ${href} — it is the same 60-second fit check, and Matches will read those fields. Copy the link and send it to three people you would actually work with.`,
-      el: `Τρεις θέσεις πρόσκλησης είναι έτοιμες (${readInvites().length} σε αυτόν τον λογαριασμό). Στείλε το ${href} — είναι το ίδιο fit check 60″, και το Matches θα διαβάσει αυτά τα πεδία.`,
+      el: `Τρεις θέσεις πρόσκλησης είναι έτοιμες (${readInvites().length} σε αυτόν τον λογαριασμό). Στείλε το ${href} — είναι το ίδιο fit check 60″, και οι Αντιστοιχίσεις θα διαβάσουν αυτά τα πεδία.`,
       href: '/network',
       links: [
         { href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' },
@@ -2075,7 +2075,7 @@ function weekMeetResult(profile: AssistantProfile | null): AssistantResult {
       ? `This week: talk to ${who.fullName} (${who.headline}), then ${eventLineEn}. Same people Matches ranks; same list Events shows.`
       : `This week: open Matches, then ${eventLineEn}.`,
     el: who
-      ? `Αυτή την εβδομάδα: μίλα με ${who.fullName} (${who.headline}), μετά ${eventLineEl}. Τα ίδια άτομα με το Matches.`
+      ? `Αυτή την εβδομάδα: μίλα με ${who.fullName} (${who.headline}), μετά ${eventLineEl}. Τα ίδια άτομα με τις Αντιστοιχίσεις.`
       : `Αυτή την εβδομάδα: άνοιξε Αντιστοιχίσεις, μετά ${eventLineEl}.`,
     href: who ? `/profile/${who.id}` : '/matches',
     links: [
@@ -2091,7 +2091,7 @@ function fitCheckResult(): AssistantResult {
     return {
       tool: 'fit-check',
       en: 'No fit check on this browser yet. Five questions, 60 seconds, no login. The answers write skills, looking-for, stage, commitment and hours — the same five dimensions Matches scores.',
-      el: 'Δεν υπάρχει fit check σε αυτόν τον browser. Πέντε ερωτήσεις, 60″, χωρίς είσοδο. Οι απαντήσεις γράφουν τα ίδια πέντε πεδία που βαθμολογεί το Matches.',
+      el: 'Δεν υπάρχει fit check σε αυτόν τον περιηγητή. Πέντε ερωτήσεις, 60″, χωρίς είσοδο. Οι απαντήσεις γράφουν τα ίδια πέντε πεδία που βαθμολογεί η Αντιστοίχιση.',
       href: '/quiz',
       links: [{ href: '/quiz', en: 'Open fit check', el: 'Άνοιγμα fit check' }],
     };
@@ -2112,7 +2112,7 @@ function helpResult(): AssistantResult {
   return {
     tool: 'help',
     en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, “set monthly burn to 18k”, “hide my email”, “change my headline to …”, “mark all notifications read”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποιος είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», «κρύψε το email μου», «όρισε την τοποθεσία μου σε …», «σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Στένεψε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
+    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποια είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», «κρύψε το email μου», «όρισε την τοποθεσία μου σε …», «σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Φίλτραρε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
       { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },

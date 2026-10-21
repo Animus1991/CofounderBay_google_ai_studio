@@ -11,20 +11,15 @@ import {
   serverTimestamp, 
   increment,
   updateDoc,
-  addDoc,
-  Timestamp
+  addDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
   XPEvent, 
   XPEventType, 
-  ReadinessScore, 
   Streak, 
-  ContributionScore, 
-  TeamMomentum, 
   MentorFeedbackMetric,
-  Badge,
-  UserBadge
+  Badge
 } from '../types';
 
 // Base XP Values

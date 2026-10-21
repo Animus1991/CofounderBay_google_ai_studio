@@ -34,11 +34,12 @@ import { profileViews as loadProfileViews, sendConnectionRequest, useConnections
 import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
-import { greetingFor, formatWhen } from '../lib/dates';
+import { greetingFor, formatWhen, localizeAxisLabel } from '../lib/dates';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { useNotificationFeed } from '../lib/notificationFeed';
-import { useT } from '../lib/language';
+import { useLanguage, useT } from '../lib/language';
 import NextMove from '../components/ui/NextMove';
+import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import RelTime from '../components/ui/RelTime';
 import FactLine from '../components/ui/FactLine';
@@ -420,6 +421,7 @@ export default function DashboardPage() {
   }, [user, isDemoMode]);
 
   const t = useT();
+  const { mode } = useLanguage();
   const heroAction = nextActions[0];
   const studioNext = studioNextStep(fromProfile(profile));
   const waiting = studioWaiting();
@@ -455,7 +457,9 @@ export default function DashboardPage() {
   }));
   const posts = isDemoMode ? [...activityPosts, ...DEMO_POSTS] : (activityPosts.length > 0 ? [...activityPosts, ...feed] : feed);
   const schedule = isDemoMode ? DEMO_EVENTS : events;
-  const chartSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
+  const rawSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
+  // Series keep English day keys so the numbers stay comparable; only the tick is translated.
+  const chartSeries = rawSeries?.map((point) => ({ ...point, name: localizeAxisLabel(point.name, mode) })) ?? null;
   const communities = isDemoMode ? ACTIVE_COMMUNITIES : (live.communities ?? []);
   const prospect = isDemoMode
     ? rankedCircles[0] ?? null
@@ -468,7 +472,7 @@ export default function DashboardPage() {
     ? localRequests.filter((item) => item.status === 'pending').length
     : connections.incoming.length;
   const nowChips = [
-    { count: pendingRequests, en: 'Requests', el: 'Αιτήματα', askEn: 'What needs me in my requests?', askEl: 'Τι με χρειάζεται στα αιτήματα;' },
+    { count: pendingRequests, en: 'Requests', el: 'Αιτήματα', askEn: 'What needs me in my requests?', askEl: 'Τι χρειάζεται προσοχή στα αιτήματα;' },
     { count: unread ?? 0, en: 'Messages', el: 'Μηνύματα', askEn: 'Which messages are unread?', askEl: 'Ποια μηνύματα είναι αδιάβαστα;' },
     { count: noteFeed.unread, en: 'Notifications', el: 'Ειδοποιήσεις', askEn: 'What is new in my notifications?', askEl: 'Τι νέο στις ειδοποιήσεις;' },
   ].filter((chip) => chip.count > 0).slice(0, 3);
@@ -635,6 +639,16 @@ export default function DashboardPage() {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-3"
           >
+            <NextMove
+              tone="next"
+              icon={CheckCircle2}
+              label={t('Next', 'Επόμενο')}
+              title={t(studioNext.title?.en ?? studioNext.en, studioNext.title?.el ?? studioNext.el)}
+              why={studioNext.why ? t(studioNext.why.en, studioNext.why.el) : undefined}
+              action={t(studioNext.action?.en ?? 'Go', studioNext.action?.el ?? 'Άνοιγμα')}
+              onAction={() => goStep(studioNext.href)}
+              askPrompt={studioNext.prompt}
+            />
             {waiting ? (
               <NextMove
                 tone="waiting"
@@ -647,16 +661,6 @@ export default function DashboardPage() {
                 askPrompt={waiting.prompt}
               />
             ) : null}
-            <NextMove
-              tone="next"
-              icon={CheckCircle2}
-              label={t('Next', 'Επόμενο')}
-              title={t(studioNext.title?.en ?? studioNext.en, studioNext.title?.el ?? studioNext.el)}
-              why={studioNext.why ? t(studioNext.why.en, studioNext.why.el) : undefined}
-              action={t(studioNext.action?.en ?? 'Go', studioNext.action?.el ?? 'Άνοιγμα')}
-              onAction={() => goStep(studioNext.href)}
-              askPrompt={studioNext.prompt}
-            />
           </motion.div>
         </AnimatePresence>
 
@@ -737,12 +741,12 @@ export default function DashboardPage() {
           </div>
 
           {!isDemoMode && feedLoaded && posts.length === 0 ? (
-            <div className="text-sm text-stone-400 bg-white border border-stone-100 rounded-2xl p-4 space-y-2">
-              <p><Both en="The list is empty." el="Η λίστα είναι άδεια." /></p>
-              <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'what should I do today' } }))}>
-                <Both en="Ask assistant" el="Ρώτα τον βοηθό" />
-              </button>
-            </div>
+            <EmptyHint
+              title={t('The list is empty.', 'Η λίστα είναι άδεια.')}
+              detail={t('Log a milestone or post in a community. The assistant can pick the next move.', 'Καταχώρισε ορόσημο ή γράψε σε μια κοινότητα. Ο βοηθός μπορεί να προτείνει το επόμενο βήμα.')}
+            >
+              <AskLink prompt="what should I do today" />
+            </EmptyHint>
           ) : posts.map((item) => {
             const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
             const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);

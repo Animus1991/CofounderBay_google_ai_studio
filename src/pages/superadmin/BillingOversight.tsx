@@ -1,12 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
-import { TrendingUp, Users, History, Zap, Download, Plus, Search, Filter, MoreHorizontal, DollarSign, BarChart3, PieChart } from "lucide-react";
+import {
+ useState,
+ useEffect,
+ useMemo } from "react";
+import { TrendingUp,
+ Users,
+ History,
+ Zap,
+ Download,
+ Plus,
+ Search,
+ MoreHorizontal,
+ DollarSign,
+ BarChart3,
+ PieChart
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, getDocs, onSnapshot } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell } from "recharts";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { Invoice, BillingPlan, Subscription } from "../../types";
-import { billingService, MOCK_PLANS } from "../../services/billingService";
+import { billingService } from "../../services/billingService";
 import { db } from "../../firebase";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";

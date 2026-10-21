@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
-import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
 import Modal from '../components/ui/Modal';
 import Avatar from '../components/ui/Avatar';
 import {
@@ -128,16 +128,7 @@ export default function CommunitiesPage() {
 
  useEffect(() => {
   if (isDemoMode) { setCloud([]); return; }
-  let unsub: (() => void) | undefined;
-  let cancelled = false;
-  void (async () => {
-   try {
-    const stop = await onCommunities((list) => { if (!cancelled) setCloud(list); }, () => setCloud([]));
-    if (cancelled) { stop(); return; }
-    unsub = stop;
-   } catch { if (!cancelled) setCloud([]); }
-  })();
-  return () => { cancelled = true; unsub?.(); };
+  return onCommunities((list) => setCloud(list), () => setCloud([]));
  }, [isDemoMode]);
 
  useEffect(() => {
@@ -160,7 +151,7 @@ export default function CommunitiesPage() {
    official: false,
    memberIds: doc.memberIds,
   }));
-  const builtin: CommunityCardData[] = COMMUNITIES.filter((b) => !cloudIds.has(b.id)).map((b) => ({
+  const builtin: CommunityCardData[] = (isDemoMode ? COMMUNITIES.filter((b) => !cloudIds.has(b.id)) : []).map((b) => ({
    id: b.id,
    name: b.name,
    description: b.description,
@@ -285,6 +276,9 @@ export default function CommunitiesPage() {
       ? t('Ask the studio assistant to find one, or create a new space.', 'Ζήτα από τον βοηθό να βρει μία ή φτιάξε νέο χώρο.')
       : t('Be the first to start a space, or ask the assistant for ideas.', 'Ξεκίνα εσύ έναν χώρο ή ζήτα ιδέες από τον βοηθό.')}
     >
+     {(searchQuery.trim() || activeTab !== 'all') && (
+      <ClearFiltersButton onClick={() => { setSearchQuery(''); setActiveTab('all'); }} />
+     )}
      {!isDemoMode && (
       <button type="button" onClick={() => setCreateOpen(true)} className="px-3 py-1.5 rounded-lg bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition-all">
        {t('Create community', 'Δημιουργία κοινότητας')}
@@ -518,16 +512,7 @@ function CommunityModal({ card, uid, userName, isDemoMode, onClose }: { card: Co
  useEffect(() => {
   setPosts([]);
   if (!cardId || isDemoMode) return;
-  let unsub: (() => void) | undefined;
-  let cancelled = false;
-  void (async () => {
-   try {
-    const stop = await onCommunityPosts(cardId, (list) => { if (!cancelled) setPosts(list); }, () => setPosts([]));
-    if (cancelled) { stop(); return; }
-    unsub = stop;
-   } catch { if (!cancelled) setPosts([]); }
-  })();
-  return () => { cancelled = true; unsub?.(); };
+  return onCommunityPosts(cardId, (list) => setPosts(list), () => setPosts([]));
  }, [cardId, isDemoMode]);
 
  const submit = async () => {

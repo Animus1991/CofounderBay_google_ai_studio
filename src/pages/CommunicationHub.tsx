@@ -28,6 +28,8 @@ import { useLanguage, useT } from "../lib/language";
 import { formatDate, formatDateTime, formatTime } from "../lib/dates";
 import RelTime from "../components/ui/RelTime";
 import Modal from "../components/ui/Modal";
+import { ClearFiltersButton } from "../components/ui/EmptyHint";
+import { usePageControls } from "../lib/pageControls";
 import { useStored } from "../lib/useStored";
 import { useToast } from "../context/ToastContext";
 import { usePeople } from "../lib/directory";
@@ -278,6 +280,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  const [inputText, setInputText] = useState("");
  const [searchQuery, setSearchQuery] = useState("");
  const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
+ usePageControls(() => [
+  { id: 'new-message', en: 'New message', el: 'Νέο μήνυμα', run: () => setPicker({ open: true, mode: 'new' }) },
+  { id: 'filter-all', en: 'Show all conversations', el: 'Όλες οι συνομιλίες', run: () => { setMessageFilter('all'); setSearchQuery(''); } },
+  { id: 'filter-unread', en: 'Show unread', el: 'Αδιάβαστα', run: () => setMessageFilter('unread') },
+  { id: 'filter-archived', en: 'Show archived', el: 'Αρχείο', run: () => setMessageFilter('archived') },
+ ], []);
  const [reactionFor, setReactionFor] = useState<string | null>(null);
  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
@@ -476,7 +484,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    const blocked = error instanceof Error && error.message === "blocked";
    toast.error(
     blocked ? t("This conversation is blocked", "Η συνομιλία είναι αποκλεισμένη") : t("Message not sent", "Το μήνυμα δεν στάλθηκε"),
-    blocked ? t("Unblock the member to write again.", "Άρε τον αποκλεισμό για να γράψεις ξανά.") : t("Check your connection and try again.", "Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά."),
+    blocked ? t("Unblock the member to write again.", "Άρσε τον αποκλεισμό για να γράψεις ξανά.") : t("Check your connection and try again.", "Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά."),
    );
   } finally {
    setSending(false);
@@ -498,7 +506,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
  const startRecording = async () => {
   if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-   toast.info(t("Voice messages are not supported here", "Τα φωνητικά μηνύματα δεν υποστηρίζονται εδώ"), t("Your browser cannot record audio. You can attach an audio file instead.", "Ο browser δεν μπορεί να ηχογραφήσει. Μπορείς να επισυνάψεις αρχείο ήχου."));
+   toast.info(t("Voice messages are not supported here", "Τα φωνητικά μηνύματα δεν υποστηρίζονται εδώ"), t("Your browser cannot record audio. You can attach an audio file instead.", "Ο περιηγητής δεν μπορεί να ηχογραφήσει. Μπορείς να επισυνάψεις αρχείο ήχου."));
    return;
   }
   try {
@@ -546,7 +554,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   if (intro.record) {
    try {
     await respondToConnection(intro.record, true);
-    toast.success(t("Connected", "Συνδεθήκατε"), t(`You and ${intro.from.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${intro.from.fullName}.`));
+    toast.success(t("Connected", "Η σύνδεση ολοκληρώθηκε"), t(`You and ${intro.from.fullName} can message each other now.`, `Μπορείς πλέον να ανταλλάσσεις μηνύματα με ${intro.from.fullName}.`));
     logActivity({ kind: "request", title: `Connected with ${intro.from.fullName}`, titleEl: `Σύνδεση με ${intro.from.fullName}`, href: `/profile/${intro.from.id}` });
    } catch {
     toast.error(t("Could not accept", "Η αποδοχή απέτυχε"), t("Please try again.", "Δοκίμασε ξανά."));
@@ -765,8 +773,6 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   );
  };
 
- const composerTip = t("Pick a member or a specialist to start writing.", "Διάλεξε ένα μέλος ή έναν ειδικό για να αρχίσεις να γράφεις.");
-
  // =============================================================================
  // RENDER: LEFT SIDEBAR
  // =============================================================================
@@ -836,13 +842,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         {messageFilter === "archived" ? t("Nothing archived", "Τίποτα στο αρχείο") : messageFilter === "unread" ? t("No unread conversations", "Καμία αδιάβαστη συνομιλία") : searchQuery ? t("No conversation matches", "Καμία συνομιλία δεν ταιριάζει") : t("No conversations yet", "Δεν υπάρχουν συνομιλίες ακόμη")}
        </p>
        <p className="text-xs text-stone-400 mt-1.5 max-w-[220px] leading-relaxed">
-        {messageFilter === "all" && !searchQuery ? t("Write to a member from Matches or Network, or ask an AI specialist.", "Γράψε σε ένα μέλος από τις Αντιστοιχίσεις ή το Δίκτυο, ή ρώτησε έναν ειδικό AI.") : t("Try another filter or search term.", "Δοκίμασε άλλο φίλτρο ή όρο αναζήτησης.")}
+        {messageFilter === "all" && !searchQuery ? t("Write to a member from Matches or Network, or ask an AI specialist.", "Γράψε σε ένα μέλος από τις Αντιστοιχίσεις ή το Δίκτυο, ή ρώτα έναν ειδικό AI.") : t("Try another filter or search term.", "Δοκίμασε άλλο φίλτρο ή όρο αναζήτησης.")}
        </p>
        <div className="mt-4 flex flex-col items-center gap-2">
         <button type="button" onClick={() => setPicker({ open: true, mode: 'new' })}
          className="flex items-center gap-2 min-h-11 px-4 bg-stone-900 text-white text-xs font-medium rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/15">
          <Plus className="w-3.5 h-3.5" /> {t("New message", "Νέο μήνυμα")}
         </button>
+        {(messageFilter !== "all" || searchQuery) && (
+         <ClearFiltersButton onClick={() => { setMessageFilter("all"); setSearchQuery(""); }} />
+        )}
         <button type="button" className="text-xs font-medium text-stone-900 hover:underline min-h-11" onClick={() => navigate("/matches")}>
          {t("Find people to talk to", "Βρες άτομα για συζήτηση")}
         </button>
@@ -1147,7 +1156,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      </button>
      <button type="button" onClick={() => { setActiveView("ai-center"); setAiView("agents"); }}
       className="w-full flex items-center justify-center gap-2.5 min-h-12 px-5 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
-      <Sparkles className="w-4 h-4" /> {t("Ask an AI specialist", "Ρώτησε έναν ειδικό AI")}
+      <Sparkles className="w-4 h-4" /> {t("Ask an AI specialist", "Ρώτα έναν ειδικό AI")}
      </button>
      <div className="flex items-center gap-2.5 w-full">
       <button type="button" onClick={() => navigate("/matches")} className="flex-1 flex items-center justify-center gap-2 min-h-11 px-4 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
@@ -1335,7 +1344,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm text-stone-600">
        <Ban className="w-4 h-4 shrink-0 text-stone-400" />
        <span className="flex-1">
-        {isBlockedByMe ? t("You blocked this member. Unblock them to write again.", "Έχεις αποκλείσει αυτό το μέλος. Άρε τον αποκλεισμό για να γράψεις ξανά.")
+        {isBlockedByMe ? t("You blocked this member. Unblock them to write again.", "Έχεις αποκλείσει αυτό το μέλος. Άρσε τον αποκλεισμό για να γράψεις ξανά.")
          : permission.ok ? "" : permission.reason === "blocked" ? t("This member is not accepting messages from you.", "Αυτό το μέλος δεν δέχεται μηνύματα από εσένα.")
          : permission.reason === "connections-only" ? t("This member accepts messages from connections only. Send a connection request first.", "Αυτό το μέλος δέχεται μηνύματα μόνο από συνδέσεις. Στείλε πρώτα αίτημα σύνδεσης.")
          : permission.reason === "self" ? t("This is your own account.", "Αυτός είναι ο δικός σου λογαριασμός.")
@@ -1635,7 +1644,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {aiInsights.length === 0 ? (
        <div className="text-center py-12">
         <Lightbulb className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-        <p className="text-sm text-stone-500">{t("Ask a specialist and their answers will be collected here.", "Ρώτησε έναν ειδικό και οι απαντήσεις του θα συγκεντρώνονται εδώ.")}</p>
+        <p className="text-sm text-stone-500">{t("Ask a specialist and their answers will be collected here.", "Ρώτα έναν ειδικό και οι απαντήσεις του θα συγκεντρώνονται εδώ.")}</p>
         <button type="button" onClick={() => setAiView("agents")} className="mt-4 min-h-11 px-4 bg-stone-900 text-white rounded-xl text-sm font-medium">{t("Pick a specialist", "Διάλεξε ειδικό")}</button>
        </div>
       ) : aiInsights.map((conversation) => {

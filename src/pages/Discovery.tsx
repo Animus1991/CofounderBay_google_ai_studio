@@ -1,48 +1,30 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { 
- Search, 
- Filter, 
- Globe, 
- Users, 
- Zap, 
- ArrowRight, 
- Star, 
- ChevronRight, 
- Trophy, 
- Target, 
- Briefcase, 
- Rocket, 
- Activity, 
- Sparkles, 
- X, 
- Check, 
- Plus, 
- MoreVertical, 
- Layout, 
- Compass, 
- MapPin, 
- Calendar as CalendarIcon, 
- MessageSquare, 
- Share2, 
- Heart, 
- Bookmark, 
- ExternalLink, 
- ChevronDown, 
- SlidersHorizontal, 
- Grid, 
+import {
+ Search,
+ Globe,
+ Users,
+ Zap,
+ ArrowRight,
+ Rocket,
+ Activity,
+ X,
+ Calendar as CalendarIcon,
+ MessageSquare,
+ Bookmark,
+ SlidersHorizontal,
+ Grid,
  List as ListIcon,
  ShieldCheck
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { User } from "../types";
 import { useAuth } from "../App";
-import { readDiscoveryFilters, writeDiscoveryFilters, addSavedSearch, removeSavedSearch, readSavedSearches, keys } from "../lib/localLists";
+import { readDiscoveryFilters, writeDiscoveryFilters, addSavedSearch, removeSavedSearch, readSavedSearches, keys, readValue, writeValue } from "../lib/localLists";
 import { cn } from "../lib/utils";
 import { explainMatch } from "../lib/matchReason";
 import { bothText, labelOf } from "../lib/labels";
@@ -56,6 +38,8 @@ import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from "../lib/se
 import { formatDate, formatTime } from "../lib/dates";
 import { coverFor } from "../data/photos";
 import { usePageControls } from "../lib/pageControls";
+import { onCatalog, str, strList, toMillis } from "../lib/catalog";
+import { onCommunities } from "../lib/communities";
 import { useStored } from "../lib/useStored";
 
 interface DiscoveryProps {
@@ -88,6 +72,8 @@ export default function Discovery({ user }: DiscoveryProps) {
  useEffect(() => {
   writeDiscoveryFilters({ q: searchQuery, skills: selectedSkills, industries: selectedIndustries, stages: selectedStages, locations: selectedLocations });
  }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
+ const [briefingEmail, setBriefingEmail] = useState(() => String(readValue<Record<string, string>>(keys.prefs, {}).briefingEmail ?? authUser?.email ?? ''));
+ const [briefingSaved, setBriefingSaved] = useState(false);
  const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
  const savedSearches = useStored(readSavedSearches, [keys.savedSearches]);
  const hasActiveFilters = Boolean(searchQuery.trim() || selectedSkills.length || selectedIndustries.length || selectedStages.length || selectedLocations.length);
@@ -283,49 +269,46 @@ export default function Discovery({ user }: DiscoveryProps) {
  // Real accounts discover the platform-published programs and member communities.
  const [liveOpportunities, setLiveOpportunities] = useState<typeof demoOpportunities | null>(null);
  const [liveCommunities, setLiveCommunities] = useState<typeof demoCommunities | null>(null);
+ const [liveEvents, setLiveEvents] = useState<{ id: string; title: string; at: number; type: string }[] | null>(null);
  useEffect(() => {
-  if (isDemoMode) { setLiveOpportunities(null); setLiveCommunities(null); return; }
-  const stops: (() => void)[] = [];
-  let cancelled = false;
-  void (async () => {
-   try {
-    const { onCatalog, str, strList, toMillis } = await import('../lib/catalog');
-    const { onCommunities } = await import('../lib/communities');
-    const stop1 = await onCatalog('programs', (docs) => setLiveOpportunities(docs.map((doc) => {
-     const deadline = toMillis(doc.deadline);
-     return {
-      id: doc.id,
-      title: str(doc.title, 'Program'),
-      type: str(doc.type, 'Accelerator'),
-      location: str(doc.location, ''),
-      deadline: deadline ? formatDate(new Date(deadline), { month: 'short', day: 'numeric' }) : str(doc.deadline, ''),
-      tags: strList(doc.focus ?? doc.tags),
-      photo: str(doc.image ?? doc.imageUrl),
-      description: str(doc.description),
-     };
-    })), () => setLiveOpportunities([]));
-    if (cancelled) { stop1(); return; }
-    stops.push(stop1);
-    const stop2 = await onCommunities((docs) => setLiveCommunities(docs.map((doc) => ({
+  if (isDemoMode) { setLiveOpportunities(null); setLiveCommunities(null); setLiveEvents(null); return; }
+  const stops = [
+   onCatalog('events', (docs) => setLiveEvents(docs.map((doc) => ({
+    id: doc.id,
+    title: str(doc.title ?? doc.name, 'Event'),
+    at: toMillis(doc.startsAt ?? doc.startAt ?? doc.date) ?? 0,
+    type: str(doc.type, 'Networking'),
+   })).filter((item) => item.at >= Date.now()).sort((a, b) => a.at - b.at).slice(0, 3)), () => setLiveEvents([])),
+   onCatalog('programs', (docs) => setLiveOpportunities(docs.map((doc) => {
+    const deadline = toMillis(doc.deadline);
+    return {
      id: doc.id,
-     name: doc.name,
-     members: String(doc.memberIds.length),
-     description: doc.description,
-     icon: Users,
-     status: doc.postCount > 0 ? 'ACTIVE' : 'EMERGING',
-    }))), () => setLiveCommunities([]));
-    if (cancelled) { stop2(); return; }
-    stops.push(stop2);
-   } catch { if (!cancelled) { setLiveOpportunities([]); setLiveCommunities([]); } }
-  })();
-  return () => { cancelled = true; stops.forEach((stop) => stop()); };
+     title: str(doc.title, 'Program'),
+     type: str(doc.type, 'Accelerator'),
+     location: str(doc.location, ''),
+     deadline: deadline ? formatDate(new Date(deadline), { month: 'short', day: 'numeric' }) : str(doc.deadline, ''),
+     tags: strList(doc.focus ?? doc.tags),
+     photo: str(doc.image ?? doc.imageUrl),
+     description: str(doc.description),
+    };
+   })), () => setLiveOpportunities([])),
+   onCommunities((docs) => setLiveCommunities(docs.map((doc) => ({
+    id: doc.id,
+    name: doc.name,
+    members: String(doc.memberIds.length),
+    description: doc.description,
+    icon: Users,
+    status: doc.postCount > 0 ? 'ACTIVE' : 'EMERGING',
+   }))), () => setLiveCommunities([])),
+  ];
+  return () => { stops.forEach((stop) => stop()); };
  }, [isDemoMode]);
 
  const filteredOpportunities = isDemoMode ? demoOpportunities : (liveOpportunities ?? []);
  const filteredCommunities = isDemoMode ? demoCommunities : (liveCommunities ?? []);
 
  return (
-  <PageShell sample={isDemoMode} title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Explore founders, communities, opportunities and events in your ecosystem.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις.")} noPadding={false}>
+  <PageShell sample={isDemoMode} title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Founders, communities, opportunities and events. Ranked co-founder matches live in Matches.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις. Οι ταξινομημένες αντιστοιχίσεις συνιδρυτή είναι στις Αντιστοιχίσεις.")} noPadding={false}>
   <div className="space-y-8">
    {/* Filter Overlay */}
    <AnimatePresence>
@@ -347,7 +330,7 @@ export default function Discovery({ user }: DiscoveryProps) {
       >
        <div className="flex items-center justify-between mb-16">
         <div className="space-y-2">
-         <h3 className="text-sm font-medium tracking-wider text-stone-400">{t('Refine search', 'Στένεψε την αναζήτηση')}</h3>
+         <h3 className="text-sm font-medium tracking-wider text-stone-400">{t('Refine search', 'Περιόρισε την αναζήτηση')}</h3>
          <p className="text-xl font-medium text-stone-900">{t('Advanced filters', 'Προχωρημένα φίλτρα')}</p>
         </div>
         <button 
@@ -620,7 +603,7 @@ export default function Discovery({ user }: DiscoveryProps) {
                {t('Ask', 'Ρώτα')}
               </Button>
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
-               onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/messages?userId=${user.id}`); }}>
+               onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); navigate(`/messages?user=${user.id}`); }}>
                {t('Message', 'Μήνυμα')}
               </Button>
              </div>
@@ -632,7 +615,7 @@ export default function Discovery({ user }: DiscoveryProps) {
         </div>
        ) : (
         <EmptyHint title={t('No matches for these filters', 'Καμία αντιστοίχιση με αυτά τα κριτήρια')} detail={t('Clear the filters, or ask who still ranks on this profile.', 'Καθάρισε τα φίλτρα, ή ρώτα ποιον βαθμολογεί ακόμα αυτό το προφίλ.')}>
-          <button type="button" onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} className="text-xs font-medium text-stone-900 hover:underline">{t('Clear filters', 'Καθαρισμός φίλτρων')}</button>
+          <ClearFiltersButton onClick={() => { setSearchQuery(''); setSelectedSkills([]); setSelectedIndustries([]); setSelectedStages([]); setSelectedLocations([]); }} />
           <AskLink prompt="who is my best match" />
         </EmptyHint>
        )}
@@ -772,6 +755,53 @@ export default function Discovery({ user }: DiscoveryProps) {
       </div>
      </section>
      )}
+
+     {(activeCategory === 'All' || activeCategory === 'Events') && (
+      <section className="space-y-4">
+       <div className="flex items-center justify-between">
+        <div>
+         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
+         <h3 className="text-base font-semibold text-stone-900">{t('Upcoming sessions', 'Επερχόμενες συναντήσεις')}</h3>
+        </div>
+        <Link to="/events">
+         <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
+          {t('View all', 'Όλες')} <ArrowRight className="ml-1.5 w-3 h-3" />
+         </Button>
+        </Link>
+       </div>
+       {(!isDemoMode && (liveEvents ?? []).length === 0) ? (
+        <EmptyHint
+         title={t('No upcoming events yet', 'Δεν υπάρχουν ακόμη επερχόμενες εκδηλώσεις')}
+         detail={t('Published sessions appear here. Open Events to browse, or ask the assistant what’s on this week.', 'Οι δημοσιευμένες συναντήσεις εμφανίζονται εδώ. Άνοιξε τις Εκδηλώσεις, ή ρώτα τον βοηθό τι γίνεται αυτή την εβδομάδα.')}
+        >
+         <AskLink prompt="What events are coming up?" />
+         <Link to="/events" className="text-xs font-medium text-stone-900 hover:underline">{t('Open Events', 'Άνοιγμα Εκδηλώσεων')}</Link>
+        </EmptyHint>
+       ) : (
+        <div className="space-y-2">
+         {(isDemoMode
+           ? [
+            { id: 'demo-e1', title: 'Founder Mixer SF', at: new Date(Date.now() + 2 * 86_400_000).setHours(18, 0, 0, 0), type: 'In-Person' },
+            { id: 'demo-e2', title: 'AI Product Workshop', at: new Date(Date.now() + 4 * 86_400_000).setHours(10, 0, 0, 0), type: 'Virtual' },
+            { id: 'demo-e3', title: 'Seed Funding Webinar', at: new Date(Date.now() + 9 * 86_400_000).setHours(14, 0, 0, 0), type: 'Virtual' },
+           ]
+           : (liveEvents ?? [])
+         ).map((event) => (
+          <div key={event.id} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-white hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
+           <div className="w-10 h-10 rounded-xl bg-stone-50 border border-stone-100 flex flex-col items-center justify-center shrink-0">
+            <span className="text-[8px] font-semibold text-stone-400">{formatDate(event.at, { month: 'short' })}</span>
+            <span className="text-base font-bold text-stone-900">{formatDate(event.at, { day: 'numeric' })}</span>
+           </div>
+           <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold text-stone-900 truncate">{event.title}</h4>
+            <p className="text-xs text-stone-400">{formatTime(event.at)} · {t(event.type, event.type === 'Virtual' || event.type === 'Webinar' ? 'Εικονικά' : 'Δια ζώσης')}</p>
+           </div>
+          </div>
+         ))}
+        </div>
+       )}
+      </section>
+     )}
     </div>
 
     {/* Right Column - Sidebar Info */}
@@ -793,8 +823,13 @@ export default function Discovery({ user }: DiscoveryProps) {
         <div key={trend.topic} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${trend.topic}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${trend.topic}`); }} className="flex items-center justify-between py-1.5 border-b border-stone-50 last:border-0 cursor-pointer group/item">
          <div>
           <p className="text-sm font-semibold text-stone-800 group-hover/item:text-stone-600 transition-colors">{t(trend.topic, trend.topicEl)}</p>
-          <p className="text-xs text-stone-400">{t(`${trend.count} posts`, `${trend.count} αναρτήσεις`)}</p>
+          {isDemoMode ? (
+           <p className="text-xs text-stone-400">{t(`${trend.count} posts`, `${trend.count} αναρτήσεις`)}</p>
+          ) : (
+           <p className="text-xs text-stone-400">{t('Ask the assistant about this topic', 'Ρώτα τον βοηθό για αυτό το θέμα')}</p>
+          )}
          </div>
+         {isDemoMode && (
          <div className="flex items-center gap-2">
           <svg className="w-12 h-5 overflow-visible">
            <polyline fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
@@ -803,6 +838,7 @@ export default function Discovery({ user }: DiscoveryProps) {
           </svg>
           <span className="text-sm font-semibold text-emerald-600">{trend.growth}</span>
          </div>
+         )}
         </div>
        ))}
       </div>
@@ -818,17 +854,29 @@ export default function Discovery({ user }: DiscoveryProps) {
         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
         <h3 className="text-sm font-semibold text-stone-900">{t('Upcoming sessions', 'Επερχόμενες συναντήσεις')}</h3>
        </div>
+       {isDemoMode && (
        <div className="flex items-center gap-1.5">
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
         <span className="text-xs text-stone-400">{t('Live now', 'Ζωντανά τώρα')}</span>
        </div>
+       )}
       </div>
       <div className="space-y-2">
-       {[
+       {(!isDemoMode && (liveEvents ?? []).length === 0) ? (
+        <EmptyHint
+         title={t('Nothing scheduled', 'Τίποτα στο ημερολόγιο')}
+         detail={t('Open Events to browse, or ask the assistant what’s on this week.', 'Άνοιξε τις Εκδηλώσεις, ή ρώτα τον βοηθό τι γίνεται αυτή την εβδομάδα.')}
+        >
+         <Link to="/events" className="text-xs font-medium text-stone-900 hover:underline">{t('Open Events', 'Άνοιγμα Εκδηλώσεων')}</Link>
+        </EmptyHint>
+       ) : (isDemoMode
+         ? [
         { title: "Founder Mixer SF", at: new Date(Date.now() + 2 * 86_400_000).setHours(18, 0, 0, 0), type: "In-Person", capacity: "85%", status: "FILLING" },
         { title: "AI Product Workshop", at: new Date(Date.now() + 4 * 86_400_000).setHours(10, 0, 0, 0), type: "Virtual", capacity: "40%", status: "OPEN" },
         { title: "Seed Funding Webinar", at: new Date(Date.now() + 9 * 86_400_000).setHours(14, 0, 0, 0), type: "Virtual", capacity: "95%", status: "LAST_CALL" },
-       ].map((event) => (
+           ]
+         : (liveEvents ?? []).map((event) => ({ title: event.title, at: event.at, type: event.type, capacity: '', status: '' }))
+       ).map((event) => (
         <div key={event.title} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-stone-50 hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
          <div className="w-10 h-10 rounded-xl bg-white border border-stone-100 flex flex-col items-center justify-center shrink-0">
           <span className="text-[8px] font-semibold text-stone-400">{formatDate(event.at, { month: 'short' })}</span>
@@ -837,12 +885,14 @@ export default function Discovery({ user }: DiscoveryProps) {
          <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-stone-900 truncate">{event.title}</h4>
           <p className="text-xs text-stone-400">{formatTime(event.at)} · {t(event.type, event.type === 'Virtual' ? 'Εικονικά' : 'Δια ζώσης')}</p>
+          {isDemoMode && event.capacity ? (
           <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden mt-1">
            <motion.div initial={{ width: 0 }} animate={{ width: event.capacity }}
             className={cn("h-full", event.status === "LAST_CALL" ? "bg-amber-400" : "bg-stone-300")} />
           </div>
+          ) : null}
          </div>
-         <span className={cn("text-xs font-semibold shrink-0", event.status === "LAST_CALL" ? "text-amber-600" : "text-stone-400")}>{labelOf(event.status)}</span>
+         {isDemoMode && event.status ? <span className={cn("text-xs font-semibold shrink-0", event.status === "LAST_CALL" ? "text-amber-600" : "text-stone-400")}>{labelOf(event.status)}</span> : null}
         </div>
        ))}
       </div>
@@ -861,11 +911,19 @@ export default function Discovery({ user }: DiscoveryProps) {
       </div>
       <input
        type="email"
+       value={briefingEmail}
+       onChange={(e) => { setBriefingEmail(e.target.value); setBriefingSaved(false); }}
        placeholder={t('Enter your email', 'Το email σου')}
        className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
       />
-      <Button type="button" onClick={() => ask('what should I do today')} className="w-full rounded-lg h-8 bg-stone-900 text-white text-sm hover:bg-stone-800 transition-all">
-       {t('Subscribe now', 'Εγγραφή')}
+      <Button type="button" onClick={() => {
+       const email = briefingEmail.trim();
+       if (isDemoMode) { ask('what should I do today'); return; }
+       if (!email) return;
+       writeValue(keys.prefs, { ...readValue<Record<string, unknown>>(keys.prefs, {}), briefingEmail: email });
+       setBriefingSaved(true);
+      }} className="w-full rounded-lg h-8 bg-stone-900 text-white text-sm hover:bg-stone-800 transition-all">
+       {briefingSaved ? t('Saved on this device', 'Αποθηκεύτηκε σε αυτή τη συσκευή') : t('Subscribe now', 'Εγγραφή')}
       </Button>
      </section>
     </div>

@@ -1,31 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import {
+ useParams,
+ useNavigate } from 'react-router-dom';
 import { 
- User, 
- MapPin, 
- Briefcase, 
- Target, 
- Globe, 
- Linkedin, 
- Github, 
- Twitter, 
- Edit3, 
- Check, 
- X, 
- Plus, 
- Star, 
- MessageSquare, 
+ MapPin,
+ Briefcase,
+ Globe,
+ Linkedin,
+ Github,
+ Twitter,
+ Edit3,
+ Check,
+ X,
+ Plus,
+ Star,
+ MessageSquare,
  UserPlus,
  ShieldCheck,
  Zap,
  ArrowLeft,
  Sparkles,
  Share2,
- MoreVertical,
  ThumbsUp,
  Award,
  TrendingUp,
- PieChart as PieChartIcon,
  Calendar as CalendarIcon,
  Activity,
  Eye,
@@ -36,7 +34,7 @@ import {
  Handshake,
  CheckCircle2,
  Trophy
-} from 'lucide-react';
+} from "lucide-react";
 import { motion, AnimatePresence } from 'motion/react';
 import { 
  PieChart, 
@@ -67,6 +65,7 @@ import { usePeople } from '../lib/directory';
 import { avatarOf, findPerson } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { shareLink } from '../lib/download';
+import { usePageControls } from '../lib/pageControls';
 import { safeWebUrl } from '../lib/webUrl';
 import {
  connectionStateWith,
@@ -252,7 +251,8 @@ export default function ProfilePage() {
  // The demo account's own page shows the profile useAuth already carries —
  // the same data, without a Firestore read the demo backend would refuse.
  const demoOwn = isDemoMode && (!id || id === DEMO_USER_ID);
- const [following, setFollowing] = useState(() => !!id && readIds(listKeys.follow).includes(id));
+ const followIds = useStored(() => readIds(listKeys.follow), [keys.follow]);
+ const following = !!id && followIds.includes(id);
  const profileId = id || currentUser?.uid;
  const real = !isDemoMode && Boolean(currentUser?.uid);
  // Live connection state with the person on this page (real accounts only).
@@ -282,14 +282,14 @@ export default function ProfilePage() {
   try {
    if (connection.state === 'incoming' && connection.record) {
     await respondToConnection(connection.record, true);
-    toast.success(t('Connected', 'Συνδεθήκατε'), t(`You and ${profile.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${profile.fullName}.`));
+    toast.success(t('Connected', 'Η σύνδεση ολοκληρώθηκε'), t(`You and ${profile.fullName} can message each other now.`, `Μπορείς πλέον να ανταλλάσσεις μηνύματα με ${profile.fullName}.`));
    } else if (connection.state === 'outgoing' && connection.record) {
     await withdrawConnection(connection.record);
     toast.info(t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
    } else {
     const person = findPerson(id);
     const result = await sendConnectionRequest({ id, fullName: profile.fullName || person?.fullName || 'Member', headline: profile.headline, avatarUrl: person ? avatarOf(person) : '' }, 'Co-Founder');
-    if (result === 'accepted') toast.success(t('Connected', 'Συνδεθήκατε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.'));
+    if (result === 'accepted') toast.success(t('Connected', 'Η σύνδεση ολοκληρώθηκε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — η σύνδεση ολοκληρώθηκε.'));
     else toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), t('You will be notified when they answer.', 'Θα ειδοποιηθείς όταν απαντήσουν.'));
     logActivity({ kind: 'request', title: `Requested ${profile.fullName}`, titleEl: `Αίτημα προς ${profile.fullName}`, href: `/profile/${id}` });
    }
@@ -324,6 +324,16 @@ export default function ProfilePage() {
   if (result === 'copied') toast.success(t('Link copied', 'Ο σύνδεσμος αντιγράφηκε'));
   else if (result === 'failed') toast.error(t('Could not share', 'Η κοινοποίηση απέτυχε'));
  };
+
+ usePageControls(() => [
+  ...(isOwnProfile
+    ? [{ id: 'edit-profile', en: 'Edit profile', el: 'Επεξεργασία προφίλ', run: () => setIsEditing(true) }]
+    : [
+        { id: 'message-member', en: 'Send a message', el: 'Αποστολή μηνύματος', run: () => { if (id) navigate(`/messages?user=${id}`); } },
+        { id: 'connect-member', en: 'Connect', el: 'Σύνδεση', run: () => { void handleConnect(); } },
+      ]),
+  { id: 'share-profile', en: 'Share profile', el: 'Κοινοποίηση προφίλ', run: () => { void shareProfile(); } },
+ ], [isOwnProfile, id]);
 
  // ── Derived display data (always show sections, fallback to mock) ──
  const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
@@ -581,7 +591,7 @@ export default function ProfilePage() {
 
  const matchGaps = [
   { ok: !!(profile.skills && profile.skills.length), key: t('Skills', 'Δεξιότητες'), why: t('The scorer uses skills to see what you cover.', 'Η βαθμολόγηση χρησιμοποιεί τις δεξιότητες για να δει τι καλύπτεις.') },
-  { ok: !!(profile.lookingFor && profile.lookingFor.length), key: t('Looking for', 'Τι αναζητάς'), why: t('Matches rank people who cover what you still lack.', 'Οι αντιστοιχίσεις κατατάσσουν ψηλότερα τα άτομα που καλύπτουν ό,τι σου λείπει ακόμη.') },
+  { ok: !!(profile.lookingFor && profile.lookingFor.length), key: t('Looking for', 'Τι αναζητάς'), why: t('Matches rank people who cover what you still lack.', 'Οι αντιστοιχίσεις κατατάσσουν υψηλότερα τα άτομα που καλύπτουν ό,τι σου λείπει ακόμη.') },
   { ok: !!profile.industry, key: t('Industry', 'Κλάδος'), why: t('Same industry is a market dimension.', 'Ο ίδιος κλάδος μετράει ως διάσταση αγοράς.') },
   { ok: !!profile.stage, key: t('Stage', 'Στάδιο'), why: t('Stage distance is 15% of the match score.', 'Η απόσταση σταδίου είναι το 15% του σκορ αντιστοίχισης.') },
   { ok: !!profile.commitment, key: t('Commitment', 'Δέσμευση'), why: t('Full-time vs part-time is scored, not guessed.', 'Η πλήρης ή μερική απασχόληση βαθμολογείται, δεν μαντεύεται.') },
@@ -675,10 +685,11 @@ export default function ProfilePage() {
             {connection.state === 'connected' ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />}
             {connectLabel}
            </button>
-           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} aria-label={t('Send a message', 'Αποστολή μηνύματος')} title={t('Send a message', 'Αποστολή μηνύματος')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && navigate(`/messages?user=${id}`)} aria-label={t('Send a message', 'Αποστολή μηνύματος')} title={t('Send a message', 'Αποστολή μηνύματος')} className="min-h-11 inline-flex items-center justify-center gap-2 px-3 sm:px-0 sm:min-w-11 bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
             <MessageSquare className="w-5 h-5" />
+            <span className="text-sm font-medium sm:hidden">{t('Message', 'Μήνυμα')}</span>
            </button>
-           <button type="button" onClick={() => id && setFollowing(toggleId(listKeys.follow, id).includes(id))} aria-pressed={following} aria-label={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} title={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
+           <button type="button" onClick={() => id && toggleId(listKeys.follow, id)} aria-pressed={following} aria-label={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} title={following ? t('Unfollow', 'Κατάργηση παρακολούθησης') : t('Follow', 'Παρακολούθηση')} className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-900 rounded-xl hover:bg-stone-100 transition-all border border-stone-100">
             <Star className={cn('w-5 h-5', following && 'fill-current')} />
            </button>
           </>
@@ -1206,7 +1217,7 @@ export default function ProfilePage() {
          </>
          ) : (
           <p className="text-xs text-stone-400 leading-relaxed pt-1">
-           {t('This number is how complete this profile is, from the fields on the page. Match scores appear when both of you have enough in common.', 'Αυτός ο αριθμός είναι πόσο συμπληρωμένο είναι το προφίλ, από τα πεδία της σελίδας. Τα σκορ αντιστοίχισης εμφανίζονται όταν έχετε αρκετά κοινά.')}
+           {t('This number is how complete this profile is, from the fields on the page. Match scores appear when both of you have enough in common.', 'Αυτός ο αριθμός είναι πόσο συμπληρωμένο είναι το προφίλ, από τα πεδία της σελίδας. Τα σκορ αντιστοίχισης εμφανίζονται μόλις υπάρχουν αρκετά κοινά.')}
           </p>
          )}
         </div>
@@ -1325,7 +1336,7 @@ export default function ProfilePage() {
          <p className="text-sm text-stone-500">
           {isOwnProfile
            ? t('Accepted connection requests appear here.', 'Τα αποδεκτά αιτήματα σύνδεσης εμφανίζονται εδώ.')
-           : t('You do not share any connections yet.', 'Δεν έχετε κοινές συνδέσεις ακόμη.')}
+           : t('You do not share any connections yet.', 'Δεν έχεις κοινές συνδέσεις ακόμη.')}
          </p>
         )}
         {(isDemoMode ? MUTUAL_CONNECTIONS.map((conn) => ({ id: conn.id, name: conn.name, headline: conn.headline, avatar: avatarFor(conn.id, 80), mutual: conn.mutual as number | null })) : connectionCards).map((conn) => (

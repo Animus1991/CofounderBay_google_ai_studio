@@ -8,7 +8,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
 import { keys, readSessions, readValue, removeSession, writeValue } from "../lib/localLists";
 import { usePageControls } from "../lib/pageControls";
@@ -531,6 +531,7 @@ export default function Calendar() {
       <div className="space-y-2">
        {events.length === 0 && (
         <EmptyHint title={t("No events match this search.", "Δεν υπάρχουν εκδηλώσεις για αυτή την αναζήτηση.")} detail={t("Ask the studio assistant to schedule one, or clear the search.", "Ρώτα τον βοηθό να προγραμματίσει μία, ή καθάρισε την αναζήτηση.")}>
+         {searchQuery ? <ClearFiltersButton onClick={() => setSearchQuery('')}>{t('Clear search', 'Καθάρισε την αναζήτηση')}</ClearFiltersButton> : null}
          <AskLink prompt="Schedule a meeting on my calendar" />
         </EmptyHint>
        )}

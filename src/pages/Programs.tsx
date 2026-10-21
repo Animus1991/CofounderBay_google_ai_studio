@@ -1,13 +1,21 @@
-import { useEffect, useState } from "react";
+import {
+ useEffect,
+ useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint,
+ { AskLink,
+ ClearFiltersButton } from "../components/ui/EmptyHint";
 import { 
- Rocket, Search, Filter, SlidersHorizontal, ArrowRight, 
- CheckCircle2, XCircle, Star, MessageSquare, Plus, 
- Users, Globe, Zap, Target, Shield, TrendingUp,
- Award, Info, DollarSign
+ Rocket,
+ Star,
+ Users,
+ Zap,
+ Target,
+ TrendingUp,
+ Award,
+ DollarSign
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -18,6 +26,7 @@ import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { formatDate } from "../lib/dates";
 import { useAuth } from "../App";
+import { usePageControls } from "../lib/pageControls";
 import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { keys, readIds, readTracked, toggleId } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
@@ -82,11 +91,17 @@ function programFromDoc(doc: { id: string } & Record<string, unknown>): Program 
  };
 }
 
-export default function Programs({ user }: ProgramsProps) {
+export default function Programs({ user: _user }: ProgramsProps) {
  const t = useT();
  const navigate = useNavigate();
  const { isDemoMode } = useAuth();
  const [activeTab, setActiveTab] = useState('All');
+ usePageControls(() => [
+  { id: 'tab-all', en: 'All programs', el: 'Όλα τα προγράμματα', run: () => setActiveTab('All') },
+  { id: 'tab-accelerators', en: 'Accelerators', el: 'Επιταχυντές', run: () => setActiveTab('Accelerators') },
+  { id: 'tab-grants', en: 'Grants', el: 'Επιχορηγήσεις', run: () => setActiveTab('Grants') },
+  { id: 'find-programs', en: 'Find programs', el: 'Εύρεση προγραμμάτων', run: () => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } })) },
+ ], []);
  const savedPrograms = useStored(() => readIds(keys.savedPrograms), [keys.savedPrograms]);
  const tracked = useStored(() => readTracked(), [keys.tracked]);
 
@@ -133,16 +148,7 @@ export default function Programs({ user }: ProgramsProps) {
  const [livePrograms, setLivePrograms] = useState<Program[] | null>(null);
  useEffect(() => {
   if (isDemoMode) { setLivePrograms(null); return; }
-  let unsub: (() => void) | undefined;
-  let cancelled = false;
-  void (async () => {
-   try {
-    const stop = await onCatalog('programs', (docs) => setLivePrograms(docs.map(programFromDoc)), () => setLivePrograms([]));
-    if (cancelled) { stop(); return; }
-    unsub = stop;
-   } catch { if (!cancelled) setLivePrograms([]); }
-  })();
-  return () => { cancelled = true; unsub?.(); };
+  return onCatalog('programs', (docs) => setLivePrograms(docs.map(programFromDoc)), () => setLivePrograms([]));
  }, [isDemoMode]);
 
  const programs = isDemoMode ? mockPrograms : (livePrograms ?? []);
@@ -177,13 +183,6 @@ export default function Programs({ user }: ProgramsProps) {
   <PageShell sample={isDemoMode} title={t("Programs", "Προγράμματα")} description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}>
    <div className="space-y-6">
     <div className="flex flex-wrap items-center gap-2">
-     <Button type="button" variant="outline" className="h-8 rounded-xl px-3 text-sm border-stone-200 hover:bg-stone-50 flex items-center gap-1.5" onClick={() => {
-      const order = ['All', 'Accelerators', 'Grants', 'Bootcamps'];
-      const next = order[(order.indexOf(activeTab) + 1) % order.length] || 'All';
-      setActiveTab(next);
-     }}>
-      <Filter className="w-3 h-3" /> {t('Filter', 'Φίλτρο')}
-     </Button>
      <Button type="button" variant="primary" className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
       {t('Find Programs', 'Εύρεση προγραμμάτων')}
      </Button>
@@ -210,7 +209,8 @@ export default function Programs({ user }: ProgramsProps) {
 
      <div className="space-y-3">
       {visiblePrograms.length === 0 && (
-       <EmptyHint title={t(`No programs in the ${activeTab} filter.`, `Δεν υπάρχουν προγράμματα στο φίλτρο «${TAB_EL[activeTab] ?? activeTab}».`)} detail={t("Ask the studio assistant which programs you can apply to, or switch the tab.", "Ρώτα τον βοηθό σε ποια προγράμματα μπορείς να κάνεις αίτηση, ή άλλαξε καρτέλα.")}>
+       <EmptyHint title={t(`No programs in the ${activeTab} filter.`, `Δεν υπάρχουν προγράμματα στο φίλτρο «${TAB_EL[activeTab] ?? activeTab}».`)} detail={t("Ask the assistant which programs you can apply to, or switch the tab.", "Ρώτα τον βοηθό για ποια προγράμματα μπορείς να κάνεις αίτηση, ή άλλαξε καρτέλα.")}>
+        {activeTab !== 'All' && <ClearFiltersButton onClick={() => setActiveTab('All')} />}
         <AskLink prompt="What programs can I apply to?" />
        </EmptyHint>
       )}

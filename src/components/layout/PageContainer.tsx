@@ -1,42 +1,25 @@
-import React from "react";
-import { cn } from "../../lib/utils";
+import type { ReactNode } from 'react';
+import PageShell from '../ui/PageShell';
 
-interface PageContainerProps {
- children: React.ReactNode;
+/**
+ * Alias of PageShell without a title — kept so older imports still resolve.
+ * New pages should use PageShell directly.
+ */
+export default function PageContainer({
+ children,
+ className,
+ maxWidth = '7xl',
+ noPadding = false,
+}: {
+ children: ReactNode;
  className?: string;
- maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full" | "7xl";
+ maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl' | 'full';
  noPadding?: boolean;
  fullHeight?: boolean;
-}
-
-const PageContainer: React.FC<PageContainerProps> = ({ 
- children, 
- className,
- maxWidth = "7xl",
- noPadding = false,
- fullHeight = false
-}) => {
- const maxWidthClasses = {
-  sm: "max-w-screen-sm",
-  md: "max-w-screen-md",
-  lg: "max-w-screen-lg",
-  xl: "max-w-screen-xl",
-  "2xl": "max-w-screen-2xl",
-  "7xl": "max-w-7xl",
-  full: "max-w-full",
- };
-
+}) {
  return (
-  <div className={cn(
-   "w-full mx-auto px-2 sm:px-6 lg:px-8",
-   !noPadding && "py-6 md:py-10",
-   fullHeight && "h-full flex flex-col",
-   maxWidthClasses[maxWidth],
-   className
-  )}>
+  <PageShell maxWidth={maxWidth} noPadding={noPadding} className={className}>
    {children}
-  </div>
+  </PageShell>
  );
-};
-
-export default PageContainer;
+}

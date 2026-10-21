@@ -23,7 +23,8 @@ import { useLanguage, useT } from '../lib/language';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
 import FactLine from '../components/ui/FactLine';
-import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
+import { usePageControls } from '../lib/pageControls';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import { useToast } from '../context/ToastContext';
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from '../lib/searchQualifiers';
@@ -77,6 +78,12 @@ export default function MatchDiscovery() {
   });
  };
 
+ usePageControls(() => [
+  { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowFilters(true) },
+  { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); setVisibleCount(PAGE); } },
+  { id: 'open-explore', en: 'Open Explore', el: 'Άνοιγμα Εξερεύνησης', run: () => navigate('/discovery') },
+ ], [searchQuery, filters]);
+
  const handleConnect = async (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
   if (!currentUser) return;
@@ -96,12 +103,12 @@ export default function MatchDiscovery() {
    }
    if (state.state === 'incoming' && state.record) {
     await respondToConnection(state.record, true);
-    toastSuccess(t('Connected', 'Συνδεθήκατε'), t(`You and ${person.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${person.fullName}.`));
+    toastSuccess(t('Connected', 'Η σύνδεση ολοκληρώθηκε'), t(`You and ${person.fullName} can message each other now.`, `Μπορείς πλέον να ανταλλάσσεις μηνύματα με ${person.fullName}.`));
     return;
    }
    const result = await sendConnectionRequest({ id: person.id, fullName: person.fullName, headline: person.headline, avatarUrl: avatarOf(person) }, 'Co-Founder');
    logActivity({ kind: 'request', title: `Requested ${person.fullName}`, titleEl: `Αίτημα προς ${person.fullName}`, href: `/profile/${person.id}` });
-   if (result === 'accepted') toastSuccess(t('Connected', 'Συνδεθήκατε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — τώρα είστε συνδεδεμένοι.'));
+   if (result === 'accepted') toastSuccess(t('Connected', 'Η σύνδεση ολοκληρώθηκε'), t('They had already asked — you are now connected.', 'Είχαν ήδη ζητήσει σύνδεση — η σύνδεση ολοκληρώθηκε.'));
    else if (result === 'exists') toastInfo(t('Already requested', 'Έχει ήδη σταλεί αίτημα'));
    else toastSuccess(t('Request sent', 'Το αίτημα στάλθηκε'), t('You will be notified when they answer.', 'Θα ειδοποιηθείς όταν απαντήσουν.'));
   } catch (err) {
@@ -172,7 +179,7 @@ export default function MatchDiscovery() {
   <PageShell
    sample={isDemoMode}
    title={t('Find co-founders', 'Βρες συνιδρυτές')}
-   description={t('Members ranked by how well they complement your skills, stage, commitment and working hours — every score explained.', 'Μέλη ταξινομημένα κατά το πόσο συμπληρώνουν τις δεξιότητες, το στάδιο, τη δέσμευση και τις ώρες εργασίας σου — κάθε σκορ με εξήγηση.')}
+   description={t('Members ranked by how well they complement your skills, stage, commitment and working hours — every score explained. Communities and programs live in Explore.', 'Μέλη ταξινομημένα κατά το πόσο συμπληρώνουν τις δεξιότητες, το στάδιο, τη δέσμευση και τις ώρες εργασίας σου — κάθε σκορ με εξήγηση. Κοινότητες και προγράμματα είναι στην Εξερεύνηση.')}
   >
    <div className="space-y-5">
     <div className="space-y-3">
@@ -357,13 +364,7 @@ export default function MatchDiscovery() {
       detail={filterCause ? t('Clear the filter, or ask the assistant who ranks highest for your profile.', 'Καθάρισε το φίλτρο ή ρώτα τον βοηθό ποιοι ταιριάζουν περισσότερο στο προφίλ σου.') : t('Invite the founders you already know — the fit check link takes a minute.', 'Προσκάλεσε τους ιδρυτές που ήδη γνωρίζεις — ο σύνδεσμος fit check παίρνει ένα λεπτό.')}
      >
       {filterCause ? (
-       <button
-        type="button"
-        onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); }}
-        className="text-xs font-medium text-stone-900 hover:underline min-h-11"
-       >
-        {t('Clear filters', 'Καθαρισμός φίλτρων')}
-       </button>
+       <ClearFiltersButton onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); }} />
       ) : (
        <AskLink prompt="Invite 3 founders">{t('Invite founders', 'Πρόσκληση ιδρυτών')}</AskLink>
       )}

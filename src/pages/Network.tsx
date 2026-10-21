@@ -38,7 +38,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
-import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
+import { ConfirmDialog } from '../components/ui/Modal';
 import Tabs from '../components/ui/Tabs';
 import Timeline from '../components/ui/Timeline';
 import PersonHovercard from '../components/ui/PersonHovercard';
@@ -147,6 +148,7 @@ export default function Network({ user }: NetworkProps) {
   const connections = useConnections();
   const [networkQuery, setNetworkQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | ConnectionStatus>('All');
+  const [pendingDisconnect, setPendingDisconnect] = useState<NetworkConnection | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [compared, setCompared] = useState(false);
   const [draft, setDraft] = useState({ exists: '', outcome: '', missing: '', offer: '' });
@@ -162,7 +164,7 @@ export default function Network({ user }: NetworkProps) {
     { id: 'show-compare', en: 'Compare profiles', el: 'Σύγκριση προφίλ', run: () => setActiveTab('compare') },
     { id: 'show-need-cards', en: 'Show need cards', el: 'Εμφάνιση καρτών ανάγκης', run: () => setActiveTab('needs') },
     { id: 'status-all', en: 'All statuses', el: 'Όλες οι καταστάσεις', run: () => setStatusFilter('All') },
-    { id: 'status-connected', en: 'Connected only', el: 'Μόνο σε σύνδεση', run: () => setStatusFilter('Connected') },
+    { id: 'status-connected', en: 'Connected only', el: 'Μόνο συνδεδεμένοι', run: () => setStatusFilter('Connected') },
     { id: 'status-pending', en: 'Pending only', el: 'Μόνο σε αναμονή', run: () => setStatusFilter('Pending') },
     { id: 'status-incoming', en: 'Incoming only', el: 'Μόνο εισερχόμενα', run: () => setStatusFilter('Incoming') },
   ], []);
@@ -231,7 +233,7 @@ export default function Network({ user }: NetworkProps) {
   const incomingCount = connectionPool.filter((conn) => conn.status === 'Incoming').length;
 
   const statusLabel = (status: ConnectionStatus) =>
-    status === 'Connected' ? t('Connected', 'Σε σύνδεση') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
+    status === 'Connected' ? t('Connected', 'Συνδεδεμένοι') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
 
   const act = async (work: () => Promise<unknown>, okTitle: string, okBody?: string) => {
     try {
@@ -242,7 +244,7 @@ export default function Network({ user }: NetworkProps) {
     }
   };
 
-  const acceptIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, true), t('Connected', 'Συνδεθήκατε'), t(`You and ${conn.fullName} can message each other now.`, `Μπορείτε πλέον να ανταλλάσσετε μηνύματα με ${conn.fullName}.`));
+  const acceptIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, true), t('Connected', 'Η σύνδεση ολοκληρώθηκε'), t(`You and ${conn.fullName} can message each other now.`, `Μπορείς πλέον να ανταλλάσσεις μηνύματα με ${conn.fullName}.`));
   const declineIncoming = (conn: NetworkConnection) => conn.record && act(() => respondToConnection(conn.record!, false), t('Request declined', 'Το αίτημα απορρίφθηκε'));
   const withdraw = (conn: NetworkConnection) => {
     if (conn.record) return act(() => withdrawConnection(conn.record!), t('Request withdrawn', 'Το αίτημα ανακλήθηκε'));
@@ -251,8 +253,7 @@ export default function Network({ user }: NetworkProps) {
   };
   const disconnect = (conn: NetworkConnection) => {
     if (!conn.record) return;
-    if (!window.confirm(t(`Remove ${conn.fullName} from your connections?`, `Αφαίρεση του μέλους ${conn.fullName} από τις συνδέσεις σου;`))) return;
-    void act(() => removeConnection(conn.record!), t('Connection removed', 'Η σύνδεση αφαιρέθηκε'));
+    setPendingDisconnect(conn);
   };
 
   // Skill distribution across received endorsements (real numbers, not a sample bar chart).
@@ -344,6 +345,9 @@ export default function Network({ user }: NetworkProps) {
                 title={connectionPool.length === 0 ? t('No connections yet.', 'Δεν υπάρχουν συνδέσεις ακόμη.') : t('No connection matches this filter.', 'Καμία σύνδεση δεν ταιριάζει σε αυτό το φίλτρο.')}
                 detail={connectionPool.length === 0 ? t('Open Matches, pick a person and send a connection request. Accepted requests appear here.', 'Άνοιξε τις Αντιστοιχίσεις, διάλεξε ένα άτομο και στείλε αίτημα σύνδεσης. Τα αποδεκτά αιτήματα εμφανίζονται εδώ.') : t('Try another status or search term.', 'Δοκίμασε άλλη κατάσταση ή όρο αναζήτησης.')}
               >
+                {connectionPool.length > 0 && (
+                  <ClearFiltersButton onClick={() => { setStatusFilter('All'); setNetworkQuery(''); }} />
+                )}
                 <button type="button" className="text-xs font-medium text-stone-900 hover:underline min-h-11" onClick={() => navigate('/matches')}>{t('Open matches', 'Άνοιγμα αντιστοιχίσεων')}</button>
               </EmptyHint>
             ) : null}
@@ -616,6 +620,19 @@ export default function Network({ user }: NetworkProps) {
           />
         )}
       </div>
+      <ConfirmDialog
+        open={pendingDisconnect !== null}
+        onClose={() => setPendingDisconnect(null)}
+        onConfirm={() => {
+          const conn = pendingDisconnect;
+          setPendingDisconnect(null);
+          if (conn?.record) void act(() => removeConnection(conn.record!), t('Connection removed', 'Η σύνδεση αφαιρέθηκε'));
+        }}
+        title={pendingDisconnect ? t(`Remove ${pendingDisconnect.fullName} from your connections?`, `Αφαίρεση του μέλους ${pendingDisconnect.fullName} από τις συνδέσεις σου;`) : t('Remove connection', 'Αφαίρεση σύνδεσης')}
+        description={t('You can send a new request later from Matches or their profile.', 'Μπορείς να στείλεις νέο αίτημα αργότερα από τις Αντιστοιχίσεις ή το προφίλ τους.')}
+        confirmLabel={t('Remove', 'Αφαίρεση')}
+        variant="danger"
+      />
     </PageShell>
   );
 }

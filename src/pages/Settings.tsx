@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
+import PageShell from "../components/ui/PageShell";
 import { cn } from "../lib/utils";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
@@ -27,6 +28,7 @@ import { useSyncStatus } from "../lib/cloudSync";
 import Avatar from "../components/ui/Avatar";
 import { findPerson, avatarOf } from "../lib/peopleSource";
 import { AskLink } from "../components/ui/EmptyHint";
+import { usePageControls } from "../lib/pageControls";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
@@ -162,6 +164,12 @@ export default function Settings() {
     else next.set("tab", id);
     setParams(next, { replace: true });
   };
+  usePageControls(() => [
+    { id: 'tab-account', en: 'Account', el: 'Λογαριασμός', run: () => setActiveTab('account') },
+    { id: 'tab-notifications', en: 'Notifications', el: 'Ειδοποιήσεις', run: () => setActiveTab('notifications') },
+    { id: 'tab-privacy', en: 'Privacy', el: 'Απόρρητο', run: () => setActiveTab('privacy') },
+    { id: 'tab-billing', en: 'Billing', el: 'Χρέωση', run: () => setActiveTab('billing') },
+  ], []);
   const [form, setForm] = useState<AccountForm>(() => readStored(FORM_KEY, seedForm()));
   const formDirtyRef = useRef(false);
   const formSeededRef = useRef(false);
@@ -232,7 +240,7 @@ export default function Settings() {
         success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details are on your profile.", "Τα στοιχεία είναι στο προφίλ σου."));
         return;
       } catch {
-        success(t("Saved on this device", "Αποθηκεύτηκε σε αυτή τη συσκευή"), t("The server could not be reached. They stay in this browser until you are back online.", "Ο διακομιστής δεν απάντησε. Μένουν σε αυτόν τον browser μέχρι να επανέλθεις."));
+        success(t("Saved on this device", "Αποθηκεύτηκε σε αυτή τη συσκευή"), t("The server could not be reached. They stay in this browser until you are back online.", "Ο διακομιστής δεν απάντησε. Μένουν σε αυτόν τον περιηγητή μέχρι να επανέλθεις."));
         return;
       }
     }
@@ -262,7 +270,7 @@ export default function Settings() {
         },
       });
     }
-    success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details stay in this browser.", "Τα στοιχεία μένουν σε αυτόν τον browser."));
+    success(t("Account saved", "Ο λογαριασμός αποθηκεύτηκε"), t("These details stay in this browser.", "Τα στοιχεία μένουν σε αυτόν τον περιηγητή."));
   };
 
   const patchSwitches = (patch: Partial<Switches>) => {
@@ -346,34 +354,39 @@ export default function Settings() {
     { key: "showStartup", title: t("Show startup", "Εμφάνιση startup"), desc: t("Company, stage, and industry stay visible.", "Εταιρεία, στάδιο και κλάδος μένουν ορατά.") },
     { key: "mentorAvailability", title: t("Open to mentor", "Διάθεση για καθοδήγηση"), desc: t("A badge that you can take mentor requests.", "Σήμα ότι δέχεσαι αιτήματα.") },
     { key: "openToCofounder", title: t("Looking for a co-founder", "Ψάχνω συνιδρυτή"), desc: t("Shown on your card and in matches.", "Φαίνεται στην κάρτα και στις αντιστοιχίσεις.") },
-    { key: "openToInvestors", title: t("Open to investors", "Ανοιχτός σε επενδυτές"), desc: t("Investors can request an intro.", "Οι επενδυτές μπορούν να σου στείλουν αίτημα σύνδεσης.") },
+    { key: "openToInvestors", title: t("Open to investors", "Ανοιχτός σε επενδυτές"), desc: t("Investors can request an intro.", "Οι επενδυτές μπορούν να στείλουν αίτημα σύστασης.") },
     { key: "openToAdvisors", title: t("Open to advisors", "Ανοιχτός σε συμβούλους"), desc: t("Advisors can offer a session.", "Οι σύμβουλοι μπορούν να προτείνουν συνεδρία.") },
   ];
 
+  const syncLabel = !isDemoMode
+    ? syncStatus === "synced" ? t("Saved", "Αποθηκεύτηκε") : syncStatus === "syncing" ? t("Saving…", "Αποθήκευση…") : syncStatus === "offline" ? t("Offline — will save when back online", "Εκτός σύνδεσης — θα αποθηκευτεί μόλις επανέλθεις") : syncStatus === "error" ? t("Could not save", "Η αποθήκευση απέτυχε") : ""
+    : "";
+
   return (
-    <div className="w-full min-w-0 px-2 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t("Settings", "Ρυθμίσεις")}</h1>
-          <p className="mt-1 max-w-3xl text-sm text-stone-500">
-            {isDemoMode
-              ? t("Account, notifications, privacy and plan. In the demo, changes stay in this browser.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Στη δοκιμαστική λειτουργία, οι αλλαγές μένουν σε αυτόν τον browser.")
-              : t("Account, notifications, privacy and plan. Changes are saved to your account and follow you to every device.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Οι αλλαγές αποθηκεύονται στον λογαριασμό σου και σε ακολουθούν σε κάθε συσκευή.")}
-            {!isDemoMode && (
-              <span className={cn("ml-2 inline-flex items-center gap-1.5 text-xs font-medium", syncStatus === "error" || syncStatus === "offline" ? "text-amber-600" : "text-stone-400")}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", syncStatus === "synced" ? "bg-emerald-500" : syncStatus === "syncing" ? "bg-stone-400 animate-pulse" : syncStatus === "idle" ? "bg-stone-300" : "bg-amber-500")} />
-                {syncStatus === "synced" ? t("Saved", "Αποθηκεύτηκε") : syncStatus === "syncing" ? t("Saving…", "Αποθήκευση…") : syncStatus === "offline" ? t("Offline — will save when back online", "Εκτός σύνδεσης — θα αποθηκευτεί μόλις επανέλθεις") : syncStatus === "error" ? t("Could not save", "Η αποθήκευση απέτυχε") : ""}
-              </span>
-            )}
-          </p>
-          <p className="mt-2">
-            <AskLink prompt="What am I marked open to?">{t("Ask what matching reads from these toggles", "Ρώτα τι διαβάζει η αντιστοίχιση από αυτούς τους διακόπτες")}</AskLink>
+    <PageShell
+      sample={isDemoMode}
+      title={t("Settings", "Ρυθμίσεις")}
+      description={
+        isDemoMode
+          ? t("Account, notifications, privacy and plan. In the demo, changes stay in this browser.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Στη δοκιμαστική λειτουργία, οι αλλαγές μένουν σε αυτόν τον περιηγητή.")
+          : t("Account, notifications, privacy and plan. Changes are saved to your account and follow you to every device.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Οι αλλαγές αποθηκεύονται στον λογαριασμό σου και σε ακολουθούν σε κάθε συσκευή.")
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          {syncLabel ? (
+            <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", syncStatus === "error" || syncStatus === "offline" ? "text-amber-600" : "text-stone-400")}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", syncStatus === "synced" ? "bg-emerald-500" : syncStatus === "syncing" ? "bg-stone-400 animate-pulse" : syncStatus === "idle" ? "bg-stone-300" : "bg-amber-500")} />
+              {syncLabel}
+            </span>
+          ) : null}
+          <AskLink prompt="What am I marked open to?">{t("Ask what matching reads from these toggles", "Ρώτα τι επηρεάζει την αντιστοίχιση από εδώ")}</AskLink>
+          <p className="text-sm text-stone-500 truncate">
+            {form.email || user?.email || t("Demo account", "Δοκιμαστικός λογαριασμός")}
           </p>
         </div>
-        <p className="text-sm text-stone-500 truncate">
-          {form.email || user?.email || t("Demo account", "Δοκιμαστικός λογαριασμός")}
-        </p>
-      </div>
+      }
+    >
+    <div className="space-y-6">
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {tabs.map((tab) => (
@@ -577,9 +590,9 @@ export default function Settings() {
           </Card>
 
           <div className="space-y-4">
-            <Card title={t("Browser alerts", "Ειδοποιήσεις browser")} subtitle={t("This device only.", "Μόνο αυτή η συσκευή.")}>
+            <Card title={t("Browser alerts", "Ειδοποιήσεις περιηγητή")} subtitle={t("This device only.", "Μόνο αυτή η συσκευή.")}>
               <p className="text-sm text-stone-500">
-                {t("Ask the browser for permission, then the push switches below apply.", "Ζήτα άδεια από τον browser και μετά ισχύουν οι διακόπτες push.")}
+                {t("Ask the browser for permission, then the push switches below apply.", "Ζήτα άδεια από τον περιηγητή και μετά ισχύουν οι διακόπτες push.")}
               </p>
               <Button
                 type="button"
@@ -611,7 +624,7 @@ export default function Settings() {
             </Card>
           </div>
 
-          <Card className="xl:col-span-2" title={t("Push", "Push")} subtitle={t("Real-time alerts after the browser allows them.", "Άμεσες ειδοποιήσεις αφού το επιτρέψει ο browser.")}>
+          <Card className="xl:col-span-2" title={t("Push", "Push")} subtitle={t("Real-time alerts after the browser allows them.", "Άμεσες ειδοποιήσεις αφού το επιτρέψει ο περιηγητής.")}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {pushNotes.map((item) => (
                 <SwitchRow
@@ -685,7 +698,7 @@ export default function Settings() {
                     <p className="mt-1 text-sm text-stone-500">
                       {isDemoMode
                         ? (switches.twoFactor
-                          ? t("On for this browser.", "Ενεργό σε αυτόν τον browser.")
+                          ? t("On for this browser.", "Ενεργό σε αυτόν τον περιηγητή.")
                           : t("Off. A code would be asked at the next sign-in.", "Κλειστό. Στην επόμενη είσοδο θα ζητηθεί κωδικός."))
                         : t("Saved as a preference on this device. Firebase MFA is not enabled on this project yet.", "Αποθηκεύεται ως προτίμηση σε αυτή τη συσκευή. Το Firebase MFA δεν είναι ενεργό ακόμη σε αυτό το project.")}
                     </p>
@@ -779,12 +792,12 @@ export default function Settings() {
                 <tbody>
                   {(isDemoMode
                     ? [
-                        [t("This browser", "Αυτός ο browser"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
+                        [t("This browser", "Αυτός ο περιηγητής"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
                         ["Safari · iPhone", "Athens", t("2 hours ago", "πριν από 2 ώρες"), false],
                         ["Chrome · Mac", "London", t("Yesterday", "Χθες"), false],
                       ]
                     : [
-                        [t("This browser", "Αυτός ο browser"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
+                        [t("This browser", "Αυτός ο περιηγητής"), t("Current session", "Τρέχουσα συνεδρία"), t("Now", "Τώρα"), true],
                       ]
                   ).map(([device, where, when, current]) => (
                     <tr key={String(device)} className="border-b border-stone-50">
@@ -807,7 +820,7 @@ export default function Settings() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-2" title={t("Your data", "Τα δεδομένα σου")} subtitle={t("A file of what this browser has stored for you.", "Αρχείο με ό,τι έχει κρατήσει αυτός ο browser.")}>
+          <Card className="xl:col-span-2" title={t("Your data", "Τα δεδομένα σου")} subtitle={t("A file of what this browser has stored for you.", "Αρχείο με ό,τι έχει κρατήσει αυτός ο περιηγητής.")}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
@@ -831,7 +844,7 @@ export default function Settings() {
               </button>
             </div>
             <p className="mt-3 text-sm text-stone-500">
-              {t("The export contains your profile and every list this browser stores for you — matches, requests, settings and drafts — as one JSON file.", "Η εξαγωγή περιέχει το προφίλ σου και κάθε λίστα που κρατά αυτός ο browser — αντιστοιχίσεις, αιτήματα, ρυθμίσεις και πρόχειρα — σε ένα αρχείο JSON.")}
+              {t("The export contains your profile and every list this browser stores for you — matches, requests, settings and drafts — as one JSON file.", "Η εξαγωγή περιέχει το προφίλ σου και κάθε λίστα που κρατά αυτός ο περιηγητής — αντιστοιχίσεις, αιτήματα, ρυθμίσεις και πρόχειρα — σε ένα αρχείο JSON.")}
             </p>
             {deleteOpen && (
               <div className="mt-4 space-y-3 rounded-xl border border-red-100 bg-red-50 p-4">
@@ -1146,5 +1159,6 @@ export default function Settings() {
         </Button>
       </div>
     </div>
+    </PageShell>
   );
 }

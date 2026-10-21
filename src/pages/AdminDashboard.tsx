@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
- BarChart3, 
- Users, 
- Award, 
- ShieldAlert, 
- Settings, 
- TrendingUp, 
+import {
+ Users,
+ Award,
+ Settings,
+ TrendingUp,
  Activity,
- AlertTriangle,
  CheckCircle,
  XCircle,
- Search,
- Filter,
- ArrowUpRight,
- ArrowDownRight,
- ShieldCheck,
- MoreVertical
-} from 'lucide-react';
+ ShieldCheck
+} from "lucide-react";
 import { 
  BarChart, 
  Bar, 

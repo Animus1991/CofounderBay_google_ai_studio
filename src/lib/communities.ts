@@ -6,7 +6,22 @@
  * no cloud document exists yet, the document is created so member counts and
  * posts are real from then on.
  */
-import { serverTimestamp } from 'firebase/firestore';
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  increment,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
+import { db } from '../firebase';
 import { toMillis } from './peopleSource';
 
 export type CommunityDoc = {
@@ -35,12 +50,6 @@ export type CommunityPost = {
   commentsCount: number;
 };
 
-async function db() {
-  const { db } = await import('../firebase');
-  if (!db) throw new Error('Firestore is not configured');
-  return db;
-}
-
 export function communityFromDoc(id: string, data: Record<string, unknown>): CommunityDoc {
   const memberIds = Array.isArray(data.memberIds) ? data.memberIds.filter((item): item is string => typeof item === 'string') : [];
   const postCount = typeof data.postCount === 'number' ? data.postCount : typeof data.posts === 'number' ? data.posts : 0;
@@ -59,11 +68,9 @@ export function communityFromDoc(id: string, data: Record<string, unknown>): Com
 }
 
 /** Live list of every community document. `onError` receives permission/config failures. */
-export async function onCommunities(cb: (list: CommunityDoc[]) => void, onError?: (error: unknown) => void): Promise<() => void> {
-  const firestore = await db();
-  const { collection, onSnapshot, query, orderBy, limit } = await import('firebase/firestore');
+export function onCommunities(cb: (list: CommunityDoc[]) => void, onError?: (error: unknown) => void): () => void {
   return onSnapshot(
-    query(collection(firestore, 'communities'), orderBy('createdAt', 'desc'), limit(100)),
+    query(collection(db, 'communities'), orderBy('createdAt', 'desc'), limit(100)),
     (snapshot) => cb(snapshot.docs.map((entry) => communityFromDoc(entry.id, entry.data()))),
     (error) => onError?.(error),
   );
@@ -71,9 +78,7 @@ export async function onCommunities(cb: (list: CommunityDoc[]) => void, onError?
 
 /** Creates a community document and returns its id. */
 export async function createCommunity(input: { name: string; description: string; category: string; isPublic: boolean; ownerId: string }): Promise<string> {
-  const firestore = await db();
-  const { collection, doc, setDoc } = await import('firebase/firestore');
-  const ref = doc(collection(firestore, 'communities'));
+  const ref = doc(collection(db, 'communities'));
   await setDoc(ref, {
     id: ref.id,
     title: input.name.trim().slice(0, 100),
@@ -92,9 +97,7 @@ export async function createCommunity(input: { name: string; description: string
 
 /** Creates the cloud document for a platform space the first time someone joins it. */
 async function ensureCommunityDoc(space: { id: string; name: string; description: string; category: string }, uid: string) {
-  const firestore = await db();
-  const { doc, getDoc, setDoc } = await import('firebase/firestore');
-  const ref = doc(firestore, 'communities', space.id);
+  const ref = doc(db, 'communities', space.id);
   const snap = await getDoc(ref);
   if (snap.exists()) return;
   await setDoc(ref, {
@@ -113,10 +116,8 @@ async function ensureCommunityDoc(space: { id: string; name: string; description
 }
 
 export async function joinCommunity(communityId: string, uid: string, seed?: { name: string; description: string; category: string }) {
-  const firestore = await db();
-  const { doc, getDoc, updateDoc, arrayUnion, increment } = await import('firebase/firestore');
   if (seed) await ensureCommunityDoc({ id: communityId, ...seed }, uid);
-  const ref = doc(firestore, 'communities', communityId);
+  const ref = doc(db, 'communities', communityId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   const memberIds: string[] = Array.isArray(snap.data().memberIds) ? snap.data().memberIds : [];
@@ -125,20 +126,16 @@ export async function joinCommunity(communityId: string, uid: string, seed?: { n
 }
 
 export async function leaveCommunity(communityId: string, uid: string) {
-  const firestore = await db();
-  const { doc, getDoc, updateDoc, arrayRemove, increment } = await import('firebase/firestore');
-  const ref = doc(firestore, 'communities', communityId);
+  const ref = doc(db, 'communities', communityId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   await updateDoc(ref, { memberIds: arrayRemove(uid), memberCount: increment(-1) });
 }
 
 /** Live posts of one community. */
-export async function onCommunityPosts(communityId: string, cb: (list: CommunityPost[]) => void, onError?: (error: unknown) => void): Promise<() => void> {
-  const firestore = await db();
-  const { collection, onSnapshot, query, orderBy, limit } = await import('firebase/firestore');
+export function onCommunityPosts(communityId: string, cb: (list: CommunityPost[]) => void, onError?: (error: unknown) => void): () => void {
   return onSnapshot(
-    query(collection(firestore, 'communities', communityId, 'posts'), orderBy('createdAt', 'desc'), limit(50)),
+    query(collection(db, 'communities', communityId, 'posts'), orderBy('createdAt', 'desc'), limit(50)),
     (snapshot) =>
       cb(
         snapshot.docs.map((entry) => {
@@ -162,9 +159,7 @@ export async function onCommunityPosts(communityId: string, cb: (list: Community
 }
 
 export async function addCommunityPost(communityId: string, post: { authorId: string; authorName: string; title: string; body: string }): Promise<string> {
-  const firestore = await db();
-  const { collection, doc, setDoc, updateDoc, increment } = await import('firebase/firestore');
-  const ref = doc(collection(firestore, 'communities', communityId, 'posts'));
+  const ref = doc(collection(db, 'communities', communityId, 'posts'));
   await setDoc(ref, {
     id: ref.id,
     communityId,
@@ -178,7 +173,7 @@ export async function addCommunityPost(communityId: string, post: { authorId: st
     createdAt: serverTimestamp(),
   });
   try {
-    await updateDoc(doc(firestore, 'communities', communityId), { postCount: increment(1) });
+    await updateDoc(doc(db, 'communities', communityId), { postCount: increment(1) });
   } catch {
     /* the count is cosmetic */
   }

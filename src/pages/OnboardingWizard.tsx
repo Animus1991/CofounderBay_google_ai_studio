@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import {
+ useNavigate } from 'react-router-dom';
+import { motion,
+ AnimatePresence } from 'motion/react';
 import { 
- User, 
- Briefcase, 
- Target, 
- Sparkles, 
- ArrowRight, 
- ArrowLeft, 
+ User,
+ Briefcase,
+ Target,
+ Sparkles,
+ ArrowRight,
+ ArrowLeft,
  Check,
  Rocket,
  Code,
- Palette,
- Megaphone,
  LineChart,
  ShieldCheck,
  Globe
-} from 'lucide-react';
+} from "lucide-react";
 import { doc, setDoc, serverTimestamp, getDocFromServer, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../App';

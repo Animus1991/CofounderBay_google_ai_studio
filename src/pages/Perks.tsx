@@ -15,7 +15,8 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import FactLine from "../components/ui/FactLine";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
+import { usePageControls } from "../lib/pageControls";
 import { cn } from "../lib/utils";
 import { keys, listKeys, readIds, readValue, writeValue } from "../lib/localLists";
 import { perkDollarTotal } from "../lib/perks";
@@ -97,16 +98,7 @@ export default function Perks() {
  const [cloud, setCloud] = useState<CatalogDoc[] | null>(isDemoMode ? [] : null);
  useEffect(() => {
   if (isDemoMode) { setCloud([]); return; }
-  let unsub: (() => void) | undefined;
-  let cancelled = false;
-  void (async () => {
-   try {
-    const stop = await onCatalog('perks', (docs) => { if (!cancelled) setCloud(docs); }, () => setCloud([]));
-    if (cancelled) { stop(); return; }
-    unsub = stop;
-   } catch { if (!cancelled) setCloud([]); }
-  })();
-  return () => { cancelled = true; unsub?.(); };
+  return onCatalog('perks', (docs) => setCloud(docs), () => setCloud([]));
  }, [isDemoMode]);
 
  const perks = useMemo<PerkCard[]>(() => isDemoMode ? DEMO_PERKS : (cloud ?? []).map(perkFromDoc), [isDemoMode, cloud]);
@@ -114,6 +106,10 @@ export default function Perks() {
  const toggleSaved = (id: string) => {
   writeValue('cfb.savedPerks', savedPerks.includes(id) ? savedPerks.filter((p) => p !== id) : [...savedPerks, id]);
  };
+
+ usePageControls(() => [
+  { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); } },
+ ], []);
 
  const perkClaimId = (name: string) => {
   const map: Record<string, string> = {
@@ -200,6 +196,9 @@ export default function Perks() {
       ? t("Ask the studio assistant which credits you can claim.", "Ρώτα τον βοηθό ποιες πιστώσεις μπορείς να διεκδικήσεις.")
       : t("New partner programs appear here the moment they are published.", "Νέες παροχές εμφανίζονται εδώ μόλις δημοσιευτούν.")}
     >
+     {(perkQuery || activeCategory !== 'all') && (
+      <ClearFiltersButton onClick={() => { setPerkQuery(''); setActiveCategory('all'); }} />
+     )}
      <AskLink prompt="What perks can I claim?" />
     </EmptyHint>
    )}

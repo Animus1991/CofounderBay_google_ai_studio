@@ -3,6 +3,8 @@
  * scores (role cover, stage, commitment, looking-for, working hours), so the
  * result is an input to ranking — not a personality brand.
  */
+import { dataScope, keys, readValue, writeValue } from './localLists';
+
 export type FitAnswer = {
   roleCover: 'builder' | 'gtm' | 'operator' | 'domain';
   stage: 'Idea' | 'Pre-seed' | 'Seed' | 'Series A';
@@ -27,8 +29,7 @@ export type FitQuestion = {
   options: Option<string>[];
 };
 
-const STORAGE = 'cfb.fitCheck';
-const memory = new Map<string, string>();
+const LEGACY = 'cfb.fitCheck';
 
 export const FIT_QUESTIONS: FitQuestion[] = [
   {
@@ -156,30 +157,43 @@ export function fitToProfilePatch(result: FitResult) {
   };
 }
 
-export function readFitCheck(): FitResult | null {
+function asFit(value: unknown): FitResult | null {
+  if (!value || typeof value !== 'object') return null;
+  const parsed = value as FitResult;
+  return parsed.archetype ? parsed : null;
+}
+
+/**
+ * Older builds wrote the quiz to the unscoped key `cfb.fitCheck`. A signed-in
+ * account now stores under `cfb.fitCheck@uid`; if this account has no scoped
+ * copy yet, we move the legacy answers across once so they are not inherited
+ * by the next account on this browser.
+ */
+function migrateLegacyFit(): FitResult | null {
+  if (!dataScope()) return null;
   try {
-    const raw = (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE) : null) ?? memory.get(STORAGE);
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LEGACY) : null;
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as FitResult;
-    return parsed?.archetype ? parsed : null;
+    const parsed = asFit(JSON.parse(raw));
+    if (!parsed) return null;
+    writeValue(keys.fitCheck, parsed);
+    localStorage.removeItem(LEGACY);
+    return parsed;
   } catch {
-    const cached = memory.get(STORAGE);
-    if (!cached) return null;
-    try {
-      return JSON.parse(cached) as FitResult;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
+export function readFitCheck(): FitResult | null {
+  const stored = asFit(readValue<FitResult | null>(keys.fitCheck, null));
+  if (stored) return stored;
+  return migrateLegacyFit();
+}
+
 export function writeFitCheck(result: FitResult): FitResult {
-  const serialized = JSON.stringify(result);
-  memory.set(STORAGE, serialized);
-  try {
-    localStorage.setItem(STORAGE, serialized);
-  } catch {
-    /* in-memory still holds it */
+  writeValue(keys.fitCheck, result);
+  if (dataScope()) {
+    try { localStorage.removeItem(LEGACY); } catch { /* scoped copy is the record */ }
   }
   return result;
 }

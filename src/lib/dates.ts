@@ -47,6 +47,33 @@ export function formatWeekRange(start: When): string {
   return `${first.toLocaleDateString(loc, leftOptions)}–${last.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' })}`;
 }
 
+const WEEKDAY_EL: Record<string, string> = {
+  Sun: 'Κυρ', Mon: 'Δευ', Tue: 'Τρί', Wed: 'Τετ', Thu: 'Πέμ', Fri: 'Παρ', Sat: 'Σάβ',
+};
+
+const MONTH_EL: Record<string, string> = {
+  Jan: 'Ιαν', Feb: 'Φεβ', Mar: 'Μάρ', Apr: 'Απρ', May: 'Μάι', Jun: 'Ιούν',
+  Jul: 'Ιούλ', Aug: 'Αύγ', Sep: 'Σεπ', Oct: 'Οκτ', Nov: 'Νοέ', Dec: 'Δεκ',
+};
+
+/**
+ * Chart axis label for a canonical English short day or month name — 'Thu' · 'Πέμ'.
+ * Chart series keep their English keys so the data stays comparable; only the
+ * rendered tick is translated. Pass the active language mode from `useLanguage()`
+ * at a call site that must re-render on a language switch.
+ */
+export function localizeAxisLabel(name: string, mode: 'en' | 'el' = getLang()): string {
+  if (mode !== 'el') return name;
+  return WEEKDAY_EL[name] ?? MONTH_EL[name] ?? name;
+}
+
+/** Short weekday in the active language — 'Thu' · 'Πέμ'. */
+export function shortWeekday(value: When): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return localizeAxisLabel(date.toLocaleDateString('en-GB', { weekday: 'short' }));
+}
+
 /** Time-of-day greeting: 05–11 morning, 12–17 afternoon, otherwise evening. */
 export function greetingFor(hour: number): { en: string; el: string } {
   if (hour >= 5 && hour <= 11) return { en: 'Good morning', el: 'Καλημέρα' };

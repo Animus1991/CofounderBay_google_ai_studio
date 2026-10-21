@@ -1,10 +1,28 @@
-import { useState, useEffect } from "react";
+import {
+ useState,
+ useEffect } from "react";
 import { 
- ShieldCheck, Search, Filter, SlidersHorizontal, ArrowRight, 
- CheckCircle2, XCircle, Star, Plus, Users, Send, TrendingUp, 
- Zap, Globe, MessageSquare, AlertCircle, MoreVertical, Palette, 
- Tag, BarChart3, ShieldAlert, Briefcase, Download, Mail,
- UserPlus, Ban, Trash2, Edit3, ChevronRight, ChevronLeft
+ ShieldCheck,
+ Search,
+ CheckCircle2,
+ Star,
+ Users,
+ TrendingUp,
+ Zap,
+ Globe,
+ MessageSquare,
+ AlertCircle,
+ Palette,
+ Tag,
+ BarChart3,
+ ShieldAlert,
+ Briefcase,
+ Download,
+ Mail,
+ UserPlus,
+ Ban,
+ Edit3,
+ ChevronRight
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,7 +83,7 @@ interface ReportRow {
  createdAt: number | null;
 }
 
-export default function UserManagement({ user }: AdminProps) {
+export default function UserManagement({ user: _user }: AdminProps) {
  const t = useT();
  const navigate = useNavigate();
  const [users, setUsers] = useState<MemberRow[]>([]);

@@ -122,7 +122,7 @@ export default function FitCheck() {
       {done && result && (
         <main className="flex-1 w-full max-w-xl mx-auto px-2 sm:px-6 py-10 space-y-6">
           <p className="text-xs font-medium text-stone-400 tracking-wide">
-            <Both en="Same fields Matches already scores" el="Τα ίδια πεδία που ήδη βαθμολογεί το Matches" />
+            <Both en="Same fields Matches already scores" el="Τα ίδια πεδία που ήδη βαθμολογεί η Αντιστοίχιση" />
           </p>
           <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
             <Both en={result.archetype.en} el={result.archetype.el} />
@@ -147,7 +147,7 @@ export default function FitCheck() {
             </button>
           </div>
           <NavLink to="/signup" className="block text-sm font-medium text-stone-500 hover:text-stone-900">
-            <Both en="Or create an account — this fit check is kept on this browser." el="Ή φτιάξε λογαριασμό — αυτό το fit check μένει σε αυτόν τον browser." />
+            <Both en="Or create an account — this fit check is kept on this browser." el="Ή φτιάξε λογαριασμό — αυτό το fit check μένει σε αυτόν τον περιηγητή." />
           </NavLink>
         </main>
       )}

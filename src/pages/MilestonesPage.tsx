@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
- Target, 
- CheckCircle2, 
- Clock, 
- Plus, 
- Zap, 
- TrendingUp, 
+import {
+ Target,
+ CheckCircle2,
+ Clock,
+ Plus,
+ Zap,
+ TrendingUp,
  Calendar,
  ArrowRight,
  Edit3,
@@ -16,18 +15,16 @@ import {
  LayoutGrid,
  List,
  GitBranch,
- Filter,
  Search,
- MoreVertical,
- ChevronDown
-} from 'lucide-react';
+ MoreVertical
+} from "lucide-react";
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Milestone, User } from '../types';
 import { milestoneService } from '../services/milestoneService';
-import { upsertMilestone } from '../lib/localLists';
+import { keys, onDataChange, upsertMilestone } from '../lib/localLists';
 import PageShell from '../components/ui/PageShell';
-import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
 import { labelOf } from '../lib/labels';
 import { useT } from '../lib/language';
 import { formatDate } from '../lib/dates';
@@ -202,7 +199,6 @@ function MilestoneCard({
 export default function MilestonesPage({ user }: MilestonesPageProps) {
  const t = useT();
  const { isDemoMode } = useAuth();
- const navigate = useNavigate();
  const toast = useToast();
  const [milestones, setMilestones] = useState<Milestone[]>([]);
  const [loading, setLoading] = useState(true);
@@ -214,10 +210,18 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const [adding, setAdding] = useState(false);
  const [draftTitle, setDraftTitle] = useState('');
  const [editingId, setEditingId] = useState<string | null>(null);
- const showCreate = adding;
  const setShowCreate = setAdding;
+ const filtersActive = Boolean(searchQuery) || categoryFilter !== 'All' || statusFilter !== 'All';
+ const clearFilters = () => { setSearchQuery(''); setCategoryFilter('All'); setStatusFilter('All'); };
 
- useEffect(() => { fetchMilestones(); }, []);
+ useEffect(() => {
+  fetchMilestones();
+  return onDataChange((key) => {
+   if (key === '*' || key === keys.milestones) {
+    void milestoneService.getMilestones().then(({ milestones: data }) => setMilestones(data));
+   }
+  });
+ }, []);
 
  usePageControls(() => [
   { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: () => { setDraftTitle(''); setEditingId(null); setAdding(true); } },
@@ -282,12 +286,14 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
  const overallProgress = milestones.length > 0 ? Math.round(milestones.reduce((sum, m) => sum + m.progress, 0) / milestones.length) : 0;
 
- const stats = [
-  { label: t('Overall', 'Συνολικά'), value: `${overallProgress}%`, icon: Target, ring: true },
-  { label: labelOf('Completed'), value: milestones.filter(m => m.status === 'Completed').length, icon: CheckCircle2, color: 'emerald' },
-  { label: labelOf('In Progress'), value: milestones.filter(m => m.status === 'In Progress').length, icon: TrendingUp, color: 'blue' },
-  { label: labelOf('Upcoming'), value: milestones.filter(m => m.status === 'Planned').length, icon: Clock, color: 'amber' },
-  { label: labelOf('Overdue'), value: milestones.filter(m => m.status === 'Overdue').length, icon: AlertCircle, color: 'red' },
+ // Each card doubles as the filter for its own status, so the number you read is
+ // the number you can click. "Overall" clears the filter back to every milestone.
+ const stats: { label: string; value: string | number; icon: React.ElementType; ring?: boolean; color?: string; status: string }[] = [
+  { label: t('Overall', 'Συνολικά'), value: `${overallProgress}%`, icon: Target, ring: true, status: 'All' },
+  { label: labelOf('Completed'), value: milestones.filter(m => m.status === 'Completed').length, icon: CheckCircle2, color: 'emerald', status: 'Completed' },
+  { label: labelOf('In Progress'), value: milestones.filter(m => m.status === 'In Progress').length, icon: TrendingUp, color: 'blue', status: 'In Progress' },
+  { label: labelOf('Upcoming'), value: milestones.filter(m => m.status === 'Planned').length, icon: Clock, color: 'amber', status: 'Planned' },
+  { label: labelOf('Overdue'), value: milestones.filter(m => m.status === 'Overdue').length, icon: AlertCircle, color: 'red', status: 'Overdue' },
  ];
 
  const KANBAN_COLUMNS: { key: Milestone['status']; label: string }[] = [
@@ -313,28 +319,44 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
   >
   <div className="space-y-6">
 
-   {/* Stats row with overall progress ring */}
+   {/* Stats row with overall progress ring — every card filters the board below */}
    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-    {stats.map((stat) => (
-     <div key={stat.label} className="bg-white p-4 rounded-2xl border border-stone-100 flex items-center gap-3">
-      {stat.ring ? (
-       <ProgressRing progress={overallProgress} size={36} stroke={3} />
-      ) : (
-       <div className={cn("p-2 rounded-xl",
-        stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600" :
-        stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
-        stat.color === 'red' ? "bg-red-50 text-red-600" :
-        "bg-amber-50 text-amber-600"
-       )}>
-        <stat.icon className="w-4 h-4" />
+    {stats.map((stat) => {
+     const active = statusFilter === stat.status;
+     const isAll = stat.status === 'All';
+     return (
+      <button
+       key={stat.label}
+       type="button"
+       aria-pressed={active}
+       onClick={() => setStatusFilter(active && !isAll ? 'All' : stat.status)}
+       title={isAll
+        ? t('Show every milestone', 'Εμφάνιση όλων των οροσήμων')
+        : t(`Show only: ${stat.label}`, `Εμφάνιση μόνο: ${stat.label}`)}
+       className={cn(
+        "bg-white p-4 rounded-2xl border text-left flex items-center gap-3 transition-all hover:border-stone-300",
+        active ? "border-stone-900 ring-1 ring-stone-900" : "border-stone-100",
+       )}
+      >
+       {stat.ring ? (
+        <ProgressRing progress={overallProgress} size={36} stroke={3} />
+       ) : (
+        <div className={cn("p-2 rounded-xl",
+         stat.color === 'emerald' ? "bg-emerald-50 text-emerald-600" :
+         stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
+         stat.color === 'red' ? "bg-red-50 text-red-600" :
+         "bg-amber-50 text-amber-600"
+        )}>
+         <stat.icon className="w-4 h-4" />
+        </div>
+       )}
+       <div className="min-w-0">
+        <div className="text-sm font-semibold text-stone-900">{stat.value}</div>
+        <div className="text-xs text-stone-400 tracking-wider truncate">{stat.label}</div>
        </div>
-      )}
-      <div>
-       <div className="text-sm font-semibold text-stone-900">{stat.value}</div>
-       <div className="text-xs text-stone-400 tracking-wider">{stat.label}</div>
-      </div>
-     </div>
-    ))}
+      </button>
+     );
+    })}
    </div>
 
    {/* Controls: Search + Filters + View Toggle */}
@@ -401,7 +423,13 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
      <button onClick={fetchMilestones} className="text-stone-900 underline font-medium text-xs">{t("Retry", "Δοκίμασε ξανά")}</button>
     </div>
    ) : filtered.length === 0 ? (
-    <EmptyHint title={t('No milestones found', 'Δεν βρέθηκαν ορόσημα')} detail={searchQuery ? t('Try a different search term', 'Δοκίμασε άλλον όρο') : t('Add a milestone, or ask the assistant what is overdue.', 'Πρόσθεσε ορόσημο, ή ρώτα τι είναι εκπρόθεσμο.')}>
+    <EmptyHint
+     title={t('No milestones found', 'Δεν βρέθηκαν ορόσημα')}
+     detail={filtersActive
+      ? t('No milestone matches the current filters.', 'Κανένα ορόσημο δεν ταιριάζει με τα ενεργά φίλτρα.')
+      : t('Add a milestone, or ask the assistant what is overdue.', 'Πρόσθεσε ορόσημο, ή ρώτα τι είναι εκπρόθεσμο.')}
+    >
+     {filtersActive && <ClearFiltersButton onClick={clearFilters} />}
      <AskLink prompt="What is overdue?">{t("Ask assistant", "Ρώτα τον βοηθό")}</AskLink>
      <AskLink prompt="add milestone ship the MVP">{t("Add via assistant", "Προσθήκη μέσω βοηθού")}</AskLink>
     </EmptyHint>

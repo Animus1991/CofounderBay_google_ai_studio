@@ -1,8 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User } from '../../types';
+import {
+ User } from '../../types';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import { Plus, Search, MoreVertical, Edit2, Trash2, Tag, Briefcase, Globe, Zap, X } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ui/Modal';
+import { Plus,
+ Search,
+ Edit2,
+ Trash2,
+ Tag,
+ Briefcase,
+ Globe,
+ Zap,
+ X
+} from "lucide-react";
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useT } from '../../lib/language';
@@ -52,7 +63,7 @@ interface TaxonomySettingsProps {
  user: User;
 }
 
-export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
+export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps) {
  const t = useT();
  const { isDemoMode } = useAuth();
  const [activeTab, setActiveTab] = useState<TaxonomyKind>('skill');
@@ -62,6 +73,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
  const [editing, setEditing] = useState<TaxonomyItem | null>(null);
  const [draft, setDraft] = useState({ name: '', category: '', description: '' });
  const [loading, setLoading] = useState(true);
+ const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
  useEffect(() => {
   // Sample account: the taxonomies collection denies signed-out reads — show the
@@ -125,11 +137,9 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
   setDraft({ name: '', category: '', description: '' });
  };
 
- const remove = async (id: string) => {
+ const remove = (id: string) => {
   if (isDemoMode) return;
-  if (window.confirm(t('Delete this taxonomy term?', 'Διαγραφή αυτού του όρου;'))) {
-   await deleteDoc(doc(db, 'taxonomies', id)).catch((e) => console.error(e));
-  }
+  setPendingDeleteId(id);
  };
 
  const editingOpen = editing !== null || draft.name !== '' || draft.category !== '' || draft.description !== '';
@@ -163,7 +173,7 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
     ))}
    </div>
 
-   {(editing || draft.name !== '') && (
+   {editingOpen && (
     <Card className="p-5 border-stone-300">
      <div className="flex items-center justify-between mb-4">
       <h3 className="text-sm font-medium text-stone-900">{editing ? t('Edit term', 'Επεξεργασία όρου') : t('New term', 'Νέος όρος')} — {KIND_LABELS[activeTab][0]}</h3>
@@ -248,6 +258,19 @@ export default function TaxonomySettings({ user }: TaxonomySettingsProps) {
      </table>
     </div>
    </Card>
+   <ConfirmDialog
+    open={pendingDeleteId !== null}
+    onClose={() => setPendingDeleteId(null)}
+    onConfirm={() => {
+     const id = pendingDeleteId;
+     setPendingDeleteId(null);
+     if (id) void deleteDoc(doc(db, 'taxonomies', id)).catch((e) => console.error(e));
+    }}
+    title={t('Delete this taxonomy term?', 'Διαγραφή αυτού του όρου;')}
+    description={t('Matching and discovery stop using it. You can add it again later.', 'Η αντιστοίχιση και η εξερεύνηση σταματούν να τον χρησιμοποιούν. Μπορείς να τον προσθέσεις ξανά αργότερα.')}
+    confirmLabel={t('Delete', 'Διαγραφή')}
+    variant="danger"
+   />
   </div>
  );
 }

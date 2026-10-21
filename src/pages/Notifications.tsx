@@ -54,7 +54,7 @@ export default function Notifications() {
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
-      if (result === 'granted') toast.success(t('Browser alerts are on', 'Οι ειδοποιήσεις του browser ενεργοποιήθηκαν'), t('You will hear about new messages and requests while this tab is in the background.', 'Θα ενημερώνεσαι για νέα μηνύματα και αιτήματα όσο αυτή η καρτέλα είναι στο παρασκήνιο.'));
+      if (result === 'granted') toast.success(t('Browser alerts are on', 'Οι ειδοποιήσεις του περιηγητή ενεργοποιήθηκαν'), t('You will hear about new messages and requests while this tab is in the background.', 'Θα ενημερώνεσαι για νέα μηνύματα και αιτήματα όσο αυτή η καρτέλα είναι στο παρασκήνιο.'));
     } catch {
       /* the browser refused; the in-app list keeps working */
     }
@@ -108,7 +108,7 @@ export default function Notifications() {
                 <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shrink-0"><BellRing className="w-4 h-4" /></div>
                 <div>
                   <p className="text-sm font-semibold text-stone-900">{t('Get alerts while you are away', 'Ειδοποιήσεις όταν λείπεις')}</p>
-                  <p className="text-sm text-stone-500 mt-0.5">{t('Allow browser notifications for new messages and connection requests when this tab is in the background.', 'Επίτρεψε ειδοποιήσεις browser για νέα μηνύματα και αιτήματα σύνδεσης όταν η καρτέλα είναι στο παρασκήνιο.')}</p>
+                  <p className="text-sm text-stone-500 mt-0.5">{t('Allow browser notifications for new messages and connection requests when this tab is in the background.', 'Επίτρεψε ειδοποιήσεις του περιηγητή για νέα μηνύματα και αιτήματα σύνδεσης όταν η καρτέλα είναι στο παρασκήνιο.')}</p>
                 </div>
               </div>
               <Button type="button" onClick={() => void askPermission()} className="shrink-0">{t('Turn on', 'Ενεργοποίηση')}</Button>

@@ -454,7 +454,7 @@ export async function respondToConnection(record: ConnectionRecord, accept: bool
     title: `${actor.name} accepted your request`,
     titleEl: `Το αίτημά σου έγινε δεκτό από ${actor.name}`,
     body: 'You can message each other now.',
-    bodyEl: 'Μπορείτε πλέον να στείλετε μήνυμα ο ένας στον άλλον.',
+    bodyEl: 'Μπορείς πλέον να στείλεις μήνυμα.',
     href: `/messages?user=${encodeURIComponent(actor.uid)}`,
   });
 }

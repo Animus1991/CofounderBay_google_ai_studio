@@ -52,9 +52,12 @@ export default function Billing({ user }: BillingProps) {
  }, [user.id]);
 
  const currentPlan = MOCK_PLANS.find(p => p.id === subscription?.planId);
- const communityCount = readIds(keys.communities).length;
- const mentorshipsThisMonth = readSessions().filter((s) => {
-  const d = new Date((s as any).date || (s as any).start || (s as any).createdAt || 0);
+ const communityIds = useStored(() => readIds(keys.communities), [keys.communities]);
+ const sessions = useStored(readSessions, [keys.sessions]);
+ const communityCount = communityIds.length;
+ const mentorshipsThisMonth = sessions.filter((s) => {
+  const d = new Date(s.time);
+  if (!Number.isFinite(d.getTime())) return false;
   const now = new Date();
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
  }).length;

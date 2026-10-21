@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
 import { bothText, labelOf } from '../lib/labels';
 import { useLanguage, useT } from '../lib/language';
-import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeedback, updateAssistantTurn, writeAssistantFeedback, type AssistantTurn } from '../lib/localLists';
+import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeedback, updateAssistantTurn, writeAssistant, writeAssistantFeedback, type AssistantTurn } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
@@ -62,6 +62,7 @@ export default function ChatWidget() {
   const [stopped, setStopped] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pageOpen, setPageOpen] = useState(false);
+  const storedTurns = useStored(readAssistant, [keys.assistant]);
   const [turns, setTurns] = useState<Bubble[]>(() => readAssistant());
   const [agentTurns, setAgentTurns] = useState<Bubble[]>([]);
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
@@ -73,6 +74,26 @@ export default function ChatWidget() {
   const undoingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { turnsRef.current = turns; }, [turns]);
+
+  // The persisted transcript is the source of truth across tabs and accounts.
+  // In-memory proposal / undo fields ride along by matching turn ids.
+  useEffect(() => {
+    setTurns((prev) => {
+      const overlay = new Map(prev.map((bubble) => [bubble.id, bubble]));
+      return storedTurns.map((turn) => {
+        const extra = overlay.get(turn.id);
+        if (!extra) return turn;
+        return {
+          ...turn,
+          proposal: extra.proposal,
+          resolved: extra.resolved,
+          undoUntil: extra.undoUntil,
+          links: extra.links ?? turn.links,
+          followUps: extra.followUps ?? turn.followUps,
+        };
+      });
+    });
+  }, [storedTurns]);
 
   const visibleTurns = tab === 'studio' ? turns : agentTurns;
   const agent = MOCK_AGENTS.find((item) => item.id === agentId);
@@ -281,7 +302,9 @@ export default function ChatWidget() {
       return;
     }
     if (/^\/compact\b/i.test(text)) {
-      setTurns((prev) => prev.slice(-8));
+      const next = turnsRef.current.slice(-8);
+      writeAssistant(next);
+      setTurns(next);
       return;
     }
     const payload = pinnedContext ? `${pinnedContext}: ${text}` : text;

@@ -1,12 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+ useEffect,
+ useMemo,
+ useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import { motion } from "motion/react";
 import {
- TrendingUp, Activity, Award, Star,
- ChevronRight, Calendar, Users, Target,
- BarChart3, Zap, Rocket,
- ArrowUpRight, Info,
+ TrendingUp,
+ Award,
+ Star,
+ Calendar,
+ Users,
+ Target,
+ Zap,
+ Rocket,
+ ArrowUpRight
 } from "lucide-react";
 import {
  XAxis, YAxis, CartesianGrid,
@@ -17,10 +25,11 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { User, UserProfile } from "../types";
-import { keys, listKeys, readActivity, readIds, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
+import { keys, readActivity, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { usePageControls } from "../lib/pageControls";
-import { useT } from "../lib/language";
+import { useLanguage, useT } from "../lib/language";
+import { localizeAxisLabel } from "../lib/dates";
 import { useAuth } from "../App";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
@@ -30,7 +39,6 @@ interface InsightsProps {
  user: User;
 }
 
-const DAY_EL = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
 const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type ScorePoint = { at: string; score: number };
@@ -53,6 +61,7 @@ function profileCompleteness(profile: UserProfile | null): number {
 
 export default function Insights({ user }: InsightsProps) {
  const t = useT();
+ const { mode } = useLanguage();
  const navigate = useNavigate();
  const { profile, isDemoMode } = useAuth();
  const [activeRange, setActiveRange] = useState('7D');
@@ -88,17 +97,18 @@ export default function Insights({ user }: InsightsProps) {
  const cutoff = Date.now() - days * 86400000;
 
  const readinessView = useMemo(() => {
+  const axis = (name: string) => localizeAxisLabel(name, mode);
   if (isDemoMode) {
    // The sample covers one week: 24H shows the last point, wider ranges show it all.
-   if (activeRange === '24H') return DEMO_READINESS.slice(-1);
-   return DEMO_READINESS;
+   const sample = activeRange === '24H' ? DEMO_READINESS.slice(-1) : DEMO_READINESS;
+   return sample.map((p) => ({ ...p, name: axis(p.name) }));
   }
   const points = history.filter((p) => new Date(p.at).getTime() >= cutoff);
   return points.map((p) => {
    const d = new Date(p.at);
-   return { name: DAY_EN[d.getDay()] ?? '', score: p.score };
+   return { name: axis(DAY_EN[d.getDay()] ?? ''), score: p.score };
   });
- }, [isDemoMode, activeRange, history, cutoff]);
+ }, [isDemoMode, activeRange, history, cutoff, mode]);
 
  const readinessDelta = useMemo(() => {
   if (isDemoMode) return demoReadinessDelta();
@@ -109,9 +119,10 @@ export default function Insights({ user }: InsightsProps) {
 
  // Real weekly engagement: activity entries grouped by weekday.
  const activityView = useMemo(() => {
+  const axis = (name: string) => localizeAxisLabel(name, mode);
   if (isDemoMode) {
-   if (activeRange === '24H') return DEMO_ACTIVITY.slice(-1);
-   return DEMO_ACTIVITY;
+   const sample = activeRange === '24H' ? DEMO_ACTIVITY.slice(-1) : DEMO_ACTIVITY;
+   return sample.map((row) => ({ ...row, name: axis(row.name) }));
   }
   const week: { name: string; connections: number; messages: number; views: number }[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -119,14 +130,14 @@ export default function Insights({ user }: InsightsProps) {
    const key = d.toISOString().slice(0, 10);
    const items = studioActivity.filter((a) => a.at.slice(0, 10) === key);
    week.push({
-    name: DAY_EN[d.getDay()] ?? '',
+    name: axis(DAY_EN[d.getDay()] ?? ''),
     connections: items.filter((a) => a.kind === 'request' || a.kind === 'connection' || a.kind === 'community').length,
     messages: items.filter((a) => a.kind === 'message').length,
     views: items.filter((a) => a.kind !== 'request' && a.kind !== 'connection' && a.kind !== 'community' && a.kind !== 'message').length,
    });
   }
   return week;
- }, [isDemoMode, activeRange, studioActivity]);
+ }, [isDemoMode, activeRange, studioActivity, mode]);
 
  const lastScore = readinessView[readinessView.length - 1]?.score ?? readinessScore;
  const viewSum = activityView.reduce((sum, row) => sum + row.views, 0);
@@ -325,7 +336,7 @@ export default function Insights({ user }: InsightsProps) {
       <Card className="p-4 border-stone-100 bg-white space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Activity Feed', 'Ροή δραστηριότητας')}</h3>
-        <p className="text-xs text-stone-400">{t('Real-time ecosystem updates', 'Ενημερώσεις οικοσυστήματος σε πραγματικό χρόνο')}</p>
+        <p className="text-xs text-stone-400">{isDemoMode ? t('Sample ecosystem updates', 'Δειγματικές ενημερώσεις οικοσυστήματος') : t('Your recent activity', 'Η πρόσφατη δραστηριότητά σου')}</p>
        </div>
        <div className="space-y-3">
         {feed.length === 0 && (
@@ -378,7 +389,7 @@ export default function Insights({ user }: InsightsProps) {
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
        <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
-        {t('Your readiness score is the share of profile fields matching reads — a complete profile produces sharper matches.', 'Ο δείκτης ετοιμότητας είναι το ποσοστό των πεδίων που διαβάζει η αντιστοίχιση — πλήρες προφίλ σημαίνει καλύτερα matches.')}
+        {t('Your readiness score is the share of profile fields matching reads — a complete profile produces sharper matches.', 'Ο δείκτης ετοιμότητας είναι το ποσοστό των πεδίων που διαβάζει η αντιστοίχιση — πλήρες προφίλ σημαίνει καλύτερες αντιστοιχίσεις.')}
        </p>
        <p className="text-xs text-stone-500">{t('Next: fill skills and looking-for on Profile so the score can move.', 'Επόμενο: συμπλήρωσε δεξιότητες και τι ζητάς στο προφίλ, ώστε να κινηθεί ο δείκτης.')}</p>
        <div className="flex gap-2">

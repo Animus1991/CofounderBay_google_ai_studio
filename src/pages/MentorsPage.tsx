@@ -1,29 +1,31 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { addSession, keys, listKeys, logActivity, readIds, readSessions, toggleId } from '../lib/localLists';
+import {
+ useNavigate } from 'react-router-dom';
+import { addSession,
+ keys,
+ listKeys,
+ logActivity,
+ readIds,
+ readSessions,
+ toggleId } from '../lib/localLists';
 import { 
- Star, 
- MessageSquare, 
- Calendar, 
- Search, 
- Filter, 
- Zap, 
- CheckCircle2, 
+ Star,
+ MessageSquare,
+ Search,
+ Zap,
+ CheckCircle2,
  ArrowRight,
  ShieldCheck,
- Globe,
- Plus,
  Bookmark,
- X,
- Briefcase
-} from 'lucide-react';
+ X
+} from "lucide-react";
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
-import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
+import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
 import { avatarFor, castByRole } from '../data/cast';
 import { usePeople } from '../lib/directory';
 import { avatarOf, mentorPool, type Person } from '../lib/peopleSource';
@@ -116,7 +118,7 @@ export default function MentorsPage() {
  const [focusAreas, setFocusAreas] = useState('');
  const [yourAvailability, setYourAvailability] = useState('');
  const [requestError, setRequestError] = useState('');
- const [savedMentors, setSavedMentors] = useState(() => new Set(readIds(listKeys.mentors)));
+ const savedMentors = useStored(() => new Set(readIds(listKeys.mentors)), [keys.mentors]);
  const sessions = useStored(() => readSessions(), [keys.sessions]);
  const navigate = useNavigate();
 
@@ -310,7 +312,7 @@ export default function MentorsPage() {
          </button>
          <button 
           aria-label={savedMentors.has(mentor.id) ? t("Remove saved mentor", "Αφαίρεση από τα αποθηκευμένα") : t("Save mentor", "Αποθήκευση μέντορα")}
-          onClick={(e) => { e.stopPropagation(); setSavedMentors(new Set(toggleId(listKeys.mentors, mentor.id))); }}
+          onClick={(e) => { e.stopPropagation(); toggleId(listKeys.mentors, mentor.id); }}
           className="min-h-11 min-w-11 inline-flex items-center justify-center bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-all border border-stone-100"
          >
           <Bookmark className={savedMentors.has(mentor.id) ? 'w-3.5 h-3.5 fill-current text-stone-900' : 'w-3.5 h-3.5'} />
@@ -328,8 +330,11 @@ export default function MentorsPage() {
     {filteredMentors.length === 0 && !(peopleLoading && !isDemoMode) && (
      <EmptyHint
       title={mentors.length === 0 ? t('No mentors have joined yet.', 'Δεν έχουν εγγραφεί μέντορες ακόμη.') : t('No mentors match these filters.', 'Δεν υπάρχουν μέντορες για αυτά τα φίλτρα.')}
-      detail={mentors.length === 0 ? t('Members who mark “Open to mentoring” on their profile appear here. Know someone? Invite them.', 'Εδώ εμφανίζονται τα μέλη που δηλώνουν διαθεσιμότητα για καθοδήγηση στο προφίλ τους. Γνωρίζεις ένα μέλος; Προσκάλεσέ το.') : t('Try another expertise or availability, or ask the assistant.', 'Δοκίμασε άλλη εξειδίκευση ή διαθεσιμότητα, ή ρώτα τον βοηθό.')}
+      detail={mentors.length === 0 ? t('Members who mark “Open to mentoring” on their profile appear here. Know someone? Invite them.', 'Εδώ εμφανίζονται τα μέλη που δηλώνουν διαθεσιμότητα για καθοδήγηση στο προφίλ τους. Γνωρίζεις κάποιον; Στείλε πρόσκληση.') : t('Try another expertise or availability, or ask the assistant.', 'Δοκίμασε άλλη εξειδίκευση ή διαθεσιμότητα, ή ρώτα τον βοηθό.')}
      >
+      {mentors.length > 0 && (
+       <ClearFiltersButton onClick={() => { setSearchQuery(''); setAvailabilityFilter('All'); setExpertiseFilter('All'); }} />
+      )}
       <AskLink prompt={mentors.length === 0 ? 'Invite 3 founders' : 'Find a fundraising mentor'}>{mentors.length === 0 ? t('Invite someone', 'Πρόσκληση') : t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
      </EmptyHint>
     )}

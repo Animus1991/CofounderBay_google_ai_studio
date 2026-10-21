@@ -1,30 +1,31 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import {
+ useState,
+ useCallback,
+ useRef,
+ useMemo,
+ useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from "motion/react";
+import { motion,
+ AnimatePresence } from "motion/react";
 import {
  DollarSign,
  Search,
  SlidersHorizontal,
  ArrowRight,
  Clock,
- TrendingUp,
  Users,
  Briefcase,
  ChevronRight,
  Star,
  FileText,
  Zap,
- MapPin,
  Calendar,
  ExternalLink,
  CheckCircle2,
- AlertCircle,
  Building2,
  Rocket,
- Globe,
  BadgeDollarSign,
  Target,
- Activity,
  FolderOpen,
  Lock,
  Unlock,
@@ -33,17 +34,15 @@ import {
  Mail,
  Tag,
  Calculator,
- Scale,
  Shield,
  History,
  BarChart2,
  Download,
  Share2,
  Eye,
- MoreHorizontal,
  Plus,
  X,
- Pencil,
+ Pencil
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -55,13 +54,14 @@ import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { formatDate } from "../lib/dates";
 import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
-import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
 import { usePageControls } from "../lib/pageControls";
 import { roundMetrics } from "../lib/roundMetrics";
 import type { Person } from "../lib/peopleSource";
 import { useAuth } from "../App";
+import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 
 interface FundraisingProps {
  user: User;
@@ -102,6 +102,13 @@ const mockInvestors: InvestorCard[] = [
  { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
 ];
 
+const SEED_ROOM_FILES: RoomFile[] = [
+ { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
+ { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
+ { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
+ { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
+];
+
 export default function Fundraising({ user }: FundraisingProps) {
  const t = useT();
  const { isDemoMode, profile } = useAuth();
@@ -110,7 +117,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  const { people: directoryMembers } = usePeople(user.id);
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
- const [favoriteInvestors, setFavoriteInvestors] = useState<Set<string>>(() => new Set(readIds(listKeys.watch)));
+ const favoriteInvestors = useStored(() => new Set(readIds(listKeys.watch)), [keys.watch]);
  const [selectedMeetingType, setSelectedMeetingType] = useState('Video Call');
  const [meetingInvestor, setMeetingInvestor] = useState('inv_1');
  const [meetingWhen, setMeetingWhen] = useState('');
@@ -118,18 +125,12 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [opportunityType, setOpportunityType] = useState('All');
  const [investorType, setInvestorType] = useState('All');
  const roomFileRef = useRef<HTMLInputElement>(null);
- const seedRoomFiles: RoomFile[] = [
-  { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
-  { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
-  { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
-  { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
- ];
- const [roomFiles, setRoomFiles] = useState<RoomFile[]>(() => {
-  const extra = readRoomFiles();
-  if (!isDemoMode) return extra;
-  const names = new Set(extra.map((file) => file.name));
-  return [...extra, ...seedRoomFiles.filter((file) => !names.has(file.name))];
- });
+ const extraRoom = useStored(readRoomFiles, [keys.room]);
+ const roomFiles = useMemo(() => {
+  if (!isDemoMode) return extraRoom;
+  const names = new Set(extraRoom.map((file) => file.name));
+  return [...extraRoom, ...SEED_ROOM_FILES.filter((file) => !names.has(file.name))];
+ }, [extraRoom, isDemoMode]);
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
  const [roundEditing, setRoundEditing] = useState(false);
  const [roundDraft, setRoundDraft] = useState<Round | null>(null);
@@ -212,6 +213,27 @@ export default function Fundraising({ user }: FundraisingProps) {
   { id: "prog_3", title: "NSF SBIR Phase I",         deadline: "2026-06-18", type: "Grant",       grant: "$275k",  location: "US Only",      match: 72, tags: ["R&D", "DeepTech"],        status: "open" },
   { id: "prog_4", title: "Founders Factory EU",      deadline: "2026-07-10", type: "Studio",      grant: "€150k",  location: "London / Paris", match: 81, tags: ["B2B SaaS", "Series A"], status: "upcoming" },
  ];
+ const [livePrograms, setLivePrograms] = useState<typeof mockPrograms | null>(null);
+ useEffect(() => {
+  if (isDemoMode) { setLivePrograms(null); return; }
+  return onCatalog('programs', (docs) => {
+   setLivePrograms(docs.map((doc) => {
+    const deadline = toMillis(doc.deadline);
+    return {
+     id: doc.id,
+     title: str(doc.title, 'Program'),
+     deadline: deadline ? new Date(deadline).toISOString().slice(0, 10) : str(doc.deadline),
+     type: str(doc.type, 'Accelerator'),
+     grant: str(doc.funding ?? doc.grant, '—'),
+     location: str(doc.location),
+     match: 0,
+     tags: strList(doc.focus ?? doc.tags),
+     status: 'open',
+    };
+   }));
+  }, () => setLivePrograms([]));
+ }, [isDemoMode]);
+ const programs = isDemoMode ? mockPrograms : (livePrograms ?? []);
 
  const myTags = useMemo(() => new Set(
   [...(profile?.interests ?? []), ...(profile?.skills ?? []), ...(profile?.lookingFor ?? []), ...(profile?.industry ? [profile.industry] : [])]
@@ -394,7 +416,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  const typeLabel = (value: string) => {
   if (value === "All") return t("All", "Όλα");
   const names: Record<string, string> = {
-   "Intro Request": t("Intro Request", "Αίτημα σύνδεσης"),
+   "Intro Request": t("Intro Request", "Αίτημα σύστασης"),
    "Pitch Event": t("Pitch Event", "Εκδήλωση pitch"),
    "Non-dilutive Grant": t("Non-dilutive Grant", "Μη αραιωτική επιχορήγηση"),
    "Revenue-Based": t("Revenue-Based", "Με βάση τα έσοδα"),
@@ -703,7 +725,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          {(pipeline ?? []).map((item, i) => {
           const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
           return (
-           <li key={i} className="flex items-start gap-3 px-3 py-3">
+           <li key={item.investorId} className="flex items-start gap-3 px-3 py-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-400">
              <Briefcase className="w-4 h-4" />
             </div>
@@ -755,7 +777,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            {(pipeline ?? []).map((item, i) => {
             const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
             return (
-             <tr key={i} className="hover:bg-stone-50 transition-colors group">
+             <tr key={item.investorId} className="hover:bg-stone-50 transition-colors group">
               <td className="px-3 py-2.5">
                <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 shrink-0">
@@ -885,17 +907,23 @@ export default function Fundraising({ user }: FundraisingProps) {
          )}
         </Card>
 
-        <Card title={t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")} subtitle={t("Don't miss these opportunities", "Μην χάσετε αυτές τις ευκαιρίες")} className="p-4">
+        <Card title={t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")} subtitle={t("Don't miss these opportunities", "Μην χάσεις αυτές τις ευκαιρίες")} className="p-4">
          <div className="space-y-2">
-          {mockPrograms.map((p) => {
-           const daysLeft = Math.max(0, Math.round((new Date(p.deadline).getTime() - Date.now()) / 86400000));
-           const urgent = daysLeft < 14;
+          {programs.length === 0 ? (
+           <EmptyHint
+            title={t('No upcoming deadlines', 'Δεν υπάρχουν επερχόμενες προθεσμίες')}
+            detail={t('Programs with a closing date will appear here. Open the Programs tab to browse.', 'Προγράμματα με ημερομηνία λήξης εμφανίζονται εδώ. Άνοιξε την καρτέλα Προγράμματα για να δεις τι υπάρχει.')}
+           />
+          ) : programs.map((p) => {
+           const due = new Date(p.deadline).getTime();
+           const daysLeft = Number.isFinite(due) ? Math.max(0, Math.round((due - Date.now()) / 86400000)) : 0;
+           const urgent = Number.isFinite(due) && daysLeft < 14;
            return (
             <div key={p.id} className="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl border border-stone-100 hover:border-stone-300 transition-all cursor-pointer group">
              <div className="min-w-0">
               <p className="text-sm font-semibold text-stone-900 truncate">{p.title}</p>
               <p className={cn("text-xs tracking-wide mt-0.5", urgent ? "text-red-500 font-semibold" : "text-stone-400")}>
-               {t("Due", "Προθεσμία")}: {formatDate(p.deadline)} {urgent && `· ${daysLeftText(daysLeft)}`}
+               {t("Due", "Προθεσμία")}: {p.deadline ? formatDate(p.deadline) : '—'} {urgent && `· ${daysLeftText(daysLeft)}`}
               </p>
              </div>
              <div className="text-right shrink-0 ml-2">
@@ -986,6 +1014,23 @@ export default function Fundraising({ user }: FundraisingProps) {
 
       {/* Investor Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+       {filteredInvestors.length === 0 && (
+        <EmptyHint
+         className="md:col-span-2 xl:col-span-3"
+         title={investorSearch || investorType !== 'All'
+          ? t('No investors match these filters', 'Κανένας επενδυτής δεν ταιριάζει με αυτά τα φίλτρα')
+          : t('No investors on the platform yet', 'Δεν υπάρχουν ακόμη επενδυτές στην πλατφόρμα')}
+         detail={investorSearch || investorType !== 'All'
+          ? t('Clear the search or type, or ask who still fits this round.', 'Καθάρισε την αναζήτηση ή τον τύπο, ή ρώτα ποιος ταιριάζει ακόμα σε αυτόν τον γύρο.')
+          : t('Members with an investor role appear here. Complete your profile so they can find you, or ask the assistant who to approach.', 'Μέλη με ρόλο επενδυτή εμφανίζονται εδώ. Συμπλήρωσε το προφίλ σου για να σε βρίσκουν, ή ρώτα τον βοηθό ποιον να προσεγγίσεις.')}
+        >
+         {(investorSearch || investorType !== 'All') && (
+          <ClearFiltersButton onClick={() => { setInvestorSearch(''); setInvestorType('All'); }} />
+         )}
+         <AskLink prompt="Who should I approach for this round?" />
+         <button type="button" onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">{t('Edit profile', 'Επεξεργασία προφίλ')}</button>
+        </EmptyHint>
+       )}
        {filteredInvestors.map((inv) => {
         // Find CRM data for this investor
         const crm = investorCRM.find(c => c.investorId === inv.id);
@@ -1002,7 +1047,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <FactLine className="mt-0.5" items={[typeLabel(inv.type), inv.location]} label={t("Investor facts", "Στοιχεία επενδυτή")} />
            </div>
           </div>
-          <Button variant="ghost" size="icon" aria-label={t("Watch", "Παρακολούθηση")} title={t("Watch", "Παρακολούθηση")} className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => setFavoriteInvestors(new Set(toggleId(listKeys.watch, inv.id)))}>
+          <Button variant="ghost" size="icon" aria-label={t("Watch", "Παρακολούθηση")} title={t("Watch", "Παρακολούθηση")} className={cn("h-7 w-7 shrink-0 relative z-10 hover:text-amber-500", favoriteInvestors.has(inv.id) ? "text-amber-500" : "text-stone-400")} onClick={() => toggleId(listKeys.watch, inv.id)}>
            <Star className="w-3.5 h-3.5" fill={favoriteInvestors.has(inv.id) ? 'currentColor' : 'none'} />
           </Button>
          </div>
@@ -1081,14 +1126,24 @@ export default function Fundraising({ user }: FundraisingProps) {
         <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Programs", "Προγράμματα")}</p>
         <h3 className="text-base font-semibold text-stone-900">{t("Accelerators, Grants & Studios", "Επιταχυντές, επιχορηγήσεις και studios")}</h3>
        </div>
-       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(mockPrograms.map((item) => item.type)))]; const index = types.indexOf(programType); setProgramType(types[(index + 1) % types.length] ?? 'All'); }}>
+       <Button variant="outline" size="sm" className="h-7 text-sm rounded-lg gap-1.5" onClick={() => { const types = ['All', ...Array.from(new Set(programs.map((item) => item.type)))]; const index = types.indexOf(programType); setProgramType(types[(index + 1) % types.length] ?? 'All'); }}>
         <SlidersHorizontal className="w-3.5 h-3.5" /> {programType === 'All' ? t("Filter", "Φίλτρο") : typeLabel(programType)}
        </Button>
       </div>
 
       {/* Programs List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-       {mockPrograms.filter((p) => programType === 'All' || p.type === programType).map((p) => {
+       {programs.filter((p) => programType === 'All' || p.type === programType).length === 0 && (
+        <EmptyHint
+         className="md:col-span-2"
+         title={t('No programs published yet', 'Δεν έχουν δημοσιευτεί προγράμματα ακόμη')}
+         detail={t('Accelerators and grants appear here when the catalogue has entries. Ask the assistant to watch for your stage.', 'Επιταχυντές και επιχορηγήσεις εμφανίζονται εδώ μόλις μπουν στον κατάλογο. Ζήτα από τον βοηθό να σε ενημερώσει για το στάδιό σου.')}
+        >
+         <AskLink prompt="What programs can I apply to?" />
+         <button type="button" onClick={() => navigate('/programs')} className="text-xs font-medium text-stone-900 hover:underline">{t('Open Programs', 'Άνοιγμα Προγραμμάτων')}</button>
+        </EmptyHint>
+       )}
+       {programs.filter((p) => programType === 'All' || p.type === programType).map((p) => {
         const daysLeft = Math.max(0, Math.round((new Date(p.deadline).getTime() - Date.now()) / 86400000));
         const urgent = daysLeft < 14;
         const typeIcon = p.type === "Accelerator" ? Rocket : p.type === "Grant" ? BadgeDollarSign : Building2;
@@ -1334,7 +1389,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          <Button size="sm" className="h-6 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
           <Plus className="w-3 h-3 mr-1" /> {t("Upload", "Μεταφόρτωση")}
          </Button>
-         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; const next = addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined }); const names = new Set(next.map((item) => item.name)); setRoomFiles(isDemoMode ? [...next, ...seedRoomFiles.filter((item) => !names.has(item.name))] : next); e.target.value = ''; }} />
+         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined }); e.target.value = ''; }} />
         </div>
         <div className="space-y-1">
          {visibleRoomFiles.map(file => (
