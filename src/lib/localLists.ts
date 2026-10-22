@@ -9,12 +9,14 @@
 import type { Milestone, UserProfile } from '../types';
 import { findCast } from '../data/cast';
 import { seedMilestones } from '../data/seeds';
+import { recordLocalSave } from './saveFeedback';
 
 const CHANGE_EVENT = 'cfb:data';
 const ALL = '*';
 
 let scope = '';
 const memory = new Map<string, string>();
+const volatileKeys = new Set<string>();
 
 /** '' for the demo and signed-out state, otherwise the account id. */
 export function dataScope(): string {
@@ -83,6 +85,7 @@ export function setWriteObserver(observer: WriteObserver | null) {
 /** The stored JSON for `key` in the current scope, or null. */
 export function readRawValue(key: string): string | null {
   const storageKey = keyFor(key);
+  if (volatileKeys.has(storageKey)) return memory.get(storageKey) ?? null;
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null;
     if (raw != null) return raw;
@@ -95,21 +98,25 @@ export function readRawValue(key: string): string | null {
 /** Applies a value that came from the cloud. It updates every page but is not sent back. */
 export function applyRemoteValue(key: string, serialized: string | null) {
   const storageKey = keyFor(key);
+  let durable = true;
   if (serialized == null) {
     memory.delete(storageKey);
     try {
       localStorage.removeItem(storageKey);
     } catch {
-      /* ignore */
+      durable = false;
     }
   } else {
     memory.set(storageKey, serialized);
     try {
       localStorage.setItem(storageKey, serialized);
     } catch {
-      /* storage full or blocked: the in-memory view still updates */
+      durable = false;
     }
   }
+  if (durable) volatileKeys.delete(storageKey);
+  else volatileKeys.add(storageKey);
+  recordLocalSave(storageKey, serialized, durable);
   emit(key);
 }
 
@@ -131,7 +138,7 @@ export function writeValue<T>(key: string, value: T): T {
 function readJson<T>(key: string, fallback: T): T {
   const storageKey = keyFor(key);
   try {
-    const raw = (typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null) ?? memory.get(storageKey);
+    const raw = volatileKeys.has(storageKey) ? memory.get(storageKey) : (typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null) ?? memory.get(storageKey);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -149,11 +156,15 @@ function writeJson(key: string, value: unknown) {
   const storageKey = keyFor(key);
   const serialized = JSON.stringify(value);
   memory.set(storageKey, serialized);
+  let durable = true;
   try {
     localStorage.setItem(storageKey, serialized);
   } catch {
-    /* storage full or blocked: the in-memory view still updates */
+    durable = false;
   }
+  if (durable) volatileKeys.delete(storageKey);
+  else volatileKeys.add(storageKey);
+  recordLocalSave(storageKey, serialized, durable);
   emit(key);
   if (scope && writeObserver) writeObserver(key, serialized);
 }

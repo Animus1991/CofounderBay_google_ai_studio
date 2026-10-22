@@ -9,6 +9,7 @@ import Tooltip from './ui/Tooltip';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore } from '../stores/useUIStore';
+import SaveSafetyGuard from './SaveSafetyGuard';
 
 export default function Layout() {
  const { isDemoMode, toggleDemoMode, user, profile } = useAuth();
@@ -79,6 +80,7 @@ export default function Layout() {
     </div>
    </header>
    <div className="flex min-h-0 min-w-0 flex-1">
+    <SaveSafetyGuard />
     <Sidebar
      user={sidebarUser as any}
      guest={isGuest}

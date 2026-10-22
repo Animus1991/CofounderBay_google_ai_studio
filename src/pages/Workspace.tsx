@@ -42,6 +42,9 @@ import { User } from "../types";
 import { cn } from "../lib/utils";
 import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
+import SaveStatus from '../components/ui/SaveStatus';
+import { useBeforeUnload } from '../lib/useProtectedDraft';
+import { dataScope } from '../lib/localLists';
 import { usePageControls } from "../lib/pageControls";
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useT } from "../lib/language";
@@ -87,6 +90,10 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 export default function Workspace({ user }: WorkspaceProps) {
  const t = useT();
  const { profile, isDemoMode } = useAuth();
+ const [uploading, setUploading] = useState(false);
+ const [failedUpload, setFailedUpload] = useState<File | null>(null);
+ const [uploadError, setUploadError] = useState('');
+ useBeforeUnload(uploading || !!failedUpload);
  const [activeTab, setActiveTab] = useState<TabType>("Dashboard");
  const [searchQuery, setSearchQuery] = useState("");
  const [taskView, setTaskView] = useState<TaskView>("list");
@@ -246,15 +253,25 @@ export default function Workspace({ user }: WorkspaceProps) {
   .slice(0, 5);
 
  const addAsset = async (file: File | null) => {
-  if (!file) return;
+  if (!file || uploading) return;
+  setUploading(true);
+  setUploadError('');
+  const ownerScope = dataScope();
   const row: AssetRow = { name: file.name, size: formatBytes(file.size) };
+  try {
   if (!isDemoMode && user.id) {
-   try {
     const uploaded = await uploadFile(file, { folder: 'assets' as UploadFolder, uid: user.id });
     row.url = uploaded.url; row.path = uploaded.path; row.size = formatBytes(uploaded.size);
-   } catch { /* keep the local row without a link */ }
   }
-  writeValue(keys.assets, [row, ...assets.filter((a) => a.name !== row.name)]);
+  if (dataScope() !== ownerScope) return;
+  writeValue(keys.assets, [row, ...readValue<AssetRow[]>(keys.assets, []).filter((a) => a.name !== row.name)]);
+  setFailedUpload(null);
+  } catch {
+   setFailedUpload(file);
+   setUploadError(t('The file was not uploaded. Keep this page open to retry with the same file.', 'Το αρχείο δεν μεταφορτώθηκε. Κράτησε τη σελίδα ανοιχτή για επανάληψη με το ίδιο αρχείο.'));
+  } finally {
+   setUploading(false);
+  }
  };
 
  return (
@@ -692,9 +709,19 @@ export default function Workspace({ user }: WorkspaceProps) {
          })}
         </div>
         <label className="flex items-center justify-center w-full h-7 rounded-lg text-sm border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer">
-         <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("Upload file", "Μεταφόρτωση αρχείου")}
-         <input type="file" className="sr-only" onChange={(e) => { void addAsset(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> {uploading ? t('Uploading…', 'Μεταφορτώνεται…') : t("Upload file", "Μεταφόρτωση αρχείου")}
+          <input type="file" disabled={uploading} className="sr-only" onChange={(e) => { void addAsset(e.target.files?.[0] ?? null); e.target.value = ''; }} />
         </label>
+         {isDemoMode && <p className="text-xs text-stone-500">{t('Demo: only the file name is kept; no file is uploaded.', 'Demo: διατηρείται μόνο το όνομα· δεν μεταφορτώνεται αρχείο.')}</p>}
+         {uploadError && <div className="space-y-2">
+          <p role="alert" className="text-xs text-red-700">{uploadError}</p>
+          <p className="text-xs text-stone-500 break-words">{failedUpload?.name}</p>
+          <div className="flex flex-wrap gap-2">
+           <Button size="sm" variant="outline" disabled={uploading} onClick={() => void addAsset(failedUpload)}>{t('Retry upload', 'Επανάληψη μεταφόρτωσης')}</Button>
+           <Button size="sm" variant="ghost" disabled={uploading} onClick={() => { setFailedUpload(null); setUploadError(''); }}>{t('Dismiss', 'Κλείσιμο')}</Button>
+          </div>
+         </div>}
+         <SaveStatus listKey={keys.assets} />
        </section>
        </Disclosure>
       </div>
@@ -713,6 +740,7 @@ export default function Workspace({ user }: WorkspaceProps) {
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t("Lean Canvas", "Lean canvas")}</h3>
         <p className="text-xs text-stone-400 mt-0.5">{t("Map out your business model in a single page.", "Αποτύπωσε το επιχειρηματικό σου μοντέλο σε μία σελίδα.")}</p>
+         <SaveStatus listKey={keys.canvas} />
        </div>
        <div className="flex flex-wrap items-center gap-2">
         <Button

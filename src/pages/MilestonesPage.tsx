@@ -32,6 +32,10 @@ import { formatDate } from '../lib/dates';
 import { usePageControls } from '../lib/pageControls';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../App';
+import { useProtectedDraft } from '../lib/useProtectedDraft';
+import DraftNotice from '../components/ui/DraftNotice';
+import SaveStatus from '../components/ui/SaveStatus';
+import { ConfirmDialog } from '../components/ui/Modal';
 
 interface MilestonesPageProps {
  user?: User;
@@ -208,9 +212,20 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const [searchQuery, setSearchQuery] = useState('');
  const [categoryFilter, setCategoryFilter] = useState('All');
  const [statusFilter, setStatusFilter] = useState('All');
- const [adding, setAdding] = useState(false);
- const [draftTitle, setDraftTitle] = useState('');
- const [editingId, setEditingId] = useState<string | null>(null);
+ const editor = useProtectedDraft('milestone', user?.id || 'anonymous', { title: '', editingId: '' });
+ const [adding, setAdding] = useState(editor.dirty);
+ const draftTitle = editor.value.title;
+ const editingId = editor.value.editingId || null;
+ const setDraftTitle = (title: string) => editor.setValue(previous => ({ ...previous, title }));
+ const [saving, setSaving] = useState(false);
+ const [saveError, setSaveError] = useState('');
+ const [switchTarget, setSwitchTarget] = useState<Milestone | null>(null);
+ const openNew = () => {
+  if (saving) return;
+  if (!editor.dirty) editor.reset({ title: '', editingId: '' });
+  setSaveError('');
+  setAdding(true);
+ };
  const setShowCreate = setAdding;
  const filtersActive = Boolean(searchQuery) || categoryFilter !== 'All' || statusFilter !== 'All';
  const clearFilters = () => { setSearchQuery(''); setCategoryFilter('All'); setStatusFilter('All'); };
@@ -225,8 +240,8 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  }, []);
 
  usePageControls(() => [
-  { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: () => { setDraftTitle(''); setEditingId(null); setAdding(true); } },
- ], []);
+  { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: openNew },
+ ], [editor.dirty]);
 
  const fetchMilestones = async () => {
   setLoading(true);
@@ -243,23 +258,32 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  };
  const saveMilestone = async () => {
   const title = draftTitle.trim();
-  if (!title) return;
+  if (!title || saving) return;
+  setSaving(true);
+  setSaveError('');
+  try {
   if (editingId) {
    const updated = await milestoneService.updateMilestone(editingId, { title });
    setMilestones((prev) => prev.map((m) => (m.id === editingId ? updated : m)));
-   setEditingId(null);
   } else {
    const created = await milestoneService.createMilestone({ title, ownerId: user?.id || 'me' });
    // The write also refreshes subscribers before this promise resolves.
    // Merge by identity so one saved record cannot appear twice.
    setMilestones((prev) => [created, ...prev.filter((m) => m.id !== created.id)]);
   }
-  setDraftTitle('');
+  editor.reset({ title: '', editingId: '' });
   setAdding(false);
+  } catch {
+   setSaveError(t('Could not save. Your draft is still here — try again.', 'Η αποθήκευση απέτυχε. Το πρόχειρο διατηρήθηκε — δοκίμασε ξανά.'));
+  } finally {
+   setSaving(false);
+  }
  };
  const handleEdit = (m: Milestone) => {
-  setDraftTitle(m.title);
-  setEditingId(m.id);
+  if (saving) return;
+  if (editor.dirty && editingId !== m.id) { setSwitchTarget(m); return; }
+  if (!editor.dirty) editor.reset({ title: m.title, editingId: m.id });
+  setSaveError('');
   setShowCreate(true);
  };
  const handleDelete = async (id: string) => {
@@ -314,7 +338,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
    actions={
     <div className="flex flex-wrap items-center gap-2">
      <AskLink prompt="What is overdue?">{t("Ask assistant", "Ρώτα τον βοηθό")}</AskLink>
-     <button type="button" onClick={() => setAdding(true)} title={t('Names a goal and puts it on this board.', 'Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα.')} className="inline-flex min-h-11 items-center gap-1.5 px-3 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all">
+     <button type="button" disabled={saving} onClick={openNew} title={t('Names a goal and puts it on this board.', 'Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα.')} className="inline-flex min-h-11 items-center gap-1.5 px-3 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all">
       <Plus className="w-3.5 h-3.5" /> {t('Add Milestone', 'Νέο ορόσημο')}
      </button>
     </div>
@@ -363,11 +387,14 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
    </div>
 
    {/* The editor stays outside disclosures and view changes preserve its draft. */}
+   <SaveStatus listKey={keys.milestones} />
    {adding && (
-    <form onSubmit={(e) => { e.preventDefault(); void saveMilestone(); }} className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
+    <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+    <form onSubmit={(e) => { e.preventDefault(); void saveMilestone(); }} className="flex flex-col sm:flex-row sm:items-center gap-2">
      <input
       type="text"
       value={draftTitle}
+      disabled={saving}
       onChange={(e) => setDraftTitle(e.target.value)}
       aria-label={t('Milestone title', 'Τίτλος οροσήμου')}
       placeholder={editingId ? t('Edit milestone title', 'Επεξεργασία οροσήμου') : t('Name the milestone', 'Όνομα οροσήμου')}
@@ -375,11 +402,20 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
       autoFocus
      />
      <div className="flex items-center gap-2">
-      <button type="submit" className="min-h-8 px-3 py-1 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-all">{editingId ? t('Update', 'Ενημέρωση') : t('Save', 'Αποθήκευση')}</button>
-      <button type="button" onClick={() => { setAdding(false); setDraftTitle(''); setEditingId(null); }} className="min-h-8 px-3 py-1 text-sm font-medium text-stone-500 hover:text-stone-900">{t('Cancel', 'Ακύρωση')}</button>
+      <button type="submit" disabled={saving || !draftTitle.trim()} className="min-h-8 px-3 py-1 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-all disabled:opacity-50">{saving ? t('Saving…', 'Αποθηκεύεται…') : editingId ? t('Update', 'Ενημέρωση') : t('Save', 'Αποθήκευση')}</button>
+      <button type="button" disabled={saving} onClick={() => setAdding(false)} className="min-h-8 px-3 py-1 text-sm font-medium text-stone-500 hover:text-stone-900">{t('Close', 'Κλείσιμο')}</button>
      </div>
     </form>
+    {saveError && <p role="alert" className="text-xs text-red-700">{saveError}</p>}
+    {!saving && <DraftNotice {...editor} onDiscard={() => { editor.reset(); setSaveError(''); setAdding(false); }} />}
+    </div>
    )}
+   {!adding && editor.dirty && <button type="button" className="text-xs text-stone-600 underline underline-offset-2" onClick={() => setAdding(true)}>{t('Continue your unsubmitted draft', 'Συνέχεια μη υποβληθέντος πρόχειρου')}</button>}
+   <ConfirmDialog open={!!switchTarget} onClose={() => setSwitchTarget(null)}
+    title={t('Replace the current draft?', 'Να αντικατασταθεί το τρέχον πρόχειρο;')}
+    description={t('The unsaved draft will be discarded so you can edit the other milestone. Saved milestones will not change.', 'Το μη αποθηκευμένο πρόχειρο θα διαγραφεί για να επεξεργαστείς το άλλο ορόσημο. Τα αποθηκευμένα ορόσημα δεν θα αλλάξουν.')}
+    confirmLabel={t('Discard and edit', 'Διαγραφή και επεξεργασία')} variant="danger"
+    onConfirm={() => { if (switchTarget) { editor.reset({ title: switchTarget.title, editingId: switchTarget.id }); setSaveError(''); setAdding(true); } setSwitchTarget(null); }} />
 
    {/* Search and named view modes remain immediately available. */}
    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -548,7 +584,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
           <div className="col-span-2 flex items-center justify-between">
            <span className="text-xs text-stone-400">{formatDate(m.targetDate)}</span>
            <div className="flex items-center gap-1 transition-all">
-            <button type="button" aria-label={t(`Edit milestone: ${m.title}`, `Επεξεργασία οροσήμου: ${m.title}`)} className="p-1 text-stone-300 hover:text-stone-600 rounded" onClick={() => { setDraftTitle(m.title); setEditingId(m.id); setShowCreate(true); }}><Edit3 className="w-3 h-3" /></button>
+            <button type="button" aria-label={t(`Edit milestone: ${m.title}`, `Επεξεργασία οροσήμου: ${m.title}`)} className="p-1 text-stone-300 hover:text-stone-600 rounded" onClick={() => handleEdit(m)}><Edit3 className="w-3 h-3" /></button>
             <button type="button" aria-label={t(`Delete milestone: ${m.title}`, `Διαγραφή οροσήμου: ${m.title}`)} className="p-1 text-stone-300 hover:text-red-400 rounded" onClick={() => void handleDelete(m.id)}><Trash2 className="w-3 h-3" /></button>
            </div>
           </div>
@@ -572,7 +608,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
       <p className="text-xs text-stone-400 mt-0.5">{t("Break goals into tasks and track your journey.", "Χώρισε τους στόχους σε εργασίες και παρακολούθησε τη διαδρομή.")}</p>
      </div>
     </div>
-    <button type="button" onClick={() => setAdding(true)} title={t('Names a goal and puts it on this board.', 'Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα.')} className="shrink-0 inline-flex min-h-8 items-center gap-1.5 px-3 py-1 border border-stone-200 bg-white text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-100 transition-all">
+    <button type="button" onClick={openNew} title={t('Names a goal and puts it on this board.', 'Δίνει όνομα σε έναν στόχο και τον βάζει σε αυτόν τον πίνακα.')} className="shrink-0 inline-flex min-h-8 items-center gap-1.5 px-3 py-1 border border-stone-200 bg-white text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-100 transition-all">
      {t('Add Milestone', 'Νέο ορόσημο')} <ArrowRight className="w-3 h-3" />
     </button>
    </div>

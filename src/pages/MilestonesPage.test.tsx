@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
  items: [] as Milestone[],
  listener: undefined as undefined | ((key: string) => void),
  undo: undefined as undefined | (() => void),
+ failSave: false,
 }));
 
 vi.mock('../App', () => ({ useAuth: () => ({ isDemoMode: true }) }));
@@ -28,6 +29,7 @@ vi.mock('../context/ToastContext', () => ({
  useToast: () => ({ toast: (message: { action?: { run: () => void } }) => { state.undo = message.action?.run; } }),
 }));
 vi.mock('../lib/localLists', () => ({
+ scopedKey: (key: string) => key,
  keys: { milestones: 'milestones' },
  onDataChange: (listener: (key: string) => void) => {
   state.listener = listener;
@@ -43,6 +45,7 @@ vi.mock('../services/milestoneService', () => ({
  milestoneService: {
   getMilestones: async () => ({ milestones: [...state.items], total: state.items.length }),
   createMilestone: async (input: Partial<Milestone>) => {
+   if (state.failSave) throw new Error('Save failed');
    const created = { ...state.items[0], ...input, id: 'created-fixture' } as Milestone;
    state.items = [created, ...state.items];
    // Match the real service: synchronous write notification arrives before
@@ -51,6 +54,7 @@ vi.mock('../services/milestoneService', () => ({
    return created;
   },
   updateMilestone: async (id: string, updates: Partial<Milestone>) => {
+   if (state.failSave) throw new Error('Save failed');
    state.items = state.items.map(item => item.id === id ? { ...item, ...updates } : item);
    state.listener?.('milestones');
    return state.items.find(item => item.id === id)!;
@@ -63,6 +67,7 @@ vi.mock('../services/milestoneService', () => ({
 }));
 
 beforeEach(() => {
+ localStorage.clear();
  state.items = [{
   id: 'existing-fixture', title: 'Existing goal', targetDate: '2027-01-01',
   status: 'Planned', category: 'Product', priority: 'Medium',
@@ -71,11 +76,39 @@ beforeEach(() => {
  }];
  state.listener = undefined;
  state.undo = undefined;
+ state.failSave = false;
 });
 
 const table = () => screen.getByRole('region', { name: /Milestone details table/ });
 
 describe('milestone editing after the clarity layout change', () => {
+ it('restores a closed and remounted draft without creating a milestone', async () => {
+  const user = userEvent.setup();
+  const page = render(<MilestonesPage />);
+  await screen.findByRole('region', { name: /Milestone details table/ });
+  await user.click(screen.getAllByRole('button', { name: 'Add Milestone' })[0]!);
+  await user.type(screen.getByRole('textbox', { name: 'Milestone title' }), 'Protected draft');
+  await user.click(screen.getByRole('button', { name: 'Close' }));
+  expect(screen.queryByRole('textbox', { name: 'Milestone title' })).not.toBeInTheDocument();
+  page.unmount();
+  render(<MilestonesPage />);
+  expect(screen.getByRole('textbox', { name: 'Milestone title' })).toHaveValue('Protected draft');
+  expect(state.items).toHaveLength(1);
+ });
+ it('retains failed submissions and retries without duplicate records', async () => {
+  const user = userEvent.setup();
+  render(<MilestonesPage />);
+  await screen.findByRole('region', { name: /Milestone details table/ });
+  await user.click(screen.getAllByRole('button', { name: 'Add Milestone' })[0]!);
+  await user.type(screen.getByRole('textbox', { name: 'Milestone title' }), 'Retry fixture');
+  state.failSave = true;
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Your draft is still here');
+  expect(screen.getByRole('textbox', { name: 'Milestone title' })).toHaveValue('Retry fixture');
+  state.failSave = false;
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(within(table()).getAllByText('Retry fixture')).toHaveLength(1));
+ });
  it('renders a created record once when a write notification wins the race', async () => {
   const user = userEvent.setup();
   render(<MilestonesPage />);

@@ -59,6 +59,9 @@ import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, read
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
+import { useProtectedDraft } from "../lib/useProtectedDraft";
+import DraftNotice from "../components/ui/DraftNotice";
+import SaveStatus from "../components/ui/SaveStatus";
 import { usePageControls } from "../lib/pageControls";
 import { roundMetrics } from "../lib/roundMetrics";
 import type { Person } from "../lib/peopleSource";
@@ -120,11 +123,17 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
  const favoriteInvestors = useStored(() => new Set(readIds(listKeys.watch)), [keys.watch]);
- const [selectedMeetingType, setSelectedMeetingType] = useState('Video Call');
- const [meetingInvestor, setMeetingInvestor] = useState('inv_1');
- const [meetingWhen, setMeetingWhen] = useState('');
- const [meetingDate, setMeetingDate] = useState('');
- const [meetingNotes, setMeetingNotes] = useState('');
+ const meetingDraft = useProtectedDraft('fundraising-meeting', user.id, { type: 'Video Call', investor: 'inv_1', date: '', time: '', notes: '' });
+ const selectedMeetingType = meetingDraft.value.type;
+ const setSelectedMeetingType = (type: string) => meetingDraft.setValue(previous => ({ ...previous, type }));
+ const meetingInvestor = meetingDraft.value.investor;
+ const setMeetingInvestor = (investor: string) => meetingDraft.setValue(previous => ({ ...previous, investor }));
+ const meetingWhen = meetingDraft.value.time;
+ const setMeetingWhen = (time: string) => meetingDraft.setValue(previous => ({ ...previous, time }));
+ const meetingDate = meetingDraft.value.date;
+ const setMeetingDate = (date: string) => meetingDraft.setValue(previous => ({ ...previous, date }));
+ const meetingNotes = meetingDraft.value.notes;
+ const setMeetingNotes = (notes: string) => meetingDraft.setValue(previous => ({ ...previous, notes }));
  const [meetingError, setMeetingError] = useState('');
  const [programType, setProgramType] = useState('All');
  const [opportunityType, setOpportunityType] = useState('All');
@@ -138,14 +147,24 @@ export default function Fundraising({ user }: FundraisingProps) {
  }, [extraRoom, isDemoMode]);
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
  const [roundEditing, setRoundEditing] = useState(false);
- const [roundDraft, setRoundDraft] = useState<Round | null>(null);
+ const roundForm = useProtectedDraft<Round>('fundraising-round', user.id, { ...round });
+ const roundDraft = roundForm.value;
+ const setRoundDraft = roundForm.setValue;
+ const [roundError, setRoundError] = useState('');
 
- const openRoundEditor = () => { setActiveTab('tracker'); setRoundDraft({ ...round }); setRoundEditing(true); };
+ const openRoundEditor = () => { setActiveTab('tracker'); if (!roundForm.dirty) roundForm.reset({ ...round }); setRoundError(''); setRoundEditing(true); };
  const saveRound = () => {
-  if (!roundDraft) return;
-  writeRound(roundDraft);
+  try {
+  const changed = Object.fromEntries(Object.entries(roundDraft).filter(([key, value]) =>
+   JSON.stringify(value) !== JSON.stringify(roundForm.baseline[key as keyof Round]))) as Partial<Round>;
+  writeRound({ ...readRound(), ...changed });
+  roundForm.reset({ ...readRound() });
   setRoundEditing(false);
-  showToast(t('Round updated', 'Ο γύρος ενημερώθηκε'));
+  setRoundError('');
+  showToast(t('Round updated on this device', 'Ο γύρος ενημερώθηκε στη συσκευή'));
+  } catch {
+   setRoundError(t('Could not save. Your draft is still here — try again.', 'Η αποθήκευση απέτυχε. Το πρόχειρο διατηρήθηκε — δοκίμασε ξανά.'));
+  }
  };
 
  usePageControls(() => [
@@ -477,6 +496,8 @@ export default function Fundraising({ user }: FundraisingProps) {
          </div>
         </div>
 
+        <SaveStatus listKey={keys.round} />
+        {!roundEditing && roundForm.dirty && <button type="button" className="text-xs text-stone-600 underline underline-offset-2" onClick={openRoundEditor}>{t('Continue round draft', 'Συνέχεια πρόχειρου γύρου')}</button>}
         {roundEditing && roundDraft ? (
          <div className="space-y-3">
           <label className="block space-y-1">
@@ -509,8 +530,10 @@ export default function Fundraising({ user }: FundraisingProps) {
           </label>
           <div className="flex gap-2 pt-1">
            <Button type="button" className="flex-1 min-h-11 text-sm rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={saveRound}>{t('Save', 'Αποθήκευση')}</Button>
-           <Button type="button" variant="outline" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => setRoundEditing(false)}>{t('Cancel', 'Άκυρο')}</Button>
+           <Button type="button" variant="outline" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => setRoundEditing(false)}>{t('Close', 'Κλείσιμο')}</Button>
           </div>
+          {roundError && <p role="alert" className="text-xs text-red-700">{roundError}</p>}
+          <DraftNotice {...roundForm} onDiscard={() => { roundForm.reset({ ...round }); setRoundError(''); setRoundEditing(false); }} />
          </div>
         ) : (
         <>
@@ -1349,8 +1372,9 @@ export default function Fundraising({ user }: FundraisingProps) {
        </div>
 
        {meetingError && <p role="alert" className="text-sm text-red-600">{meetingError}</p>}
+       <DraftNotice {...meetingDraft} onDiscard={() => { meetingDraft.reset({ type: 'Video Call', investor: 'inv_1', date: '', time: '', notes: '' }); setMeetingError(''); }} />
        <div className="flex flex-wrap gap-2 pt-2">
-        <Button variant="outline" className="flex-1 min-h-11 text-sm" onClick={() => setShowMeetingScheduler(false)}>{t("Cancel", "Ακύρωση")}</Button>
+        <Button variant="outline" className="flex-1 min-h-11 text-sm" onClick={() => setShowMeetingScheduler(false)}>{t("Close", "Κλείσιμο")}</Button>
         <Button className="flex-1 min-h-11 text-sm bg-stone-900 text-white" onClick={() => {
          const result = sessionFromMeetingDraft(
           { date: meetingDate, time: meetingWhen, type: selectedMeetingType, notes: meetingNotes },
@@ -1362,13 +1386,18 @@ export default function Fundraising({ user }: FundraisingProps) {
            : t("Choose a valid date and time.", "Επίλεξε έγκυρη ημερομηνία και ώρα."));
           return;
          }
+         try {
          addSession(result.session);
+         meetingDraft.reset({ type: 'Video Call', investor: 'inv_1', date: '', time: '', notes: '' });
          setMeetingError('');
          setMeetingDate('');
          setMeetingWhen('');
          setMeetingNotes('');
          setShowMeetingScheduler(false);
-         showToast(t("Meeting added to Calendar.", "Η συνάντηση προστέθηκε στο Ημερολόγιο."));
+         showToast(t("Meeting added to Calendar on this device.", "Η συνάντηση προστέθηκε στο Ημερολόγιο στη συσκευή."));
+         } catch {
+          setMeetingError(t('Could not add the meeting. Your draft is still here — try again.', 'Η συνάντηση δεν προστέθηκε. Το πρόχειρο διατηρήθηκε — δοκίμασε ξανά.'));
+         }
         }}>{t("Schedule Meeting", "Προγραμματισμός συνάντησης")}</Button>
        </div>
       </div>
