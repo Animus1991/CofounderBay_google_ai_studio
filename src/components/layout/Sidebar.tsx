@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
  useNotificationFeed } from "../../lib/notificationFeed";
 import { 
@@ -50,6 +51,20 @@ interface SidebarProps {
 
 export default function Sidebar({ user, guest = false, collapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
  useLanguage();
+ const [isMobileViewport, setIsMobileViewport] = useState(
+  () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1023px)').matches
+ );
+
+ useEffect(() => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+  const mediaQuery = window.matchMedia('(max-width: 1023px)');
+  const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+  updateViewport();
+  mediaQuery.addEventListener('change', updateViewport);
+  return () => mediaQuery.removeEventListener('change', updateViewport);
+ }, []);
+
+ const mobileNavigationHidden = isMobileViewport && !mobileOpen;
  const { tenant } = useTenant();
  const navigate = useNavigate();
  const isAdmin = user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.SUPER_ADMIN);
@@ -132,10 +147,12 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
    </AnimatePresence>
 
    <motion.aside 
+    aria-hidden={mobileNavigationHidden}
+    inert={mobileNavigationHidden}
     initial={false}
     animate={{ 
      width: collapsed ? 80 : 280,
-     x: (typeof window !== 'undefined' && window.innerWidth < 1024) 
+     x: isMobileViewport
       ? (mobileOpen ? 0 : -280) 
       : 0
     }}
@@ -155,16 +172,23 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
      <div className="flex items-center gap-2.5 overflow-hidden">
       {/* Mobile hamburger */}
       <button
+       type="button"
        onClick={onMenuToggle}
+       aria-label={bothText("Close menu", "Κλείσιμο μενού")}
+       aria-controls="primary-navigation"
        className="lg:hidden p-1.5 hover:bg-stone-100 rounded-lg text-stone-500"
       >
        <Menu className="w-4 h-4" />
       </button>
-      <motion.div 
+      <motion.button
+       type="button"
+       aria-label={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
+       aria-expanded={!collapsed}
+       aria-controls="primary-navigation"
        whileHover={{ scale: 1.05 }}
        whileTap={{ scale: 0.95 }}
        onClick={() => setCollapsed(!collapsed)}
-       className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer"
+       className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
        title={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
       >
        {tenant?.branding?.logoUrl ? (
@@ -172,7 +196,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
        ) : (
         <Zap className="w-4 h-4 text-white fill-current" />
        )}
-      </motion.div>
+      </motion.button>
       {!collapsed && (
        <motion.div 
         initial={{ opacity: 0, x: -10 }}
@@ -187,7 +211,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
     </div>
 
    {/* Navigation */}
-   <nav className="flex-1 px-3 py-2 space-y-6 overflow-y-auto no-scrollbar pb-10">
+   <nav id="primary-navigation" aria-label={bothText("Primary navigation", "Κύρια πλοήγηση")} className="flex-1 px-3 py-2 space-y-6 overflow-y-auto no-scrollbar pb-10">
     <div>
      <NavLink
       to="/dashboard"
@@ -301,12 +325,19 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
 
    {/* User Footer */}
    <div className="p-4 border-t border-stone-100 bg-stone-50/30">
-    <div
-     onClick={() => navigate(guest ? '/login' : '/profile')}
-     className={cn(
-     "flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200 shadow-sm group cursor-pointer hover:border-stone-400 transition-all",
+    <div className={cn(
+     "flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200 shadow-sm group hover:border-stone-400 transition-all",
      collapsed && "justify-center p-1.5"
     )}>
+     <NavLink
+      to={guest ? '/login' : '/profile'}
+      onClick={() => setMobileOpen?.(false)}
+      aria-label={guest ? bothText("Sign in", "Είσοδος") : bothText("Open your profile", "Άνοιξε το προφίλ σου")}
+      className={cn(
+       "flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2",
+       collapsed && "flex-none"
+      )}
+     >
      <div className="w-8 h-8 rounded-lg bg-stone-100 overflow-hidden border border-stone-200 shrink-0 flex items-center justify-center">
       {user.avatarUrl ? (
        <img 
@@ -327,6 +358,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
        )}
       </div>
      )}
+     </NavLink>
      {!collapsed && !guest && (
       <div className="flex items-center">
        <button type="button" onClick={() => { setMobileOpen?.(false); navigate('/settings'); }} aria-label={bothText('Settings', 'Ρυθμίσεις')} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900">
@@ -362,6 +394,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
        )}
       </NavLink>
       <button 
+       type="button"
        onClick={handleLogout}
        title={navTitle("Logout", "/logout")}
        className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"

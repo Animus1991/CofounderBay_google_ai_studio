@@ -65,6 +65,8 @@ export default function Layout() {
      type="button"
      onClick={toggleMobileSidebar}
      aria-label={t('Menu', 'Μενού')}
+     aria-expanded={mobileSidebarOpen}
+     aria-controls="primary-navigation"
      className="flex h-11 w-11 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
     >
      <Menu className="w-5 h-5" />
