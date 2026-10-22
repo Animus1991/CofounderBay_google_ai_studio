@@ -33,7 +33,7 @@ describe('protected, account-scoped drafts', () => {
  });
  it('keeps text and reports non-durable storage instead of claiming success', () => {
   const hook = renderHook(() => useProtectedDraft('example', 'a', { title: '' }));
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError'); });
+  vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError'); });
   act(() => hook.result.current.setValue({ title: 'Still here' }));
   expect(hook.result.current.value.title).toBe('Still here');
   expect(hook.result.current.durable).toBe(false);
