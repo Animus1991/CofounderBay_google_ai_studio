@@ -201,7 +201,7 @@ export default function Notifications() {
           </div>
         </Card>
 
-        <Card className="bg-stone-900 text-white border-none p-8">
+        <Card className="bg-stone-900 text-white border-none p-5 sm:p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center md:text-left">
               <h4 className="text-base font-semibold">{t('Manage your alerts', 'Διαχείριση ειδοποιήσεων')}</h4>

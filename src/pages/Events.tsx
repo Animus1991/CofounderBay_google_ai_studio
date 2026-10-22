@@ -311,7 +311,7 @@ export default function Events(_props: EventsProps = {}) {
              <p className="text-xs text-stone-400 mt-0.5 tracking-wider">{t(`by ${event.organizer}`, `Διοργάνωση: ${event.organizer}`)}</p>
             </div>
             <div className="flex gap-1 shrink-0">
-             <button type="button" onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
+             <button type="button" aria-pressed={bookmarkedEvents.includes(event.id)} aria-label={bookmarkedEvents.includes(event.id) ? t("Remove saved event", "Αφαίρεση αποθηκευμένης εκδήλωσης") : t("Save event", "Αποθήκευση εκδήλωσης")} title={bookmarkedEvents.includes(event.id) ? t("Remove saved event", "Αφαίρεση αποθηκευμένης εκδήλωσης") : t("Save event", "Αποθήκευση εκδήλωσης")} onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
               <Bookmark className={cn("w-3.5 h-3.5", bookmarkedEvents.includes(event.id) && "fill-current")} />
              </button>
              <button
@@ -324,7 +324,7 @@ export default function Events(_props: EventsProps = {}) {
              >
               <CalendarPlus className="w-3.5 h-3.5" />
              </button>
-             <button type="button" onClick={() => { void navigator.clipboard?.writeText(event.title); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+             <button type="button" aria-label={t("Copy event title", "Αντιγραφή τίτλου εκδήλωσης")} title={t("Copy event title", "Αντιγραφή τίτλου εκδήλωσης")} onClick={() => { void navigator.clipboard?.writeText(event.title); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
               <Share2 className="w-3.5 h-3.5" />
              </button>
             </div>

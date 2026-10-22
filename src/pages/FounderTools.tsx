@@ -475,6 +475,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
          </div>
         </div>
         <button
+         type="button"
+         aria-label={t("Close venture diagnostic", "Κλείσιμο διάγνωσης εγχειρήματος")}
          onClick={() => setShowAssessment(false)}
          className="w-8 h-8 rounded-xl hover:bg-stone-200 flex items-center justify-center transition-all group"
         >
@@ -485,8 +487,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
        <div className="p-5 space-y-5 relative z-10">
         <div className="space-y-3">
          <div className="flex items-center gap-3">
-          <div className="px-2.5 py-1 bg-stone-900 rounded-lg">
-           <span className="text-xs font-semibold text-white tracking-wide">
+          <div className="px-2.5 py-1 bg-stone-200 rounded-lg">
+           <span className="text-xs font-semibold text-stone-900 tracking-wide">
             {assessmentQuestions[assessmentStep]?.category}
            </span>
           </div>
@@ -560,7 +562,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
       onClick={() => setActiveTab(tab)}
       className={cn(
        "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize tracking-wide",
-       activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
+       activeTab === tab ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200" : "text-stone-500 hover:text-stone-700"
       )}
      >
       {tabLabel(tab)}
@@ -571,7 +573,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
    {activeTab === 'dashboard' && (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
      {/* Readiness Score Card */}
-     <Card className="lg:col-span-4 space-y-5 p-5 rounded-2xl bg-white border-stone-100 shadow-sm">
+     <Card className="lg:col-span-4 p-5 rounded-2xl bg-white border-stone-100 shadow-sm" contentClassName="space-y-5">
       <div className="flex items-center justify-between">
        <div>
         <h3 className="text-base font-semibold text-stone-900">{t("Readiness Index", "Δείκτης ετοιμότητας")}</h3>
@@ -754,7 +756,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
      {/* Steps Sidebar - Systematic Style */}
      <div className="lg:col-span-4 space-y-4">
-      <Card className="p-4 border-stone-100 rounded-2xl space-y-1">
+      <Card className="p-4 border-stone-100 rounded-2xl" contentClassName="space-y-1">
        <p className="text-xs font-semibold text-stone-400 tracking-wider px-2 pb-2 border-b border-stone-100 mb-2">{t("Modules", "Ενότητες")}</p>
        {builderSteps.map((step) => (
         <button
@@ -763,7 +765,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          className={cn(
           "w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3 group",
           builderStep === step.id
-           ? "bg-stone-900 border-stone-900 text-white shadow-sm"
+           ? "bg-stone-200 border-stone-400 text-stone-900 shadow-sm"
            : "bg-white border-stone-100 text-stone-700 hover:border-stone-300 hover:bg-stone-50"
          )}
         >
@@ -808,8 +810,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <div className="space-y-5">
           <div className="flex items-start justify-between gap-4">
            <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center shrink-0">
-             <span className="text-white font-mono font-semibold text-sm">{String(builderStep).padStart(2, '0')}</span>
+            <div className="w-9 h-9 rounded-xl bg-stone-200 flex items-center justify-center shrink-0">
+             <span className="text-stone-900 font-mono font-semibold text-sm">{String(builderStep).padStart(2, '0')}</span>
             </div>
             <div>
              <p className="text-xs font-mono text-stone-400 tracking-wider">{t("Module Architecture", "Αρχιτεκτονική ενότητας")}</p>
@@ -867,7 +869,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
        </motion.div>
       </AnimatePresence>
 
-      <Card className="bg-amber-50 border-amber-100 p-4 rounded-2xl flex gap-4 items-start">
+      <Card className="bg-amber-50 border-amber-100 p-4 rounded-2xl" contentClassName="flex gap-4 items-start">
        <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-amber-600 shrink-0 border border-amber-100">
         <Lightbulb className="w-4 h-4" />
        </div>
@@ -898,7 +900,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          className={cn(
           "w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3 group",
           pitchSlide === slide.id
-           ? "bg-stone-900 border-stone-900 text-white shadow-sm"
+           ? "bg-stone-200 border-stone-400 text-stone-900 shadow-sm"
            : "bg-white border-stone-100 text-stone-600 hover:border-stone-300 hover:bg-stone-50"
          )}
         >
@@ -937,8 +939,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
         <Card className="p-6 border-stone-100 shadow-sm bg-white">
          <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-           <div className="w-9 h-9 rounded-xl bg-stone-900 flex items-center justify-center">
-            <span className="text-white font-mono text-sm font-medium">{String(pitchSlide).padStart(2, '0')}</span>
+           <div className="w-9 h-9 rounded-xl bg-stone-200 flex items-center justify-center">
+            <span className="text-stone-900 font-mono text-sm font-medium">{String(pitchSlide).padStart(2, '0')}</span>
            </div>
            <div>
             <p className="text-sm text-stone-400 font-mono tracking-wider">{t("Slide", "Διαφάνεια")}</p>
@@ -981,9 +983,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
           >
            ← {t("Previous", "Προηγούμενο")}
           </Button>
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 flex-wrap items-center justify-center gap-1">
            {pitchSlides.map((_, i) => (
-            <button key={i} onClick={() => setPitchSlide(i + 1)} className={cn("w-1.5 h-1.5 rounded-full transition-all", pitchSlide === i + 1 ? "bg-stone-900 w-4" : "bg-stone-200")} />
+            <button type="button" aria-label={t(`Go to slide ${i + 1}`, `Μετάβαση στη διαφάνεια ${i + 1}`)} aria-pressed={pitchSlide === i + 1} key={i} onClick={() => setPitchSlide(i + 1)} className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900">
+             <span aria-hidden="true" className={cn("h-1.5 rounded-full transition-all", pitchSlide === i + 1 ? "bg-stone-900 w-4" : "bg-stone-200 w-1.5")} />
+            </button>
            ))}
           </div>
           <Button
@@ -998,7 +1002,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
         </Card>
 
         {/* AI Tip */}
-        <Card className="bg-stone-50 border-stone-100 p-4 flex gap-3 items-start">
+        <Card className="bg-stone-50 border-stone-100 p-4" contentClassName="flex gap-3 items-start">
          <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
          <Zap className="w-3.5 h-3.5 text-amber-600" />
         </div>
@@ -1090,7 +1094,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
               <p className={cn("text-sm font-bold", app.match >= 80 ? "text-emerald-600" : app.match >= 65 ? "text-amber-500" : "text-stone-400")}>{app.match}%</p>
              </div>
             </div>
-            <Button variant="ghost" size="icon" className="w-7 h-7 rounded-lg text-stone-200 hover:text-stone-900" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedAppId(expandedAppId === app.id ? null : app.id); }}>
+            <Button variant="ghost" size="icon" aria-label={expandedAppId === app.id ? t("Collapse application details", "Σύμπτυξη στοιχείων αίτησης") : t("Expand application details", "Ανάπτυξη στοιχείων αίτησης")} aria-expanded={expandedAppId === app.id} className="w-7 h-7 rounded-lg text-stone-200 hover:text-stone-900" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setExpandedAppId(expandedAppId === app.id ? null : app.id); }}>
              <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedAppId === app.id && "rotate-90")} />
             </Button>
            </div>
@@ -1110,7 +1114,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
      ) : (
       <form onSubmit={(e) => { e.preventDefault(); const raw = new FormData(e.currentTarget).get('program'); const program = typeof raw === 'string' ? raw.trim() : ''; if (!program) return; const item: TrackedApplication = { id: Date.now(), program, type: 'Program', status: 'draft', deadline: '—', decision: '—', match: 0, note: '' }; const tracked = [item, ...readTracked()]; writeTracked(tracked); setApplications([...tracked, ...(isDemoMode ? starterApplications : [])]); setTrackingName(null); }} className="w-full p-4 rounded-xl border-2 border-dashed border-stone-200 flex items-center gap-2">
        <input name="program" value={trackingName} onChange={(e) => setTrackingName(e.target.value)} placeholder={t("Program name", "Όνομα προγράμματος")} className="flex-1 bg-transparent text-sm text-stone-900 outline-none" autoFocus />
-       <button type="submit" className="text-sm font-medium text-stone-900">{t("Save", "Αποθήκευση")}</button>
+       <button type="submit" className="text-sm font-medium text-stone-900">{t("Track application", "Καταγραφή αίτησης")}</button>
       </form>
      )}
     </div>
@@ -1286,6 +1290,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <template.icon className="w-5 h-5 text-stone-500" />
           </div>
           <button 
+           type="button"
+           aria-label={t("Toggle saved template", "Αλλαγή αποθήκευσης προτύπου")}
            onClick={() => togglePin(template.id.toString())}
            className="p-1 hover:bg-stone-100 rounded-lg transition-colors"
           >

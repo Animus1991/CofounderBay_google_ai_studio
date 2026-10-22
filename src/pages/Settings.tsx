@@ -950,8 +950,8 @@ export default function Settings() {
                 ))}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
-                <NavLink to="/settings/billing"><Button variant="secondary">{t("Billing history", "Ιστορικό χρέωσης")}</Button></NavLink>
-                <NavLink to="/pricing"><Button variant="ghost" className="text-white hover:bg-white/10">{t("Compare plans", "Σύγκριση πλάνων")}</Button></NavLink>
+                <NavLink to="/settings/billing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-stone-100 text-stone-900 text-sm font-medium hover:bg-stone-200 transition-colors">{t("Billing history", "Ιστορικό χρέωσης")}</NavLink>
+                <NavLink to="/pricing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-white text-sm font-medium hover:bg-white/10 transition-colors">{t("Compare plans", "Σύγκριση πλάνων")}</NavLink>
               </div>
             </div>
           </Card>

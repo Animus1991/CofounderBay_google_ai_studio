@@ -83,6 +83,7 @@
     "vitest": "^3.2.6"
   },
   "overrides": {
-    "vite": "$vite"
+    "vite": "$vite",
+    "websocket-driver": "^0.7.5"
   }
 }

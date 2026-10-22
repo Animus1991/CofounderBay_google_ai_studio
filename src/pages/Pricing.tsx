@@ -41,7 +41,7 @@ export default function Pricing() {
  }[id] ?? description);
 
  return (
-  <div className="py-20 px-2 sm:px-6 max-w-7xl mx-auto space-y-20">
+  <div className="w-full min-w-0 py-10 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto space-y-10 sm:space-y-20">
    {/* Header */}
    <div className="text-center space-y-6 max-w-3xl mx-auto">
     <motion.div
@@ -54,7 +54,7 @@ export default function Pricing() {
     <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      {t('Scale your ecosystem with confidence.', 'Κλιμάκωσε το οικοσύστημά σου με σιγουριά.')}
     </h1>
-    <p className="text-sm sm:text-base text-stone-500">
+    <p className="text-sm sm:text-base text-stone-500 break-words">
      {t('Choose the plan that fits your stage, from individual founders to global institutions.', 'Διάλεξε το πακέτο που ταιριάζει στο στάδιό σου, από μεμονωμένους ιδρυτές έως παγκόσμιους οργανισμούς.')}
     </p>
 
@@ -62,6 +62,10 @@ export default function Pricing() {
     <div className="flex items-center justify-center gap-4 pt-8">
      <span className={`text-sm font-medium ${billingCycle === 'Monthly' ? 'text-stone-900' : 'text-stone-400'}`}>{t('Monthly', 'Μηνιαία')}</span>
      <button
+      type="button"
+      role="switch"
+      aria-checked={billingCycle === 'Annual'}
+      aria-label={t('Annual billing', 'Ετήσια χρέωση')}
       onClick={() => setBillingCycle(billingCycle === 'Monthly' ? 'Annual' : 'Monthly')}
       className="w-14 h-8 bg-stone-200 rounded-full p-1 relative transition-colors hover:bg-stone-300"
      >
@@ -78,7 +82,7 @@ export default function Pricing() {
    </div>
 
    {/* Pricing Grid */}
-   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+   <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-6">
     {plans.filter(p => p.customerType !== 'Enterprise').map((plan, idx) => (
      <motion.div
       key={plan.id}
@@ -86,17 +90,17 @@ export default function Pricing() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: idx * 0.1 }}
      >
-      <Card className={`h-full flex flex-col p-8 relative overflow-hidden ${plan.id === 'organization-standard' ? 'border-2 border-stone-900 ring-4 ring-stone-900/5' : ''}`}>
+      <Card className={`h-full p-4 sm:p-6 relative overflow-hidden ${plan.id === 'organization-standard' ? 'border-2 border-stone-900 ring-4 ring-stone-900/5' : ''}`} contentClassName="flex flex-col">
        {plan.id === 'organization-standard' && (
         <div className="absolute top-0 right-0 bg-stone-900 text-white px-4 py-1 text-xs font-medium tracking-wide rounded-bl-xl">
          {t('Most Popular', 'Το πιο δημοφιλές')}
         </div>
        )}
 
-       <div className="space-y-4 mb-8">
+       <div className="space-y-3 mb-5">
         <h3 className="text-base font-semibold">{planName(plan.id, plan.name)}</h3>
-        <p className="text-sm text-stone-500 h-10">{planDescription(plan.id, plan.description ?? '')}</p>
-        <div className="pt-4">
+        <p className="text-sm text-stone-500 sm:min-h-10">{planDescription(plan.id, plan.description ?? '')}</p>
+        <div className="flex flex-wrap items-baseline gap-x-1 pt-2">
          <span className="text-lg font-semibold">
           ${billingCycle === 'Monthly' ? (plan.priceMonthly || plan.price) : Math.floor((plan.priceAnnual || (plan.price * 12)) / 12)}
          </span>
@@ -107,7 +111,7 @@ export default function Pricing() {
         )}
        </div>
 
-       <div className="flex-1 space-y-4 mb-8">
+       <div className="flex-1 space-y-3 mb-5">
         <p className="text-xs font-medium text-stone-400 tracking-wide">{t("What's included", 'Τι περιλαμβάνεται')}</p>
         <ul className="space-y-3">
          <li className="flex items-start gap-3 text-sm">
@@ -115,7 +119,7 @@ export default function Pricing() {
           <span>{(plan.limits?.seats === -1 || !plan.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : plan.limits.seats} {plan.customerType === 'Individual' ? t('User', 'χρήστης') : t('Seats', 'θέσεις')}</span>
          </li>
          {features.map(f => (
-          <li key={f.key} className={`flex items-start gap-3 text-sm ${plan.features.includes(f.key) ? 'text-stone-900' : 'text-stone-300'}`}>
+          <li key={f.key} className={`flex items-start gap-3 text-sm ${plan.features.includes(f.key) ? 'text-stone-900' : 'text-stone-500'}`}>
            {plan.features.includes(f.key) ? (
             <Check className="w-4 h-4 text-green-500 mt-0.5" />
            ) : (
@@ -144,16 +148,16 @@ export default function Pricing() {
      animate={{ opacity: 1, y: 0 }}
      transition={{ delay: 0.4 }}
     >
-     <Card className="h-full flex flex-col p-8 bg-stone-900 text-white border-none">
-      <div className="space-y-4 mb-8">
+     <Card className="h-full p-4 sm:p-6 bg-stone-50 text-stone-900 border-stone-200" contentClassName="flex flex-col">
+      <div className="space-y-3 mb-5">
        <h3 className="text-base font-semibold">{t('Enterprise', 'Enterprise')}</h3>
-       <p className="text-sm text-stone-400 h-10">{t('Custom solutions for global institutions and large-scale ecosystems.', 'Προσαρμοσμένες λύσεις για παγκόσμιους οργανισμούς και οικοσυστήματα μεγάλης κλίμακας.')}</p>
-       <div className="pt-4">
+       <p className="text-sm text-stone-600 sm:min-h-10">{t('Custom solutions for global institutions and large-scale ecosystems.', 'Προσαρμοσμένες λύσεις για παγκόσμιους οργανισμούς και οικοσυστήματα μεγάλης κλίμακας.')}</p>
+       <div className="pt-2">
         <span className="text-lg font-semibold">{t('Custom', 'Προσαρμοσμένο')}</span>
        </div>
       </div>
 
-      <div className="flex-1 space-y-4 mb-8">
+      <div className="flex-1 space-y-3 mb-5">
        <p className="text-xs font-medium text-stone-500 tracking-wide">{t('Everything in Multi-Seat, plus', 'Όλα του Multi-Seat, συν')}</p>
        <ul className="space-y-3">
         {[
@@ -165,7 +169,7 @@ export default function Pricing() {
          t('Institutional Procurement', 'Θεσμικές προμήθειες')
         ].map(f => (
          <li key={f} className="flex items-start gap-3 text-sm">
-          <Check className="w-4 h-4 text-stone-400 mt-0.5" />
+          <Check className="w-4 h-4 shrink-0 text-stone-500 mt-0.5" />
           <span>{f}</span>
          </li>
         ))}
@@ -174,7 +178,7 @@ export default function Pricing() {
 
       <Button
        variant="outline"
-       className="w-full border-stone-700 text-white hover:bg-stone-800"
+       className="w-full"
        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'I want to learn about the Enterprise plan' } }))}
       >
        {t('Contact Sales', 'Επικοινωνία με πωλήσεις')}
@@ -187,36 +191,36 @@ export default function Pricing() {
    <div className="pt-20 space-y-12">
     <div className="text-center space-y-4">
      <h2 className="text-base font-semibold">{t('Compare all features', 'Σύγκριση όλων των δυνατοτήτων')}</h2>
-     <p className="text-sm text-stone-500">{t('A detailed breakdown of what each plan offers.', 'Αναλυτική εικόνα του τι προσφέρει κάθε πακέτο.')}</p>
+     <p className="text-sm text-stone-500">{t('Compare every plan. On smaller screens, swipe or scroll the table horizontally to see more plans.', 'Σύγκρινε όλα τα πακέτα. Σε μικρότερες οθόνες, σύρε ή κύλησε τον πίνακα οριζόντια για να δεις περισσότερα πακέτα.')}</p>
     </div>
 
-    <div className="overflow-x-auto">
-     <table className="w-full text-left border-collapse">
+    <div role="region" aria-label={t('Feature comparison — scroll horizontally for more plans', 'Σύγκριση δυνατοτήτων — οριζόντια κύλιση για περισσότερα πακέτα')} tabIndex={0} className="min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-stone-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-500">
+     <table className="w-full min-w-[56rem] text-left border-collapse">
       <thead>
        <tr className="border-b border-stone-200">
-        <th className="py-6 px-4 text-sm font-medium text-stone-400 tracking-wide">{t('Feature', 'Δυνατότητα')}</th>
+        <th scope="col" className="sticky left-0 z-20 w-48 bg-stone-50 py-6 px-4 text-sm font-medium text-stone-600 tracking-wide">{t('Feature', 'Δυνατότητα')}</th>
         {plans.map(p => (
-         <th key={p.id} className="py-6 px-4 text-sm font-medium text-center">{planName(p.id, p.name)}</th>
+         <th scope="col" key={p.id} className="py-6 px-4 text-sm font-medium text-center">{planName(p.id, p.name)}</th>
         ))}
        </tr>
       </thead>
       <tbody>
        {features.map(f => (
         <tr key={f.key} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
-         <td className="py-4 px-4 text-sm font-medium text-stone-600">{f.label}</td>
+         <th scope="row" className="sticky left-0 z-10 bg-stone-50 py-4 px-4 text-sm font-medium text-stone-600">{f.label}</th>
          {plans.map(p => (
-          <td key={p.id} className="py-4 px-4 text-center">
+          <td key={p.id} aria-label={p.features.includes(f.key) ? t('Included', 'Περιλαμβάνεται') : t('Not included', 'Δεν περιλαμβάνεται')} className="py-4 px-4 text-center">
            {p.features.includes(f.key) ? (
-            <Check className="w-5 h-5 text-green-500 mx-auto" />
+            <Check aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" />
            ) : (
-            <X className="w-5 h-5 text-stone-200 mx-auto" />
+            <X aria-hidden="true" className="w-5 h-5 text-stone-500 mx-auto" />
            )}
           </td>
          ))}
         </tr>
        ))}
        <tr className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
-        <td className="py-4 px-4 text-sm font-medium text-stone-600">{t('Included Seats', 'Θέσεις που περιλαμβάνονται')}</td>
+        <th scope="row" className="sticky left-0 z-10 bg-stone-50 py-4 px-4 text-sm font-medium text-stone-600">{t('Included Seats', 'Θέσεις που περιλαμβάνονται')}</th>
         {plans.map(p => (
          <td key={p.id} className="py-4 px-4 text-center text-sm font-medium">
           {(p.limits?.seats === -1 || !p.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : p.limits.seats}

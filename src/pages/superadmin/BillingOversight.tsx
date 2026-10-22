@@ -245,7 +245,7 @@ export default function BillingOversight() {
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
      >
       {plans.map((plan) => (
-       <Card key={plan.id} className="p-6 flex flex-col justify-between">
+        <Card key={plan.id} className="p-4 sm:p-6" contentClassName="flex flex-col justify-between gap-4">
         <div className="space-y-4">
          <div className="flex justify-between items-start">
           <div className="space-y-1">

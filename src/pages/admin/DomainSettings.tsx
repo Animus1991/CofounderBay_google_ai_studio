@@ -104,7 +104,7 @@ export default function DomainSettings() {
    ) : (
     <div className="space-y-4">
      {domains.length === 0 && (
-      <Card className="p-10 text-center border-dashed">
+   <Card className="p-4 sm:p-6 text-center border-dashed">
        <Globe className="w-8 h-8 text-stone-300 mx-auto mb-3" />
        <p className="text-sm font-medium text-stone-700">{t('No domains configured', 'Δεν έχουν ρυθμιστεί τομείς')}</p>
        <p className="text-xs text-stone-500 mt-1">{t('Add a subdomain or custom domain to give your ecosystem its own address.', 'Πρόσθεσε υποτομέα ή προσαρμοσμένο τομέα για δική σου διεύθυνση.')}</p>

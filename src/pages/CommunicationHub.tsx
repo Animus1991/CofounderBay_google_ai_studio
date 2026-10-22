@@ -777,12 +777,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // RENDER: LEFT SIDEBAR
  // =============================================================================
  const renderLeftSidebar = () => (
-  <aside className={cn("w-full md:w-80 lg:w-[22rem] border-r border-stone-200/80 bg-white flex flex-col shrink-0", (activeId || activeView === "ai-center") && "hidden md:flex")}>
+  <aside className={cn("w-full md:w-72 lg:w-80 xl:w-[22rem] border-r border-stone-200/80 bg-white flex flex-col shrink-0", (activeId || activeView === "ai-center") && "hidden md:flex")}>
    <div className="p-4 space-y-3">
     <div className="flex items-center justify-between">
      <div className="flex items-center gap-3">
-      <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center shadow-lg shadow-stone-900/15">
-       <MessageSquare className="w-5 h-5 text-white" />
+      <div className="w-10 h-10 bg-stone-200 rounded-2xl flex items-center justify-center shrink-0">
+       <MessageSquare className="w-5 h-5 text-stone-900" />
       </div>
       <div>
        <h1 className="text-base font-bold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
@@ -946,7 +946,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
    <div className="p-3 border-t border-stone-100">
     <div className="flex items-center justify-between">
      <button type="button" onClick={() => { setActiveView(activeView === "ai-center" ? "chat" : "ai-center"); setActiveId(null); }} aria-pressed={activeView === "ai-center"}
-      className={cn("flex items-center gap-2 min-h-11 px-3 rounded-xl transition-all", activeView === "ai-center" ? "bg-stone-900 text-white" : "hover:bg-stone-100 text-stone-500")}>
+      className={cn("flex items-center gap-2 min-h-11 px-3 rounded-xl transition-all", activeView === "ai-center" ? "bg-stone-200 text-stone-900" : "hover:bg-stone-100 text-stone-500")}>
       <BrainCircuit className="w-4 h-4" />
       <span className="text-xs font-semibold">{t("AI specialists", "Ειδικοί AI")}</span>
      </button>
@@ -1058,7 +1058,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
           className="w-full text-sm text-stone-900 bg-white rounded-lg p-2 border border-stone-300 focus:outline-none" />
          <div className="flex gap-2 justify-end">
           <button type="button" onClick={() => setEditing(null)} className="text-xs text-stone-300 hover:text-white">{t("Cancel", "Ακύρωση")}</button>
-          <button type="button" onClick={() => { messaging.editMessage(msg.id, editing.body); setEditing(null); }} className="text-xs font-semibold text-white">{t("Save", "Αποθήκευση")}</button>
+          <button type="button" onClick={() => { messaging.editMessage(msg.id, editing.body); setEditing(null); }} className="text-xs font-semibold text-white">{t("Save edit", "Αποθήκευση αλλαγής")}</button>
          </div>
         </div>
        ) : (
@@ -1109,7 +1109,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <div className={cn("flex items-center gap-1 flex-wrap", isMe ? "justify-end" : "justify-start")}>
         {reactions.map(([key, ids]) => (
          <button key={key} type="button" onClick={() => messaging.react(msg.id, key)} aria-pressed={ids.includes(user.id)}
-          className={cn("px-1.5 py-0.5 rounded-full text-xs border transition-all", ids.includes(user.id) ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300")}>
+          className={cn("px-1.5 py-0.5 rounded-full text-xs border transition-all", ids.includes(user.id) ? "bg-stone-200 text-stone-900 border-stone-400 font-semibold" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300")}>
           {reactionEmoji(key)} {ids.length > 1 && ids.length}
          </button>
         ))}
@@ -1136,9 +1136,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     </p>
     <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
      {[
-      { label: t("Conversations", "Συνομιλίες"), value: conversations.filter((c) => !c.archived).length, icon: MessageSquare, color: "bg-stone-900 text-white" },
-      { label: t("Unread", "Αδιάβαστα"), value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
-      { label: t("Requests", "Αιτήματα"), value: intros.length, icon: UserPlus, color: intros.length > 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600" },
+      { label: t("Conversations", "Συνομιλίες"), value: conversations.filter((c) => !c.archived).length, icon: MessageSquare, color: "bg-stone-200 text-stone-900" },
+      { label: t("Unread", "Αδιάβαστα"), value: totalUnread, icon: MessageCircle, color: totalUnread > 0 ? "bg-stone-200 text-stone-900" : "bg-stone-100 text-stone-600" },
+      { label: t("Requests", "Αιτήματα"), value: intros.length, icon: UserPlus, color: intros.length > 0 ? "bg-stone-200 text-stone-900" : "bg-stone-100 text-stone-600" },
      ].map(({ label, value, icon: Icon, color }) => (
       <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}><Icon className="w-3.5 h-3.5" /></div>
@@ -1472,7 +1472,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
      <div className="p-3 border-b border-stone-100">
       <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared photos", "Κοινοποιημένες φωτογραφίες")}</h4>
-      {sharedMedia.length === 0 ? <p className="text-xs text-stone-400">{t("No photos shared yet.", "Δεν έχουν σταλεί φωτογραφίες ακόμη.")}</p> : (
+      {sharedMedia.length === 0 ? <p className="text-xs text-stone-400">{t("No photos yet. Attach an image in the message box to share one.", "Καμία φωτογραφία ακόμη. Επισύναψε εικόνα στο πλαίσιο μηνύματος για να τη μοιραστείς.")}</p> : (
        <div className="grid grid-cols-3 gap-1.5">
         {sharedMedia.slice(-9).reverse().map(({ attachment, message }) => {
          const mediaUrl = safeMediaUrl(attachment.url);
@@ -1489,7 +1489,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
 
      <div className="p-3 border-b border-stone-100">
       <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase mb-2">{t("Shared files", "Κοινοποιημένα αρχεία")}</h4>
-      {sharedFiles.length === 0 ? <p className="text-xs text-stone-400">{t("No files shared yet.", "Δεν έχουν σταλεί αρχεία ακόμη.")}</p> : (
+      {sharedFiles.length === 0 ? <p className="text-xs text-stone-400">{t("No files yet. Attach a document in the message box to share one.", "Κανένα αρχείο ακόμη. Επισύναψε έγγραφο στο πλαίσιο μηνύματος για να το μοιραστείς.")}</p> : (
        <div className="space-y-1.5">
         {sharedFiles.slice(-8).reverse().map(({ attachment, message }) => (
          <a key={`${message.id}-${attachment.name}`} href={safeMediaUrl(attachment.url) || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group">
@@ -1671,7 +1671,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div className="max-w-2xl mx-auto">
       <h2 className="text-base font-semibold text-stone-900 mb-4 tracking-tight">{t("Specialist conversations", "Συνομιλίες με ειδικούς")}</h2>
       {aiConversations.length === 0 ? (
-       <p className="text-sm text-stone-500 text-center py-12">{t("No conversations with specialists yet.", "Δεν υπάρχουν συνομιλίες με ειδικούς ακόμη.")}</p>
+       <p className="text-sm text-stone-500 text-center py-12">{t("No conversations with specialists yet. Open a specialist chat from the list to start one.", "Δεν υπάρχουν συνομιλίες με ειδικούς ακόμη. Άνοιξε συνομιλία με ειδικό από τη λίστα για να ξεκινήσεις.")}</p>
       ) : (
        <div className="space-y-2">
         {aiConversations.map((conv) => {

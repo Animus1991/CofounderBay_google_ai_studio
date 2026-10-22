@@ -107,8 +107,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
        <div className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
          <div className="space-y-1.5">
-          <label className="text-micro">{t('Logo URL', 'URL λογοτύπου')}</label>
-          <input
+          <label htmlFor="brandingsettings-field-1" className="text-micro">{t('Logo URL', 'URL λογοτύπου')}</label>
+          <input id="brandingsettings-field-1"
            type="text"
            value={brandingForm.logoUrl}
            onChange={e => setBrandingForm({ ...brandingForm, logoUrl: e.target.value })}
@@ -117,8 +117,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           />
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">{t('Hero Image URL', 'URL εικόνας hero')}</label>
-          <input
+          <label htmlFor="brandingsettings-field-2" className="text-micro">{t('Hero Image URL', 'URL εικόνας hero')}</label>
+          <input id="brandingsettings-field-2"
            type="text"
            value={brandingForm.heroImageUrl || ''}
            onChange={e => setBrandingForm({ ...brandingForm, heroImageUrl: e.target.value })}
@@ -133,12 +133,14 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           <label className="text-micro">{t('Primary Color', 'Κύριο χρώμα')}</label>
           <div className="flex gap-2">
            <input
+            aria-label={t('Primary color picker', 'Επιλογέας κύριου χρώματος')}
             type="color"
             value={brandingForm.primaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, primaryColor: e.target.value })}
             className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
+            aria-label={t('Primary color hex value', 'Κωδικός hex κύριου χρώματος')}
             type="text"
             value={brandingForm.primaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, primaryColor: e.target.value })}
@@ -150,12 +152,14 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           <label className="text-micro">{t('Secondary Color', 'Δευτερεύον χρώμα')}</label>
           <div className="flex gap-2">
            <input
+            aria-label={t('Secondary color picker', 'Επιλογέας δευτερεύοντος χρώματος')}
             type="color"
             value={brandingForm.secondaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, secondaryColor: e.target.value })}
             className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
+            aria-label={t('Secondary color hex value', 'Κωδικός hex δευτερεύοντος χρώματος')}
             type="text"
             value={brandingForm.secondaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, secondaryColor: e.target.value })}
@@ -167,12 +171,14 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           <label className="text-micro">{t('Accent Color', 'Χρώμα έμφασης')}</label>
           <div className="flex gap-2">
            <input
+            aria-label={t('Accent color picker', 'Επιλογέας χρώματος έμφασης')}
             type="color"
             value={brandingForm.accentColor}
             onChange={e => setBrandingForm({ ...brandingForm, accentColor: e.target.value })}
             className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
+            aria-label={t('Accent color hex value', 'Κωδικός hex χρώματος έμφασης')}
             type="text"
             value={brandingForm.accentColor}
             onChange={e => setBrandingForm({ ...brandingForm, accentColor: e.target.value })}
@@ -208,8 +214,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
       <Card title={t('Landing Page Content', 'Περιεχόμενο αρχικής σελίδας')} subtitle={t('Customize the text and labels on your public landing page.', 'Προσάρμοσε τα κείμενα και τις ετικέτες στην δημόσια αρχική σελίδα.')}>
        <div className="space-y-5">
         <div className="space-y-1.5">
-         <label className="text-micro">{t('Hero Title', 'Τίτλος hero')}</label>
-         <input
+         <label htmlFor="brandingsettings-field-3" className="text-micro">{t('Hero Title', 'Τίτλος hero')}</label>
+         <input id="brandingsettings-field-3"
           type="text"
           value={contentForm.heroTitle}
           onChange={e => setContentForm({ ...contentForm, heroTitle: e.target.value })}
@@ -217,8 +223,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
          />
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">{t('Hero Subtitle', 'Υπότιτλος hero')}</label>
-         <textarea
+         <label htmlFor="brandingsettings-field-4" className="text-micro">{t('Hero Subtitle', 'Υπότιτλος hero')}</label>
+         <textarea id="brandingsettings-field-4"
           rows={3}
           value={contentForm.heroSubtitle}
           onChange={e => setContentForm({ ...contentForm, heroSubtitle: e.target.value })}
@@ -227,8 +233,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
          <div className="space-y-1.5">
-          <label className="text-micro">{t('Call to Action Label', 'Ετικέτα πρόσκλησης σε ενέργεια')}</label>
-          <input
+          <label htmlFor="brandingsettings-field-5" className="text-micro">{t('Call to Action Label', 'Ετικέτα πρόσκλησης σε ενέργεια')}</label>
+          <input id="brandingsettings-field-5"
            type="text"
            value={contentForm.ctaLabel}
            onChange={e => setContentForm({ ...contentForm, ctaLabel: e.target.value })}
@@ -236,8 +242,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           />
          </div>
          <div className="space-y-1.5">
-          <label className="text-micro">{t('Community Naming Convention', 'Ονομασία κοινοτήτων')}</label>
-          <input
+          <label htmlFor="brandingsettings-field-6" className="text-micro">{t('Community Naming Convention', 'Ονομασία κοινοτήτων')}</label>
+          <input id="brandingsettings-field-6"
            type="text"
            value={contentForm.communityNamingConvention}
            onChange={e => setContentForm({ ...contentForm, communityNamingConvention: e.target.value })}
@@ -247,8 +253,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
          </div>
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">{t('Dashboard Welcome Text', 'Κείμενο καλωσορίσματος στον πίνακα ελέγχου')}</label>
-         <input
+         <label htmlFor="brandingsettings-field-7" className="text-micro">{t('Dashboard Welcome Text', 'Κείμενο καλωσορίσματος στον πίνακα ελέγχου')}</label>
+         <input id="brandingsettings-field-7"
           type="text"
           value={contentForm.dashboardWelcomeText}
           onChange={e => setContentForm({ ...contentForm, dashboardWelcomeText: e.target.value })}
@@ -257,8 +263,8 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
          <p className="text-xs text-stone-400 font-medium">{t('Use {score} as a placeholder for profile completion score.', 'Χρησιμοποίησε το {score} ως σύμβολο για το ποσοστό ολοκλήρωσης προφίλ.')}</p>
         </div>
         <div className="space-y-1.5">
-         <label className="text-micro">{t('Email Signature', 'Υπογραφή email')}</label>
-         <input
+         <label htmlFor="brandingsettings-field-8" className="text-micro">{t('Email Signature', 'Υπογραφή email')}</label>
+         <input id="brandingsettings-field-8"
           type="text"
           value={contentForm.emailSignature}
           onChange={e => setContentForm({ ...contentForm, emailSignature: e.target.value })}

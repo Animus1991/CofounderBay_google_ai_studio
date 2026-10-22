@@ -442,16 +442,14 @@
   }
 }
 
-/* Height = Matches Connect button, 1.99625rem / 31.94px.
-   Black buttons and tabs that turn black, plus every control that shared
-   that taller row, use it. Shorter controls (h-7, h-8, chips, Ask) stay put.
-   Card-tiles and choice tiles (text-left / flex-col) keep their content height. */
+/* Keep the compact desktop baseline without forcing translated/multiline
+   labels into a fixed-height box. Touch overrides follow below. */
 button.min-h-11:not(.flex-col):not([class*="text-left"]),
 a.min-h-11:not(.flex-col):not([class*="text-left"]),
 button.h-11:not(.flex-col):not([class*="text-left"]),
 a.h-11:not(.flex-col):not([class*="text-left"]) {
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   padding-block: 0;
   box-sizing: border-box;
 }
@@ -467,7 +465,7 @@ button.min-h-14:not(.flex-col):not([class*="text-left"]),
 a.min-h-14:not(.flex-col):not([class*="text-left"]),
 button.min-h-16:not(.flex-col):not([class*="text-left"]),
 a.min-h-16:not(.flex-col):not([class*="text-left"]) {
-  height: var(--studio-dash-h);
+  height: auto;
   min-height: var(--studio-dash-h);
   padding-block: 0;
   box-sizing: border-box;
@@ -482,28 +480,28 @@ button.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="
 a.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   box-sizing: border-box;
 }
 button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
 a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   box-sizing: border-box;
 }
 button[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]),
 a[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   box-sizing: border-box;
 }
 button[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]),
 a[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   box-sizing: border-box;
 }
 /* Icon chrome (p-3/p-4/p-5). Leave row/tile buttons (text-left, stacked, full-width, block cards). */
@@ -515,12 +513,12 @@ button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.
 a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)) {
   padding-block: 0;
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   box-sizing: border-box;
 }
 aside nav a {
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   padding-block: 0;
   line-height: 1.15;
   box-sizing: border-box;
@@ -529,27 +527,111 @@ aside nav a span { line-height: 1.15; }
 aside .grid.grid-cols-2 a,
 aside .grid.grid-cols-2 button {
   min-height: var(--studio-dash-h);
-  height: var(--studio-dash-h);
+  height: auto;
   padding-block: 0;
   line-height: 1.15;
   box-sizing: border-box;
 }
 /* Start stays 32px. Button+h-8 (min-h-11) was taller — cap to Dashboard. */
 .scroll-tabs > button {
-  height: var(--studio-dash-h);
+  height: auto;
   min-height: var(--studio-dash-h);
   padding-block: 0;
   box-sizing: border-box;
 }
 button.h-8:not([class*="min-h-"]) { height: 2rem; min-height: 2rem; }
-button.h-8[class*="min-h-"] { height: var(--studio-dash-h); min-height: var(--studio-dash-h); padding-block: 0; }
-/* Safety net: leftover chrome cannot exceed Dashboard. Shorter stays shorter.
-   Tiles/cards/photos stay out. */
-button:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
-a.inline-flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)),
-a.flex:not(.flex-col):not([class*="text-left"]):not(:has(> img)):not(.sr-only) {
-  max-height: var(--studio-chrome-max);
-  box-sizing: border-box;
+button.h-8[class*="min-h-"] { height: auto; min-height: var(--studio-dash-h); padding-block: 0; }
+/* No global max-height on actions: content, translation and text zoom must
+   be allowed to grow instead of clipping or painting outside the button. */
+
+/* Shared actions retain the compact baseline but grow when a translated label
+   wraps or text is zoomed. Do not cap their content to one physical line. */
+button[data-ui="button"],
+a[data-ui="button"] {
+  height: auto;
+  max-height: none;
+  min-height: var(--studio-dash-h);
+  padding-block: 0.25rem;
+}
+
+button[data-ui="button"][data-size="sm"] {
+  min-height: 1.75rem;
+  padding-block: 0.125rem;
+}
+button[data-ui="button"][data-size="lg"] {
+  min-height: 2.25rem;
+  padding-block: 0.375rem;
+}
+button[data-ui="button"][data-size="icon"] {
+  min-height: 2rem;
+  min-width: 2rem;
+}
+
+/* The user explicitly rejected blanket touch-height inflation. Keep controls
+   compact, wrap only when needed, and never impose a maximum label height.
+   Leave switches, calendar cells, media and card tiles out of this rule. */
+@media (max-width: 1279px), (any-pointer: coarse) {
+  button[data-ui="button"],
+  a[data-ui="button"],
+  button[data-ui="view-option"],
+  button.min-h-11:not(.flex-col):not([class*="text-left"]),
+  a.min-h-11:not(.flex-col):not([class*="text-left"]),
+  button.h-11:not(.flex-col):not([class*="text-left"]),
+  button.h-10:not(.flex-col):not([class*="text-left"]),
+  button.h-12:not(.flex-col):not([class*="text-left"]),
+  button.h-14:not(.flex-col):not([class*="text-left"]),
+  button.h-16:not(.flex-col):not([class*="text-left"]),
+  .scroll-tabs > button,
+  aside nav a,
+  aside .grid.grid-cols-2 a,
+  aside .grid.grid-cols-2 button {
+    height: auto;
+    min-height: 2rem;
+    max-height: none;
+    padding-block: 0.25rem;
+  }
+  button[data-size="icon"],
+  button.w-12.h-12,
+  button.w-14.h-14 {
+    min-width: 2rem;
+    flex-shrink: 0;
+  }
+  aside nav a {
+    white-space: normal;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+  select {
+    min-height: 2.25rem;
+    padding-block: 0.375rem;
+    max-width: 100%;
+  }
+  .scroll-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .scroll-tabs > button {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+  [data-ui="view-option"] > svg,
+  [data-ui="view-option"] > span > svg {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  [data-ui="page-actions"] {
+    width: 100%;
+    gap: 0.5rem;
+  }
+  [data-ui="page-actions"] > button,
+  [data-ui="page-actions"] > a[data-ui="button"] {
+    flex: 0 1 auto;
+  }
 }
 
 /* Motion accessibility — respect users who prefer reduced motion (WCAG 2.3.3) */

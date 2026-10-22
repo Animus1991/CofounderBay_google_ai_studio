@@ -333,7 +333,7 @@ export default function Insights({ user }: InsightsProps) {
      <aside className="lg:col-span-4 space-y-4">
 
       {/* Activity Feed */}
-      <Card className="p-4 border-stone-100 bg-white space-y-3">
+      <Card className="p-4 border-stone-100 bg-white" contentClassName="space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Activity Feed', 'Ροή δραστηριότητας')}</h3>
         <p className="text-xs text-stone-400">{isDemoMode ? t('Sample ecosystem updates', 'Δειγματικές ενημερώσεις οικοσυστήματος') : t('Your recent activity', 'Η πρόσφατη δραστηριότητά σου')}</p>
@@ -362,7 +362,7 @@ export default function Insights({ user }: InsightsProps) {
       </Card>
 
       {/* Achievements */}
-      <Card className="p-4 border-stone-100 bg-white space-y-3">
+      <Card className="p-4 border-stone-100 bg-white" contentClassName="space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Achievements', 'Επιτεύγματα')}</h3>
         <p className="text-xs text-stone-400">{t('Unlocked by what you actually do', 'Ξεκλειδώνονται από τις πραγματικές σου ενέργειες')}</p>

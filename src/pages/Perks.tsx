@@ -159,8 +159,8 @@ export default function Perks() {
 
    {/* Search & Stats */}
    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-    <Card className="lg:col-span-3 flex items-center gap-4">
-     <div className="relative flex-1">
+    <Card className="lg:col-span-3" contentClassName="flex flex-col sm:flex-row gap-2 sm:items-center">
+     <div className="relative w-full min-w-0 flex-1">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
       <input
        type="text"
@@ -170,7 +170,7 @@ export default function Perks() {
        className="w-full bg-stone-50 border border-stone-200 rounded-full py-2.5 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
       />
      </div>
-     <Button type="button" variant="outline" className="h-11 px-6" onClick={() => {
+     <Button type="button" variant="outline" className="h-9 px-4 shrink-0" onClick={() => {
       const ids = ['all', 'cloud', 'finance', 'marketing', 'productivity'] as const;
       const index = ids.indexOf(activeCategory);
       setActiveCategory(ids[(index + 1) % ids.length] ?? 'all');
@@ -178,7 +178,7 @@ export default function Perks() {
       <SlidersHorizontal className="w-4 h-4 mr-2" /> {activeCategory === 'all' ? t('Filters', 'Φίλτρα') : categories.find((c) => c.id === activeCategory)?.label}
      </Button>
     </Card>
-    <Card className="bg-stone-900 text-white border-none flex items-center justify-between p-6">
+    <Card className="bg-stone-900 text-white border-none p-4 self-start" contentClassName="flex items-center justify-between gap-3">
      <div>
       <p className="text-md font-medium text-white/40 tracking-wide">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
       <h4 className="text-lg font-semibold">{isDemoMode ? perkDollarTotal(DEMO_PERKS) : perks.length}</h4>
@@ -207,8 +207,8 @@ export default function Perks() {
     {filteredPerks.map((perk) => {
      const perkUrl = safeWebUrl(perk.url);
      return (
-     <Card key={perk.id} className="group hover:border-stone-900 transition-all flex flex-col h-full">
-      <div className="flex items-start justify-between mb-6">
+     <Card key={perk.id} className="group hover:border-stone-900 transition-all h-full" contentClassName="flex flex-col gap-3 h-full">
+      <div className="flex items-start justify-between">
        <div className="w-14 h-11 bg-stone-100 rounded-2xl flex items-center justify-center text-stone-900 font-medium text-sm group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm">
         {perk.logo}
        </div>
@@ -224,7 +224,7 @@ export default function Perks() {
        {perk.value ? <p className="text-sm font-medium text-stone-900">{t(perk.value, PERK_VALUE_EL[perk.value] ?? perk.value)}</p> : null}
        <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(perk.description, PERK_DESC_EL[perk.id] ?? perk.description)}</p>
       </div>
-      <div className="mt-6 pt-4 border-t border-stone-100">
+      <div className="mt-auto pt-3 border-t border-stone-100">
        {isDemoMode ? (
         <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
          {claimed.includes(perkClaimId(perk.name)) ? t('Claimed', 'Εξαργυρώθηκε') : t('Claim Perk', 'Εξαργύρωση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
@@ -245,7 +245,7 @@ export default function Perks() {
 
    {/* Featured perk — demo shows the AWS card, real mode shows the featured catalog entry. */}
    {featured && (
-   <Card className="bg-stone-50 border-stone-200 p-8 relative overflow-hidden">
+   <Card className="bg-stone-50 border-stone-200 p-5 sm:p-8 relative overflow-hidden">
     <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
      <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center text-stone-900 font-medium text-md shadow-xl border border-stone-100">
       {featured.logo}

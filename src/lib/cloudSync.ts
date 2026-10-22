@@ -11,6 +11,7 @@ import { collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 
 import { db } from '../firebase';
 import { applyRemoteValue, dataScope, keys, readRawValue, setWriteObserver } from './localLists';
 import { createLogger } from './logger';
+import { pauseAccountSaves, recordSyncPending, recordSyncResult } from './saveFeedback';
 
 const log = createLogger('cloud-sync');
 
@@ -30,6 +31,7 @@ const pushedAt = new Map<string, number>();
 let status: SyncStatus = 'idle';
 const statusListeners = new Set<(next: SyncStatus) => void>();
 let inFlight = 0;
+let generation = 0;
 
 function setStatus(next: SyncStatus) {
   if (status === next) return;
@@ -59,27 +61,18 @@ function writeMeta(uid: string, meta: Record<string, number>) {
   }
 }
 
-/** Large arrays (activity, transcripts) are trimmed from the oldest end until they fit one document. */
+/** Never silently drop list entries to make a write fit one document. */
 function fit(serialized: string): string | null {
-  if (serialized.length <= MAX_BYTES) return serialized;
-  try {
-    const value = JSON.parse(serialized) as unknown;
-    if (!Array.isArray(value)) return null;
-    let list = value;
-    while (list.length > 1) {
-      list = list.slice(Math.ceil(list.length * 0.25));
-      const next = JSON.stringify(list);
-      if (next.length <= MAX_BYTES) return next;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return new TextEncoder().encode(serialized).byteLength <= MAX_BYTES ? serialized : null;
 }
 
 async function push(uid: string, key: string) {
+  if (uid !== currentUid || uid !== dataScope()) return;
+  const epoch = generation;
+  const feedbackKey = `${key}@${uid}`;
   const ref = doc(db, 'users', uid, 'lists', key);
   const raw = readRawValue(key);
+  recordSyncPending(feedbackKey, raw);
   const at = Date.now();
   pushedAt.set(key, at);
   inFlight += 1;
@@ -91,24 +84,31 @@ async function push(uid: string, key: string) {
       const value = fit(raw);
       if (value == null) {
         log.warn('list too large to sync', { key, bytes: raw.length });
+        if (epoch === generation) recordSyncResult(feedbackKey, raw, false);
         return;
       }
       await setDoc(ref, { key, value, updatedAtMs: at, clientId, updatedAt: serverTimestamp() });
     }
+    if (epoch !== generation) return;
+    recordSyncResult(feedbackKey, raw, true);
     const meta = readMeta(uid);
     meta[key] = at;
     writeMeta(uid, meta);
   } catch (error) {
     log.warn('could not sync list', { key, error: String(error) });
+    if (epoch !== generation) return;
+    recordSyncResult(feedbackKey, raw, false);
     setStatus(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'error');
     return;
   } finally {
-    inFlight = Math.max(0, inFlight - 1);
+    if (epoch === generation) inFlight = Math.max(0, inFlight - 1);
   }
+  if (epoch !== generation) return;
   if (inFlight === 0 && timers.size === 0) setStatus('synced');
 }
 
 function schedule(uid: string, key: string, delay = DEBOUNCE_MS) {
+  recordSyncPending(`${key}@${uid}`, readRawValue(key));
   const existing = timers.get(key);
   if (existing) clearTimeout(existing);
   timers.set(
@@ -165,6 +165,9 @@ export function startCloudSync(uid: string) {
         if (typeof data.value === 'string' && readRawValue(key) !== data.value) {
           applyRemoteValue(key, data.value);
         }
+        if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites && !change.doc.metadata.hasPendingWrites && typeof data.value === 'string') {
+          recordSyncResult(`${key}@${uid}`, data.value, true);
+        }
         meta[key] = remoteMs;
       }
       if (first) {
@@ -197,6 +200,9 @@ export async function flushCloudSync() {
 }
 
 export function stopCloudSync() {
+  if (currentUid) pauseAccountSaves(currentUid);
+  generation += 1;
+  inFlight = 0;
   unsubscribe?.();
   unsubscribe = null;
   timers.forEach((timer) => clearTimeout(timer));
@@ -204,6 +210,16 @@ export function stopCloudSync() {
   setWriteObserver(null);
   currentUid = null;
   setStatus('idle');
+}
+
+/** Explicit retry for the list whose save feedback failed, not every account list. */
+export async function retryListSync(key: string) {
+  const uid = currentUid;
+  if (!uid || uid !== dataScope() || !SYNCED.includes(key)) return;
+  const timer = timers.get(key);
+  if (timer) clearTimeout(timer);
+  timers.delete(key);
+  await push(uid, key);
 }
 
 export function getSyncStatus(): SyncStatus {

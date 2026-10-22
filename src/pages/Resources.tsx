@@ -171,8 +171,8 @@ export default function Resources({ user: _user }: ResourcesProps) {
        className={cn(
         "px-4 py-2 text-sm font-medium rounded-lg transition-all capitalize",
         activeTab === tab 
-         ? "bg-stone-900 text-white shadow-sm" 
-         : "text-stone-400 hover:text-stone-900 hover:bg-white"
+         ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200"
+         : "text-stone-500 hover:text-stone-900 hover:bg-white"
        )}
       >
        {t(tab, RESOURCE_TAB_EL[tab] ?? tab)}
@@ -235,7 +235,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: idx * 0.1 }}
        >
-        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 flex flex-col h-full p-4 rounded-xl bg-white overflow-hidden">
+        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 h-full p-4 rounded-xl bg-white overflow-hidden" contentClassName="flex flex-col">
          <div className="aspect-video bg-stone-100 rounded-xl mb-6 overflow-hidden relative">
           {course.image ? (
            <img
@@ -315,7 +315,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: idx * 0.1 }}
        >
-        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 p-10 rounded-xl bg-white relative overflow-hidden">
+        <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 p-5 sm:p-8 rounded-xl bg-white relative overflow-hidden">
          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
           <Wrench className="w-32 h-32 -mr-12 -mt-12" />
          </div>
@@ -452,7 +452,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
      </div>
 
      <div className="lg:col-span-5 space-y-10">
-      <Card className="p-10 rounded-xl border-stone-200/60 shadow-xl bg-white relative overflow-hidden group">
+      <Card className="p-5 sm:p-8 rounded-xl border-stone-200/60 shadow-xl bg-white relative overflow-hidden group">
        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
         <GraduationCap className="w-40 h-40 -mr-16 -mt-16" />
        </div>
@@ -463,36 +463,36 @@ export default function Resources({ user: _user }: ResourcesProps) {
         </div>
         <div className="space-y-6">
          {(coach || isDemoMode) && (
-         <div className="p-6 sm:p-8 bg-stone-900 rounded-xl sm:rounded-xl text-white space-y-6 shadow-sm relative overflow-hidden">
+         <div className="p-6 sm:p-8 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 space-y-6 shadow-sm relative overflow-hidden">
 
-          <div className="flex items-center gap-6">
-           <div className="w-16 h-16 rounded-xl bg-stone-800 border border-stone-700 overflow-hidden shadow-xl flex items-center justify-center">
+          <div className="flex items-center gap-4 sm:gap-6">
+           <div className="w-16 h-16 rounded-xl bg-white border border-stone-200 overflow-hidden shadow-xl flex items-center justify-center">
             {(() => {
              const name = isDemoMode ? 'Sarah Chen' : coach?.fullName;
              const src = isDemoMode ? avatarFor('sarah-chen', 150) : coach ? avatarOf(coach) : '';
              return src ? (
               <img src={src} alt={t('Coach', 'Σύμβουλος')} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
              ) : (
-              <span className="text-lg font-semibold text-stone-400">{(name ?? '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+              <span className="text-lg font-semibold text-stone-600">{(name ?? '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
              );
             })()}
            </div>
            <div className="space-y-1">
             <p className="text-base font-medium">{isDemoMode ? 'Sarah Chen' : coach?.fullName}</p>
-            <p className="text-sm text-stone-400 font-medium tracking-wide">{isDemoMode ? t('Fundraising Expert', 'Ειδικός στη χρηματοδότηση') : (coach?.headline || t('Mentor', 'Μέντορας'))}</p>
+            <p className="text-sm text-stone-600 font-medium tracking-wide">{isDemoMode ? t('Fundraising Expert', 'Ειδικός στη χρηματοδότηση') : (coach?.headline || t('Mentor', 'Μέντορας'))}</p>
            </div>
           </div>
-          <p className="text-base text-stone-300 italic serif leading-relaxed">
+          <p className="text-base text-stone-700 italic serif leading-relaxed">
            {isDemoMode
             ? t('"I help founders refine their pitch deck and strategy to close their Seed and Series A rounds faster."', '"Βοηθώ ιδρυτές να βελτιώσουν το pitch deck και τη στρατηγική τους ώστε να κλείσουν γρηγορότερα γύρους Seed και Series A."')
             : t('"Book a working session — bring your deck, your numbers, or your roadmap."', '"Κλείσε συνεδρία εργασίας — φέρε το deck, τους αριθμούς ή το roadmap σου."')}
           </p>
-          <div className="flex items-center justify-between pt-4 border-t border-stone-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-stone-200">
            <div className="space-y-0.5">
-            <p className="text-lg font-semibold text-white">{isDemoMode ? '$150' : t('1:1', '1:1')}</p>
-            <p className="text-sm text-stone-500 font-medium tracking-wide">{t('per session', 'ανά συνεδρία')}</p>
+            <p className="text-lg font-semibold text-stone-900">{isDemoMode ? '$150' : t('1:1', '1:1')}</p>
+            <p className="text-sm text-stone-600 font-medium tracking-wide">{t('per session', 'ανά συνεδρία')}</p>
            </div>
-           <Button type="button" className="h-10 px-8 rounded-xl bg-white text-stone-900 hover:bg-stone-100 transition-all font-medium text-sm tracking-wider" onClick={() => ask(isDemoMode ? 'book Sarah Chen' : `Book a mentoring session with ${coach?.fullName}`)}>
+           <Button type="button" className="h-10 px-8 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-all font-medium text-sm tracking-wider" onClick={() => ask(isDemoMode ? 'book Sarah Chen' : `Book a mentoring session with ${coach?.fullName}`)}>
             {t('Book Now', 'Κράτηση')}
            </Button>
           </div>
@@ -505,7 +505,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
        </div>
       </Card>
 
-      <Card className="bg-stone-50 border-stone-200/60 p-10 rounded-xl shadow-sm relative overflow-hidden group">
+      <Card className="bg-stone-50 border-stone-200/60 p-5 sm:p-8 rounded-xl shadow-sm relative overflow-hidden group">
        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
         <HelpCircle className="w-32 h-32 -mr-12 -mt-12" />
        </div>
@@ -567,12 +567,12 @@ function PostJobModal({ open, uid, authorName, onClose }: { open: boolean; uid: 
     </div>
     <div className="grid grid-cols-2 gap-3">
      <div>
-      <label className="text-xs font-semibold text-stone-500">{t('Company', 'Εταιρεία')}</label>
-      <input value={company} onChange={(e) => setCompany(e.target.value)} maxLength={120} className={inputCls} />
+      <label htmlFor="job-company" className="text-xs font-semibold text-stone-500">{t('Company', 'Εταιρεία')}</label>
+      <input id="job-company" value={company} onChange={(e) => setCompany(e.target.value)} maxLength={120} className={inputCls} />
      </div>
      <div>
-      <label className="text-xs font-semibold text-stone-500">{t('Type', 'Τύπος')}</label>
-      <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
+      <label htmlFor="job-type" className="text-xs font-semibold text-stone-500">{t('Type', 'Τύπος')}</label>
+      <select id="job-type" value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
        {['Full-time', 'Part-time', 'Contract', 'Internship', 'Co-founder'].map((option) => (
         <option key={option} value={option}>{option}</option>
        ))}

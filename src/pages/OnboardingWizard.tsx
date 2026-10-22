@@ -350,6 +350,8 @@ export default function OnboardingWizard() {
        ].map((role) => (
         <button
          key={role.id}
+         type="button"
+         aria-pressed={formData.role === role.id}
          onClick={() => updateFormData({ role: role.id })}
          className={cn(
           "p-6 text-left rounded-2xl border-2 transition-all group",
@@ -436,6 +438,7 @@ export default function OnboardingWizard() {
           <button
            key={item}
            type="button"
+           aria-pressed={formData.industry === item}
            onClick={() => updateFormData({ industry: item })}
            className={cn(
             'min-h-11 rounded-full border px-3 text-sm',
@@ -513,6 +516,8 @@ export default function OnboardingWizard() {
          ].map((stage) => (
           <button
            key={stage.id}
+           type="button"
+           aria-pressed={formData.stage === stage.id}
            onClick={() => updateFormData({ stage: stage.id })}
            className={cn(
             "w-full p-4 text-left rounded-xl border transition-all",
@@ -537,6 +542,8 @@ export default function OnboardingWizard() {
          ].map((lvl) => (
           <button
            key={lvl.id}
+           type="button"
+           aria-pressed={formData.commitment === lvl.id}
            onClick={() => updateFormData({ commitment: lvl.id })}
            className={cn(
             "w-full p-4 text-left rounded-xl border transition-all",
@@ -561,6 +568,7 @@ export default function OnboardingWizard() {
           <button
            key={item}
            type="button"
+           aria-pressed={on}
            onClick={() => updateFormData({ lookingFor: on ? formData.lookingFor.filter((value) => value !== item) : [...formData.lookingFor, item] })}
            className={cn(
             'min-h-11 rounded-full border px-3 text-sm',

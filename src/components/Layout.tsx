@@ -9,6 +9,7 @@ import Tooltip from './ui/Tooltip';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore } from '../stores/useUIStore';
+import SaveSafetyGuard from './SaveSafetyGuard';
 
 export default function Layout() {
  const { isDemoMode, toggleDemoMode, user, profile } = useAuth();
@@ -36,8 +37,9 @@ export default function Layout() {
   <Tooltip content={t('Demo — sample data, kept only in this browser', 'Demo — δοκιμαστικά δεδομένα, μένουν μόνο σε αυτόν τον περιηγητή')} side="bottom" delay={0}>
    <button
     type="button"
+    data-ui="button"
     onClick={() => toggleDemoMode(false)}
-    className="inline-flex min-h-11 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white"
+    className="inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-900"
    >
     <Both en="Exit" el="Έξοδος" />
    </button>
@@ -63,8 +65,11 @@ export default function Layout() {
    <header className="z-[80] flex h-14 shrink-0 items-center justify-between gap-2 border-b border-stone-200 bg-stone-50 px-3 lg:hidden">
     <button
      type="button"
+     data-ui="button"
      onClick={toggleMobileSidebar}
      aria-label={t('Menu', 'Μενού')}
+     aria-expanded={mobileSidebarOpen}
+     aria-controls="primary-navigation"
      className="flex h-11 w-11 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
     >
      <Menu className="w-5 h-5" />
@@ -74,11 +79,8 @@ export default function Layout() {
      {exitButton}
     </div>
    </header>
-   <div className="fixed top-3 right-3 z-[80] hidden items-center gap-2 lg:flex">
-    <LanguageToggle />
-    {exitButton}
-   </div>
    <div className="flex min-h-0 min-w-0 flex-1">
+    <SaveSafetyGuard />
     <Sidebar
      user={sidebarUser as any}
      guest={isGuest}
@@ -88,18 +90,24 @@ export default function Layout() {
      setMobileOpen={setMobileSidebarOpen}
      onMenuToggle={toggleMobileSidebar}
     />
-    <main
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+     <div className="hidden shrink-0 items-center justify-end gap-2 border-b border-stone-200/60 bg-stone-50 px-6 py-2 lg:flex">
+      <LanguageToggle />
+      {exitButton}
+     </div>
+     <main
      id="main-content"
      tabIndex={-1}
-     className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none sm:pb-28 lg:pb-0"
+     className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none sm:pb-16 lg:pb-0"
     >
      <RouteErrorBoundary>
       <Outlet />
      </RouteErrorBoundary>
-    </main>
+     </main>
+    </div>
    </div>
    {/* Phone-only strip. The assistant button is fixed into this band, so page controls scroll above it. */}
-   <div className="h-20 shrink-0 sm:hidden" aria-hidden="true" />
+   <div className="h-14 shrink-0 sm:hidden" aria-hidden="true" />
    <ChatWidget />
   </div>
  );

@@ -334,6 +334,8 @@ export default function Discovery({ user }: DiscoveryProps) {
          <p className="text-xl font-medium text-stone-900">{t('Advanced filters', 'Προχωρημένα φίλτρα')}</p>
         </div>
         <button 
+         type="button"
+         aria-label={t("Close filters", "Κλείσιμο φίλτρων")}
          onClick={() => setIsFilterOpen(false)}
          className="w-12 h-12 rounded-full bg-stone-50 flex items-center justify-center text-stone-400 hover:text-stone-900 transition-colors"
         >
@@ -353,7 +355,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             className={cn(
              "px-6 py-3 rounded-full border text-sm font-medium transition-all",
              selectedSkills.includes(skill)
-              ? "bg-stone-900 border-stone-900 text-white"
+              ? "bg-stone-200 border-stone-400 text-stone-900"
               : "border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900"
             )}
            >
@@ -373,7 +375,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             className={cn(
              "px-6 py-3 rounded-full border text-sm font-medium transition-all",
              selectedIndustries.includes(ind)
-              ? "bg-stone-900 border-stone-900 text-white"
+              ? "bg-stone-200 border-stone-400 text-stone-900"
               : "border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900"
             )}
            >
@@ -393,7 +395,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             className={cn(
              "px-6 py-3 rounded-full border text-sm font-medium transition-all",
              selectedStages.includes(stage)
-              ? "bg-stone-900 border-stone-900 text-white"
+              ? "bg-stone-200 border-stone-400 text-stone-900"
               : "border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900"
             )}
            >
@@ -413,7 +415,7 @@ export default function Discovery({ user }: DiscoveryProps) {
             className={cn(
              "px-6 py-3 rounded-full border text-sm font-medium transition-all",
              selectedLocations.includes(loc)
-              ? "bg-stone-900 border-stone-900 text-white"
+              ? "bg-stone-200 border-stone-400 text-stone-900"
               : "border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900"
             )}
            >
@@ -475,7 +477,7 @@ export default function Discovery({ user }: DiscoveryProps) {
      variant="outline"
      className={cn(
       "h-8 px-3 rounded-xl border-stone-200 text-sm flex items-center gap-2",
-      isFilterOpen && "bg-stone-900 text-white border-stone-900"
+      isFilterOpen && "bg-stone-200 text-stone-900 border-stone-400"
      )}
      onClick={() => setIsFilterOpen(!isFilterOpen)}
     >
@@ -548,10 +550,8 @@ export default function Discovery({ user }: DiscoveryProps) {
          <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Expertise & talent', 'Εξειδίκευση')}</p>
          <h3 className="text-base font-semibold text-stone-900">{t('Founders & mentors', 'Ιδρυτές και μέντορες')}</h3>
         </div>
-        <Link to="/matches">
-         <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
-          {t('View all', 'Όλα')} <ArrowRight className="ml-1.5 w-3 h-3" />
-         </Button>
+        <Link to="/matches" data-ui="button" className="inline-flex items-center justify-center h-7 px-3 text-sm font-medium text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300 transition-colors">
+         {t('View all', 'Όλα')} <ArrowRight className="ml-1.5 w-3 h-3" />
         </Link>
        </div>
 
@@ -706,11 +706,9 @@ export default function Discovery({ user }: DiscoveryProps) {
         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Communities', 'Κοινότητες')}</p>
         <h3 className="text-base font-semibold text-stone-900">{t('Strategic hubs', 'Στρατηγικοί κόμβοι')}</h3>
        </div>
-       <Link to="/communities">
-        <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
+       <Link to="/communities" data-ui="button" className="inline-flex items-center justify-center h-7 px-3 text-sm font-medium text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300 transition-colors">
          {t('Explore all', 'Όλες')} <ArrowRight className="ml-1.5 w-3 h-3" />
-        </Button>
-       </Link>
+        </Link>
       </div>
       <div className="border border-stone-100 rounded-2xl overflow-hidden divide-y divide-stone-100">
        {filteredCommunities.length === 0 && (
@@ -763,10 +761,8 @@ export default function Discovery({ user }: DiscoveryProps) {
          <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
          <h3 className="text-base font-semibold text-stone-900">{t('Upcoming sessions', 'Επερχόμενες συναντήσεις')}</h3>
         </div>
-        <Link to="/events">
-         <Button variant="ghost" size="sm" className="h-7 px-3 text-sm text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300">
-          {t('View all', 'Όλες')} <ArrowRight className="ml-1.5 w-3 h-3" />
-         </Button>
+        <Link to="/events" data-ui="button" className="inline-flex items-center justify-center h-7 px-3 text-sm font-medium text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300 transition-colors">
+         {t('View all', 'Όλες')} <ArrowRight className="ml-1.5 w-3 h-3" />
         </Link>
        </div>
        {(!isDemoMode && (liveEvents ?? []).length === 0) ? (
