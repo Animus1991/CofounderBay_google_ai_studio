@@ -371,7 +371,7 @@ export default function Network({ user }: NetworkProps) {
                         {conn.status === 'Incoming' ? (
                           <>
                             <Button type="button" onClick={() => void acceptIncoming(conn)} className="flex-1 min-h-10 rounded-lg bg-stone-900 text-white hover:bg-stone-700 text-sm font-medium"><Check className="w-3.5 h-3.5 mr-1" /> {t('Accept', 'Αποδοχή')}</Button>
-                            <Button type="button" variant="outline" onClick={() => void declineIncoming(conn)} className="min-h-10 px-3 rounded-lg border-stone-200 text-sm"><X className="w-3.5 h-3.5" /></Button>
+                            <Button type="button" variant="outline" aria-label={t(`Decline request from ${conn.fullName}`, `Απόρριψη αιτήματος από ${conn.fullName}`)} title={t('Decline request', 'Απόρριψη αιτήματος')} onClick={() => void declineIncoming(conn)} className="min-h-10 px-3 rounded-lg border-stone-200 text-sm"><X className="w-3.5 h-3.5" /></Button>
                           </>
                         ) : conn.status === 'Pending' ? (
                           <>
@@ -535,7 +535,7 @@ export default function Network({ user }: NetworkProps) {
 
         {activeTab === 'compare' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Card className="p-6 space-y-5 border-stone-100">
+            <Card className="p-6 border-stone-100" contentClassName="space-y-5">
               <div className="text-center space-y-2 max-w-md mx-auto">
                 <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto text-stone-400"><BarChart3 className="w-8 h-8" /></div>
                 <h3 className="text-base font-semibold text-stone-900">{t('Compare connections', 'Σύγκριση συνδέσεων')}</h3>
@@ -552,7 +552,7 @@ export default function Network({ user }: NetworkProps) {
                     return (
                       <button key={conn.id} type="button" aria-pressed={selected} disabled={!selected && picked.length >= 3}
                         onClick={() => { setCompared(false); setPicked((prev) => (selected ? prev.filter((id) => id !== conn.id) : [...prev, conn.id])); }}
-                        className={cn('flex items-center gap-2 min-h-11 pl-1.5 pr-3 rounded-full border text-sm transition-all disabled:opacity-40', selected ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-400')}>
+                        className={cn('flex items-center gap-2 min-h-11 pl-1.5 pr-3 rounded-full border text-sm transition-all disabled:opacity-40', selected ? 'border-stone-400 bg-stone-200 text-stone-900' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-400')}>
                         <Avatar src={conn.avatar} fallback={conn.fullName} size="xs" />
                         {conn.fullName.split(' ')[0]}
                       </button>
@@ -671,7 +671,7 @@ function NeedsTab({
       {needs.map((card) => {
         const isEditing = editing === card.id;
         return (
-          <Card key={card.id} className="p-5 border-stone-100 space-y-3">
+          <Card key={card.id} className="p-5 border-stone-100" contentClassName="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-stone-900">
                 {t('Need card', 'Κάρτα ανάγκης')} · v{card.version ?? 1}
@@ -741,7 +741,7 @@ function NeedsTab({
           </Card>
         );
       })}
-      <Card className="p-5 border-dashed border-stone-200 space-y-3">
+      <Card className="p-5 border-dashed border-stone-200" contentClassName="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-stone-900 flex items-center gap-2">
             <FileText className="w-4 h-4" /> {t('New need card', 'Νέα κάρτα ανάγκης')}

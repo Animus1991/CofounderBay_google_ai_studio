@@ -413,6 +413,8 @@ export default function MentorsPage() {
       <div className="p-6 md:p-8 space-y-8">
        {/* Close Button */}
        <button 
+        type="button"
+        aria-label={t('Close mentor details', 'Κλείσιμο στοιχείων μέντορα')}
         onClick={() => setSelectedMentor(null)}
         className="absolute top-6 right-6 p-2 text-stone-400 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded-full transition-colors"
        >

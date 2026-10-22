@@ -154,8 +154,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
       key={tab.id}
       onClick={() => setActiveTab(tab.id as any)}
       className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
-       activeTab === tab.id 
-        ? "bg-white text-stone-900 shadow-sm" 
+       activeTab === tab.id
+        ? "bg-white text-stone-900 shadow-sm"
         : "text-stone-400 hover:text-stone-600"
       }`}
      >
@@ -183,7 +183,11 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            <h3 className="text-sm font-medium text-stone-900">{t('Enable Single Sign-On', 'Ενεργοποίηση SSO')}</h3>
            <p className="text-xs text-stone-500">{t("Allow members to sign in using your organization's identity provider.", 'Επίτρεψε στα μέλη να μπαίνουν με τον πάροχο ταυτότητας του οργανισμού.')}</p>
           </div>
-          <button 
+          <button
+           type="button"
+           role="switch"
+           aria-checked={ssoEnabled}
+           aria-label={t('Enable SSO', 'Ενεργοποίηση SSO')}
            onClick={() => setSsoEnabled(!ssoEnabled)}
            className={`w-11 h-6 rounded-full transition-all relative ${ssoEnabled ? 'bg-stone-900' : 'bg-stone-200'}`}
           >
@@ -203,7 +207,11 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </div>
              <p className="text-xs text-stone-400 font-medium">{t('Require all members with your domain to use SSO. Standard login will be disabled for them.', 'Υποχρέωσε όλα τα μέλη του τομέα σου να χρησιμοποιούν SSO. Η κανονική είσοδος θα απενεργοποιηθεί για αυτά.')}</p>
             </div>
-            <button 
+            <button
+             type="button"
+             role="switch"
+             aria-checked={ssoMandatory}
+             aria-label={t('Require SSO', 'Υποχρεωτικό SSO')}
              onClick={() => setSsoMandatory(!ssoMandatory)}
              className={`w-10 h-5 rounded-full transition-all relative ${ssoMandatory ? 'bg-stone-900' : 'bg-stone-200'}`}
             >
@@ -212,7 +220,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            </div>
 
            {ssoMandatory && (
-            <motion.div 
+            <motion.div
              initial={{ opacity: 0, height: 0 }}
              animate={{ opacity: 1, height: 'auto' }}
              className="p-3.5 bg-red-50/50 border border-red-100 rounded-xl flex items-start gap-3"
@@ -242,8 +250,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-             <label className="text-micro">{t('Provider Type', 'Τύπος παρόχου')}</label>
-             <select 
+             <label htmlFor="ssosettings-field-1" className="text-micro">{t('Provider Type', 'Τύπος παρόχου')}</label>
+             <select id="ssosettings-field-1"
               value={providerType}
               onChange={(e) => setProviderType(e.target.value as any)}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
@@ -254,9 +262,9 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </select>
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">{t('Provider Name', 'Όνομα παρόχου')}</label>
-             <input 
-              type="text" 
+             <label htmlFor="ssosettings-field-2" className="text-micro">{t('Provider Name', 'Όνομα παρόχου')}</label>
+             <input id="ssosettings-field-2"
+              type="text"
               value={providerName}
               onChange={(e) => setProviderName(e.target.value)}
               placeholder={t('e.g. Okta, Azure AD, Google', 'π.χ. Okta, Azure AD, Google')}
@@ -264,9 +272,9 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              />
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">{t('Login Button Label', 'Ετικέτα κουμπιού εισόδου')}</label>
-             <input 
-              type="text" 
+             <label htmlFor="ssosettings-field-3" className="text-micro">{t('Login Button Label', 'Ετικέτα κουμπιού εισόδου')}</label>
+             <input id="ssosettings-field-3"
+              type="text"
               value={buttonLabel}
               onChange={(e) => setButtonLabel(e.target.value)}
               placeholder={t('e.g. Sign in with Okta', 'π.χ. Είσοδος με Okta')}
@@ -274,8 +282,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              />
             </div>
             <div className="space-y-1.5">
-             <label className="text-micro">{t('Default Provisioning Role', 'Προεπιλεγμένος ρόλος παροχής')}</label>
-             <select 
+             <label htmlFor="ssosettings-field-4" className="text-micro">{t('Default Provisioning Role', 'Προεπιλεγμένος ρόλος παροχής')}</label>
+             <select id="ssosettings-field-4"
               value={defaultRole}
               onChange={(e) => setDefaultRole(e.target.value as UserRole)}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
@@ -291,7 +299,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            </div>
 
            <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.div
              key={providerType}
              initial={{ opacity: 0, y: 10 }}
              animate={{ opacity: 1, y: 0 }}
@@ -303,9 +311,9 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
               <>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                 <label className="text-micro">{t('Client ID', 'Client ID')}</label>
-                 <input 
-                  type="text" 
+                 <label htmlFor="ssosettings-field-5" className="text-micro">{t('Client ID', 'Client ID')}</label>
+                 <input id="ssosettings-field-5"
+                  type="text"
                   placeholder="your-client-id"
                   className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
@@ -314,8 +322,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                  <label className="text-micro">{t('Client Secret', 'Client Secret')}</label>
                  <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
-                  <input 
-                   type="password" 
+                  <input
+                   aria-label={t('Client Secret', 'Client Secret')} type="password"
                    placeholder="••••••••••••••••"
                    className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                   />
@@ -323,9 +331,9 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 </div>
                </div>
                <div className="space-y-1.5">
-                <label className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
-                <input 
-                 type="text" 
+                <label htmlFor="ssosettings-field-6" className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
+                <input id="ssosettings-field-6"
+                 type="text"
                  placeholder="https://accounts.google.com"
                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
@@ -334,8 +342,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <label className="text-micro">{t('Authorization URL', 'Authorization URL')}</label>
                 <div className="relative">
                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
-                 <input 
-                  type="url" 
+                 <input
+                  aria-label={t('Authorization endpoint URL', 'URL endpoint εξουσιοδότησης')} type="url"
                   placeholder="https://your-idp.com/oauth/authorize"
                   className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
@@ -348,20 +356,20 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              {providerType === 'SAML' && (
               <>
                <div className="space-y-1.5">
-                <label className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
-                <input 
-                 type="text" 
+                <label htmlFor="ssosettings-field-7" className="text-micro">{t('Issuer URL', 'Issuer URL')}</label>
+                <input id="ssosettings-field-7"
+                 type="text"
                  placeholder="urn:example:idp"
                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">{t('SSO Endpoint URL', 'SSO Endpoint URL')}</label>
+                <label htmlFor="sso-endpoint-url" className="text-micro">{t('SSO Endpoint URL', 'SSO Endpoint URL')}</label>
                 <div className="relative">
                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
-                 <input 
-                  type="url" 
+                 <input
+                  id="sso-endpoint-url" type="url"
                   placeholder="https://your-idp.com/sso/saml"
                   className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
@@ -369,17 +377,17 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">{t('Metadata URL', 'Metadata URL')}</label>
-                <input 
-                 type="url" 
+                <label htmlFor="ssosettings-field-8" className="text-micro">{t('Metadata URL', 'Metadata URL')}</label>
+                <input id="ssosettings-field-8"
+                 type="url"
                  placeholder="https://your-idp.com/saml/metadata"
                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
                </div>
 
                <div className="space-y-1.5">
-                <label className="text-micro">{t('Certificate', 'Πιστοποιητικό')}</label>
-                <textarea 
+                <label htmlFor="ssosettings-field-9" className="text-micro">{t('Certificate', 'Πιστοποιητικό')}</label>
+                <textarea id="ssosettings-field-9"
                  rows={4}
                  placeholder="-----BEGIN CERTIFICATE-----"
                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all font-mono text-xs"
@@ -408,7 +416,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              </div>
             ))}
             <div className="flex items-center gap-1.5">
-             <input
+             <input aria-label={t('Add allowed email domain', 'Προσθήκη επιτρεπόμενου τομέα email')}
               type="text"
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
@@ -494,6 +502,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
             type="button"
             role="switch"
             aria-checked={jitProvisioning}
+            aria-label={t('Just-In-Time (JIT) Provisioning', 'Just-In-Time (JIT) παροχή')}
             onClick={() => setJitProvisioning(!jitProvisioning)}
             className={`w-10 h-5 rounded-full relative transition-all ${jitProvisioning ? 'bg-stone-900' : 'bg-stone-200'}`}
            >
@@ -502,8 +511,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
           </div>
           <div className="pt-5 border-t border-stone-100">
            <div className="space-y-1.5">
-            <label className="text-micro">{t('Default Role for New Users', 'Προεπιλεγμένος ρόλος για νέα μέλη')}</label>
-            <select
+            <label htmlFor="ssosettings-field-10" className="text-micro">{t('Default Role for New Users', 'Προεπιλεγμένος ρόλος για νέα μέλη')}</label>
+            <select id="ssosettings-field-10"
              value={jitDefaultRole}
              onChange={(e) => setJitDefaultRole(e.target.value)}
              className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"

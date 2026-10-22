@@ -225,7 +225,7 @@ const logMessage = (message: string) => {
 
  return (
   <div className="w-full px-2 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
-   <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4 lg:pr-56">
+   <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <div className="flex items-center gap-2.5 mb-1.5">
       <div className="p-1.5 bg-stone-900 text-white rounded-lg">
@@ -523,9 +523,9 @@ const logMessage = (message: string) => {
                {exec.startedAt ? formatDateTime(exec.startedAt) : "-"}
               </td>
               <td className="px-5 py-3 text-right">
-               <Button variant="ghost" size="icon" className="h-7 w-7 text-stone-400 hover:text-stone-900">
-                <Info className="w-3.5 h-3.5" />
-               </Button>
+               <span className="inline-flex h-7 w-7 items-center justify-center text-stone-400" title={t('Execution details are not available yet', 'Οι λεπτομέρειες εκτέλεσης δεν είναι διαθέσιμες ακόμη')}>
+                <Info className="w-3.5 h-3.5" aria-hidden="true" />
+               </span>
               </td>
              </tr>
             ))}
@@ -744,6 +744,8 @@ const logMessage = (message: string) => {
           </div>
          </div>
          <button 
+          type="button"
+          aria-label={t('Close', 'Κλείσιμο')}
           onClick={() => setIsCreateModalOpen(false)}
           className="p-1.5 hover:bg-stone-100 rounded-md transition-colors text-stone-400 hover:text-stone-900"
          >
@@ -799,9 +801,9 @@ const logMessage = (message: string) => {
             <p className="text-xs text-stone-500">{t('Template:', 'Πρότυπο:')} onboarding_nudge</p>
            </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-stone-400 hover:text-red-500">
-           <MoreVertical className="w-3.5 h-3.5" />
-          </Button>
+          <span className="inline-flex h-7 w-7 items-center justify-center text-stone-300" title={t('Sample step. Editing steps is not available yet.', 'Δείγμα βήματος. Η επεξεργασία βημάτων δεν είναι διαθέσιμη ακόμη.')}>
+           <MoreVertical className="w-3.5 h-3.5" aria-hidden="true" />
+          </span>
          </div>
         </div>
        </div>

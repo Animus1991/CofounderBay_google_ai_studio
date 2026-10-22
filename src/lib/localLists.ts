@@ -588,6 +588,7 @@ export type StudioSession = {
   type: 'Meeting' | 'Deadline' | 'Event' | 'Mentorship';
   /** ISO date-time when known; older entries may hold free text such as "TBD". */
   time: string;
+  description?: string;
   duration: string;
   location: string;
   participants: string[];

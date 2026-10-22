@@ -139,7 +139,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
      >
       {/* Plan Summary Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-       <Card className="lg:col-span-2 p-8 border-2 border-stone-900 relative overflow-hidden">
+       <Card className="lg:col-span-2 p-4 sm:p-6 border-2 border-stone-900 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4">
          <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
           {currentPlan?.name}
@@ -176,7 +176,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
         </div>
        </Card>
 
-       <Card className="p-8 flex flex-col justify-between">
+       <Card className="p-4 sm:p-6 self-start" contentClassName="flex flex-col gap-4">
         <div className="space-y-4">
          <h3 className="text-base font-semibold">{t('Seat Usage', 'Χρήση θέσεων')}</h3>
          <div className="space-y-2">
@@ -195,7 +195,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
           {t('You are using', 'Χρησιμοποιείς')} {seatCount} {t('out of your', 'από τις')} {seatLimit} {t('available seats. You can add more seats at any time for', 'διαθέσιμες θέσεις. Μπορείς να προσθέσεις θέσεις οποιαδήποτε στιγμή με')} ${currentPlan?.priceMonthly ? Math.floor(currentPlan.priceMonthly / (currentPlan.limits?.seats || 1)) : 10} {t('per seat/month.', 'ανά θέση/μήνα.')}
          </p>
         </div>
-        <Button variant="outline" className="w-full mt-6 gap-2" onClick={() => setActiveTab('seats')}>
+        <Button variant="outline" className="w-full gap-2" onClick={() => setActiveTab('seats')}>
          <UserPlus className="w-4 h-4" /> {t('Manage Seats', 'Διαχείριση θέσεων')}
         </Button>
        </Card>

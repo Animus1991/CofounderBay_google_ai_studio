@@ -19,7 +19,7 @@ export default function FactLine({
   return (
     <ul aria-label={label} className={cn('facts-dotted flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-stone-400', className)}>
       {shown.map((item, i) => (
-        <li key={i}>{item}</li>
+    <li className="min-w-0 break-words [overflow-wrap:anywhere]" key={i}>{item}</li>
       ))}
     </ul>
   );

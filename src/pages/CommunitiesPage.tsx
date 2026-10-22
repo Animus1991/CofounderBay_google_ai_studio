@@ -472,8 +472,8 @@ function CreateCommunityModal({ open, uid, onClose, onCreated }: { open: boolean
      />
     </div>
     <div>
-     <label className="text-xs font-semibold text-stone-500">{t('Category', 'Κατηγορία')}</label>
-     <select
+     <label htmlFor="community-category" className="text-xs font-semibold text-stone-500">{t('Category', 'Κατηγορία')}</label>
+     <select id="community-category"
       value={category}
       onChange={(e) => setCategory(e.target.value)}
       className="mt-1.5 w-full px-3 py-2.5 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-stone-900"

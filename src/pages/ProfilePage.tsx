@@ -610,7 +610,7 @@ export default function ProfilePage() {
    </button>
    {/* Profile Header */}
    <div className="relative">
-    <div className="h-24 sm:h-32 bg-stone-900 rounded-xl overflow-hidden relative" />
+    <div className="h-24 sm:h-32 bg-stone-200 rounded-xl overflow-hidden relative" />
 
     {/* Profile Info Card */}
     <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
@@ -632,13 +632,14 @@ export default function ProfilePage() {
 
       <div className="flex-1 space-y-4">
        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
          <h1 className="text-xl font-semibold text-stone-900 tracking-tight">
           {isOwnProfile ? (currentUser?.displayName || t('Founder', 'Ιδρυτής')) : labelOf(profile.fullName || 'Founder')}
          </h1>
          {isEditing ? (
           <input 
            type="text" 
+           aria-label={t('Headline', 'Τίτλος')}
            value={editForm.headline || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, headline: e.target.value }))}
            className="w-full px-4 py-2 mt-2 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-base"
@@ -706,6 +707,7 @@ export default function ProfilePage() {
           <MapPin className="w-4 h-4" />
           <input 
            type="text" 
+           aria-label={t('Location', 'Τοποθεσία')}
            value={editForm.location || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
            className="px-3 py-1 bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900"
@@ -782,6 +784,7 @@ export default function ProfilePage() {
       {isEditing ? (
        <div className="space-y-4">
         <textarea 
+          aria-label={t('About me', 'Σχετικά με μένα')}
          value={editForm.bio || ''}
          onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
          rows={4}
@@ -792,8 +795,9 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-stone-100">
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">{t('LinkedIn URL', 'Σύνδεσμος LinkedIn')}</label>
+          <label htmlFor="profile-linkedin" className="block text-sm font-medium text-stone-500 mb-1">{t('LinkedIn URL', 'Σύνδεσμος LinkedIn')}</label>
           <input 
+           id="profile-linkedin"
            type="url" 
            value={editForm.linkedinUrl || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, linkedinUrl: e.target.value }))}
@@ -802,8 +806,9 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">{t('GitHub URL', 'Σύνδεσμος GitHub')}</label>
+          <label htmlFor="profile-github" className="block text-sm font-medium text-stone-500 mb-1">{t('GitHub URL', 'Σύνδεσμος GitHub')}</label>
           <input 
+           id="profile-github"
            type="url" 
            value={editForm.githubUrl || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, githubUrl: e.target.value }))}
@@ -812,8 +817,9 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">{t('Portfolio URL', 'Σύνδεσμος portfolio')}</label>
+          <label htmlFor="profile-portfolio" className="block text-sm font-medium text-stone-500 mb-1">{t('Portfolio URL', 'Σύνδεσμος portfolio')}</label>
           <input 
+           id="profile-portfolio"
            type="url" 
            value={editForm.portfolioUrl || ''}
            onChange={(e) => setEditForm(prev => ({ ...prev, portfolioUrl: e.target.value }))}
@@ -822,8 +828,9 @@ export default function ProfilePage() {
           />
          </div>
          <div>
-          <label className="block text-sm font-medium text-stone-500 mb-1">{t('Availability', 'Διαθεσιμότητα')}</label>
+          <label htmlFor="profile-availability" className="block text-sm font-medium text-stone-500 mb-1">{t('Availability', 'Διαθεσιμότητα')}</label>
           <select
+           id="profile-availability"
            value={editForm.availability || 'Immediate'}
            onChange={(e) => setEditForm(prev => ({ ...prev, availability: e.target.value }))}
            className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900 cursor-pointer"
@@ -981,11 +988,12 @@ export default function ProfilePage() {
         >
          <div className="flex items-center justify-between">
           <h4 className="font-medium text-stone-900">{t('Endorse for', 'Σύσταση για')} {selectedSkillForEndorsement}</h4>
-          <button onClick={() => setSelectedSkillForEndorsement('')} className="text-stone-400 hover:text-stone-900">
+          <button type="button" aria-label={t('Cancel endorsement', 'Ακύρωση σύστασης')} onClick={() => setSelectedSkillForEndorsement('')} className="text-stone-400 hover:text-stone-900">
            <X className="w-5 h-5" />
           </button>
          </div>
          <textarea 
+          aria-label={t('Endorsement comment (optional)', 'Σχόλιο σύστασης (προαιρετικό)')}
           placeholder={t('Add a brief comment (optional)...', 'Πρόσθεσε ένα σύντομο σχόλιο (προαιρετικά)…')}
           value={endorsementComment}
           onChange={(e) => setEndorsementComment(e.target.value)}
@@ -1170,28 +1178,28 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
 {/* AI Match Insight */}
-      <div className="bg-stone-900 p-5 rounded-xl space-y-4">
+      <div className="bg-stone-50 border border-stone-200 p-5 rounded-xl space-y-4">
        <div>
         <div className="flex items-center gap-3 mb-3">
-         <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/10">
-          <Sparkles className="w-4 h-4 text-amber-400" />
+         <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center backdrop-blur-sm border border-stone-200">
+          <Sparkles className="w-4 h-4 text-amber-600" />
          </div>
          <div>
-          <h3 className="text-sm font-semibold text-white tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
-          <p className="text-xs text-stone-500">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
+          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
+          <p className="text-xs text-stone-600">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
          </div>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-400">{isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
-          <span className="text-white font-semibold">{insightScore}%</span>
+          <span className="text-stone-600">{isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
+          <span className="text-stone-900 font-semibold">{insightScore}%</span>
          </div>
-         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+         <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
           <motion.div
            initial={{ width: 0 }}
            animate={{ width: `${insightScore}%` }}
            transition={{ duration: 1.5 }}
-           className="h-full bg-white rounded-full"
+           className="h-full bg-stone-700 rounded-full"
           />
          </div>
          {isDemoMode ? (
@@ -1202,13 +1210,13 @@ export default function ProfilePage() {
            { label: 'Values', labelEl: 'Αξίες', pct: 78 },
            { label: 'Goals', labelEl: 'Στόχοι', pct: 81 },
           ].map(d => (
-           <div key={d.label} className="text-center p-2 bg-white/5 rounded-lg border border-white/5">
-            <p className="text-white font-semibold text-sm">{d.pct}%</p>
-            <p className="text-xs text-stone-500">{t(d.label, d.labelEl)}</p>
+           <div key={d.label} className="text-center p-2 bg-white rounded-lg border border-stone-200">
+            <p className="text-stone-900 font-semibold text-sm">{d.pct}%</p>
+            <p className="text-xs text-stone-600">{t(d.label, d.labelEl)}</p>
            </div>
           ))}
          </div>
-         <p className="text-xs text-stone-400 leading-relaxed italic pt-1">
+         <p className="text-xs text-stone-600 leading-relaxed italic pt-1">
           {isOwnProfile
            ? t('"Strong technical profile with excellent product thinking. Consider adding more market validation artifacts to boost your readiness score."', '«Ισχυρό τεχνικό προφίλ με εξαιρετική σκέψη προϊόντος. Πρόσθεσε περισσότερα στοιχεία επικύρωσης αγοράς για να ανεβάσεις το readiness score σου.»')
            : t('"Complementary skill sets in product management and engineering. Strong alignment on mission-driven ventures and startup pace."', '«Συμπληρωματικές δεξιότητες σε διαχείριση προϊόντος και μηχανική. Ισχυρή ευθυγράμμιση σε εγχειρήματα με αποστολή και σε ρυθμό startup.»')
@@ -1216,7 +1224,7 @@ export default function ProfilePage() {
          </p>
          </>
          ) : (
-          <p className="text-xs text-stone-400 leading-relaxed pt-1">
+          <p className="text-xs text-stone-600 leading-relaxed pt-1">
            {t('This number is how complete this profile is, from the fields on the page. Match scores appear when both of you have enough in common.', 'Αυτός ο αριθμός είναι πόσο συμπληρωμένο είναι το προφίλ, από τα πεδία της σελίδας. Τα σκορ αντιστοίχισης εμφανίζονται μόλις υπάρχουν αρκετά κοινά.')}
           </p>
          )}

@@ -115,6 +115,23 @@ export default function LoginPage() {
 
    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
     <div className="bg-white py-8 px-3 shadow-xl shadow-stone-200/50 sm:rounded-2xl sm:px-10 border border-stone-100">
+     <section aria-label={t('Demo access', 'Δοκιμαστική είσοδος')} className="mb-6 border-b border-stone-200 pb-6">
+      <button
+       type="button"
+       disabled={loading}
+       onClick={() => {
+        toggleDemoMode(true);
+        navigate('/dashboard', { replace: true });
+       }}
+       className="w-full min-h-11 inline-flex justify-center items-center gap-2 py-2 px-4 border border-stone-900 rounded-xl bg-stone-900 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      >
+       <Zap className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" aria-hidden="true" />
+       <Both en="Enter Demo — no account needed" el="Είσοδος Demo — χωρίς λογαριασμό" />
+      </button>
+      <p className="mt-2 text-center text-xs text-stone-500">
+       <Both en="Explore with sample data. No email, password or Google account required." el="Δοκίμασε την εφαρμογή με δοκιμαστικά δεδομένα. Δεν χρειάζεται email, κωδικός ή λογαριασμός Google." />
+      </p>
+     </section>
      <form className="space-y-6" onSubmit={handleEmailLogin}>
       <div>
        <label htmlFor="email" className="block text-sm font-medium text-stone-700">
@@ -234,22 +251,6 @@ export default function LoginPage() {
        </button>
       </div>
 
-      {/* Demo Mode */}
-      <div className="mt-6 pt-6 border-t border-stone-200">
-       <button
-        onClick={() => {
-         toggleDemoMode(true);
-         navigate('/dashboard', { replace: true });
-        }}
-        className="w-full min-h-11 inline-flex justify-center items-center py-2 px-4 border border-stone-200 rounded-xl bg-white text-sm font-semibold text-stone-900 hover:border-stone-900 transition-all"
-       >
-        <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-stone-900" />
-        <Both en="Try Demo Mode" el="Δοκιμαστική λειτουργία" />
-       </button>
-       <p className="mt-2 text-center text-xs text-stone-400">
-        <Both en="Skip login and explore with sample data" el="Χωρίς είσοδο, με δοκιμαστικά δεδομένα" />
-       </p>
-      </div>
      </div>
     </div>
    </div>

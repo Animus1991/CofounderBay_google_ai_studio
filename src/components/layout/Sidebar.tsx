@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
  useNotificationFeed } from "../../lib/notificationFeed";
 import { 
@@ -38,6 +38,7 @@ import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
 import { signOutAccount } from "../../lib/account";
 import { useOptionalMessaging } from "../../context/MessagingContext";
+import { useDialogFocus } from '../../lib/useDialogFocus';
 
 interface SidebarProps {
  user: User & { avatarUrl?: string };
@@ -49,7 +50,7 @@ interface SidebarProps {
  onMenuToggle?: () => void;
 }
 
-export default function Sidebar({ user, guest = false, collapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
+export default function Sidebar({ user, guest = false, collapsed: desktopCollapsed, setCollapsed, mobileOpen, setMobileOpen, onMenuToggle }: SidebarProps) {
  useLanguage();
  const [isMobileViewport, setIsMobileViewport] = useState(
   () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1023px)').matches
@@ -65,6 +66,9 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
  }, []);
 
  const mobileNavigationHidden = isMobileViewport && !mobileOpen;
+ const collapsed = desktopCollapsed && !isMobileViewport;
+ const drawerRef = useRef<HTMLElement>(null);
+ useDialogFocus(Boolean(isMobileViewport && mobileOpen), drawerRef, () => setMobileOpen?.(false));
  const { tenant } = useTenant();
  const navigate = useNavigate();
  const isAdmin = user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.SUPER_ADMIN);
@@ -147,6 +151,11 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
    </AnimatePresence>
 
    <motion.aside 
+    ref={drawerRef}
+    role={isMobileViewport && mobileOpen ? 'dialog' : undefined}
+    aria-modal={isMobileViewport && mobileOpen ? true : undefined}
+    aria-label={bothText("Navigation menu", "Μενού πλοήγησης")}
+    tabIndex={-1}
     aria-hidden={mobileNavigationHidden}
     inert={mobileNavigationHidden}
     initial={false}
@@ -182,12 +191,12 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
       </button>
       <motion.button
        type="button"
-       aria-label={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
+       aria-label={isMobileViewport ? bothText("Close menu", "Κλείσιμο μενού") : withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
        aria-expanded={!collapsed}
        aria-controls="primary-navigation"
        whileHover={{ scale: 1.05 }}
        whileTap={{ scale: 0.95 }}
-       onClick={() => setCollapsed(!collapsed)}
+       onClick={() => { if (isMobileViewport) setMobileOpen?.(false); else setCollapsed(!collapsed); }}
        className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
        title={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
       >
@@ -305,7 +314,7 @@ export default function Sidebar({ user, guest = false, collapsed, setCollapsed, 
           cn(
            "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-all duration-200 group",
            isActive
-            ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"
+            ? "bg-stone-100 text-stone-900 shadow-sm"
             : "text-stone-500 hover:bg-stone-50 hover:text-stone-900",
            collapsed && "justify-center px-0"
           )

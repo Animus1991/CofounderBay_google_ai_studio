@@ -153,7 +153,7 @@ export default function Billing({ user }: BillingProps) {
       className="space-y-6"
      >
       {/* Active Plan Card */}
-      <Card className="p-8 border-2 border-stone-900 relative overflow-hidden">
+     <Card className="p-4 sm:p-6 border-2 border-stone-900 relative overflow-hidden">
        <div className="absolute top-0 right-0 p-4">
         <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
          {t('Active Plan', 'Ενεργό πακέτο')}
@@ -271,17 +271,15 @@ export default function Billing({ user }: BillingProps) {
       exit={{ opacity: 0, y: -10 }}
       className="space-y-6"
      >
-      <Card className="p-8">
+      <Card className="p-4 sm:p-6">
        <div className="flex items-center justify-between mb-8">
         <div className="space-y-1">
          <h3 className="text-base font-semibold">{t('Default Payment Method', 'Προεπιλεγμένη μέθοδος πληρωμής')}</h3>
          <p className="text-sm text-stone-500">{t('This card will be used for all recurring charges.', 'Αυτή η κάρτα θα χρησιμοποιείται για όλες τις επαναλαμβανόμενες χρεώσεις.')}</p>
         </div>
-        <Link to="/settings">
-         <Button variant="outline" className="gap-2">
+        <Link to="/settings" className="inline-flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors">
           <Plus className="w-4 h-4" /> {t('Add Method', 'Προσθήκη μεθόδου')}
-         </Button>
-        </Link>
+         </Link>
        </div>
 
        {cards.length === 0 ? (
@@ -321,7 +319,7 @@ export default function Billing({ user }: BillingProps) {
        )}
       </Card>
 
-      <Card className="p-8">
+      <Card className="p-4 sm:p-6">
        <div className="space-y-1 mb-6">
         <h3 className="text-base font-semibold">{t('Billing Address', 'Διεύθυνση χρέωσης')}</h3>
         <p className="text-sm text-stone-500">{t('Used for generating tax-compliant invoices.', 'Για την έκδοση φορολογικά συμμορφωμένων τιμολογίων.')}</p>
@@ -337,8 +335,8 @@ export default function Billing({ user }: BillingProps) {
          />
         </div>
         <div className="space-y-2">
-         <label className="text-xs font-medium text-stone-400 tracking-wide">{t('Country', 'Χώρα')}</label>
-         <select
+         <label htmlFor="billing-country" className="text-xs font-medium text-stone-400 tracking-wide">{t('Country', 'Χώρα')}</label>
+         <select id="billing-country"
           value={billingInfo.country}
           onChange={(e) => setBillingInfo((prev) => ({ ...prev, country: e.target.value }))}
           className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none"

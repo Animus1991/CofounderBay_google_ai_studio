@@ -272,7 +272,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
 
     {/* Sidebar */}
     <aside className="lg:col-span-4 space-y-4">
-     <Card className="rounded-2xl border-stone-100 p-4 space-y-3">
+     <Card className="rounded-2xl border-stone-100 p-4" contentClassName="space-y-3">
       <div>
        <h4 className="text-sm font-semibold text-stone-900">{t('Program Finder', 'Εύρεση προγραμμάτων')}</h4>
        <p className="text-xs text-stone-400 mt-0.5">{t('AI-matched to your stage, industry, and goals.', 'Με AI, με βάση το στάδιο, τον κλάδο και τους στόχους σου.')}</p>
@@ -288,7 +288,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
       </Button>
      </Card>
 
-     <Card className="rounded-2xl border-stone-100 p-4 space-y-3">
+     <Card className="rounded-2xl border-stone-100 p-4" contentClassName="space-y-3">
       <div className="flex items-center justify-between">
        <h4 className="text-sm font-semibold text-stone-900">{t('Ecosystem Stats', 'Στατιστικά οικοσυστήματος')}</h4>
        <TrendingUp className="w-3.5 h-3.5 text-stone-400" />

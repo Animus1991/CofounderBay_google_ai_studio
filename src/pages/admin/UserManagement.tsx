@@ -256,15 +256,11 @@ export default function UserManagement({ user: _user }: AdminProps) {
 
      <div className="flex flex-wrap items-center gap-4">
       <div className="hidden lg:flex items-center gap-3 mr-4">
-       <Link to="/admin/branding">
-        <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-900 font-medium text-xs tracking-wider transition-all h-11 px-6 rounded-xl">
-         <Palette className="w-4 h-4 mr-2.5" /> {t('Branding', 'Ταυτότητα')}
-        </Button>
+       <Link to="/admin/branding" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs tracking-wider transition-all">
+        <Palette className="w-4 h-4 mr-2.5" /> {t('Branding', 'Ταυτότητα')}
        </Link>
-       <Link to="/admin/taxonomies">
-        <Button variant="ghost" size="sm" className="text-stone-400 hover:text-stone-900 font-medium text-xs tracking-wider transition-all h-11 px-6 rounded-xl">
-         <Tag className="w-4 h-4 mr-2.5" /> {t('Taxonomies', 'Ταξινομίες')}
-        </Button>
+       <Link to="/admin/taxonomies" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs tracking-wider transition-all">
+        <Tag className="w-4 h-4 mr-2.5" /> {t('Taxonomies', 'Ταξινομίες')}
        </Link>
       </div>
       <Button variant="outline" onClick={exportCsv} className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
@@ -454,7 +450,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
 
       <div className="grid grid-cols-1 gap-6">
        {openReports.length === 0 && (
-        <Card className="border-stone-100 p-8 rounded-xl">
+     <Card className="border-stone-100 p-4 sm:p-6 rounded-xl">
          <p className="text-sm text-stone-400 font-medium">{t('The moderation queue is empty. Reports filed by members appear here.', 'Η ουρά εποπτείας είναι κενή. Αναφορές από μέλη εμφανίζονται εδώ.')}</p>
         </Card>
        )}
@@ -514,7 +510,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
       <h2 className="text-base font-semibold text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h2>
      </div>
 
-     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-10">
+     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
       <div className="space-y-8">
        {[
         { label: t('Profile Completion', 'Ολοκλήρωση προφίλ'), value: users.length ? Math.round((users.filter((u) => u.company || u.avatarUrl).length / users.length) * 100) : 0, color: "bg-blue-500" },
@@ -554,7 +550,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
      {/* Ecosystem Distribution */}
      <div className="space-y-4">
       <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Member Distribution', 'Κατανομή μελών')}</h3>
-      <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-8 rounded-xl space-y-8">
+     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
        {(() => {
         const count = (re: RegExp) => users.filter((u) => u.roles.some((r) => re.test(r))).length;
         const pct = (n: number) => (users.length ? Math.round((n / users.length) * 100) : 0);

@@ -49,7 +49,7 @@ export default function TenantLanding() {
     </div>
     <div className="flex items-center gap-6">
      <Link to="/login" className="text-sm font-medium text-stone-500 hover:text-stone-900">{t('Login', 'Είσοδος')}</Link>
-     <Link to="/signup"><Button size="sm">{content.ctaLabel}</Button></Link>
+     <Link to="/signup" data-ui="button" className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-stone-900 text-white text-sm font-medium hover:bg-stone-800 transition-colors">{content.ctaLabel}</Link>
     </div>
    </nav>
 
@@ -72,11 +72,9 @@ export default function TenantLanding() {
        {content.heroSubtitle}
       </p>
       <div className="flex flex-col sm:flex-row gap-4">
-       <Link to="/signup">
-        <Button size="lg" className="px-10">
-         {content.ctaLabel}
-         <ArrowRight className="w-5 h-5" />
-        </Button>
+       <Link to="/signup" data-ui="button" className="inline-flex items-center justify-center gap-2 px-10 h-11 rounded-xl bg-stone-900 text-white text-sm font-medium hover:bg-stone-800 transition-colors">
+        {content.ctaLabel}
+        <ArrowRight className="w-5 h-5" />
        </Link>
        <Button variant="outline" size="lg" onClick={() => document.getElementById('tenant-about')?.scrollIntoView({ behavior: 'smooth' })}>
         {t('Learn More', 'Μάθε περισσότερα')}

@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
+import Disclosure from "../components/ui/Disclosure";
 import { User } from "../types";
 import { cn } from "../lib/utils";
 import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue } from "../lib/localLists";
@@ -271,8 +272,8 @@ export default function Workspace({ user }: WorkspaceProps) {
        className={cn(
         "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
         activeTab === tab
-         ? "bg-stone-900 text-white shadow-sm"
-         : "text-stone-400 hover:text-stone-700"
+         ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200"
+         : "text-stone-500 hover:text-stone-700"
        )}
       >
        {tabLabel(tab)}
@@ -294,33 +295,33 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Left Column - Tasks & Progress */}
       <div className="lg:col-span-8 space-y-4">
        <section className="card-minimal p-5">
-        <div className="flex items-center justify-between mb-5">
-         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-stone-900">{t("Active Sprint", "Ενεργό sprint")}</h3>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 mb-5">
+         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0 max-w-full">
+          <h3 className="text-sm font-semibold text-stone-900 whitespace-nowrap">{t("Active Sprint", "Ενεργό sprint")}</h3>
           {/* View Toggle */}
-          <div className="flex items-center gap-1 bg-stone-50 p-0.5 rounded-lg border border-stone-100">
-           <button 
+          <div className="flex shrink-0 items-center gap-1 bg-stone-50 p-0.5 rounded-lg border border-stone-100">
+           <button type="button" aria-pressed={taskView === "list"}
             onClick={() => setTaskView("list")}
             className={cn(
-             "px-2 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1",
-             taskView === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400 hover:text-stone-600"
+             "px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1",
+             taskView === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
             )}
            >
             <List className="w-3 h-3" /> {t("List", "Λίστα")}
            </button>
-           <button 
+           <button type="button" aria-pressed={taskView === "kanban"}
             onClick={() => setTaskView("kanban")}
             className={cn(
-             "px-2 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1",
-             taskView === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400 hover:text-stone-600"
+             "px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1",
+             taskView === "kanban" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
             )}
            >
             <LayoutGrid className="w-3 h-3" /> {t("Kanban", "Kanban")}
            </button>
           </div>
          </div>
-         <div className="flex items-center gap-2">
-          <div className="relative w-40 group">
+         <div className="flex min-w-0 w-full sm:w-auto items-center gap-2">
+          <div className="relative min-w-0 flex-1 sm:flex-none sm:w-40 group">
            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
            <input 
             type="text" 
@@ -332,7 +333,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           </div>
           <Button
            size="sm"
-           className="rounded-lg h-7 bg-stone-900 text-white text-sm px-3"
+           className="rounded-lg shrink-0 bg-stone-900 text-white text-sm px-3"
            onClick={() => addTask()}
           >
            <Plus className="w-3.5 h-3.5 mr-1" /> {t("Task", "Εργασία")}
@@ -348,18 +349,18 @@ export default function Workspace({ user }: WorkspaceProps) {
             key={task.id} 
             onClick={() => setActiveTask(activeTask === task.id ? null : task.id)}
             className={cn(
-             "group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
+             "group flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer",
              activeTask === task.id ? "border-stone-300 bg-stone-50" : "border-stone-100 hover:border-stone-200 hover:bg-stone-50"
             )}
            >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
              <div className={cn(
               "w-1.5 h-1.5 rounded-full shrink-0",
               task.priority === "High" ? "bg-red-400" : task.priority === "Medium" ? "bg-amber-400" : "bg-blue-400"
              )} />
-             <div>
-              <h4 className="text-sm font-semibold text-stone-900">{task.title}</h4>
-              <div className="flex items-center gap-2 mt-0.5">
+             <div className="min-w-0">
+              <h4 className="text-sm font-semibold text-stone-900 break-words">{task.title}</h4>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                <span className={cn(
                 "text-xs tracking-wider font-medium",
                 task.status === "In Progress" ? "text-violet-500" : 
@@ -382,9 +383,9 @@ export default function Workspace({ user }: WorkspaceProps) {
               </div>
              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
              {/* Tags */}
-             <div className="flex gap-1">
+             <div className="flex flex-wrap justify-end gap-1 max-w-[7rem] sm:max-w-none">
               {task.tags.slice(0, 2).map(tag => (
                <span key={tag} className="px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded text-xs">{labelOf(tag)}</span>
               ))}
@@ -453,6 +454,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         )}
        </section>
 
+      <Disclosure title={t("Sprint stats", "Στατιστικά sprint")} hint={t("Tasks done and deep work today", "Εργασίες που ολοκληρώθηκαν και deep work σήμερα")}>
        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card-minimal p-4 space-y-3">
          <div className="flex items-center gap-2">
@@ -484,6 +486,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          </div>
         </div>
        </section>
+      </Disclosure>
       </div>
 
       {/* Right Column - Quick Actions & AI */}
@@ -501,7 +504,8 @@ export default function Workspace({ user }: WorkspaceProps) {
           {t(nextStep.en, nextStep.el)}
          </p>
          <Button
-          className="w-full bg-stone-900 text-white h-7 rounded-lg text-sm hover:bg-stone-800"
+          variant="outline"
+          className="w-full rounded-lg text-sm"
           onClick={() => {
            window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', {
             detail: { agentId: 'a3', prompt: nextStep.prompt ?? nextStep.en }
@@ -513,10 +517,14 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
        </section>
 
+       <Disclosure
+        title={t("Focus timer and time tracking", "Χρονόμετρο εστίασης και καταγραφή χρόνου")}
+        hint={`${String(Math.floor(focusTimer / 60)).padStart(2, "0")}:${String(focusTimer % 60).padStart(2, "0")} ${isTimerRunning ? t("running", "σε εξέλιξη") : t("paused", "σε παύση")} · ${t("sessions, tracked hours, full focus", "συνεδρίες, ώρες, πλήρης εστίαση")}`}
+       >
        {/* Focus Mode Widget */}
        <section className={cn(
         "card-minimal p-4 space-y-3",
-        focusMode && "bg-stone-900 text-white"
+        focusMode && "bg-stone-200 text-stone-900"
        )}>
         <div className="flex items-center justify-between">
          <div className="flex items-center gap-2">
@@ -568,6 +576,8 @@ export default function Workspace({ user }: WorkspaceProps) {
           {isTimerRunning ? <><Pause className="w-3.5 h-3.5" /> {t("Pause", "Παύση")}</> : <><Play className="w-3.5 h-3.5" /> {t("Start", "Έναρξη")}</>}
          </button>
          <button
+          type="button"
+          aria-label={t("Reset focus timer", "Επαναφορά χρονομέτρου συγκέντρωσης")}
           onClick={() => {
            setFocusTimer(focusState === "work" ? 25 * 60 : focusState === "shortBreak" ? 5 * 60 : 15 * 60);
            setIsTimerRunning(false);
@@ -650,7 +660,9 @@ export default function Workspace({ user }: WorkspaceProps) {
          </div>
         </div>
        </section>
+       </Disclosure>
 
+       <Disclosure title={t("Project files", "Αρχεία έργου")} hint={t("Uploads and shared assets", "Μεταφορτώσεις και κοινόχρηστα αρχεία")}>
        <section className="card-minimal p-4 space-y-3">
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Project Assets", "Αρχεία έργου")}</h3>
         <div className="space-y-1">
@@ -684,6 +696,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          <input type="file" className="sr-only" onChange={(e) => { void addAsset(e.target.files?.[0] ?? null); e.target.value = ''; }} />
         </label>
        </section>
+       </Disclosure>
       </div>
      </motion.div>
     )}
@@ -696,19 +709,19 @@ export default function Workspace({ user }: WorkspaceProps) {
       exit={{ opacity: 0 }}
       className="space-y-4"
      >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t("Lean Canvas", "Lean canvas")}</h3>
         <p className="text-xs text-stone-400 mt-0.5">{t("Map out your business model in a single page.", "Αποτύπωσε το επιχειρηματικό σου μοντέλο σε μία σελίδα.")}</p>
        </div>
-       <div className="flex items-center gap-2">
+       <div className="flex flex-wrap items-center gap-2">
         <Button
          variant="outline"
          size="sm"
          className="h-7 text-sm border-stone-200"
          onClick={saveCanvas}
         >
-         <Save className="w-3 h-3 mr-1.5" /> {t("Save", "Αποθήκευση")}
+         <Save className="w-3 h-3 mr-1.5" /> {t("Save canvas", "Αποθήκευση canvas")}
         </Button>
         <Button
          size="sm"
@@ -752,7 +765,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Milestones Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
        {[
-        { label: t("Total", "Σύνολο"), value: String(milestoneStats.total), color: "bg-stone-900 text-white" },
+        { label: t("Total", "Σύνολο"), value: String(milestoneStats.total), color: "bg-stone-100 text-stone-700" },
         { label: t("Completed", "Ολοκληρώθηκε"), value: String(milestoneStats.done), color: "bg-emerald-50 text-emerald-700" },
         { label: t("In Progress", "Σε εξέλιξη"), value: String(milestoneStats.active), color: "bg-violet-50 text-violet-700" },
         { label: t("Overdue", "Εκπρόθεσμο"), value: String(milestoneStats.overdue), color: "bg-red-50 text-red-700" },
@@ -765,7 +778,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       </div>
 
       {/* Timeline / Gantt View */}
-      <Card className="p-5 space-y-4">
+      <Card className="p-4" contentClassName="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t("Product Roadmap", "Οδικός χάρτης προϊόντος")}</h3>
@@ -957,7 +970,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Sidebar */}
       <div className="space-y-4">
        {/* Quick Add */}
-       <Card className="p-4 space-y-3">
+       <Card className="p-4" contentClassName="space-y-3">
         <h4 className="text-sm font-semibold text-stone-900">{t("Quick Add", "Γρήγορη προσθήκη")}</h4>
         <Button type="button" size="sm" className="w-full h-8 text-sm bg-stone-900 text-white rounded-lg" onClick={() => ask('Schedule a new event on my calendar')}>
          <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("New Event", "Νέα εκδήλωση")}
@@ -973,7 +986,7 @@ export default function Workspace({ user }: WorkspaceProps) {
        </Card>
 
        {/* Upcoming — the next seven days of real sessions */}
-       <Card className="p-4 space-y-3">
+       <Card className="p-4" contentClassName="space-y-3">
         <h4 className="text-sm font-semibold text-stone-900">{t("This Week", "Αυτή την εβδομάδα")}</h4>
         <div className="space-y-2">
          {weekSessions.length === 0 && (
@@ -1021,7 +1034,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         {t('{n} of {total} modules complete', '{n} από {total} ενότητες ολοκληρωμένες')
          .replace('{n}', String(done)).replace('{total}', String(BUILDER_MODULES.length))}
        </p>
-       <Card className="p-2 border-stone-100 rounded-2xl space-y-1">
+       <Card className="p-2 border-stone-100 rounded-2xl" contentClassName="space-y-1">
         {moduleStats.map(({ module, status, filled, total }) => (
          <div key={module.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-all">
           <span className="text-stone-400 font-mono font-semibold text-sm w-6">{String(module.id).padStart(2, '0')}</span>

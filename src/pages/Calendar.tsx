@@ -490,7 +490,7 @@ export default function Calendar() {
               "bg-emerald-500"
              )} />
              <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-stone-900 truncate">{ev.title}</p>
+              <p className="text-sm font-semibold text-stone-900 break-words">{ev.title}</p>
               <p className="text-xs text-stone-400">
                {d ? (ev.duration === 'All Day' ? t("All Day", "Όλη την ημέρα") : `${formatTime(d)} · ${ev.duration}`) : ev.time}
                {' · '}{labelOf(ev.type)}

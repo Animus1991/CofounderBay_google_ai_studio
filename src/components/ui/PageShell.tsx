@@ -45,27 +45,27 @@ export default function PageShell({
  return (
   <div className={cn(
    'min-h-full w-full min-w-0',
-   !noPadding && 'px-2 sm:px-6 lg:px-8 py-6 sm:py-8',
+   !noPadding && 'px-4 sm:px-6 lg:px-8 py-5 sm:py-6',
    className
   )}>
    <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
     {(title || actions || sample) && (
-     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 lg:pr-56">
-      <div className="min-w-0">
+     <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-5">
+      <div className="min-w-0 flex-1 basis-64">
        {title && (
-        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight break-words">{title}</h1>
        )}
        {description && (
         <p className="text-sm text-stone-500 mt-1 max-w-2xl">{description}</p>
        )}
       </div>
       {(actions || sample) && (
-       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">
+       <div data-ui="page-actions" className="flex max-w-full flex-wrap items-center gap-2 min-w-0">
         {sample && <SamplePill />}
         {actions}
        </div>
       )}
-     </div>
+     </header>
     )}
     {children}
    </div>

@@ -1,13 +1,12 @@
 import React, { ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
-interface ButtonProps {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
  size?: "sm" | "md" | "lg" | "icon";
  children: ReactNode;
  loading?: boolean;
  className?: string;
- onClick?: any;
  disabled?: boolean;
  type?: "button" | "submit" | "reset";
  title?: string;
@@ -34,18 +33,22 @@ export default function Button({
  };
 
  const sizes = {
-  sm: "min-h-11 px-3 py-2 text-sm font-medium rounded-lg",
-  md: "min-h-11 px-4 py-2 text-sm font-medium rounded-lg",
-  lg: "min-h-11 px-5 py-2.5 text-sm font-medium rounded-xl",
-  icon: "min-h-11 min-w-11 p-2 rounded-lg",
+  sm: "min-h-7 px-3 py-1 text-sm font-medium rounded-lg",
+  md: "min-h-8 px-4 py-1 text-sm font-medium rounded-lg",
+  lg: "min-h-9 px-5 py-1.5 text-sm font-medium rounded-xl",
+  icon: "min-h-8 min-w-8 p-1.5 rounded-lg",
  };
 
  return (
   <button
    type={type}
    onClick={onClick}
+   data-ui="button"
+   data-variant={variant}
+   data-size={size}
+   aria-busy={loading || undefined}
    className={cn(
-    "inline-flex items-center justify-center gap-2 transition-all duration-200",
+    "inline-flex max-w-full items-center justify-center gap-2 whitespace-normal break-words text-center transition-all duration-200 [&>svg]:shrink-0",
     "active:scale-[0.97] active:duration-75",
     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1",
     "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
@@ -57,7 +60,7 @@ export default function Button({
    {...props}
   >
    {loading ? (
-    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+    <span aria-hidden="true" className="w-4 h-4 shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin" />
    ) : null}
    {children}
   </button>

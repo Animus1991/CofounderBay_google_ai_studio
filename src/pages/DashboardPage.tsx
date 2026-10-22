@@ -690,7 +690,7 @@ export default function DashboardPage() {
               </>
             )}
           </button>
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-900 rounded-2xl p-4 text-white hover:bg-stone-800 transition-all">
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
             <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
             <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks as the Task button." el="Γράφει τις ίδιες εργασίες με το κουμπί «Εργασία» στον Χώρο εργασίας." /></p>
@@ -753,7 +753,7 @@ export default function DashboardPage() {
             return (
               <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
                 <div className="flex items-start gap-3">
-                  <button type="button" className="shrink-0 block" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
+                  <button type="button" aria-label={item.authorId === 'assistant' ? t('Open matches', 'Άνοιγμα αντιστοιχίσεων') : t(`View profile: ${item.name}`, `Προβολή προφίλ: ${item.name}`)} className="shrink-0 block" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
                     <Avatar src={item.avatar} fallback={item.name} size="sm" />
                   </button>
                   <div className="flex-1 min-w-0">
@@ -935,7 +935,7 @@ export default function DashboardPage() {
             </div>
           </div>
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-            <p className="text-xs text-stone-400"><Both en="Nothing scheduled." el="Τίποτα προγραμματισμένο." /></p>
+            <p className="text-xs text-stone-400"><Both en="Nothing scheduled. Add a session or event in Calendar." el="Τίποτα προγραμματισμένο. Πρόσθεσε συνάντηση ή εκδήλωση στο Ημερολόγιο." /></p>
           ) : (
             <div className="space-y-4 relative">
               <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
