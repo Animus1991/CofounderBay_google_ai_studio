@@ -16,6 +16,7 @@ import { LanguageProvider } from './lib/language';
 import { Both } from './lib/both';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { MessagingProvider } from './context/MessagingContext';
+import { mergeFitIntoViewer } from './lib/fitCheck';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { keys, readProfileLocal, setDataScope } from './lib/localLists';
@@ -209,6 +210,19 @@ function AppMessaging({ children }: { children: React.ReactNode }) {
       avatar: profileAvatar(profile) || user?.photoURL || '',
       headline: profile?.headline || '',
       role: profile?.role || profile?.roles?.[0] || 'Founder',
+      assistant: mergeFitIntoViewer(profile ? {
+        fullName: profile.fullName,
+        headline: profile.headline,
+        bio: profile.bio,
+        skills: profile.skills,
+        lookingFor: profile.lookingFor,
+        interests: profile.interests,
+        industry: profile.industry,
+        stage: profile.stage,
+        commitment: profile.commitment,
+        location: profile.location,
+        timezone: profile.timezone,
+      } : null),
     }),
     [userId, profile, user],
   );

@@ -8,6 +8,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
+import { runAssistant, type AssistantProfile } from '../services/assistantOps';
 import { avatarFor, findCast } from '../data/cast';
 import { keys, readValue, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
@@ -219,7 +220,23 @@ function sampleThreads(userId: string): { conversations: ChatConversation[]; mes
 
 // ── Provider ──────────────────────────────────────────────────────────────
 
-type Me = { id: string; fullName: string; avatar: string; headline: string; role: string };
+type Me = {
+  id: string;
+  fullName: string;
+  avatar: string;
+  headline: string;
+  role: string;
+  /** Same viewer the studio assistant scores, so a specialist can answer without Gemini. */
+  assistant?: AssistantProfile | null;
+};
+
+/** On-device answer when Gemini is not configured. Same operator as the studio panel. */
+export function localSpecialistReply(text: string, profile: AssistantProfile | null, lang: 'en' | 'el' = getLang()): string {
+  const result = runAssistant(text, profile);
+  const primary = (lang === 'el' ? result.el : result.en).trim();
+  const secondary = (lang === 'el' ? result.en : result.el).trim();
+  return primary || secondary;
+}
 
 const PAGE = 40;
 
@@ -502,11 +519,16 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
         ].slice(-400),
       }));
     } catch {
-      const failure: ChatMessage = {
-        id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', createdAt: Date.now(), isAI: true, kind: 'system',
-        body: getLang() === 'el' ? 'Η υπηρεσία AI δεν είναι διαθέσιμη αυτή τη στιγμή. Δοκίμασε ξανά σε λίγο.' : 'The AI service is not reachable right now. Please try again in a minute.',
-      };
-      writeAi((store) => ({ ...store, messages: [...store.messages, failure].slice(-400) }));
+      // Gemini is optional. Answer from the same workspace data as the studio
+      // panel instead of leaving a dead "try again" bubble in the thread.
+      const body = localSpecialistReply(text, selfRef.current.assistant ?? null);
+      writeAi((store) => ({
+        ...store,
+        messages: [
+          ...store.messages,
+          { id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', body: body || '…', createdAt: Date.now(), isAI: true },
+        ].slice(-400),
+      }));
     } finally {
       setAiTyping(false);
     }
