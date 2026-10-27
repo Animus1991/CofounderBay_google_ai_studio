@@ -32,7 +32,7 @@ import { usePeople } from "../lib/directory";
 import { avatarOf } from "../lib/peopleSource";
 import { avatarFor } from "../data/cast";
 import { coverFor } from "../data/photos";
-import { onCatalog, postJob, str, num, type CatalogDoc } from "../lib/catalog";
+import { onCatalog, postJob, str, num } from "../lib/catalog";
 import { useOptionalMessaging } from "../context/MessagingContext";
 import { logActivity } from "../lib/localLists";
 

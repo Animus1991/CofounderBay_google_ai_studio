@@ -1,7 +1,7 @@
 const fs = require('fs'), path = require('path');
 function walk(d) {
   return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? walk(path.join(d, e.name)) : (e.name.endsWith('.tsx') ? [path.join(d, e.name)] : []));
+    e.isDirectory() ? walk(path.join(d, e.name)) : (e.name.endsWith('.tsx') && !/\.(test|spec)\.tsx$/.test(e.name) ? [path.join(d, e.name)] : []));
 }
 const files = [...walk('src/pages'), ...walk('src/components')];
 const hits = [];
