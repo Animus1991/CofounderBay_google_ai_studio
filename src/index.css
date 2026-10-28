@@ -777,6 +777,23 @@
   :root:not([data-theme="dark"]) [class~="text-yellow-600"],
   :root:not([data-theme="dark"]) [class~="hover:text-amber-500"]:hover,
   :root:not([data-theme="dark"]) [class~="hover:text-amber-600"]:hover {
+    color: rgba(161, 89, 46, 0.9) !important;
+  }
+  /* Warm status text went a step darker in light themes; the icons keep the previous terracotta. */
+  :root:not([data-theme="dark"]) :is(
+    [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ) svg,
+  :root:not([data-theme="dark"]) svg:is(
+    [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ),
+  :root:not([data-theme="dark"]) :is(
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
+  ):hover svg,
+  :root:not([data-theme="dark"]) svg:is(
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
+  ):hover {
     color: rgba(179, 99, 51, 0.9) !important;
   }
   :root:not([data-theme="dark"]) [class~="text-blue-500"],
