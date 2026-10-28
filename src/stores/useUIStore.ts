@@ -9,7 +9,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type Theme = 'light' | 'dark' | 'system';
-export type PaletteTheme = 'stone' | 'dark' | 'cyan' | 'mint' | 'apricot' | 'lilac';
+export type PaletteTheme = 'stone' | 'dark' | 'cyan' | 'mint' | 'apricot' | 'lilac' | 'burgundy';
 
 interface UIState {
   sidebarCollapsed: boolean;

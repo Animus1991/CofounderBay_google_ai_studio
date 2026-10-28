@@ -20,6 +20,7 @@ const PALETTES: { id: PaletteTheme; labelEn: string; labelEl: string; dot: strin
   { id: 'mint', labelEn: 'Mint Catalyst', labelEl: 'Mint Catalyst', dot: 'bg-emerald-600' },
   { id: 'apricot', labelEn: 'Apricot Warmth', labelEl: 'Apricot Warmth', dot: 'bg-orange-500' },
   { id: 'lilac', labelEn: 'Lilac Vision', labelEl: 'Lilac Vision', dot: 'bg-purple-500' },
+  { id: 'burgundy', labelEn: 'Burgundy Velvet', labelEl: 'Burgundy Velvet', dot: 'bg-[#853341]' },
 ];
 
 function ThemePalettePicker({

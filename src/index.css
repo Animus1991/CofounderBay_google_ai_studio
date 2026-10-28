@@ -178,6 +178,16 @@
     --cfb-accent-border: rgba(147, 51, 234, 0.38);
     --cfb-accent-hover: #7e2cc9;
   }
+
+  [data-theme="burgundy"] {
+    --primary: 350 45% 36%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 350 45% 36%;
+    --cfb-accent: #853341;
+    --cfb-accent-soft: rgba(133, 51, 65, 0.12);
+    --cfb-accent-border: rgba(133, 51, 65, 0.34);
+    --cfb-accent-hover: #6e2a37;
+  }
 }
 
 /* Accessible primary text utility across all 6 themes */
@@ -193,7 +203,7 @@
  * the accent used as a *fill* behind white text. Light accent themes darken it ~18%;
  * Dark Obsidian splits it: fills stay indigo-600 (white 6.3:1), ink is indigo-300.
  */
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]) :is(.text-primary, .text-primary-accessible) {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]) :is(.text-primary, .text-primary-accessible) {
   color: color-mix(in srgb, var(--cfb-accent) 80%, #000) !important;
 }
 [data-theme="dark"] .text-primary {
@@ -227,19 +237,24 @@
 [data-theme="lilac"] .bg-stone-900,
 [data-theme="lilac"] .hover\:bg-stone-900:hover,
 [data-theme="lilac"] .group:hover .group-hover\:bg-stone-900,
-[data-theme="lilac"] .group:focus-within .group-focus-within\:bg-stone-900 {
+[data-theme="lilac"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="burgundy"] .bg-stone-900,
+[data-theme="burgundy"] .hover\:bg-stone-900:hover,
+[data-theme="burgundy"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="burgundy"] .group:focus-within .group-focus-within\:bg-stone-900 {
   background-color: var(--cfb-accent) !important;
   color: #ffffff !important;
 }
 
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="dark"]):root :is(.hover\:bg-stone-800:hover, .hover\:bg-stone-700:hover) {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"], [data-theme="dark"]):root :is(.hover\:bg-stone-800:hover, .hover\:bg-stone-700:hover) {
   background-color: var(--cfb-accent-hover) !important;
 }
 
 [data-theme="cyan"] .bg-stone-200,
 [data-theme="mint"] .bg-stone-200,
 [data-theme="apricot"] .bg-stone-200,
-[data-theme="lilac"] .bg-stone-200 {
+[data-theme="lilac"] .bg-stone-200,
+[data-theme="burgundy"] .bg-stone-200 {
   background-color: var(--cfb-accent-soft) !important;
   border-color: var(--cfb-accent-border) !important;
 }
@@ -357,16 +372,16 @@
  * white and chips use a dark tint instead of a white one — still visibly secondary,
  * always >= 4.5:1.
  */
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500, .text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/80, .text-white\/85, .text-white\/90) {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500, .text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/80, .text-white\/85, .text-white\/90) {
   color: rgba(255, 255, 255, 0.96) !important;
 }
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15) {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15) {
   background-color: rgba(0, 0, 0, 0.16) !important;
 }
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.hover\:bg-white\/20:hover, .bg-white\/20) {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.hover\:bg-white\/20:hover, .bg-white\/20) {
   background-color: rgba(0, 0, 0, 0.26) !important;
 }
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) input::placeholder {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) input::placeholder {
   color: rgba(255, 255, 255, 0.9) !important;
 }
 
@@ -710,7 +725,7 @@
   }
 }
 /* Keyboard focus carries the theme's accent, still clearly visible */
-:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="dark"]) :focus-visible {
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"], [data-theme="dark"]) :focus-visible {
   outline: 2px solid var(--cfb-accent);
   outline-offset: 1px;
   box-shadow: none;
@@ -995,7 +1010,7 @@
     background-color: oklch(0.965 0.018 350) !important;
   }
 
-  /* Dark Obsidian harmonious, lifted rose-burgundy-orange ("ανοιχτό ροδομπορντοπορτοκαλί") surfaces for -50 / -100 / -200 classes */
+  /* Dark Obsidian harmonious, deep maroon surfaces for -50 / -100 / -200 classes */
   [data-theme="dark"] [class~="bg-red-50"],
   [data-theme="dark"] [class~="bg-red-50/50"],
   [data-theme="dark"] [class~="bg-red-50/30"],
@@ -1021,8 +1036,8 @@
   [data-theme="dark"] [class~="bg-yellow-100"],
   [data-theme="dark"] [class~="hover:bg-orange-50"]:hover,
   [data-theme="dark"] [class~="hover:bg-amber-50"]:hover {
-    background-color: #88373e !important;
-    background-image: linear-gradient(135deg, #7f2f41 0%, #913b40 52%, #984539 100%) !important;
+    background-color: #361625 !important;
+    background-image: linear-gradient(135deg, #2f1420 0%, #3c1a2c 52%, #452032 100%) !important;
   }
   [data-theme="dark"] [class~="bg-amber-50"] .text-stone-500,
   [data-theme="dark"] [class~="bg-amber-50/50"] .text-stone-500,
@@ -1039,8 +1054,8 @@
   [data-theme="dark"] [class~="bg-orange-200"],
   [data-theme="dark"] [class~="hover:bg-amber-100"]:hover,
   [data-theme="dark"] [class~="hover:bg-amber-200"]:hover {
-    background-color: #9c4244 !important;
-    background-image: linear-gradient(135deg, #913747 0%, #a24644 52%, #a9503f 100%) !important;
+    background-color: #452036 !important;
+    background-image: linear-gradient(135deg, #3a1729 0%, #482140 52%, #512847 100%) !important;
     color: #fff5f2 !important;
   }
   [data-theme="dark"] [class~="bg-blue-50"],

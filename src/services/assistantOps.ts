@@ -244,7 +244,7 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/needwall', en: 'Open Startup Need Cards Wall modal', el: 'Άνοιξε τον Πίνακα Αναγκών & Ρόλων Startup' },
   { cmd: '/tasks', en: 'List or add Workspace tasks', el: 'Δείξε ή πρόσθεσε εργασίες στον Χώρο Εργασίας' },
   { cmd: '/msg', en: 'Send a direct message (e.g. /msg Sarah: Hello)', el: 'Στείλε άμεσο μήνυμα (π.χ. /msg Sarah: Γεια)' },
-  { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac)' },
+  { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac, burgundy)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac, burgundy)' },
   { cmd: '/lang', en: 'Switch language (/lang el or /lang en)', el: 'Εναλλαγή γλώσσας (/lang el ή /lang en)' },
   { cmd: '/style', en: 'How I reply: /style short | balanced | detailed, friendly | direct | formal, emoji on | off', el: 'Πώς απαντώ: /style short | balanced | detailed, friendly | direct | formal, emoji on | off' },
   { cmd: '/coach', en: 'UX coach: reads how you use the app and suggests shortcuts', el: 'UX coach: διαβάζει πώς χρησιμοποιείς την εφαρμογή και προτείνει συντομεύσεις' },
@@ -2675,7 +2675,8 @@ function themeResult(query: string): AssistantResult {
     /\b(cyan|pulse|κυαν)\b/.test(folded) ? 'cyan' :
     /\b(mint|catalyst|μεντ|πρασιν)\b/.test(folded) ? 'mint' :
     /\b(apricot|warmth|βερικοκ|πορτοκαλ)\b/.test(folded) ? 'apricot' :
-    /\b(lilac|vision|λιλα|μωβ)\b/.test(folded) ? 'lilac' : 'stone';
+    /\b(lilac|vision|λιλα|μωβ)\b/.test(folded) ? 'lilac' :
+    /\b(burgundy|wine|velvet|maroon|μπορντ|κρασι)\b/.test(folded) ? 'burgundy' : 'stone';
   ui.setPaletteTheme(nextTheme);
   const labelMap: Record<PaletteTheme, string> = {
     stone: 'Comfort Stone',
@@ -2684,11 +2685,12 @@ function themeResult(query: string): AssistantResult {
     mint: 'Mint Catalyst',
     apricot: 'Apricot Warmth',
     lilac: 'Lilac Vision',
+    burgundy: 'Burgundy Velvet',
   };
   return {
     tool: 'settings-set',
-    en: `Switched platform theme palette to ${labelMap[nextTheme]}. Available themes: stone, dark, cyan, mint, apricot, lilac.`,
-    el: `Η χρωματική παλέτα της πλατφόρμας άλλαξε σε ${labelMap[nextTheme]}. Διαθέσιμα θέματα: stone, dark, cyan, mint, apricot, lilac.`,
+    en: `Switched platform theme palette to ${labelMap[nextTheme]}. Available themes: stone, dark, cyan, mint, apricot, lilac, burgundy.`,
+    el: `Η χρωματική παλέτα της πλατφόρμας άλλαξε σε ${labelMap[nextTheme]}. Διαθέσιμα θέματα: stone, dark, cyan, mint, apricot, lilac, burgundy.`,
     href: '/settings',
     links: [{ href: '/settings', en: 'Open Settings', el: 'Άνοιγμα Ρυθμίσεων' }],
   };
