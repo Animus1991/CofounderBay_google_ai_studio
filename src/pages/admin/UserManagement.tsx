@@ -294,7 +294,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
         </div>
        </div>
        <div className={cn(
-        "px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium tracking-wider",
+        "stat-change-strip px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium tracking-wider",
         stat.color
        )}>
         <TrendingUp className="w-3.5 h-3.5" /> {stat.change ? (stat.change === 'Stable' || stat.change === 'Critical' ? labelOf(stat.change) : stat.change) : t('Live', 'Ζωντανά')}

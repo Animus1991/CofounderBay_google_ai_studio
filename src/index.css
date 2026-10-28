@@ -925,6 +925,14 @@
   ):hover {
     color: #fda4af !important;
   }
+  /* Stat-strip change labels (Ζωντανά / Σταθερό) read deep terracotta in Dark Obsidian; their icons stay rose. */
+  [data-theme="dark"] .stat-change-strip:is(
+    .text-amber-500, .text-amber-600, .text-yellow-500, .text-yellow-600,
+    .text-orange-500, .text-orange-600,
+    .text-red-500, .text-red-600, .text-rose-500, .text-rose-600
+  ) {
+    color: rgba(179, 99, 51, 0.9) !important;
+  }
   [data-theme="dark"] [class~="text-amber-700"],
   [data-theme="dark"] [class~="text-amber-800"],
   [data-theme="dark"] [class~="text-orange-700"],
