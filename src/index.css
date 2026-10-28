@@ -777,24 +777,7 @@
   :root:not([data-theme="dark"]) [class~="text-yellow-600"],
   :root:not([data-theme="dark"]) [class~="hover:text-amber-500"]:hover,
   :root:not([data-theme="dark"]) [class~="hover:text-amber-600"]:hover {
-    color: #fb8a72 !important;
-  }
-  /* Light themes: the gold tone stays on warm status icons; the text itself is salmon. */
-  :root:not([data-theme="dark"]) :is(
-    [class~="text-amber-500"], [class~="text-amber-600"],
-    [class~="text-yellow-500"], [class~="text-yellow-600"]
-  ) svg,
-  :root:not([data-theme="dark"]) svg:is(
-    [class~="text-amber-500"], [class~="text-amber-600"],
-    [class~="text-yellow-500"], [class~="text-yellow-600"]
-  ),
-  :root:not([data-theme="dark"]) :is(
-    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
-  ):hover svg,
-  :root:not([data-theme="dark"]) svg:is(
-    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
-  ):hover {
-    color: #925100 !important;
+    color: #b53b38 !important;
   }
   :root:not([data-theme="dark"]) [class~="text-blue-500"],
   :root:not([data-theme="dark"]) [class~="text-blue-600"],
