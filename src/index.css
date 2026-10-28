@@ -902,17 +902,27 @@
   }
   /* Warm status icons read rose (#fda4af) in Dark Obsidian; the text itself stays salmon. */
   [data-theme="dark"] :is(
-    [class~="text-red-900"], [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-red-400"], [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-red-900"],
+    [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
     [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
     [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
     [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
   ) svg,
   [data-theme="dark"] svg:is(
-    [class~="text-red-900"], [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-red-400"], [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-red-900"],
+    [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
     [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
     [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
     [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
-  ) {
+  ),
+  [data-theme="dark"] :is(
+    [class~="hover:text-red-500"], [class~="hover:text-red-600"],
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"], [class~="hover:text-orange-500"]
+  ):hover svg,
+  [data-theme="dark"] svg:is(
+    [class~="hover:text-red-500"], [class~="hover:text-red-600"],
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"], [class~="hover:text-orange-500"]
+  ):hover {
     color: #fda4af !important;
   }
   [data-theme="dark"] [class~="text-amber-700"],
