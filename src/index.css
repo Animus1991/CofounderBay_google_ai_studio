@@ -931,7 +931,7 @@
     .text-orange-500, .text-orange-600,
     .text-red-500, .text-red-600, .text-rose-500, .text-rose-600
   ) {
-    color: rgba(179, 99, 51, 0.9) !important;
+    color: rgba(197, 109, 56, 0.9) !important;
   }
   [data-theme="dark"] [class~="text-amber-700"],
   [data-theme="dark"] [class~="text-amber-800"],
