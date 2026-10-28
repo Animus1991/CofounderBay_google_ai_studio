@@ -898,7 +898,7 @@
   [data-theme="dark"] [class~="hover:text-amber-500"]:hover,
   [data-theme="dark"] [class~="hover:text-amber-600"]:hover,
   [data-theme="dark"] [class~="hover:text-orange-500"]:hover {
-    color: #fb8a72 !important;
+    color: #fda4af !important;
   }
   [data-theme="dark"] [class~="text-amber-700"],
   [data-theme="dark"] [class~="text-amber-800"],
