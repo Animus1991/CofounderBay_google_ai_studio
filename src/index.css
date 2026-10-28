@@ -900,6 +900,21 @@
   [data-theme="dark"] [class~="hover:text-orange-500"]:hover {
     color: #fb8a72 !important;
   }
+  /* Warm status icons read rose (#fda4af) in Dark Obsidian; the text itself stays salmon. */
+  [data-theme="dark"] :is(
+    [class~="text-red-900"], [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
+    [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ) svg,
+  [data-theme="dark"] svg:is(
+    [class~="text-red-900"], [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
+    [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ) {
+    color: #fda4af !important;
+  }
   [data-theme="dark"] [class~="text-amber-700"],
   [data-theme="dark"] [class~="text-amber-800"],
   [data-theme="dark"] [class~="text-orange-700"],
