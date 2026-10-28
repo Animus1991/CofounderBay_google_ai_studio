@@ -2,6 +2,7 @@ import { appEnv } from "../config/env";
 import { createLogger } from "../lib/logger";
 import { auth } from "../firebase";
 import { getLang } from "../lib/language";
+import { assistantStyleInstruction } from "../lib/assistantPrefs";
 const aiLog = createLogger("ai-service");
 
 interface GenerateParams {
@@ -384,7 +385,7 @@ export class AIService {
         config: {
           systemInstruction: `You are an expert advisor inside CoFounderBay, a platform where founders find co-founders, mentors and investors.
 Context: ${context}
-Answer in ${language}. Be concise, concrete and practical for early-stage founders. Use short paragraphs or bullet points.
+Answer in ${language}. Be concrete and practical for early-stage founders. ${assistantStyleInstruction()}
 Never invent people, companies, numbers, deadlines or partnerships. If you are not sure about a fact, say so and suggest how to check it.
 If a pitch deck or slide image is provided, review it for clarity, completeness and investor appeal.`
         }

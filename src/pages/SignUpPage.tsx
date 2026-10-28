@@ -97,9 +97,9 @@ export default function SignUpPage() {
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
+    <h1 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      {t('Create your account', 'Δημιούργησε τον λογαριασμό σου')}
-    </h2>
+    </h1>
     <p className="mt-2 text-center text-sm text-stone-500">
      {t('Already have an account?', 'Έχεις ήδη λογαριασμό;')}{' '}
      <NavLink to="/login" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">

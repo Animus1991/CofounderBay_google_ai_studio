@@ -157,6 +157,24 @@ export function fitToProfilePatch(result: FitResult) {
   };
 }
 
+/**
+ * What "apply to my profile" writes after a (re)take. The answers the quiz asks
+ * directly (stage, commitment, looking-for) replace the profile values; skills
+ * implied by the role are only added when missing, so a detailed skill list is
+ * never replaced by generic ones. Location is left alone.
+ */
+export function fitProfileUpdate(result: FitResult, current: { skills?: unknown } | null | undefined) {
+  const have = Array.isArray(current?.skills) ? (current!.skills as unknown[]).filter((s): s is string => typeof s === 'string') : [];
+  const lower = new Set(have.map((s) => s.toLowerCase()));
+  const skills = [...have, ...COVER_SKILLS[result.roleCover].filter((s) => !lower.has(s.toLowerCase()))];
+  return {
+    stage: result.stage,
+    commitment: result.commitment,
+    lookingFor: result.lookingFor,
+    skills,
+  };
+}
+
 function asFit(value: unknown): FitResult | null {
   if (!value || typeof value !== 'object') return null;
   const parsed = value as FitResult;
@@ -198,10 +216,9 @@ export function writeFitCheck(result: FitResult): FitResult {
   return result;
 }
 
-export function mergeFitIntoViewer<T extends { skills?: unknown; lookingFor?: unknown; stage?: string | null; commitment?: string | null; location?: string | null }>(profile: T | null): T | null {
+export function mergeFitIntoViewer<T extends { skills?: unknown; lookingFor?: unknown; stage?: string | null; commitment?: string | null; location?: string | null }>(profile: T | null | undefined): T | null {
   const fit = readFitCheck();
-  if (!profile && !fit) return profile;
-  if (!fit) return profile;
+  if (!fit) return profile ?? null;
   const patch = fitToProfilePatch(fit);
   const base = profile ?? ({} as T);
   const hasSkills = Array.isArray(base.skills) && base.skills.length > 0;

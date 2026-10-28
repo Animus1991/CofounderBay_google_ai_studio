@@ -52,7 +52,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
  };
 
  return (
-  <div className="max-w-5xl mx-auto space-y-6">
+  <div className="w-full min-w-0 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem] space-y-6">
    <div className="flex items-center justify-between">
     <div>
      <h1 className="section-header">{t('Tenant Branding', 'Ταυτότητα οργανισμού')}</h1>

@@ -76,9 +76,9 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white selection:bg-stone-900 selection:text-white">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-3 min-h-16 py-3">
-            <div className="flex items-center gap-2">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 min-h-[3.88rem] py-[0.68rem]">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
@@ -87,7 +87,7 @@ export default function LandingPage() {
               </span>
             </div>
 
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-6 lg:gap-8">
               <a
                 href="#features"
                 className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
@@ -120,29 +120,34 @@ export default function LandingPage() {
               </NavLink>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 shrink min-w-0">
+            <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 shrink min-w-0">
               <LanguageToggle />
               {isDemoMode ? (
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5 sm:gap-2.5">
                   <button
+                    type="button"
+                    data-ui="button"
                     onClick={() => toggleDemoMode(false)}
-                    className="min-h-11 px-3 whitespace-nowrap text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
+                    className="min-h-11 px-2.5 sm:px-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
                   >
-                    {t("Exit demo", "Έξοδος από τη δοκιμαστική λειτουργία")}
+                    <span className="sm:hidden">{t("Exit", "Έξοδος")}</span>
+                    <span className="hidden sm:inline">{t("Exit demo", "Έξοδος από τη δοκιμαστική λειτουργία")}</span>
                   </button>
                   <NavLink
                     to="/dashboard"
-                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
+                    data-ui="button"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
-                    <span className="sm:hidden">{t("Dashboard", "Πίνακας ελέγχου")}</span>
+                    <span className="sm:hidden">{t("Dashboard", "Πίνακας")}</span>
                     <span className="hidden sm:inline">{t("Go to dashboard", "Πίνακας ελέγχου")}</span>
                   </NavLink>
                 </div>
               ) : user ? (
-                <div className="flex items-center gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-4">
                   <NavLink
                     to="/dashboard"
-                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
+                    data-ui="button"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
                     {t("Go to dashboard", "Πίνακας ελέγχου")}
                   </NavLink>
@@ -150,23 +155,27 @@ export default function LandingPage() {
               ) : (
                 <>
                   <button
+                    type="button"
+                    data-ui="button"
                     onClick={() => {
                       toggleDemoMode(true);
                       navigate("/dashboard");
                     }}
-                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
+                    className="inline-flex min-h-11 items-center justify-center px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors whitespace-nowrap"
                   >
                     {t("Demo", "Demo")}
                   </button>
                   <NavLink
                     to="/login"
-                    className="inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap"
+                    data-ui="button"
+                    className="inline-flex min-h-11 items-center justify-center px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap"
                   >
                     {t("Log in", "Είσοδος")}
                   </NavLink>
                   <NavLink
                     to="/signup"
-                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-4 sm:px-5 rounded-xl text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
+                    data-ui="button"
+                    className="inline-flex min-h-11 items-center justify-center bg-stone-900 text-white px-3 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-800 transition-all whitespace-nowrap"
                   >
                     {t("Get Started", "Ξεκίνα")}
                   </NavLink>
@@ -190,7 +199,7 @@ export default function LandingPage() {
                 <Sparkles className="w-3 h-3" />
                 {t("60 seconds · no account needed", "60 δευτερόλεπτα · χωρίς λογαριασμό")}
               </span>
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
+              <h1 className="text-xl sm:text-2xl lg:text-2xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
                 {t("Build your startup team with", "Φτιάξε την ομάδα της startup σου με")}{" "}
                 <span className="text-stone-400 italic">{t("precision.", "ακρίβεια.")}</span>
               </h1>
@@ -341,7 +350,7 @@ export default function LandingPage() {
               <motion.div
                 key={i}
                 whileHover={{ y: -5 }}
-                className="p-8 rounded-3xl bg-white border border-stone-100 shadow-sm hover:shadow-xl hover:border-stone-200 transition-all"
+                className="p-8 rounded-2xl bg-white border border-stone-100 shadow-sm hover:shadow-xl hover:border-stone-200 transition-all"
               >
                 <div
                   className={cn(
@@ -368,7 +377,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16">
             <div className="lg:w-1/2 space-y-8">
-              <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium text-stone-900 tracking-tight">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-medium text-stone-900 tracking-tight">
                 {t("Industry-specific", "Κόμβοι startup")} <br />
                 <span className="text-stone-400">{t("Startup Hubs.", "ανά κλάδο.")}</span>
               </h2>
@@ -431,7 +440,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-16 items-center">
             <div>
-              <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-medium tracking-tight mb-6">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-medium tracking-tight mb-6">
                 {t("The ecosystem for", "Το οικοσύστημα για")}{" "}
                 <span className="text-stone-400 italic">{t("serious", "σοβαρούς")}</span> {t("builders.", "δημιουργούς.")}
               </h2>

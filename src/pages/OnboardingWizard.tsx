@@ -15,7 +15,8 @@ import {
  Code,
  LineChart,
  ShieldCheck,
- Globe
+ Globe,
+ X
 } from "lucide-react";
 import { doc, setDoc, serverTimestamp, getDocFromServer, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -226,11 +227,22 @@ export default function OnboardingWizard() {
   }
  };
 
+ const handleExit = () => {
+  const historyIdx = typeof window !== 'undefined' ? (window.history.state as { idx?: number } | null)?.idx : undefined;
+  if (typeof historyIdx === 'number' ? historyIdx > 0 : window.history.length > 1) {
+   navigate(-1);
+  } else {
+   navigate(isDemoMode || user ? '/dashboard' : '/');
+  }
+ };
+
  const handleBack = () => {
   if (currentStep > 0) {
    const prevStep = currentStep - 1;
    setCurrentStep(prevStep);
    saveProgress(prevStep, formData);
+  } else {
+   handleExit();
   }
  };
 
@@ -338,7 +350,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What brings you to CoFounderBay?', 'Τι σε φέρνει στο CoFounderBay;')}</h2>
+       <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What brings you to CoFounderBay?', 'Τι σε φέρνει στο CoFounderBay;')}</h1>
        <p className="text-stone-500">{t('Select the role that best describes your current focus.', 'Διάλεξε τον ρόλο που περιγράφει καλύτερα την τρέχουσα εστίασή σου.')}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -379,7 +391,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h2>
+       <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h1>
        <p className="text-stone-500">{t('This helps us match you with the right opportunities.', 'Έτσι σε αντιστοιχίζουμε με τις σωστές ευκαιρίες.')}</p>
       </div>
       <div className="space-y-4">
@@ -502,7 +514,7 @@ export default function OnboardingWizard() {
     return (
      <div className="space-y-6">
       <div className="text-center space-y-2">
-       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What are your startup goals?', 'Ποιοι είναι οι στόχοι της startup σου;')}</h2>
+       <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('What are your startup goals?', 'Ποιοι είναι οι στόχοι της startup σου;')}</h1>
        <p className="text-stone-500">{t('Define your current stage and commitment level.', 'Όρισε το τρέχον στάδιο και το επίπεδο δέσμευσης.')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -591,7 +603,7 @@ export default function OnboardingWizard() {
        <Check className="w-5 h-5" />
       </div>
       <div className="space-y-2">
-       <h2 className="text-xl sm:text-2xl font-semibold text-stone-900">{t("You're all set!", 'Όλα έτοιμα!')}</h2>
+       <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">{t("You're all set!", 'Όλα έτοιμα!')}</h1>
        <p className="text-stone-500 max-w-sm mx-auto">
         {t("Your profile is ready. We'll now show you compatible co-founders and mentors based on your preferences.", 'Το προφίλ σου είναι έτοιμο. Θα σου δείξουμε συμβατούς συνιδρυτές και μέντορες με βάση τις προτιμήσεις σου.')}
        </p>
@@ -629,10 +641,21 @@ export default function OnboardingWizard() {
   <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-2 sm:p-6 lg:p-8">
    <div className="w-full max-w-3xl">
     {/* Progress Bar */}
-    <div className="mb-12">
+    <div className="mb-8 sm:mb-12">
      <div className="flex justify-between mb-4">
-      {STEPS.map((step, idx) => (
-       <div key={step.id} className="flex flex-col items-center gap-2">
+      {STEPS.map((step, idx) => {
+       const canJump = idx <= currentStep;
+       return (
+        <button
+         key={step.id}
+         type="button"
+         disabled={!canJump}
+         onClick={() => canJump && setCurrentStep(idx)}
+         className={cn(
+          "flex flex-col items-center gap-2 transition-opacity",
+          canJump ? "cursor-pointer hover:opacity-80" : "cursor-default"
+         )}
+        >
         <div className={cn(
          "w-10 h-10 rounded-full flex items-center justify-center transition-all border-2",
          idx <= currentStep 
@@ -647,8 +670,9 @@ export default function OnboardingWizard() {
         )}>
          {t(step.title, STEP_EL[step.title] || step.title)}
         </span>
-       </div>
-      ))}
+        </button>
+       );
+      })}
      </div>
      <div className="h-1 bg-stone-200 rounded-full overflow-hidden">
       <motion.div 
@@ -661,15 +685,35 @@ export default function OnboardingWizard() {
     </div>
 
     {/* Content */}
-    <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-stone-100 p-8 sm:p-12 min-h-[500px] flex flex-col relative">
-     {isDemoMode && (
+    <div className="bg-white rounded-2xl shadow-xl shadow-stone-200/50 border border-stone-100 p-6 sm:p-12 min-h-[500px] flex flex-col relative">
+     <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-stone-100">
       <button 
-       onClick={() => navigate('/dashboard')}
-       className="absolute top-6 right-8 text-sm font-medium text-stone-400 hover:text-stone-900 transition-colors"
+       type="button"
+       onClick={handleBack}
+       className="inline-flex items-center gap-1.5 min-h-9 px-3 rounded-xl text-xs sm:text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors"
       >
-       {t('Skip Onboarding (Demo)', 'Παράλειψη εισαγωγής (Demo)')}
+       <ArrowLeft className="w-4 h-4" />
+       {currentStep > 0 ? t('Previous step', 'Προηγούμενο βήμα') : t('Back to previous page', 'Επιστροφή')}
       </button>
-     )}
+      <div className="flex items-center gap-2">
+       <button
+        type="button"
+        onClick={handleExit}
+        className="min-h-9 px-3 rounded-xl text-xs sm:text-sm font-medium text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+       >
+        {t('Skip for now', 'Παράλειψη')}
+       </button>
+       <button
+        type="button"
+        onClick={handleExit}
+        aria-label={t('Close', 'Κλείσιμο')}
+        title={t('Close', 'Κλείσιμο')}
+        className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-stone-200 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+       >
+        <X className="w-4 h-4" />
+       </button>
+      </div>
+     </div>
      <AnimatePresence mode="wait">
       <motion.div
        key={currentStep}
@@ -684,22 +728,21 @@ export default function OnboardingWizard() {
      </AnimatePresence>
 
      {/* Navigation */}
-     <div className="mt-12 flex items-center justify-between pt-8 border-t border-stone-100">
+     <div className="mt-10 flex items-center justify-between pt-6 border-t border-stone-100">
       <button
+       type="button"
        onClick={handleBack}
-       disabled={currentStep === 0 || loading}
-       className={cn(
-        "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all",
-        currentStep === 0 ? "opacity-0 pointer-events-none" : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
-       )}
+       disabled={loading}
+       className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition-all"
       >
        <ArrowLeft className="w-5 h-5" />
-       {t('Back', 'Πίσω')}
+       {currentStep > 0 ? t('Back', 'Πίσω') : t('Exit', 'Έξοδος')}
       </button>
       <button
+       type="button"
        onClick={handleNext}
        disabled={loading || (currentStep === 0 && !formData.role)}
-       className="flex items-center gap-2 px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-sm disabled:opacity-50 group"
+       className="flex items-center gap-2 px-6 sm:px-8 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-all shadow-sm disabled:opacity-50 group"
       >
        {loading ? t('Saving...', 'Αποθήκευση...') : currentStep === STEPS.length - 1 ? t('Get Started', 'Ξεκίνα') : t('Continue', 'Συνέχεια')}
        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

@@ -69,11 +69,16 @@ export function communityFromDoc(id: string, data: Record<string, unknown>): Com
 
 /** Live list of every community document. `onError` receives permission/config failures. */
 export function onCommunities(cb: (list: CommunityDoc[]) => void, onError?: (error: unknown) => void): () => void {
-  return onSnapshot(
-    query(collection(db, 'communities'), orderBy('createdAt', 'desc'), limit(100)),
-    (snapshot) => cb(snapshot.docs.map((entry) => communityFromDoc(entry.id, entry.data()))),
-    (error) => onError?.(error),
-  );
+  try {
+    return onSnapshot(
+      query(collection(db, 'communities'), orderBy('createdAt', 'desc'), limit(100)),
+      (snapshot) => cb(snapshot.docs.map((entry) => communityFromDoc(entry.id, entry.data()))),
+      (error) => onError?.(error),
+    );
+  } catch (error) {
+    onError?.(error);
+    return () => {};
+  }
 }
 
 /** Creates a community document and returns its id. */

@@ -145,9 +145,9 @@ export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps)
  const editingOpen = editing !== null || draft.name !== '' || draft.category !== '' || draft.description !== '';
 
  return (
-  <div className="max-w-6xl mx-auto space-y-8">
-   <div className="flex items-center justify-between">
-    <div>
+  <div className="w-full min-w-0 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem] space-y-6">
+   <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="min-w-0 flex-1 basis-64">
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Platform Taxonomies', 'Ταξινομίες πλατφόρμας')}</h1>
      <p className="text-stone-500 mt-1">{t('Manage the structured data that powers matching and discovery.', 'Διαχειρίσου τα δομημένα δεδομένα που τροφοδοτούν την αντιστοίχιση και την εξερεύνηση.')}</p>
      {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — starter taxonomy shown read-only; edits apply to real accounts.', 'Δοκιμαστικός λογαριασμός — η αρχική ταξινόμηση εμφανίζεται μόνο για ανάγνωση.')}</p>}

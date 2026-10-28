@@ -280,25 +280,27 @@ export default function Workspace({ user }: WorkspaceProps) {
    title={t("Venture Builder", "Χώρος εργασίας")}
    description={t("Your startup's central workspace — tasks, canvas, milestones, and calendar.", "Ο κεντρικός χώρος εργασίας του startup — εργασίες, canvas, ορόσημα και ημερολόγιο.")}
    maxWidth="full"
-   actions={
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
-     {tabs.map((tab) => (
-      <button
-       key={tab}
-       onClick={() => setActiveTab(tab)}
-       className={cn(
-        "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-        activeTab === tab
-         ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200"
-         : "text-stone-500 hover:text-stone-700"
-       )}
-      >
-       {tabLabel(tab)}
-      </button>
-     ))}
-    </div>
-   }
   >
+   {/* Section tabs sit under the title, like Founder Tools and Fundraising. */}
+   <div role="tablist" aria-label={t("Workspace sections", "Ενότητες χώρου εργασίας")} className="scroll-tabs w-fit max-w-full bg-stone-50 p-1 rounded-xl border border-stone-100 mb-5">
+    {tabs.map((tab) => (
+     <button
+      key={tab}
+      type="button"
+      role="tab"
+      aria-selected={activeTab === tab}
+      onClick={() => setActiveTab(tab)}
+      className={cn(
+       "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+       activeTab === tab
+        ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200"
+        : "text-stone-500 hover:text-stone-700"
+      )}
+     >
+      {tabLabel(tab)}
+     </button>
+    ))}
+   </div>
 
    <AnimatePresence mode="wait">
     {activeTab === "Dashboard" && (
@@ -541,17 +543,17 @@ export default function Workspace({ user }: WorkspaceProps) {
        {/* Focus Mode Widget */}
        <section className={cn(
         "card-minimal p-4 space-y-3",
-        focusMode && "bg-stone-200 text-stone-900"
+        focusMode && "bg-stone-200 text-stone-900 border-stone-300"
        )}>
         <div className="flex items-center justify-between">
          <div className="flex items-center gap-2">
           <div className={cn(
            "w-7 h-7 rounded-lg flex items-center justify-center border",
-           focusMode ? "bg-white/10 border-white/20" : "bg-stone-50 border-stone-100"
+           focusMode ? "bg-white border-stone-300" : "bg-stone-50 border-stone-100"
           )}>
-           <Focus className={cn("w-3.5 h-3.5", focusMode ? "text-white" : "text-stone-500")} />
+           <Focus className={cn("w-3.5 h-3.5", focusMode ? "text-stone-900" : "text-stone-500")} />
           </div>
-          <h3 className={cn("text-sm font-semibold", focusMode ? "text-white" : "text-stone-900")}>{t("Focus Mode", "Λειτουργία εστίασης")}</h3>
+          <h3 className={cn("text-sm font-semibold", focusMode ? "text-stone-900" : "text-stone-900")}>{t("Focus Mode", "Λειτουργία εστίασης")}</h3>
          </div>
          <div className="flex items-center gap-1">
           {["work", "shortBreak", "longBreak"].map((mode) => (
@@ -561,8 +563,8 @@ export default function Workspace({ user }: WorkspaceProps) {
             className={cn(
              "w-5 h-5 rounded-md flex items-center justify-center transition-colors",
              focusState === mode 
-              ? (focusMode ? "bg-white/20" : "bg-stone-200") 
-              : "hover:bg-stone-100"
+              ? (focusMode ? "bg-white text-stone-900 shadow-2xs" : "bg-stone-200 text-stone-900") 
+              : "text-stone-500 hover:bg-stone-100"
             )}
            >
             {mode === "work" ? <Sun className="w-3 h-3" /> : mode === "shortBreak" ? <Coffee className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
@@ -572,10 +574,10 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
 
         <div className="text-center py-2">
-         <div className={cn("text-lg font-bold tracking-tight font-mono", focusMode ? "text-white" : "text-stone-900")}>
+         <div className="text-lg font-bold tracking-tight font-mono text-stone-900">
           {Math.floor(focusTimer / 60).toString().padStart(2, "0")}:{(focusTimer % 60).toString().padStart(2, "0")}
          </div>
-         <p className={cn("text-xs mt-1", focusMode ? "text-white/60" : "text-stone-400")}>
+         <p className={cn("text-xs mt-1", focusMode ? "text-stone-600 font-medium" : "text-stone-400")}>
           {focusStateLabel(focusState)}
          </p>
         </div>
@@ -583,12 +585,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         <div className="flex gap-2">
          <button
           onClick={() => setIsTimerRunning(!isTimerRunning)}
-          className={cn(
-           "flex-1 h-8 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors",
-           focusMode 
-            ? "bg-white text-stone-900 hover:bg-white/90" 
-            : "bg-stone-900 text-white hover:bg-stone-800"
-          )}
+          className="flex-1 h-8 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors bg-stone-900 text-white hover:bg-stone-800"
          >
           {isTimerRunning ? <><Pause className="w-3.5 h-3.5" /> {t("Pause", "Παύση")}</> : <><Play className="w-3.5 h-3.5" /> {t("Start", "Έναρξη")}</>}
          </button>
@@ -601,22 +598,22 @@ export default function Workspace({ user }: WorkspaceProps) {
           }}
           className={cn(
            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-           focusMode ? "bg-white/10 hover:bg-white/20" : "bg-stone-100 hover:bg-stone-200"
+           focusMode ? "bg-white border border-stone-300 hover:bg-stone-50" : "bg-stone-100 hover:bg-stone-200"
           )}
          >
-          <Square className={cn("w-3.5 h-3.5", focusMode ? "text-white" : "text-stone-500")} />
+          <Square className={cn("w-3.5 h-3.5", focusMode ? "text-stone-900" : "text-stone-500")} />
          </button>
         </div>
 
         {/* Session Stats */}
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100/20">
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200/70">
          <div className="text-center">
-          <p className={cn("text-lg font-bold", focusMode ? "text-white" : "text-stone-900")}>{focusStats.sessions}</p>
-          <p className={cn("text-xs", focusMode ? "text-white/60" : "text-stone-400")}>{t("Sessions Today", "Συνεδρίες σήμερα")}</p>
+          <p className="text-lg font-bold text-stone-900">{focusStats.sessions}</p>
+          <p className={cn("text-xs", focusMode ? "text-stone-600" : "text-stone-400")}>{t("Sessions Today", "Συνεδρίες σήμερα")}</p>
          </div>
          <div className="text-center">
-          <p className={cn("text-lg font-bold", focusMode ? "text-white" : "text-stone-900")}>{(focusStats.seconds / 3600).toFixed(1)}h</p>
-          <p className={cn("text-xs", focusMode ? "text-white/60" : "text-stone-400")}>{t("Deep Work", "Deep work")}</p>
+          <p className="text-lg font-bold text-stone-900">{(focusStats.seconds / 3600).toFixed(1)}h</p>
+          <p className={cn("text-xs", focusMode ? "text-stone-600" : "text-stone-400")}>{t("Deep Work", "Deep work")}</p>
          </div>
         </div>
 
@@ -625,7 +622,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          className={cn(
           "w-full h-7 rounded-lg text-xs font-medium transition-colors",
           focusMode 
-           ? "bg-white/10 text-white hover:bg-white/20" 
+           ? "bg-white border border-stone-300 text-stone-900 hover:bg-stone-50" 
            : "bg-stone-50 text-stone-600 hover:bg-stone-100"
          )}
         >

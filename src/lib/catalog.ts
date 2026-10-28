@@ -14,11 +14,16 @@ export type CatalogDoc = { id: string } & Record<string, unknown>;
 
 /** Live documents of one platform catalogue collection. */
 export function onCatalog(name: string, cb: (docs: CatalogDoc[]) => void, onError?: (error: unknown) => void): () => void {
-  return onSnapshot(
-    query(collection(db, name), limit(100)),
-    (snapshot) => cb(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))),
-    (error) => onError?.(error),
-  );
+  try {
+    return onSnapshot(
+      query(collection(db, name), limit(100)),
+      (snapshot) => cb(snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }))),
+      (error) => onError?.(error),
+    );
+  } catch (error) {
+    onError?.(error);
+    return () => {};
+  }
 }
 
 export const str = (value: unknown, fallback = ''): string => (typeof value === 'string' && value.trim() ? value : fallback);

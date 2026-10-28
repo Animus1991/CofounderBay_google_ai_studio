@@ -11,7 +11,9 @@ import {
   UserMinus,
   ChevronRight,
   X,
+  Layers,
 } from 'lucide-react';
+import { useUIStore } from '../stores/useUIStore';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -51,6 +53,7 @@ import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
 import { avatarOf, findPerson, isOnline, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
+import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { teamGaps, TEAM_AREAS } from '../lib/teamGaps';
 import { shareLink } from '../lib/download';
 import {
@@ -135,11 +138,13 @@ export default function Network({ user }: NetworkProps) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const real = !isDemoMode;
-  const activeTab: NetworkTab = isTab(params.get('tab')) ? params.get('tab') as NetworkTab : 'connections';
+  const rawTab = params.get('tab');
+  const activeTab: NetworkTab = isTab(rawTab) ? rawTab : 'connections';
   const setActiveTab = (id: string) => {
     const next = new URLSearchParams(params);
     if (id === 'connections') next.delete('tab');
     else next.set('tab', id);
+    next.delete('status');
     setParams(next, { replace: true });
   };
   const saved = useStored(readSaved, [keys.saved]);
@@ -147,7 +152,13 @@ export default function Network({ user }: NetworkProps) {
   const needs = useStored(readNeeds, [keys.needs]);
   const connections = useConnections();
   const [networkQuery, setNetworkQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | ConnectionStatus>('All');
+  const initialStatus = (): 'All' | ConnectionStatus => {
+    const s = params.get('status');
+    if (s === 'Connected' || s === 'Pending' || s === 'Incoming') return s;
+    if (rawTab === 'Requests') return connections.incoming.length > 0 ? 'Incoming' : 'Pending';
+    return 'All';
+  };
+  const [statusFilter, setStatusFilter] = useState<'All' | ConnectionStatus>(initialStatus);
   const [pendingDisconnect, setPendingDisconnect] = useState<NetworkConnection | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [compared, setCompared] = useState(false);
@@ -295,20 +306,29 @@ export default function Network({ user }: NetworkProps) {
     setEditing(null);
   };
 
-  const me = fromProfile(profile);
+  const me = fromProfile(mergeFitIntoViewer(profile));
   const comparePool = connectionPool.filter((conn) => conn.status === 'Connected' || !real);
   const compareRows = picked.map((id) => comparePool.find((conn) => conn.id === id)).filter((conn): conn is NetworkConnection => Boolean(conn));
 
   return (
-    <PageShell sample={isDemoMode} title={t('Network', 'Δίκτυο')} description={t('Your connections, saved people, endorsements and need cards.', 'Οι συνδέσεις σου, αποθηκευμένες επαφές, συστάσεις και κάρτες ανάγκης.')}>
-      <div className="space-y-6">
+    <PageShell
+      sample={isDemoMode}
+      title={t('Network', 'Δίκτυο')}
+      description={t('Your connections, saved people, endorsements and need cards.', 'Οι συνδέσεις σου, αποθηκευμένες επαφές, συστάσεις και κάρτες ανάγκης.')}
+      actions={
         <button
           type="button"
-          className="text-xs font-medium text-stone-500 hover:text-stone-900 min-h-11"
+          data-ui="button"
+          title={t('The assistant prepares the fit-check link for three founders you choose', 'Ο βοηθός ετοιμάζει τον σύνδεσμο fit check για τρεις ιδρυτές της επιλογής σου')}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
           onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Invite 3 founders' } }))}
         >
-          {t('Invite 3 founders · the assistant prepares the fit-check link for you', 'Προσκάλεσε 3 ιδρυτές · ο βοηθός ετοιμάζει τον σύνδεσμο fit check για εσένα')}
+          <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+          {t('Invite founders', 'Πρόσκληση ιδρυτών')}
         </button>
+      }
+    >
+      <div className="space-y-6">
         <Tabs tabs={tabItems} activeTab={activeTab} onChange={setActiveTab} variant="segment" />
 
         {activeTab === 'connections' && (
@@ -660,6 +680,18 @@ function NeedsTab({
   };
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-stone-500">{t('Your cards below. Startups across the platform post theirs on the Needs Wall.', 'Οι κάρτες σου παρακάτω. Οι startups της πλατφόρμας δημοσιεύουν τις δικές τους στον Πίνακα Αναγκών.')}</p>
+        <button
+          type="button"
+          data-ui="button"
+          onClick={() => useUIStore.getState().setNeedWallModalOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+        >
+          <Layers className="w-3.5 h-3.5" aria-hidden="true" />
+          {t('Open Needs Wall', 'Πίνακας Αναγκών')}
+        </button>
+      </div>
       {needs.length === 0 && (
         <EmptyHint
           title={t('No need cards yet.', 'Δεν υπάρχουν κάρτες ανάγκης.')}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import { User, UserProfile, UserRole, ProfileStatus, VerificationStatus, Account
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 import CommandPalette from './components/CommandPalette';
+import GlobalStudioModals from './components/GlobalStudioModals';
 import RouteLifecycle from './components/RouteLifecycle';
 import OfflineBanner from './components/OfflineBanner';
 import { ToastProvider } from './context/ToastContext';
@@ -17,10 +18,12 @@ import { Both } from './lib/both';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { MessagingProvider } from './context/MessagingContext';
 import { mergeFitIntoViewer } from './lib/fitCheck';
+import { readUxPrefs, UX_PREFS_KEY } from './lib/personalization';
+import { useStored } from './lib/useStored';
+import { applyPaletteToDocument, useUIStore } from './stores/useUIStore';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { keys, readProfileLocal, setDataScope } from './lib/localLists';
-import { useStored } from './lib/useStored';
 import { startCloudSync, stopCloudSync } from './lib/cloudSync';
 import { startDirectory, stopDirectory } from './lib/directory';
 import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, stopSocial } from './lib/social';
@@ -28,45 +31,45 @@ import { getLang } from './lib/language';
 import { markEmailVerified } from './lib/account';
 import { coverFor } from './data/photos';
 
-// Lazy-loaded pages (code-splitting)
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const SignUpPage = lazy(() => import('./pages/SignUpPage'));
-const FitCheck = lazy(() => import('./pages/FitCheck'));
-const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const MatchDiscovery = lazy(() => import('./pages/MatchDiscovery'));
-const MentorsPage = lazy(() => import('./pages/MentorsPage'));
-const CommunitiesPage = lazy(() => import('./pages/CommunitiesPage'));
-const CommunicationHub = lazy(() => import('./pages/CommunicationHub'));
-const MilestonesPage = lazy(() => import('./pages/MilestonesPage'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const EventsPage = lazy(() => import('./pages/Events'));
-const DiscoveryPage = lazy(() => import('./pages/Discovery'));
-const FounderTools = lazy(() => import('./pages/FounderTools'));
-const Fundraising = lazy(() => import('./pages/Fundraising'));
-const Workspace = lazy(() => import('./pages/Workspace'));
-const CalendarPage = lazy(() => import('./pages/Calendar'));
-const Network = lazy(() => import('./pages/Network'));
-const Programs = lazy(() => import('./pages/Programs'));
-const Resources = lazy(() => import('./pages/Resources'));
-const Insights = lazy(() => import('./pages/Insights'));
-const LegalHub = lazy(() => import('./pages/LegalHub'));
-const Perks = lazy(() => import('./pages/Perks'));
-const Notifications = lazy(() => import('./pages/Notifications'));
-const SettingsPage = lazy(() => import('./pages/Settings'));
-const Pricing = lazy(() => import('./pages/Pricing'));
-const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
-const AutomationDashboard = lazy(() => import('./pages/admin/AutomationDashboard'));
-const BrandingSettings = lazy(() => import('./pages/admin/BrandingSettings'));
-const SSOSettings = lazy(() => import('./pages/admin/SSOSettings'));
-const TaxonomySettings = lazy(() => import('./pages/admin/TaxonomySettings'));
-const DomainSettings = lazy(() => import('./pages/admin/DomainSettings'));
-const TenantBilling = lazy(() => import('./pages/admin/TenantBilling'));
-const BillingPage = lazy(() => import('./pages/settings/Billing'));
-const BillingOversight = lazy(() => import('./pages/superadmin/BillingOversight'));
-const NotFoundPage = lazy(() => import('./pages/NotFound'));
+// Static page imports (eliminates dynamic chunk fetch & HMR dep-hash mismatch failures across all routes)
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+import FitCheck from './pages/FitCheck';
+import OnboardingWizard from './pages/OnboardingWizard';
+import DashboardPage from './pages/DashboardPage';
+import ProfilePage from './pages/ProfilePage';
+import MatchDiscovery from './pages/MatchDiscovery';
+import MentorsPage from './pages/MentorsPage';
+import CommunitiesPage from './pages/CommunitiesPage';
+import CommunicationHub from './pages/CommunicationHub';
+import MilestonesPage from './pages/MilestonesPage';
+import AdminDashboard from './pages/AdminDashboard';
+import EventsPage from './pages/Events';
+import DiscoveryPage from './pages/Discovery';
+import FounderTools from './pages/FounderTools';
+import Fundraising from './pages/Fundraising';
+import Workspace from './pages/Workspace';
+import CalendarPage from './pages/Calendar';
+import Network from './pages/Network';
+import Programs from './pages/Programs';
+import Resources from './pages/Resources';
+import Insights from './pages/Insights';
+import LegalHub from './pages/LegalHub';
+import Perks from './pages/Perks';
+import Notifications from './pages/Notifications';
+import SettingsPage from './pages/Settings';
+import Pricing from './pages/Pricing';
+import UserManagement from './pages/admin/UserManagement';
+import AutomationDashboard from './pages/admin/AutomationDashboard';
+import BrandingSettings from './pages/admin/BrandingSettings';
+import SSOSettings from './pages/admin/SSOSettings';
+import TaxonomySettings from './pages/admin/TaxonomySettings';
+import DomainSettings from './pages/admin/DomainSettings';
+import TenantBilling from './pages/admin/TenantBilling';
+import BillingPage from './pages/settings/Billing';
+import BillingOversight from './pages/superadmin/BillingOversight';
+import NotFoundPage from './pages/NotFound';
 
 // Page loading fallback
 function PageLoader() {
@@ -193,6 +196,15 @@ function WithUser({ render }: { render: (user: User) => React.ReactNode }) {
   return <>{render(appUser)}</>;
 }
 
+
+/** "/" shows the landing page to guests; a member who set a home page lands there instead. */
+function HomeGate() {
+  const { user, isDemoMode } = useAuth();
+  const prefs = useStored(readUxPrefs, [UX_PREFS_KEY]);
+  if ((user || isDemoMode) && prefs.homePath) return <Navigate to={prefs.homePath} replace />;
+  return <LandingPage />;
+}
+
 function TenantBillingRoute() {
   const { tenant } = useTenant();
   if (!tenant) return null;
@@ -296,8 +308,18 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(() => {
-    return localStorage.getItem('demo_mode') === 'true';
+    const stored = localStorage.getItem('demo_mode');
+    if (stored === null) {
+      localStorage.setItem('demo_mode', 'true');
+      return true;
+    }
+    return stored === 'true';
   });
+
+  const paletteTheme = useUIStore((s) => s.paletteTheme);
+  useEffect(() => {
+    applyPaletteToDocument(paletteTheme);
+  }, [paletteTheme]);
 
   const toggleDemoMode = (enabled: boolean) => {
     // A signed-in account must not be swapped for the demo identity.
@@ -306,7 +328,7 @@ export default function App() {
     if (enabled) {
       localStorage.setItem('demo_mode', 'true');
     } else {
-      localStorage.removeItem('demo_mode');
+      localStorage.setItem('demo_mode', 'false');
       setIsAdmin(false);
       if (!auth.currentUser) {
         setUser(null);
@@ -457,10 +479,11 @@ export default function App() {
           <RouteLifecycle />
           <OfflineBanner />
           <CommandPalette />
+          <GlobalStudioModals />
           <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<HomeGate />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/quiz" element={<FitCheck />} />

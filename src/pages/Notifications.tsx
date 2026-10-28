@@ -128,8 +128,15 @@ export default function Notifications() {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
+                  // The whole row opens its context (not only the title words); the row's own buttons stop propagation.
+                  onClick={(e) => {
+                    if (!notification.actionUrl) return;
+                    if ((e.target as HTMLElement).closest('button, a, input')) return;
+                    openNote(notification);
+                  }}
                   className={cn(
                     'p-4 sm:p-6 flex gap-4 transition-colors hover:bg-stone-50/50 group relative',
+                    notification.actionUrl && 'cursor-pointer',
                     !notification.read && 'bg-stone-50/30',
                   )}
                 >

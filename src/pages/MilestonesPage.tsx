@@ -53,7 +53,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
  Completed: { color: 'text-emerald-600', bg: 'bg-emerald-50', dot: 'bg-emerald-500' },
  'In Progress': { color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-500' },
- Planned: { color: 'text-stone-500', bg: 'bg-stone-50', dot: 'bg-stone-300' },
+ Planned: { color: 'text-stone-500', bg: 'bg-stone-50', dot: 'bg-stone-500' },
  Delayed: { color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-500' },
  Overdue: { color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500' },
 };
@@ -70,12 +70,12 @@ function ProgressRing({ progress, size = 40, stroke = 3.5, showValue = true }: {
  const offset = circumference - (progress / 100) * circumference;
  return (
   <svg width={size} height={size} className="transform -rotate-90">
-   <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f5f5f4" strokeWidth={stroke} />
+   <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-stone-200" />
    <circle
     cx={size / 2} cy={size / 2} r={radius} fill="none"
-    stroke={progress === 100 ? '#10b981' : '#1c1917'}
+    stroke="currentColor"
     strokeWidth={stroke} strokeDasharray={circumference} strokeDashoffset={offset}
-    strokeLinecap="round" className="transition-all duration-700"
+    strokeLinecap="round" className={cn("transition-all duration-700", progress === 100 ? "text-emerald-500" : "text-stone-900")}
    />
    {showValue && <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central"
     className="fill-stone-900 text-[9px] font-semibold" transform={`rotate(90, ${size / 2}, ${size / 2})`}>
@@ -303,12 +303,15 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const categories = useMemo(() => ['All', ...Array.from(new Set(milestones.map(m => m.category)))], [milestones]);
 
  const filtered = useMemo(() => {
+  // Order by what needs attention: overdue first, then open ones by due date, finished last.
+  const rank = (m: Milestone) => (m.status === 'Overdue' ? 0 : m.status === 'Completed' ? 2 : 1);
+  const due = (m: Milestone) => { const v = new Date(m.targetDate).getTime(); return Number.isFinite(v) ? v : Number.MAX_SAFE_INTEGER; };
   return milestones.filter(m => {
    const matchSearch = !searchQuery || m.title.toLowerCase().includes(searchQuery.toLowerCase()) || m.description?.toLowerCase().includes(searchQuery.toLowerCase());
    const matchCat = categoryFilter === 'All' || m.category === categoryFilter;
    const matchStatus = statusFilter === 'All' || m.status === statusFilter;
    return matchSearch && matchCat && matchStatus;
-  });
+  }).sort((a, b) => rank(a) - rank(b) || due(a) - due(b));
  }, [milestones, searchQuery, categoryFilter, statusFilter]);
 
  const overallProgress = milestones.length > 0 ? Math.round(milestones.reduce((sum, m) => sum + m.progress, 0) / milestones.length) : 0;

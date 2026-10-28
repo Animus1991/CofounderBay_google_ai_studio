@@ -95,9 +95,9 @@ export default function LoginPage() {
      </div>
      <span className="text-lg font-medium text-stone-900 tracking-tight">CoFounderBay</span>
     </NavLink>
-    <h2 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
+    <h1 className="text-center text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      <Both en="Welcome back" el="Καλώς ήρθες ξανά" />
-    </h2>
+    </h1>
     <p className="mt-2 text-center text-sm text-stone-500">
      <Both en="After sign-in: dashboard, matches, and the studio assistant on the same lists." el="Μετά την είσοδο: πίνακας, αντιστοιχίσεις, και ο βοηθός στις ίδιες λίστες." />
     </p>

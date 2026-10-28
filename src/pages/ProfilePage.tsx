@@ -33,7 +33,8 @@ import {
  BookOpen,
  Handshake,
  CheckCircle2,
- Trophy
+ Trophy,
+ BarChart2
 } from "lucide-react";
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -64,9 +65,11 @@ import { useToast } from '../context/ToastContext';
 import { usePeople } from '../lib/directory';
 import { avatarOf, findPerson } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
+import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { shareLink } from '../lib/download';
 import { usePageControls } from '../lib/pageControls';
 import { safeWebUrl } from '../lib/webUrl';
+import { useUIStore } from '../stores/useUIStore';
 import {
  connectionStateWith,
  endorseSkill,
@@ -327,13 +330,17 @@ export default function ProfilePage() {
 
  usePageControls(() => [
   ...(isOwnProfile
-    ? [{ id: 'edit-profile', en: 'Edit profile', el: 'Επεξεργασία προφίλ', run: () => setIsEditing(true) }]
+    ? [
+        { id: 'edit-profile', en: 'Edit profile', el: 'Επεξεργασία προφίλ', run: () => setIsEditing(true) },
+        { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
+      ]
     : [
+        { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile?.uid || 'fp-1') },
         { id: 'message-member', en: 'Send a message', el: 'Αποστολή μηνύματος', run: () => { if (id) navigate(`/messages?user=${id}`); } },
         { id: 'connect-member', en: 'Connect', el: 'Σύνδεση', run: () => { void handleConnect(); } },
       ]),
   { id: 'share-profile', en: 'Share profile', el: 'Κοινοποίηση προφίλ', run: () => { void shareProfile(); } },
- ], [isOwnProfile, id]);
+ ], [isOwnProfile, id, profile?.uid]);
 
  // ── Derived display data (always show sections, fallback to mock) ──
  const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
@@ -393,7 +400,7 @@ export default function ProfilePage() {
  // How well this person fits the signed-in viewer (same scorer as Matches).
  const fitWithViewer = React.useMemo(() => {
   if (!profile || isOwnProfile) return null;
-  return compatibility(fromProfile(ownProfile), fromProfile(profile as unknown as Parameters<typeof fromProfile>[0]));
+  return compatibility(fromProfile(mergeFitIntoViewer(ownProfile)), fromProfile(profile as unknown as Parameters<typeof fromProfile>[0]));
  }, [profile, isOwnProfile, ownProfile]);
 
  // Members closest to this profile, scored with the same engine Matches uses.
@@ -613,7 +620,7 @@ export default function ProfilePage() {
     <div className="h-24 sm:h-32 bg-stone-200 rounded-xl overflow-hidden relative" />
 
     {/* Profile Info Card */}
-    <div className="bg-white rounded-2xl sm:rounded-3xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
+    <div className="bg-white rounded-2xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start">
       <div className="relative">
        {(() => {
@@ -727,10 +734,15 @@ export default function ProfilePage() {
          />
         )}
         {!isOwnProfile && fitWithViewer?.score != null && (
-         <div className="flex items-center gap-1.5" title={fitWithViewer.headline ? (lang === 'el' ? fitWithViewer.headline.el : fitWithViewer.headline.en) : undefined}>
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-          {t(`${fitWithViewer.score}% compatibility with you`, `${fitWithViewer.score}% συμβατότητα μαζί σου`)}
-         </div>
+         <button
+          type="button"
+          onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile.uid || 'fp-1')}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 hover:bg-stone-900 hover:text-white border border-stone-200 hover:border-stone-900 text-stone-900 text-xs font-semibold transition-colors"
+          title={fitWithViewer.headline ? (lang === 'el' ? fitWithViewer.headline.el : fitWithViewer.headline.en) : t('Open 6-Axis Compatibility Breakdown', 'Άνοιγμα Ανάλυσης 6 Αξόνων')}
+         >
+          <BarChart2 className="w-3.5 h-3.5 text-amber-500" />
+          {t(`${fitWithViewer.score}% compatibility · 6-Axis`, `${fitWithViewer.score}% συμβατότητα · 6 Άξονες`)}
+         </button>
         )}
         {showMatchStatus && (
          <div
@@ -1082,15 +1094,17 @@ export default function ProfilePage() {
           "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
           badge.earned
            ? `${badge.bg} ${badge.border} shadow-sm`
-           : "bg-stone-50/50 border-stone-100 opacity-60"
+           : "bg-stone-50/50 border-dashed border-stone-200"
          )}
         >
-         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100")}>
+         {/* Locked badges stay readable: only the icon is dimmed, the text keeps AA contrast. */}
+         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100 opacity-60 grayscale")}>
           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
          </div>
          <div>
-          <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-500")}>{t(badge.name, badge.nameEl)}</p>
-          <p className="text-xs text-stone-400 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
+          <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-600")}>{t(badge.name, badge.nameEl)}</p>
+          <p className="text-xs text-stone-500 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
+          {!badge.earned && <p className="text-[11px] font-medium text-stone-500 mt-1">{t('Locked', 'Κλειδωμένο')}</p>}
          </div>
          {badge.earned && (
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">

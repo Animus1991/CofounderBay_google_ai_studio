@@ -82,14 +82,25 @@ export class ErrorBoundary extends Component<Props, State> {
       <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 mb-2">{errorMessage}</h1>
       <p className="text-stone-600 mb-8">{detail}</p>
       {!this.state.repairing && (
-       <button
-        type="button"
-        onClick={() => window.location.reload()}
-        className="w-full flex items-center justify-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-stone-800 transition-colors"
-       >
-        <RefreshCw className="w-4 h-4" />
-        {bothText('Try Again', 'Επανάληψη')}
-       </button>
+       <div className="space-y-2.5">
+        <button
+         type="button"
+         onClick={() => {
+          this.setState({ hasError: false, error: null, repairing: false });
+         }}
+         className="w-full flex items-center justify-center gap-2 bg-stone-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-stone-800 transition-colors"
+        >
+         <RefreshCw className="w-4 h-4" />
+         {bothText('Try Again', 'Επανάληψη')}
+        </button>
+        <button
+         type="button"
+         onClick={() => window.location.reload()}
+         className="w-full flex items-center justify-center gap-2 bg-stone-100 text-stone-700 px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-200 transition-colors"
+        >
+         {bothText('Reload Page', 'Ανανέωση σελίδας')}
+        </button>
+       </div>
       )}
      </div>
     </div>

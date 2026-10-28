@@ -41,6 +41,7 @@ import { usePageControls } from "../lib/pageControls";
 import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { onCommunities } from "../lib/communities";
 import { useStored } from "../lib/useStored";
+import { connectionStateWith, respondToConnection, useConnections } from "../lib/social";
 
 interface DiscoveryProps {
  user: User;
@@ -55,6 +56,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  useLanguage();
  const t = useT();
  const { profile: authProfile, isDemoMode, user: authUser } = useAuth();
+ useConnections(); // re-render cards when a request arrives or is answered
  const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
  const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
@@ -598,6 +600,17 @@ export default function Discovery({ user }: DiscoveryProps) {
               <span className="text-xs text-stone-400">{bothText("Available", "Σε διάθεση")}{matchPhrase ? ` · ${matchPhrase}` : ''}</span>
              </div>
              <div className="flex items-center gap-1.5">
+              {/* A waiting request is answered right on the card, as on Matches. */}
+              {!isDemoMode && user.id && connectionStateWith(user.id).state === 'incoming' && (
+               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs rounded-lg bg-stone-900 text-white hover:bg-stone-800"
+                onClick={(e: React.MouseEvent) => {
+                 e.preventDefault(); e.stopPropagation();
+                 const rec = connectionStateWith(user.id).record;
+                 if (rec) void respondToConnection(rec, true);
+                }}>
+                {t('Accept', 'Αποδοχή')}
+               </Button>
+              )}
               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-stone-600 rounded-lg border border-stone-100"
                onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); ask(`Why do I match with ${user.name}?`); }}>
                {t('Ask', 'Ρώτα')}
@@ -672,7 +685,8 @@ export default function Discovery({ user }: DiscoveryProps) {
            </span>
           </div>
           <div className="absolute bottom-3 left-3 flex items-center gap-1">
-           <span className="text-white/90 text-xs font-semibold flex items-center gap-1">
+           <span className="bg-stone-950/75 text-white text-xs font-semibold flex items-center gap-1 px-2 py-0.5 rounded-md">
+
             <CalendarIcon className="w-3 h-3" /> {opp.deadline}
            </span>
           </div>
@@ -687,7 +701,7 @@ export default function Discovery({ user }: DiscoveryProps) {
          </div>
          {viewMode === "list" && (
           <div className="px-12 pb-8 md:pb-0 md:pr-12">
-           <Button type="button" variant="outline" className="rounded-full h-11 px-8 text-sm font-medium tracking-wider border-stone-200 group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 transition-all" onClick={(e: React.MouseEvent) => { e.stopPropagation(); ask(`Tell me about ${opp.title}`); }}>
+           <Button type="button" variant="outline" className="rounded-full h-11 px-8 text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 transition-all" onClick={(e: React.MouseEvent) => { e.stopPropagation(); ask(`Tell me about ${opp.title}`); }}>
              {t('Details', 'Λεπτομέρειες')}
             </Button>
           </div>

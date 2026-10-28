@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 import { Both } from '../../lib/both';
+import PinToggle from './PinToggle';
 
 interface PageShellProps {
  title?: string;
@@ -16,7 +17,7 @@ interface PageShellProps {
 /** The shared demo pill — identical markup the Dashboard header used. */
 export function SamplePill() {
  return (
-  <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-1.5">
+  <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-[0.3638rem] leading-snug">
    <Both en="Demo — sample data" el="Demo — δοκιμαστικά δεδομένα" />
   </span>
  );
@@ -45,23 +46,24 @@ export default function PageShell({
  return (
   <div className={cn(
    'min-h-full w-full min-w-0',
-   !noPadding && 'px-4 sm:px-6 lg:px-8 py-5 sm:py-6',
+   !noPadding && 'px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem]',
    className
   )}>
    <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
     {(title || actions || sample) && (
-     <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-5">
+     <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-[1.2125rem]">
       <div className="min-w-0 flex-1 basis-64">
        {title && (
-        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight break-words">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight break-words leading-snug">{title}</h1>
        )}
        {description && (
-        <p className="text-sm text-stone-500 mt-1 max-w-2xl">{description}</p>
+        <p className="text-sm text-stone-500 mt-1 max-w-2xl leading-relaxed">{description}</p>
        )}
       </div>
       {(actions || sample) && (
        <div data-ui="page-actions" className="flex max-w-full flex-wrap items-center gap-2 min-w-0">
         {sample && <SamplePill />}
+        <PinToggle />
         {actions}
        </div>
       )}
@@ -95,7 +97,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, sub, icon: Icon, trend, trendValue }: StatCardProps) {
  return (
-  <div className="bg-white rounded-2xl border border-stone-100 p-5">
+  <div className="bg-white rounded-2xl border border-stone-100 px-5 py-[1.2125rem]">
    <div className="flex items-start justify-between">
     <p className="text-xs font-medium text-stone-400 tracking-wider">{label}</p>
     {Icon && <Icon className="w-4 h-4 text-stone-300" />}

@@ -67,6 +67,7 @@ import { roundMetrics } from "../lib/roundMetrics";
 import type { Person } from "../lib/peopleSource";
 import { useAuth } from "../App";
 import { onCatalog, str, strList, toMillis } from "../lib/catalog";
+import { useUIStore } from "../stores/useUIStore";
 
 interface FundraisingProps {
  user: User;
@@ -173,6 +174,7 @@ export default function Fundraising({ user }: FundraisingProps) {
   { id: 'show-programs', en: 'Show programs', el: 'Εμφάνιση προγραμμάτων', run: () => setActiveTab('programs') },
   { id: 'show-opportunities', en: 'Show opportunities', el: 'Εμφάνιση ευκαιριών', run: () => setActiveTab('opportunities') },
   { id: 'edit-round', en: 'Edit round', el: 'Επεξεργασία γύρου', run: openRoundEditor },
+  { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
  ], [round]);
  const [investorSearch, setInvestorSearch] = useState("");
  const investorSearchRef = useRef<HTMLInputElement>(null);
@@ -457,7 +459,24 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  return (
   <>
-  <PageShell sample={isDemoMode} title={t("Fundraising", "Χρηματοδότηση")} description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")} maxWidth="full">
+  <PageShell
+   sample={isDemoMode}
+   title={t("Fundraising", "Χρηματοδότηση")}
+   description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")}
+   maxWidth="full"
+   actions={
+    <button
+     type="button"
+     data-ui="button"
+     onClick={() => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture')}
+     title={t("What investors and candidates see: your venture, pitch deck, traction and open roles — built from this round, your canvas and need cards.", "Τι βλέπουν επενδυτές και υποψήφιοι: το venture, το pitch deck, η πρόοδος και οι ανοιχτοί ρόλοι — από αυτόν τον γύρο, το canvas και τις κάρτες ανάγκης.")}
+     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+    >
+     <Briefcase className="w-3.5 h-3.5" aria-hidden="true" />
+     {t("My Deal Room", "Το Deal Room μου")}
+    </button>
+   }
+  >
    <div className="space-y-5">
 
     {/* Tab Bar */}
@@ -894,7 +913,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             {barData.map((h, i) => (
              <div
               key={i}
-              className="flex-1 bg-stone-100 rounded-t hover:bg-stone-800 transition-all cursor-pointer relative"
+              className="flex-1 bg-stone-300 rounded-t hover:bg-stone-900 transition-all cursor-pointer relative"
               style={{ height: `${(h / barMax) * 100}%` }}
              >
               {/* Tooltip on hover */}

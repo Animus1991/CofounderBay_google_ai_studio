@@ -147,49 +147,61 @@ export default function MentorsPage() {
   <PageShell sample={isDemoMode} title={t('Mentors', 'Μέντορες')} description={t('Connect with world-class mentors who have built and scaled successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει και αναπτύξει επιτυχημένες startups.')}>
   <div className="space-y-6">
    {/* Hero Section */}
-   <div className="bg-stone-900 rounded-xl p-6 sm:p-8 relative overflow-hidden">
-    <div className="relative z-10 max-w-2xl space-y-6">
-     <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-full backdrop-blur-md text-sm font-medium tracking-wide">
-      <Zap className="w-4 h-4 text-amber-400" />
-      {t('Expert Guidance', 'Καθοδήγηση από ειδικούς')}
+   <section aria-labelledby="mentor-hero-title" className="bg-stone-900 rounded-xl p-5 sm:p-6 relative overflow-hidden">
+    <div className="relative z-10 space-y-4">
+     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white rounded-full text-xs font-medium">
+       <Zap className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
+       {t('Expert Guidance', 'Καθοδήγηση από ειδικούς')}
+      </span>
+      <h2 id="mentor-hero-title" className="text-base font-semibold text-white tracking-tight leading-tight">
+       {t('Learn from the', 'Μάθε από')} <span className="text-white/80">{t('Best in the World.', 'τα καλύτερα μυαλά του κόσμου.')}</span>
+      </h2>
      </div>
-     <h2 className="text-base font-semibold text-white tracking-tight leading-tight">
-      {t('Learn from the', 'Μάθε από')} <span className="text-stone-400">{t('Best in the World.', 'τα καλύτερα μυαλά του κόσμου.')}</span>
-     </h2>
-     <p className="text-sm text-stone-400 leading-relaxed">
+     <p className="text-sm text-white/85 leading-relaxed max-w-2xl">
       {t('Connect with world-class mentors who have built, scaled, and exited successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει, αναπτύξει και πουλήσει επιτυχημένες startups.')}
      </p>
-     <div className="flex flex-col sm:flex-row gap-4 pt-4 relative z-20">
-      <div className="flex-1 relative group">
-       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-stone-500 group-focus-within:text-white transition-colors" />
-       <input 
-        type="text"
+
+     {/* Search and its action share one row and one height; the action states what it will show. */}
+     <form
+      role="search"
+      onSubmit={(e) => { e.preventDefault(); document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' }); }}
+      className="flex flex-col sm:flex-row gap-2"
+     >
+      <label className="flex-1 relative min-w-0">
+       <span className="sr-only">{t('Search mentors', 'Αναζήτηση μεντόρων')}</span>
+       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/80 pointer-events-none" aria-hidden="true" />
+       <input
+        type="search"
         placeholder={t('Search by expertise, company, or name...', 'Αναζήτηση με εξειδίκευση, εταιρεία ή όνομα…')}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3.5 bg-white/10 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-stone-400 outline-none focus:ring-2 focus:ring-white/20 transition-all font-semibold backdrop-blur-sm shadow-sm"
+        className="w-full min-h-11 pl-10 pr-4 bg-white/10 border border-white/25 rounded-xl text-sm text-white outline-none focus:border-white/60 focus:ring-2 focus:ring-white/30 transition-colors font-medium"
        />
-      </div>
-      <button 
-       onClick={() => document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' })}
-       className="px-4 sm:px-6 py-2 sm:py-2.5 bg-white text-stone-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-stone-50 transition-all shadow-md whitespace-nowrap "
+      </label>
+      <button
+       type="submit"
+       className="min-h-11 px-5 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-50 transition-colors whitespace-nowrap shrink-0"
       >
-       {t('Find Mentor', 'Βρες μέντορα')}
+       {t(`Show ${filteredMentors.length} mentor${filteredMentors.length === 1 ? '' : 's'}`, `Εμφάνιση ${filteredMentors.length} ${filteredMentors.length === 1 ? 'μέντορα' : 'μεντόρων'}`)}
       </button>
-     </div>
-     <div id="mentor-filters" className="flex flex-wrap gap-y-3 gap-x-6 pt-2 relative z-20">
-      <div className="space-y-2 flex-1">
-       <span className="text-xs font-semibold text-stone-400 tracking-wide block">{t('Expertise', 'Εξειδίκευση')}</span>
-       <div className="flex flex-wrap gap-2">
+     </form>
+
+     <div id="mentor-filters" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-6">
+      <div role="group" aria-labelledby="mentor-filter-expertise" className="space-y-1.5 min-w-0">
+       <span id="mentor-filter-expertise" className="text-xs font-semibold text-white/85 block">{t('Expertise', 'Εξειδίκευση')}</span>
+       <div className="flex flex-wrap gap-1.5">
         {expertiseFilters.map(filter => (
          <button
           key={filter}
+          type="button"
+          aria-pressed={expertiseFilter === filter}
           onClick={() => setExpertiseFilter(filter)}
           className={cn(
-           "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-           expertiseFilter === filter 
-            ? "bg-white text-stone-900" 
-            : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
+           "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
+           expertiseFilter === filter
+            ? "bg-white text-stone-900 border-white"
+            : "bg-white/10 text-white border-white/20 hover:bg-white/20"
           )}
          >
           {filter === 'All' ? t('All', 'Όλα') : labelOf(filter)}
@@ -198,18 +210,20 @@ export default function MentorsPage() {
        </div>
       </div>
 
-      <div className="space-y-2">
-       <span className="text-xs font-semibold text-stone-400 tracking-wide block">{t('Availability', 'Διαθεσιμότητα')}</span>
-       <div className="flex flex-wrap gap-2">
+      <div role="group" aria-labelledby="mentor-filter-availability" className="space-y-1.5 min-w-0">
+       <span id="mentor-filter-availability" className="text-xs font-semibold text-white/85 block">{t('Availability', 'Διαθεσιμότητα')}</span>
+       <div className="flex flex-wrap gap-1.5">
         {availableFilters.map(filter => (
          <button
           key={filter}
+          type="button"
+          aria-pressed={availabilityFilter === filter}
           onClick={() => setAvailabilityFilter(filter)}
           className={cn(
-           "px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-           availabilityFilter === filter 
-            ? "bg-white text-stone-900" 
-            : "bg-white/10 text-stone-300 hover:bg-white/20 hover:text-white"
+           "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
+           availabilityFilter === filter
+            ? "bg-white text-stone-900 border-white"
+            : "bg-white/10 text-white border-white/20 hover:bg-white/20"
           )}
          >
           {filter === 'All' ? t('Any Time', 'Οποτεδήποτε') : t(filter, AVAILABILITY_EL[filter] ?? filter)}
@@ -219,7 +233,7 @@ export default function MentorsPage() {
       </div>
      </div>
     </div>
-   </div>
+   </section>
 
    {/* Stats Bar — every figure read from the list on screen or the reader's own sessions. */}
    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-5 border-y border-stone-100">
@@ -427,11 +441,11 @@ export default function MentorsPage() {
          <img
           src={selectedMentor.avatar}
           alt={selectedMentor.name}
-          className="w-32 h-32 mx-auto rounded-3xl object-cover shadow-xl border-4 border-white"
+          className="w-32 h-32 mx-auto rounded-2xl object-cover shadow-xl border-4 border-white"
           referrerPolicy="no-referrer"
          />
         ) : (
-         <div className="w-32 h-32 mx-auto rounded-3xl bg-stone-100 flex items-center justify-center text-3xl font-semibold text-stone-400 shadow-xl border-4 border-white">{initialsOf(selectedMentor.name)}</div>
+         <div className="w-32 h-32 mx-auto rounded-2xl bg-stone-100 flex items-center justify-center text-3xl font-semibold text-stone-400 shadow-xl border-4 border-white">{initialsOf(selectedMentor.name)}</div>
         )}
         <div>
          <h2 className="text-base font-semibold text-stone-900 tracking-tight inline-flex items-center gap-2">

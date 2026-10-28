@@ -22,7 +22,7 @@ export default function TenantLanding() {
   return (
    <div className="min-h-screen flex items-center justify-center bg-stone-50">
     <div className="text-center">
-     <h1 className="text-xl sm:text-2xl xl:text-3xl font-medium text-stone-900">{t('Tenant Not Found', 'Ο οργανισμός δεν βρέθηκε')}</h1>
+     <h1 className="text-xl sm:text-2xl xl:text-2xl font-medium text-stone-900">{t('Tenant Not Found', 'Ο οργανισμός δεν βρέθηκε')}</h1>
      <p className="text-stone-500 mt-2">{t("The organization ecosystem you are looking for doesn't exist.", 'Το οικοσύστημα οργανισμού που ψάχνεις δεν υπάρχει.')}</p>
      <Link to="/" className="mt-4 inline-block text-primary font-medium hover:underline">{t('Go to CoFounderBay Global', 'Στο CoFounderBay Global')}</Link>
     </div>
@@ -65,7 +65,7 @@ export default function TenantLanding() {
        <Zap className="w-3 h-3 fill-current" />
        {t('Powered by CoFounderBay', 'Με την υποστήριξη του CoFounderBay')}
       </div>
-      <h1 className="text-xl sm:text-2xl xl:text-3xl font-medium tracking-tight leading-snug">
+      <h1 className="text-xl sm:text-2xl xl:text-2xl font-medium tracking-tight leading-snug">
        {content.heroTitle}
       </h1>
       <p className="text-sm sm:text-base xl:text-lg text-stone-500 leading-relaxed max-w-xl">

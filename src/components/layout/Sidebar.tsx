@@ -26,14 +26,25 @@ import {
  ChevronRight,
  LogIn,
  LogOut,
- Menu
+ Menu,
+ CreditCard,
+ Lock,
+ Tags,
+ Ticket,
+ Award,
+ Gem,
+ Palette,
+ Search
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { User, UserRole } from "../../types";
 import { cn } from "../../lib/utils";
 import { bothText, labelOf, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
+import { navIcon, navLabel } from "../../lib/navMap";
+import { readUxPrefs, UX_PREFS_KEY } from "../../lib/personalization";
+import { useStored } from "../../lib/useStored";
 import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
 import { signOutAccount } from "../../lib/account";
@@ -82,33 +93,33 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
   }
  };
 
+ /*
+  * Order follows how often a founder needs each place: find people (the core loop),
+  * then build the venture, then reference material, then account. Every item is a
+  * destination; contextual tools (score breakdown, deal room, needs wall) live next to
+  * the data they explain, in ⌘K, and in the assistant.
+  */
  const sections = [
-  {
-   title: "Build",
-   items: [
-    { icon: Rocket, label: "Founder Tools", path: "/founder-tools" },
-    { icon: DollarSign, label: "Fundraising", path: "/fundraising" },
-    { icon: Briefcase, label: "Workspace", path: "/workspace" },
-    { icon: Trophy, label: "Milestones", path: "/milestones" },
-    { icon: Calendar, label: "Calendar", path: "/calendar" },
-   ]
-  },
   {
    title: "Find",
    items: [
-    { icon: Compass, label: "Explore", path: "/discovery" },
     { icon: Users, label: "Matches", path: "/matches" },
+    { icon: Compass, label: "Explore", path: "/discovery" },
+    { icon: Share2, label: "Network", path: "/network" },
     { icon: GraduationCap, label: "Mentors", path: "/mentors" },
     { icon: Globe, label: tenant?.content?.communityNamingConvention || "Communities", path: "/communities" },
-    { icon: Calendar, label: "Events", path: "/events" },
-    { icon: Rocket, label: "Programs", path: "/programs" },
-    { icon: Share2, label: "Network", path: "/network" },
+    { icon: Ticket, label: "Events", path: "/events" },
+    { icon: Award, label: "Programs", path: "/programs" },
    ]
   },
   {
-   title: "Communication",
+   title: "Build",
    items: [
-    { icon: MessageSquare, label: "Messages", path: "/messages" },
+    { icon: Briefcase, label: "Workspace", path: "/workspace" },
+    { icon: Rocket, label: "Founder Tools", path: "/founder-tools" },
+    { icon: DollarSign, label: "Fundraising", path: "/fundraising" },
+    { icon: Trophy, label: "Milestones", path: "/milestones" },
+    { icon: Calendar, label: "Calendar", path: "/calendar" },
    ]
   },
   {
@@ -125,9 +136,21 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
    items: [
     { icon: UserIcon, label: "My Profile", path: "/profile" },
     { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: CreditCard, label: "Billing", path: "/settings/billing" },
+    { icon: Gem, label: "Pricing", path: "/pricing" },
    ]
   }
  ];
+
+ const topItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: MessageSquare, label: "Messages", path: "/messages" },
+ ];
+
+ /* Pinned pages (star on any page header, or "/pin …" in the assistant). Personal
+  * shortcuts — they sit right under Dashboard/Messages where muscle memory expects them. */
+ const favorites = useStored(readUxPrefs, [UX_PREFS_KEY]).favorites
+  .filter((path) => !topItems.some((item) => item.path === path));
 
  const feed = useNotificationFeed();
  const messaging = useOptionalMessaging();
@@ -175,7 +198,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
    >
     {/* Brand Section */}
     <div className={cn(
-     "p-4 flex items-center gap-3 border-b border-stone-100 h-14",
+     "px-4 py-[0.85rem] flex items-center gap-3 border-b border-stone-100 min-h-[3.395rem]",
      collapsed ? "justify-center" : "justify-between"
     )}>
      <div className="flex items-center gap-2.5 overflow-hidden">
@@ -220,30 +243,100 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
     </div>
 
    {/* Navigation */}
-   <nav id="primary-navigation" aria-label={bothText("Primary navigation", "Κύρια πλοήγηση")} className="flex-1 px-3 py-2 space-y-6 overflow-y-auto no-scrollbar pb-10">
-    <div>
-     <NavLink
-      to="/dashboard"
-      title={navTitle("Dashboard", "/dashboard")}
-      className={({ isActive }) =>
-       cn(
-        "flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden",
-        isActive
-         ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"
-         : "text-stone-500 hover:bg-stone-50 hover:text-stone-900",
-        collapsed && "justify-center px-0"
-       )
-      }
-     >
-      <div className="flex items-center gap-3 relative z-10">
-       <LayoutDashboard className="w-5 h-5 shrink-0" />
-       {!collapsed && <span>{withEl("Dashboard")}</span>}
-      </div>
-      {!collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all group-[.active]:opacity-100" />}
-     </NavLink>
+   <nav id="primary-navigation" aria-label={bothText("Primary navigation", "Κύρια πλοήγηση")} className="flex-1 px-3 py-2 space-y-5 overflow-y-auto no-scrollbar pb-10">
+    {/* Global search: the visible entry point to ⌘K (pages, people, tools, AI). */}
+    <button
+     type="button"
+     onClick={() => { setMobileOpen?.(false); window.dispatchEvent(new CustomEvent('OPEN_COMMAND_PALETTE')); }}
+     title={bothText("Search pages, people and tools (Ctrl K)", "Αναζήτηση σελίδων, ατόμων και εργαλείων (Ctrl K)")}
+     aria-label={bothText("Search pages, people and tools", "Αναζήτηση σελίδων, ατόμων και εργαλείων")}
+     className={cn(
+      "w-full flex items-center gap-3 px-3 min-h-10 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-500 hover:border-stone-300 hover:text-stone-900 transition-colors",
+      collapsed && "justify-center px-0 border-transparent bg-transparent"
+     )}
+    >
+     <Search className="w-4 h-4 shrink-0" />
+     {!collapsed && (
+      <>
+       <span className="flex-1 text-left truncate">{bothText("Search…", "Αναζήτηση…")}</span>
+       <kbd>Ctrl K</kbd>
+      </>
+     )}
+    </button>
+
+    <div className="space-y-1">
+     {topItems.map((item) => (
+      <NavLink
+       key={item.path}
+       to={item.path}
+       title={navTitle(item.label, item.path)}
+       className={({ isActive }) =>
+        cn(
+         "flex items-center justify-between gap-3 px-3 py-2.5 min-h-11 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden",
+         isActive
+          ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10"
+          : "text-stone-500 hover:bg-stone-50 hover:text-stone-900",
+         collapsed && "justify-center px-0"
+        )
+       }
+      >
+       <div className="relative flex items-center gap-3 z-10">
+        <item.icon className="w-5 h-5 shrink-0" />
+        {!collapsed && <span>{withEl(item.label)}</span>}
+        {collapsed && badgeFor(item.path) > 0 && (
+         <span className="absolute -top-1.5 -right-2 min-w-3.5 h-3.5 px-0.5 rounded-full bg-stone-900 text-white text-[8px] font-medium tabular-nums leading-[14px] text-center">
+          {badgeFor(item.path) > 99 ? '99+' : badgeFor(item.path)}
+         </span>
+        )}
+       </div>
+       {!collapsed && badgeFor(item.path) > 0 ? (
+        <span className="min-w-4 h-4 px-1 rounded-full bg-stone-900 text-white text-xs font-medium tabular-nums leading-4 text-center">
+         {badgeFor(item.path) > 99 ? '99+' : badgeFor(item.path)}
+        </span>
+       ) : !collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
+      </NavLink>
+     ))}
     </div>
 
-    {sections.map((section) => (
+    {favorites.length > 0 && (
+    <div className="space-y-1">
+     {!collapsed ? (
+      <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+       {bothText("Pinned", "Καρφιτσωμένα")}
+      </p>
+     ) : (
+      <div className="h-px bg-stone-100 mx-3 mb-3" />
+     )}
+     {favorites.map((path) => {
+      const Icon = navIcon(path);
+      const label = navLabel(path);
+      return (
+       <NavLink
+        key={path}
+        to={path}
+        title={navTitle(label.en, path)}
+        className={({ isActive }) =>
+         cn(
+          "flex items-center justify-between gap-3 px-3 py-2 min-h-10 rounded-lg text-sm font-medium transition-all duration-200 group",
+          isActive
+           ? "bg-stone-100 text-stone-900 shadow-sm"
+           : "text-stone-500 hover:bg-stone-50/80 hover:text-stone-900",
+          collapsed && "justify-center px-0"
+         )
+        }
+       >
+        <div className="flex items-center gap-3 min-w-0">
+         <Icon className="w-4.5 h-4.5 shrink-0 group-hover:text-stone-900" />
+         {!collapsed && <span className="truncate">{withEl(label.en)}</span>}
+        </div>
+        {!collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
+       </NavLink>
+      );
+     })}
+    </div>
+   )}
+
+   {sections.map((section) => (
      <div key={section.title} className="space-y-1.5">
       {!collapsed ? (
        <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
@@ -305,6 +398,12 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
         { icon: ShieldCheck, label: "Admin Dashboard", path: "/admin" },
         { icon: Users, label: "User Management", path: "/admin/users" },
         { icon: Zap, label: "Automation Engine", path: "/admin/automation" },
+        { icon: Palette, label: "Branding Settings", path: "/admin/branding" },
+        { icon: Lock, label: "SSO Settings", path: "/admin/sso" },
+        { icon: Tags, label: "Taxonomy Settings", path: "/admin/taxonomy" },
+        { icon: Globe, label: "Domain Settings", path: "/admin/domains" },
+        { icon: CreditCard, label: "Tenant Billing", path: "/admin/billing" },
+        { icon: DollarSign, label: "Billing Oversight", path: "/admin/billing-oversight" },
        ].map((item) => (
         <NavLink
          key={item.path}

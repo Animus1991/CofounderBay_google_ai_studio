@@ -136,12 +136,31 @@ export interface ConnectionRequest {
   createdAt: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: string;
+  isMe: boolean;
+}
+
 export interface Conversation {
   id: string;
-  participants: string[];
-  status: 'Active' | 'Archived';
-  createdAt: string;
-  updatedAt: string;
+  participants?: string[];
+  status?: 'Active' | 'Archived';
+  createdAt?: string;
+  updatedAt?: string;
+  // Extended fields for real-time ChatDrawer & Startup Deal Room threads
+  participantId?: string;
+  participantName?: string;
+  participantAvatar?: string;
+  participantRole?: string;
+  lastMessage?: string;
+  timestamp?: string;
+  unreadCount?: number;
+  online?: boolean;
+  messages?: ChatMessage[];
 }
 
 export interface Message {
@@ -406,10 +425,14 @@ export interface AIAgent {
 
 export interface TenantConfig {
   id: string;
-  tenantId: string;
+  tenantId?: string;
   name?: string;
   displayName?: string;
   slug?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  tagline?: string;
+  memberCount?: number;
   branding?: {
     logo?: string;
     logoUrl?: string;
@@ -435,8 +458,8 @@ export interface TenantConfig {
   privacyPolicyUrl?: string;
   termsUrl?: string;
   supportEmail?: string;
-  features: string[];
-  settings: Record<string, any>;
+  features?: string[];
+  settings?: Record<string, any>;
 }
 
 export interface BillingPlan {
@@ -732,3 +755,161 @@ export type UserProfile = User & {
   portfolioUrl?: string;
   profile?: Profile;
 };
+
+// ============================================================================
+// EXTENDED COFOUNDERBAY 6-AXIS MATCHING & DEAL ROOM TYPES
+// ============================================================================
+
+export type RoleCategory =
+  | 'Technical Co-Founder'
+  | 'Business & Growth'
+  | 'Product & Design'
+  | 'Domain & Operations'
+  | 'Mentor & Advisor'
+  | 'Angel / Investor';
+
+export type StartupStage =
+  | 'Idea / Concept'
+  | 'Prototype / MVP'
+  | 'Pre-Seed (Traction)'
+  | 'Seed Funded'
+  | 'Series A+';
+
+export type CommitmentType =
+  | 'Full-Time'
+  | 'Part-Time (Transition to FT)'
+  | 'Evenings & Weekends'
+  | 'Advisory';
+
+export interface MatchScoreBreakdown {
+  roleComplementarity: number; // max 25
+  skillsOverlap: number;       // max 25
+  stageAlignment: number;      // max 20
+  commitmentAlignment: number; // max 15
+  locationProximity: number;   // max 5
+  recencyBonus: number;        // max 10
+  reasons: string[];
+}
+
+export interface FounderProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  headline: string;
+  role: RoleCategory;
+  location: string;
+  isRemote: boolean;
+  stage: StartupStage;
+  commitment: CommitmentType;
+  equityExpectation: string;
+  experienceYears: number;
+  bio: string;
+  skills: string[];
+  lookingFor: string[];
+  pastExperience: string;
+  education?: string;
+  verified: boolean;
+  matchScore: number;
+  matchHighlights: string[];
+  matchBreakdown?: MatchScoreBreakdown;
+  updatedAtMs?: number;
+  socials: {
+    github?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+  featuredProject?: {
+    title: string;
+    description: string;
+    url?: string;
+  };
+}
+
+export interface StartupPitchDeck {
+  problem: string;
+  solution: string;
+  marketSize: string;
+  businessModel: string;
+  tractionDetails: string;
+  useOfFunds: string;
+}
+
+export interface StartupVenture {
+  id: string;
+  name: string;
+  logo: string;
+  tagline: string;
+  description: string;
+  industry: string;
+  stage: StartupStage;
+  location: string;
+  openRoles: string[];
+  equityOffer: string;
+  fundingRaised: string;
+  teamSize: string;
+  founderName: string;
+  founderAvatar: string;
+  tractionMetric: string;
+  verified: boolean;
+  pitchDeck?: StartupPitchDeck;
+  applicationsCount?: number;
+}
+
+export interface MentorSession {
+  id: string;
+  mentorName: string;
+  mentorAvatar: string;
+  mentorTitle: string;
+  company: string;
+  expertise: string[];
+  rating: number;
+  reviewsCount: number;
+  availableSlots: string[];
+  durationMinutes: number;
+  isFreeCommunity: boolean;
+}
+
+export interface MentorBooking {
+  id: string;
+  mentorId: string;
+  mentorName: string;
+  mentorAvatar: string;
+  mentorCompany: string;
+  slot: string;
+  topic: string;
+  notes: string;
+  status: 'confirmed' | 'cancelled';
+  createdAt: string;
+  meetingUrl: string;
+}
+
+export interface NeedCardItem {
+  id: string;
+  title: string;
+  description: string;
+  ventureName: string;
+  ventureLogo?: string;
+  category: 'Engineering' | 'Growth & GTM' | 'Product' | 'Advisory' | 'Operations';
+  location: string;
+  isRemote: boolean;
+  stage: StartupStage;
+  commitment: CommitmentType;
+  equityOffered: string;
+  skills: string[];
+  applicantCount: number;
+  createdAt: string;
+  status: 'active' | 'in_review' | 'filled';
+}
+
+export interface AnalyticsMetric {
+  id: string;
+  nameEn: string;
+  nameEl: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  periodEn: string;
+  periodEl: string;
+}
+
+export type ThemeName = 'dark' | 'cyan' | 'mint' | 'apricot' | 'lilac';

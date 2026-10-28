@@ -25,11 +25,18 @@ const PAGE_HELP: Record<string, readonly [string, string]> = {
   '/profile': ['How others see you', 'Πώς σε βλέπουν οι άλλοι'],
   '/notifications': ['Everything that needs your attention', 'Ό,τι χρειάζεται την προσοχή σου'],
   '/settings': ['Account, privacy, notifications and plan', 'Λογαριασμός, απόρρητο, ειδοποιήσεις και πλάνο'],
+  '/settings/billing': ['Subscription, seats, invoices and payment methods', 'Συνδρομή, θέσεις, τιμολόγια και κάρτες'],
   '/pricing': ['Plans and what each one includes', 'Τα πλάνα και τι περιλαμβάνει το καθένα'],
+  '/quiz': ['60-second compatibility archetype check', 'Έλεγχος συμβατότητας 60 δευτερολέπτων'],
   '/admin': ['Platform health and moderation', 'Κατάσταση πλατφόρμας και εποπτεία'],
   '/admin/users': ['Search and manage member accounts', 'Αναζήτηση και διαχείριση λογαριασμών'],
   '/admin/automation': ['Rules that run automatically', 'Κανόνες που εκτελούνται αυτόματα'],
   '/admin/branding': ['Name, logo, colors and landing text', 'Όνομα, λογότυπο, χρώματα και κείμενα αρχικής'],
+  '/admin/sso': ['Single sign-on and identity providers', 'Single sign-on και πάροχοι ταυτότητας'],
+  '/admin/taxonomy': ['Skills, industries and role tags', 'Δεξιότητες, κλάδοι και ετικέτες ρόλων'],
+  '/admin/domains': ['Custom domains and DNS verification', 'Προσαρμοσμένα domains και επαλήθευση DNS'],
+  '/admin/billing': ['Organization subscription and seat limits', 'Συνδρομή οργανισμού και όρια θέσεων'],
+  '/admin/billing-oversight': ['Platform-wide MRR, subscriptions and plans', 'Συνολικά έσοδα MRR, συνδρομές και πλάνα'],
   '/logout': ['Sign out of this device', 'Αποσύνδεση από αυτή τη συσκευή'],
 };
 

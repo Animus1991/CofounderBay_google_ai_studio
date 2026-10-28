@@ -1,16 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
   /* ──────────────────────────────────────────────────────────────────────
      Density-tuned type scale (rebalanced for comfortable reading at 100%
      browser zoom). Follows the compact-professional convention used by
-     data-dense products (Linear ~13px body, GitHub 14px body): each step
-     is ~1px tighter than the Tailwind default, preserving the hierarchy
-     ratio while lowering overall visual weight. Line heights are paired
-     per-step for optimal rhythm (taller for small body text, tighter for
-     display sizes).
+     data-dense products (Linear ~13px body, GitHub 14px body).
      ────────────────────────────────────────────────────────────────────── */
   --text-xs: 0.6875rem;        /* 11px — metadata, labels  (was 12px) */
   --text-xs--line-height: 1.45;
@@ -34,9 +31,9 @@
   --text-6xl--line-height: 1.05;
   --text-7xl: 3.5rem;          /* 56px — decorative only   (was 72px) */
   --text-7xl--line-height: 1;
-  /* Control height = the Dashboard nav item (36.578125px at 16px root).
-     Compact h-8 actions (Start) stay shorter and do not follow this ceiling. */
-  --spacing-11: 2.2861328125rem;
+
+  /* Control height = the Dashboard nav item (-3% height optimization: 35.48px at 16px root). */
+  --spacing-11: 2.2175488281rem;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -72,7 +69,7 @@
     --secondary: 60 4.8% 95.9%;
     --secondary-foreground: 24 9.8% 10%;
     --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
+    --muted-foreground: 26 6% 38%;
     --accent: 60 4.8% 95.9%;
     --accent-foreground: 24 9.8% 10%;
     --destructive: 18 22% 58%;
@@ -81,8 +78,8 @@
     --input: 20 5.9% 90%;
     --ring: 20 14.3% 4.1%;
     --radius: 0.5rem;
-    /* Primer *roles* mapped onto stone — not GitHub blue/green brand hues.
-       muted = hairline, default = component frame, emphasis = selected/primary. */
+
+    /* Primer *roles* mapped onto stone */
     --studio-border-muted: 24 10% 96%;
     --studio-border-default: 20 5.9% 90%;
     --studio-border-emphasis: 24 9.8% 10%;
@@ -90,33 +87,403 @@
     --studio-success: 0.52 0.04 155;
     --studio-attention: 0.55 0.05 78;
     --studio-danger: 0.52 0.05 25;
-    /* Height of the Matches "Connect" button. Exit, tabs, and Record Investment match it. */
-    --studio-dash-h: 1.99625rem;
-    /* Previous ceiling. Stops leftover chrome from growing, without pulling shorter controls down. */
-    --studio-chrome-max: 2.217548828125rem;
+
+    --studio-dash-h: 1.9363625rem;
+    --studio-chrome-max: 2.1510223633rem;
+
+    /* Extended 5-Palette & Card Anatomy variables */
+    --cfb-accent: #1c1917;
+    --cfb-accent-soft: rgba(28, 25, 23, 0.08);
+    --cfb-accent-border: rgba(28, 25, 23, 0.22);
+    --status-success: #10b981;
+    --status-success-bg: rgba(16, 185, 129, 0.12);
+    --status-success-border: rgba(16, 185, 129, 0.28);
+    --status-warning: #f59e0b;
+    --status-warning-bg: rgba(245, 158, 11, 0.12);
+    --status-warning-border: rgba(245, 158, 11, 0.28);
+    --status-danger: #ef4444;
+    --status-danger-bg: rgba(239, 68, 68, 0.12);
+    --status-danger-border: rgba(239, 68, 68, 0.28);
+    --type-caption: 12.61px;
+    --type-support: 12.7361px;
+    --type-ui: 13.50px;
+    --type-identity: 14.28px;
+    --type-page: 15.42px;
   }
 
-  .dark {
-    --background: 20 14.3% 4.1%;
-    --foreground: 60 9.1% 97.8%;
-    --card: 20 14.3% 4.1%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 20 14.3% 4.1%;
-    --popover-foreground: 60 9.1% 97.8%;
-    --primary: 60 9.1% 97.8%;
-    --primary-foreground: 24 9.8% 10%;
-    --secondary: 12 6.5% 15.1%;
-    --secondary-foreground: 60 9.1% 97.8%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 24 5.4% 63.9%;
-    --accent: 12 6.5% 15.1%;
-    --accent-foreground: 60 9.1% 97.8%;
+  .dark,
+  [data-theme="dark"] {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 239 81% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 16%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
-    --ring: 24 5.7% 82.9%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 16%;
+    --input: 217 33% 16%;
+    --ring: 239 84% 67%;
+    --cfb-accent: #5f62ee;
+    --cfb-accent-soft: rgba(95, 98, 238, 0.16);
+    --cfb-accent-border: rgba(95, 98, 238, 0.38);
+    --cfb-accent-hover: #4f51d6;
   }
+
+  /* Accents are tuned so white text on them meets WCAG AA (>= 4.5:1). */
+  [data-theme="cyan"] {
+    --primary: 192 91% 31%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 192 91% 31%;
+    --cfb-accent: #0e7490;
+    --cfb-accent-soft: rgba(14, 116, 144, 0.12);
+    --cfb-accent-border: rgba(14, 116, 144, 0.34);
+    --cfb-accent-hover: #0c647c;
+  }
+
+  [data-theme="mint"] {
+    --primary: 162 28% 38%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 162 28% 38%;
+    --cfb-accent: #3d7a68;
+    --cfb-accent-soft: rgba(61, 122, 104, 0.16);
+    --cfb-accent-border: rgba(61, 122, 104, 0.38);
+    --cfb-accent-hover: #346959;
+  }
+
+  [data-theme="apricot"] {
+    --primary: 17 88% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 17 88% 40%;
+    --cfb-accent: #c2410c;
+    --cfb-accent-soft: rgba(194, 65, 12, 0.12);
+    --cfb-accent-border: rgba(194, 65, 12, 0.34);
+    --cfb-accent-hover: #a7380a;
+  }
+
+  [data-theme="lilac"] {
+    --primary: 271 81% 56%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 271 81% 56%;
+    --cfb-accent: #9333ea;
+    --cfb-accent-soft: rgba(147, 51, 234, 0.16);
+    --cfb-accent-border: rgba(147, 51, 234, 0.38);
+    --cfb-accent-hover: #7e2cc9;
+  }
+}
+
+/* Accessible primary text utility across all 6 themes */
+.text-primary-accessible {
+  color: var(--cfb-accent);
+}
+[data-theme="dark"] .text-primary-accessible {
+  color: #a5b4fc !important;
+}
+
+/*
+ * Accent used as *text* (on white or on its own 10–16% tint) needs a deeper ink than
+ * the accent used as a *fill* behind white text. Light accent themes darken it ~18%;
+ * Dark Obsidian splits it: fills stay indigo-600 (white 6.3:1), ink is indigo-300.
+ */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]) :is(.text-primary, .text-primary-accessible) {
+  color: color-mix(in srgb, var(--cfb-accent) 80%, #000) !important;
+}
+[data-theme="dark"] .text-primary {
+  color: #a5b4fc !important;
+}
+[data-theme="dark"] :is(.bg-primary, .hover\:bg-primary:hover) {
+  background-color: #4f46e5 !important;
+}
+[data-theme="dark"] .bg-primary :is(.text-primary-foreground, span),
+[data-theme="dark"] .bg-primary.text-primary-foreground {
+  color: #ffffff !important;
+}
+
+/* Status inks: -400 shades are for dark surfaces; on light surfaces they fall under 2:1. */
+:root:not([data-theme="dark"]) .text-emerald-400:not(:is(.bg-stone-900, .bg-stone-800, .bg-black, .bg-stone-950) *) { color: #047857 !important; }
+:root:not([data-theme="dark"]) .text-amber-400:not(:is(.bg-stone-900, .bg-stone-800, .bg-black, .bg-stone-950) *) { color: #b45309 !important; }
+
+/* Palette harmonization across Comfort Design System surfaces */
+[data-theme="cyan"] .bg-stone-900,
+[data-theme="cyan"] .hover\:bg-stone-900:hover,
+[data-theme="cyan"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="cyan"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="mint"] .bg-stone-900,
+[data-theme="mint"] .hover\:bg-stone-900:hover,
+[data-theme="mint"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="mint"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="apricot"] .bg-stone-900,
+[data-theme="apricot"] .hover\:bg-stone-900:hover,
+[data-theme="apricot"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="apricot"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="lilac"] .bg-stone-900,
+[data-theme="lilac"] .hover\:bg-stone-900:hover,
+[data-theme="lilac"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="lilac"] .group:focus-within .group-focus-within\:bg-stone-900 {
+  background-color: var(--cfb-accent) !important;
+  color: #ffffff !important;
+}
+
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="dark"]):root :is(.hover\:bg-stone-800:hover, .hover\:bg-stone-700:hover) {
+  background-color: var(--cfb-accent-hover) !important;
+}
+
+[data-theme="cyan"] .bg-stone-200,
+[data-theme="mint"] .bg-stone-200,
+[data-theme="apricot"] .bg-stone-200,
+[data-theme="lilac"] .bg-stone-200 {
+  background-color: var(--cfb-accent-soft) !important;
+  border-color: var(--cfb-accent-border) !important;
+}
+
+/* Dark Obsidian base & surface hierarchy (dark background shades preserved) */
+[data-theme="dark"] body,
+[data-theme="dark"] .bg-stone-50 {
+  background-color: #060b16 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .bg-stone-50\/20,
+[data-theme="dark"] .bg-stone-50\/30,
+[data-theme="dark"] .bg-stone-50\/50,
+[data-theme="dark"] .bg-stone-50\/80,
+[data-theme="dark"] .hover\:bg-stone-50:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/30:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/50:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/80:hover {
+  background-color: #0a1222 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: #0d1526 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Keep small circular toggle switch knobs & status indicator dots crisp white in Dark Obsidian */
+[data-theme="dark"] span.bg-white.rounded-full,
+[data-theme="dark"] div.bg-white.rounded-full:not([class*="p-"]):not([class*="px-"]) {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/70,
+[data-theme="dark"] .bg-white\/80,
+[data-theme="dark"] .bg-white\/90,
+[data-theme="dark"] .bg-white\/95,
+[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: #131f38 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .text-stone-900,
+[data-theme="dark"] .text-stone-800,
+[data-theme="dark"] .text-stone-700,
+[data-theme="dark"] .hover\:text-stone-900:hover,
+[data-theme="dark"] .group:hover .group-hover\:text-stone-900 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .fill-stone-900 {
+  fill: #f8fafc !important;
+}
+
+[data-theme="dark"] .text-stone-600,
+[data-theme="dark"] .text-stone-500 {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .text-stone-400,
+[data-theme="dark"] .text-stone-300,
+[data-theme="dark"] .text-stone-200 {
+  color: #94a3b8 !important;
+}
+
+/*
+ * Lighter themes: muted text keeps a readable ramp on every light surface the app uses
+ * (white, stone-50/100, amber-50, emerald-50): 200/300/400 = #736d68 (>= 4.6:1 on
+ * stone-100), 500 = #66605b (>= 5.5:1), 600 stays #57534e. Hierarchy 400 < 500 < 600
+ * is preserved instead of the previous inverted ramp (400 was darker than 500).
+ */
+:root:not([data-theme="dark"]) .text-stone-400,
+:root:not([data-theme="dark"]) .text-stone-300,
+:root:not([data-theme="dark"]) .text-stone-200,
+:root:not([data-theme="dark"]) .text-micro {
+  color: #736d68 !important;
+}
+:root:not([data-theme="dark"]) .text-stone-500 {
+  color: #66605b !important;
+}
+
+/*
+ * Inverse surfaces (dark / accent banners, filled buttons, bubbles).
+ * The light-theme muted-text override above is (0,3,0) + !important, which used to
+ * paint stone-500 grey onto these surfaces (e.g. the Mentors hero in Cyan). These
+ * selectors are (0,4,0)+ so muted text on an inverse surface always reads light,
+ * in every theme. Light cards nested inside an inverse surface get their muted
+ * text back (light themes only — in Dark Obsidian those cards are dark too).
+ */
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500) {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70) {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) .text-stone-600 {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+:root:not([data-theme="dark"]):root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.bg-white, .bg-stone-50, .bg-stone-100) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500) {
+  color: #57534e !important;
+}
+:root:not([data-theme="dark"]):root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.bg-white, .bg-stone-50, .bg-stone-100) .text-stone-600 {
+  color: #57534e !important;
+}
+/* A translucent white chip on an inverse surface keeps light text. */
+:root:root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15, .bg-white\/20) {
+  color: #ffffff;
+}
+
+/*
+ * Colour-accent themes: the inverse surface is a mid-tone accent (white ≈ 5–7:1), so
+ * translucent white text and white-tinted chips lose too much. Muted text goes to 95%
+ * white and chips use a dark tint instead of a white one — still visibly secondary,
+ * always >= 4.5:1.
+ */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500, .text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/80, .text-white\/85, .text-white\/90) {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15) {
+  background-color: rgba(0, 0, 0, 0.16) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) :is(.hover\:bg-white\/20:hover, .bg-white\/20) {
+  background-color: rgba(0, 0, 0, 0.26) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"]):root :is(.bg-stone-900, .bg-stone-800) input::placeholder {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-theme="dark"] .border-stone-400,
+[data-theme="dark"] .border-stone-300,
+[data-theme="dark"] .border-stone-300\/80 {
+  border-color: rgba(148, 163, 184, 0.36) !important;
+}
+
+[data-theme="dark"] .border-stone-200,
+[data-theme="dark"] .border-stone-200\/80,
+[data-theme="dark"] .border-stone-200\/60,
+[data-theme="dark"] .border-stone-200\/50,
+[data-theme="dark"] .border-stone-100,
+[data-theme="dark"] .border-stone-100\/50,
+[data-theme="dark"] .border-stone-50 {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+[data-theme="dark"] .bg-stone-100,
+[data-theme="dark"] .bg-stone-100\/50,
+[data-theme="dark"] .bg-stone-100\/80,
+[data-theme="dark"] .bg-stone-100\/90,
+[data-theme="dark"] .hover\:bg-stone-100:hover,
+[data-theme="dark"] .hover\:bg-stone-100\/50:hover {
+  background-color: #162038 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .bg-stone-200,
+[data-theme="dark"] .bg-stone-200\/60,
+[data-theme="dark"] .bg-stone-200\/70,
+[data-theme="dark"] .bg-stone-200\/80,
+[data-theme="dark"] .hover\:bg-stone-200:hover,
+[data-theme="dark"] .hover\:bg-stone-200\/70:hover,
+[data-theme="dark"] .hover\:bg-stone-200\/80:hover {
+  background-color: #1e2d4d !important;
+  color: #f8fafc !important;
+  border-color: rgba(129, 140, 248, 0.42) !important;
+}
+
+[data-theme="dark"] .bg-stone-300 {
+  background-color: #334b7c !important;
+}
+
+/* Harmonious Indigo-Obsidian primary buttons, badges, bars & hover states in Dark Obsidian (no dark stone-brown #1c1917) */
+[data-theme="dark"] .bg-stone-900,
+[data-theme="dark"] .hover\:bg-stone-900:hover,
+[data-theme="dark"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="dark"] .group:focus-within .group-focus-within\:bg-stone-900 {
+  background-color: #4f46e5 !important;
+  border-color: rgba(129, 140, 248, 0.45) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .bg-stone-800,
+[data-theme="dark"] .hover\:bg-stone-800:hover,
+[data-theme="dark"] .hover\:bg-stone-700:hover {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Large dark hero/feature cards in Dark Obsidian stay in deep obsidian-indigo family */
+[data-theme="dark"] div.bg-stone-900[class*="p-5"],
+[data-theme="dark"] div.bg-stone-900[class*="p-6"],
+[data-theme="dark"] div.bg-stone-900[class*="p-8"],
+[data-theme="dark"] section.bg-stone-900,
+[data-theme="dark"] .card-minimal.bg-stone-900 {
+  background: linear-gradient(135deg, #162447 0%, #1e1b4b 100%) !important;
+  border: 1px solid rgba(129, 140, 248, 0.35) !important;
+  color: #f8fafc !important;
+}
+
+/* Ensure muted text & placeholders inside .bg-stone-900 banners/bubbles are crisp white across ALL 6 themes */
+.bg-stone-900 .text-stone-400,
+.bg-stone-900 .text-stone-500,
+.bg-stone-900 .text-stone-300,
+.bg-stone-900 .text-stone-200 {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+.bg-stone-900 input::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Keep light CTA/filter buttons inside .bg-stone-900 hero banners crisp and high-contrast */
+:root:not([data-theme="dark"]) .bg-stone-900 button.bg-white,
+:root:not([data-theme="dark"]) .bg-stone-900 a.bg-white,
+:root:not([data-theme="dark"]) .bg-stone-900 a.bg-stone-100,
+:root:not([data-theme="dark"]) .bg-stone-900 button.bg-stone-100 {
+  background-color: #ffffff !important;
+  color: #1c1917 !important;
+}
+[data-theme="dark"] .bg-stone-900 button.bg-white,
+[data-theme="dark"] .bg-stone-900 a.bg-white,
+[data-theme="dark"] .bg-stone-900 a.bg-stone-100,
+[data-theme="dark"] .bg-stone-900 button.bg-stone-100 {
+  background-color: #eef2ff !important;
+  color: #1e1b4b !important;
+  border-color: #c7d2fe !important;
+}
+
+/* Ensure hover:bg-stone-900 and group-hover:bg-stone-900 always turn foreground white in stone theme too */
+.hover\:bg-stone-900:hover,
+.group:hover .group-hover\:bg-stone-900,
+.group:focus-within .group-focus-within\:bg-stone-900 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .ring-stone-900,
+[data-theme="dark"] .ring-stone-900\/25 {
+  --tw-ring-color: rgba(129, 140, 248, 0.65) !important;
+}
+
+[data-theme="dark"] .studio-label {
+  background: #162038 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #cbd5e1 !important;
 }
 
 @layer base {
@@ -125,53 +492,47 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* Inter character variants used by leading design systems (open digits,
-       disambiguated glyphs) + contextual alternates for crisp UI rendering. */
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
     text-rendering: optimizeLegibility;
     text-shadow: none;
   }
-  /* Colored labels keep their ink; drop the halo that sat behind the letters. */
+
   html {
     text-shadow: none;
   }
-  /* Display sizes read better with slightly tightened tracking (Inter is
-     spaced for body sizes; large headings need optical correction). */
+
   h1, h2 {
     letter-spacing: -0.02em;
   }
   h3, h4 {
     letter-spacing: -0.01em;
   }
-  /* Numbers in data contexts must not jitter while live-updating: align
-     digits in tables, timers, counters and KPIs. */
+
   time, [data-numeric] {
     font-variant-numeric: tabular-nums;
   }
-  /* Native keyboard-hint styling for ⌘K / shortcut badges. */
+
   kbd {
     @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-[10px] font-medium text-stone-500 shadow-[0_1px_0_rgba(0,0,0,0.04)];
     font-family: inherit;
   }
-  /* Minimal monochrome selection — matches the stone palette. */
+
   ::selection {
     background: rgb(28 25 23 / 0.9);
     color: white;
   }
-  /* Modern text wrapping (progressive enhancement, Chrome 117+/Safari 17.5+):
-     balance multi-line headings, avoid typographic orphans in paragraphs. */
+
   h1, h2, h3 {
     text-wrap: balance;
   }
   p {
     text-wrap: pretty;
   }
-  /* Anchor targets (e.g. /#features) must not hide beneath sticky headers. */
+
   [id] {
     scroll-margin-top: 5.5rem;
   }
-  /* iOS Safari auto-zooms when a focused input is <16px. Enforce the floor
-     on small viewports only, preserving desktop density. */
+
   @media (max-width: 640px) {
     input, select, textarea {
       font-size: max(16px, 1em);
@@ -184,8 +545,10 @@
     @apply bg-white border border-stone-200/60 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden;
   }
 
-  .dark .card-minimal {
-    @apply bg-stone-900/50 border-white/5 shadow-none;
+  .dark .card-minimal:not([class*="bg-"]) {
+    background-color: #0d1526;
+    border-color: rgba(148, 163, 184, 0.18);
+    box-shadow: none;
   }
 
   .text-micro {
@@ -217,7 +580,7 @@
   }
 
   .input-minimal {
-    @apply w-full min-h-11 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
+    @apply w-full min-h-11 px-4 py-[0.606rem] leading-normal bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
     @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-400 focus:ring-2 focus:ring-stone-900/10;
   }
 
@@ -242,8 +605,11 @@
   .studio-status-closed { color: oklch(var(--studio-danger)); }
 
   .dark .input-minimal {
-    @apply bg-stone-900/50 border-white/10 focus:border-white/20 focus:ring-white/5 text-stone-100;
+    background-color: #0a1222;
+    border-color: rgba(148, 163, 184, 0.22);
+    color: #f1f5f9;
   }
+
   /* Tab strips stay one row. On a phone they scroll instead of widening the page. */
   .scroll-tabs {
     display: flex;
@@ -264,12 +630,12 @@
   .scroll-tabs > button {
     flex-shrink: 0;
     white-space: nowrap;
-    height: var(--studio-dash-h);
+    height: auto;
     min-height: var(--studio-dash-h);
-    padding-block: 0;
+    padding-block: 0.22rem;
+    line-height: 1.3;
     box-sizing: border-box;
   }
-  /* On a phone, labels wrap onto another row so the last word is never cut. */
   @media (max-width: 639px) {
     .scroll-tabs {
       flex-wrap: wrap;
@@ -282,33 +648,74 @@
       overflow: visible;
     }
   }
-  /* Native chrome-sized buttons (not compact h-8). Start / Run diagnostic stay pinned unlayered. */
-  button.h-7:not([class*="min-h-"]) { height: 1.533715625rem; }
-  button.h-8:not([class*="min-h-"]) { height: 2rem; }
-  button.h-9:not([class*="min-h-"]) { height: 1.968815625rem; }
-  button.h-10:not([class*="min-h-"]) { height: var(--studio-dash-h); min-height: var(--studio-dash-h); }
-  /* Compact action strip: 10% then 5% shorter padding than the original p-4 / sm:p-5. */
+
+  button.h-7:not([class*="min-h-"]) { min-height: 1.4877041563rem; height: auto; padding-block: 0.16rem; line-height: 1.25; box-sizing: border-box; }
+  button.h-8:not([class*="min-h-"]) { min-height: 1.94rem; height: auto; padding-block: 0.2rem; line-height: 1.3; box-sizing: border-box; }
+  button.h-9:not([class*="min-h-"]) { min-height: 1.9097511563rem; height: auto; padding-block: 0.2rem; line-height: 1.3; box-sizing: border-box; }
+  button.h-10:not([class*="min-h-"]) { height: auto; min-height: var(--studio-dash-h); padding-block: 0.22rem; line-height: 1.3; box-sizing: border-box; }
+
   .studio-nudge {
-    padding-block: 0.855rem;
-    padding-inline: 1rem;
+    padding-block: 0.9rem;
+    padding-inline: 1.125rem;
   }
   @media (min-width: 640px) {
     .studio-nudge {
-      padding-block: 1.06875rem;
-      padding-inline: 1.25rem;
+      padding-block: 1.05rem;
+      padding-inline: 1.375rem;
     }
   }
 }
 
+/* ── Card Anatomy & Typography Ladder Classes ── */
+.card-title {
+  font-size: 13.582px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.card-subtitle {
+  font-size: 13.044px;
+  line-height: 1.4;
+}
+.card-body {
+  font-size: 12.663px;
+  line-height: 1.55;
+}
+.card-meta {
+  font-size: 12.663px;
+  line-height: 1.45;
+}
+@media (min-width: 1024px) {
+  .card-title { font-size: 15.36px; }
+  .card-subtitle { font-size: 14.00px; }
+  .card-body { font-size: 13.49px; }
+  .card-meta { font-size: 12.87px; }
+}
+
+.card-interactive {
+  border-radius: 1rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-interactive:hover {
+  border-color: var(--cfb-accent-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12);
+}
+
 @layer base {
   :focus-visible {
-    @apply outline-none ring-1 ring-stone-400 ring-offset-1 ring-offset-white;
+    @apply outline-none ring-2 ring-stone-500/80 ring-offset-1 ring-offset-white;
   }
-
   .dark :focus-visible {
-    @apply ring-stone-500 ring-offset-stone-950;
+    @apply ring-stone-400 ring-offset-stone-950;
   }
-
+}
+/* Keyboard focus carries the theme's accent, still clearly visible */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="dark"]) :focus-visible {
+  outline: 2px solid var(--cfb-accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+@layer base {
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
@@ -316,141 +723,458 @@
   }
 }
 
-/* Custom Scrollbar for a cleaner look */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   @apply bg-stone-200 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-stone-300;
 }
-
 .dark ::-webkit-scrollbar-thumb {
   @apply bg-stone-800;
 }
 
-/*
-  Colored type stays in hue but drops the alarm saturation so the page
-  content stays first. Red ink is replaced by a dusty rose that still
-  marks caution without pulling the eye off the row.
-*/
 @layer utilities {
-  .text-destructive,
-  [class*="text-red-"],
-  [class*="text-rose-"] {
-    color: oklch(0.648 0.051 25) !important;
+  /* Light themes: use exact token matching ([class~="..."]) so hover:text-* classes only trigger on hover, and -300/-400 icons inside dark banners stay luminous */
+  :root:not([data-theme="dark"]) .text-destructive,
+  :root:not([data-theme="dark"]) [class~="text-red-500"],
+  :root:not([data-theme="dark"]) [class~="text-red-600"],
+  :root:not([data-theme="dark"]) [class~="text-rose-500"],
+  :root:not([data-theme="dark"]) [class~="text-rose-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-red-500"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-red-600"]:hover {
+    color: oklch(0.50 0.14 25) !important;
   }
-  [class*="text-orange-"] {
-    color: oklch(0.673 0.061 55) !important;
+  :root:not([data-theme="dark"]) [class~="text-orange-500"],
+  :root:not([data-theme="dark"]) [class~="text-orange-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-orange-600"]:hover {
+    color: oklch(0.52 0.14 52) !important;
   }
-  [class*="text-amber-"],
-  [class*="text-yellow-"] {
-    color: oklch(0.673 0.066 78) !important;
+  :root:not([data-theme="dark"]) [class~="text-amber-500"],
+  :root:not([data-theme="dark"]) [class~="text-amber-600"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-500"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-amber-500"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-amber-600"]:hover {
+    color: oklch(0.50 0.13 68) !important;
   }
-  [class*="text-blue-"],
-  [class*="text-sky-"],
-  [class*="text-cyan-"],
-  [class*="text-indigo-"] {
-    color: oklch(0.633 0.051 250) !important;
+  :root:not([data-theme="dark"]) [class~="text-blue-500"],
+  :root:not([data-theme="dark"]) [class~="text-blue-600"],
+  :root:not([data-theme="dark"]) [class~="text-sky-500"],
+  :root:not([data-theme="dark"]) [class~="text-sky-600"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-500"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-600"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-500"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-indigo-600"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-blue-600"]:hover {
+    color: oklch(0.48 0.13 250) !important;
   }
-  [class*="text-violet-"],
-  [class*="text-purple-"],
-  [class*="text-fuchsia-"] {
-    color: oklch(0.633 0.056 295) !important;
+  :root:not([data-theme="dark"]) [class~="text-violet-500"],
+  :root:not([data-theme="dark"]) [class~="text-violet-600"],
+  :root:not([data-theme="dark"]) [class~="text-purple-500"],
+  :root:not([data-theme="dark"]) [class~="text-purple-600"],
+  :root:not([data-theme="dark"]) [class~="text-fuchsia-500"],
+  :root:not([data-theme="dark"]) [class~="text-fuchsia-600"] {
+    color: oklch(0.48 0.14 295) !important;
   }
-  [class*="text-emerald-"],
-  [class*="text-green-"],
-  [class*="text-teal-"],
-  [class*="text-lime-"] {
-    color: oklch(0.648 0.049 155) !important;
+  :root:not([data-theme="dark"]) [class~="text-emerald-500"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-600"],
+  :root:not([data-theme="dark"]) [class~="text-green-500"],
+  :root:not([data-theme="dark"]) [class~="text-green-600"],
+  :root:not([data-theme="dark"]) [class~="text-teal-500"],
+  :root:not([data-theme="dark"]) [class~="text-teal-600"],
+  :root:not([data-theme="dark"]) [class~="text-lime-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-emerald-600"]:hover {
+    color: oklch(0.47 0.12 155) !important;
   }
-  [class*="text-pink-"] {
-    color: oklch(0.673 0.046 350) !important;
-  }
-
-  /* Primer muted fills: only the 50-level wash (class~= so bg-green-500 dots stay). */
-  [class~="bg-red-50"],
-  [class~="bg-rose-50"] {
-    background-color: oklch(0.975 0.012 25) !important;
-  }
-  [class~="bg-orange-50"] {
-    background-color: oklch(0.975 0.014 55) !important;
-  }
-  [class~="bg-amber-50"],
-  [class~="bg-yellow-50"] {
-    background-color: oklch(0.975 0.016 78) !important;
-  }
-  [class~="bg-blue-50"],
-  [class~="bg-sky-50"],
-  [class~="bg-cyan-50"],
-  [class~="bg-indigo-50"] {
-    background-color: oklch(0.975 0.012 250) !important;
-  }
-  [class~="bg-violet-50"],
-  [class~="bg-purple-50"],
-  [class~="bg-fuchsia-50"] {
-    background-color: oklch(0.975 0.014 295) !important;
-  }
-  [class~="bg-emerald-50"],
-  [class~="bg-green-50"],
-  [class~="bg-teal-50"],
-  [class~="bg-lime-50"] {
-    background-color: oklch(0.975 0.012 155) !important;
-  }
-  [class~="bg-pink-50"] {
-    background-color: oklch(0.975 0.012 350) !important;
+  :root:not([data-theme="dark"]) [class~="text-pink-500"],
+  :root:not([data-theme="dark"]) [class~="text-pink-600"] {
+    color: oklch(0.50 0.13 350) !important;
   }
 
-  /* Semantic frames: muted 100/200 rungs only, not 500 emphasis. */
-  [class~="border-red-100"],
-  [class~="border-red-200"],
-  [class~="hover:border-red-100"],
-  [class~="border-rose-100"],
-  [class~="border-rose-200"] {
-    border-color: oklch(0.88 0.03 25) !important;
+  /* Deeper contrast for -700/-800/-900 semantic text on light pastel badges/cards */
+  :root:not([data-theme="dark"]) [class~="text-red-700"],
+  :root:not([data-theme="dark"]) [class~="text-red-800"],
+  :root:not([data-theme="dark"]) [class~="text-red-900"],
+  :root:not([data-theme="dark"]) [class~="text-rose-700"],
+  :root:not([data-theme="dark"]) [class~="text-rose-800"] {
+    color: oklch(0.40 0.14 25) !important;
   }
-  [class~="border-amber-100"],
-  [class~="border-amber-200"],
-  [class~="border-yellow-100"],
-  [class~="border-orange-100"] {
-    border-color: oklch(0.88 0.035 78) !important;
+  :root:not([data-theme="dark"]) [class~="text-amber-700"],
+  :root:not([data-theme="dark"]) [class~="text-amber-800"],
+  :root:not([data-theme="dark"]) [class~="text-amber-900"],
+  :root:not([data-theme="dark"]) [class~="text-orange-700"],
+  :root:not([data-theme="dark"]) [class~="text-orange-800"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-700"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-800"] {
+    color: oklch(0.39 0.13 62) !important;
   }
-  [class~="border-emerald-100"],
-  [class~="border-emerald-200"],
-  [class~="border-green-100"],
-  [class~="border-green-200"],
-  [class~="border-teal-100"] {
-    border-color: oklch(0.88 0.03 155) !important;
+  :root:not([data-theme="dark"]) [class~="text-blue-700"],
+  :root:not([data-theme="dark"]) [class~="text-blue-800"],
+  :root:not([data-theme="dark"]) [class~="text-blue-900"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-700"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-800"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-700"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-800"] {
+    color: oklch(0.39 0.13 250) !important;
   }
-  [class~="border-blue-100"],
-  [class~="border-blue-200"],
-  [class~="border-sky-100"],
-  [class~="border-indigo-100"] {
-    border-color: oklch(0.88 0.03 250) !important;
+  :root:not([data-theme="dark"]) [class~="text-violet-700"],
+  :root:not([data-theme="dark"]) [class~="text-violet-800"],
+  :root:not([data-theme="dark"]) [class~="text-purple-700"],
+  :root:not([data-theme="dark"]) [class~="text-purple-800"] {
+    color: oklch(0.39 0.14 295) !important;
   }
-  [class~="border-violet-100"],
-  [class~="border-purple-100"] {
-    border-color: oklch(0.88 0.03 295) !important;
+  :root:not([data-theme="dark"]) [class~="text-emerald-700"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-800"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-900"],
+  :root:not([data-theme="dark"]) [class~="text-green-700"],
+  :root:not([data-theme="dark"]) [class~="text-green-800"],
+  :root:not([data-theme="dark"]) [class~="text-teal-700"],
+  :root:not([data-theme="dark"]) [class~="text-teal-800"] {
+    color: oklch(0.38 0.12 155) !important;
+  }
+
+  /* Keep bright semantic icons legible inside dark/accent hero banners (.bg-stone-900) across all themes */
+  .bg-stone-900 [class~="text-amber-300"],
+  .bg-stone-900 [class~="text-amber-400"],
+  .bg-stone-900 [class~="text-amber-500"],
+  .bg-stone-900 [class~="text-orange-300"],
+  .bg-stone-900 [class~="text-orange-400"] {
+    color: #fdba74 !important;
+  }
+  .bg-stone-900 [class~="text-emerald-300"],
+  .bg-stone-900 [class~="text-emerald-400"],
+  .bg-stone-900 [class~="text-emerald-500"] {
+    color: #6ee7b7 !important;
+  }
+
+  /* Dark Obsidian: cheerful, luminous semantic text & icons (warm orange instead of muddy brown) */
+  [data-theme="dark"] .text-destructive,
+  [data-theme="dark"] [class~="text-red-400"],
+  [data-theme="dark"] [class~="text-red-500"],
+  [data-theme="dark"] [class~="text-red-600"],
+  [data-theme="dark"] [class~="text-red-700"],
+  [data-theme="dark"] [class~="text-red-800"],
+  [data-theme="dark"] [class~="text-red-900"],
+  [data-theme="dark"] [class~="text-rose-400"],
+  [data-theme="dark"] [class~="text-rose-500"],
+  [data-theme="dark"] [class~="text-rose-600"],
+  [data-theme="dark"] [class~="text-rose-700"],
+  [data-theme="dark"] [class~="hover:text-red-500"]:hover,
+  [data-theme="dark"] [class~="hover:text-red-600"]:hover {
+    color: #fda4af !important;
+  }
+  [data-theme="dark"] [class~="text-orange-400"],
+  [data-theme="dark"] [class~="text-orange-500"],
+  [data-theme="dark"] [class~="text-orange-600"],
+  [data-theme="dark"] [class~="text-amber-400"],
+  [data-theme="dark"] [class~="text-amber-500"],
+  [data-theme="dark"] [class~="text-amber-600"],
+  [data-theme="dark"] [class~="text-yellow-400"],
+  [data-theme="dark"] [class~="text-yellow-500"],
+  [data-theme="dark"] [class~="text-yellow-600"],
+  [data-theme="dark"] [class~="hover:text-amber-500"]:hover,
+  [data-theme="dark"] [class~="hover:text-amber-600"]:hover,
+  [data-theme="dark"] [class~="hover:text-orange-500"]:hover {
+    color: #fb8a72 !important;
+  }
+  [data-theme="dark"] [class~="text-amber-700"],
+  [data-theme="dark"] [class~="text-amber-800"],
+  [data-theme="dark"] [class~="text-orange-700"],
+  [data-theme="dark"] [class~="text-orange-800"],
+  [data-theme="dark"] [class~="text-yellow-700"],
+  [data-theme="dark"] [class~="text-yellow-800"] {
+    color: #ffd4cc !important;
+  }
+  [data-theme="dark"] [class~="text-amber-900"],
+  [data-theme="dark"] [class~="text-orange-900"],
+  [data-theme="dark"] [class~="text-yellow-900"] {
+    color: #fff1ee !important;
+  }
+  [data-theme="dark"] [class~="text-blue-400"],
+  [data-theme="dark"] [class~="text-blue-500"],
+  [data-theme="dark"] [class~="text-blue-600"],
+  [data-theme="dark"] [class~="text-blue-700"],
+  [data-theme="dark"] [class~="text-blue-800"],
+  [data-theme="dark"] [class~="text-sky-400"],
+  [data-theme="dark"] [class~="text-sky-500"],
+  [data-theme="dark"] [class~="text-sky-600"],
+  [data-theme="dark"] [class~="text-sky-700"],
+  [data-theme="dark"] [class~="text-cyan-400"],
+  [data-theme="dark"] [class~="text-cyan-500"],
+  [data-theme="dark"] [class~="text-cyan-600"],
+  [data-theme="dark"] [class~="text-cyan-700"],
+  [data-theme="dark"] [class~="text-indigo-400"],
+  [data-theme="dark"] [class~="text-indigo-500"],
+  [data-theme="dark"] [class~="text-indigo-600"],
+  [data-theme="dark"] [class~="text-indigo-700"],
+  [data-theme="dark"] [class~="text-indigo-800"],
+  [data-theme="dark"] [class~="hover:text-indigo-600"]:hover,
+  [data-theme="dark"] [class~="hover:text-blue-600"]:hover {
+    color: #93c5fd !important;
+  }
+  [data-theme="dark"] [class~="text-violet-400"],
+  [data-theme="dark"] [class~="text-violet-500"],
+  [data-theme="dark"] [class~="text-violet-600"],
+  [data-theme="dark"] [class~="text-violet-700"],
+  [data-theme="dark"] [class~="text-violet-800"],
+  [data-theme="dark"] [class~="text-purple-400"],
+  [data-theme="dark"] [class~="text-purple-500"],
+  [data-theme="dark"] [class~="text-purple-600"],
+  [data-theme="dark"] [class~="text-purple-700"],
+  [data-theme="dark"] [class~="text-purple-800"],
+  [data-theme="dark"] [class~="text-fuchsia-400"],
+  [data-theme="dark"] [class~="text-fuchsia-500"],
+  [data-theme="dark"] [class~="text-fuchsia-600"] {
+    color: #c4b5fd !important;
+  }
+  [data-theme="dark"] [class~="text-emerald-400"],
+  [data-theme="dark"] [class~="text-emerald-500"],
+  [data-theme="dark"] [class~="text-emerald-600"],
+  [data-theme="dark"] [class~="text-emerald-700"],
+  [data-theme="dark"] [class~="text-emerald-800"],
+  [data-theme="dark"] [class~="text-emerald-900"],
+  [data-theme="dark"] [class~="text-green-400"],
+  [data-theme="dark"] [class~="text-green-500"],
+  [data-theme="dark"] [class~="text-green-600"],
+  [data-theme="dark"] [class~="text-green-700"],
+  [data-theme="dark"] [class~="text-green-800"],
+  [data-theme="dark"] [class~="text-teal-400"],
+  [data-theme="dark"] [class~="text-teal-500"],
+  [data-theme="dark"] [class~="text-teal-600"],
+  [data-theme="dark"] [class~="text-teal-700"],
+  [data-theme="dark"] [class~="text-lime-500"],
+  [data-theme="dark"] [class~="text-lime-600"],
+  [data-theme="dark"] [class~="hover:text-emerald-600"]:hover {
+    color: #6ee7b7 !important;
+  }
+  [data-theme="dark"] [class~="text-pink-400"],
+  [data-theme="dark"] [class~="text-pink-500"],
+  [data-theme="dark"] [class~="text-pink-600"],
+  [data-theme="dark"] [class~="text-pink-700"] {
+    color: #f9a8d4 !important;
+  }
+
+  /* Light theme pastel surfaces (-50 and -100) with clear contrast */
+  :root:not([data-theme="dark"]) [class~="bg-red-50"],
+  :root:not([data-theme="dark"]) [class~="bg-rose-50"] {
+    background-color: oklch(0.965 0.018 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-orange-50"] {
+    background-color: oklch(0.965 0.022 55) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-amber-50"],
+  :root:not([data-theme="dark"]) [class~="bg-yellow-50"] {
+    background-color: oklch(0.965 0.025 75) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-blue-50"],
+  :root:not([data-theme="dark"]) [class~="bg-sky-50"],
+  :root:not([data-theme="dark"]) [class~="bg-cyan-50"],
+  :root:not([data-theme="dark"]) [class~="bg-indigo-50"] {
+    background-color: oklch(0.965 0.018 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-violet-50"],
+  :root:not([data-theme="dark"]) [class~="bg-purple-50"],
+  :root:not([data-theme="dark"]) [class~="bg-fuchsia-50"] {
+    background-color: oklch(0.965 0.020 295) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-emerald-50"],
+  :root:not([data-theme="dark"]) [class~="bg-green-50"],
+  :root:not([data-theme="dark"]) [class~="bg-teal-50"],
+  :root:not([data-theme="dark"]) [class~="bg-lime-50"] {
+    background-color: oklch(0.965 0.020 155) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-pink-50"] {
+    background-color: oklch(0.965 0.018 350) !important;
+  }
+
+  /* Dark Obsidian harmonious, lifted rose-burgundy-orange ("ανοιχτό ροδομπορντοπορτοκαλί") surfaces for -50 / -100 / -200 classes */
+  [data-theme="dark"] [class~="bg-red-50"],
+  [data-theme="dark"] [class~="bg-red-50/50"],
+  [data-theme="dark"] [class~="bg-red-50/30"],
+  [data-theme="dark"] [class~="bg-red-100"],
+  [data-theme="dark"] [class~="bg-rose-50"],
+  [data-theme="dark"] [class~="bg-rose-100"],
+  [data-theme="dark"] [class~="hover:bg-red-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-red-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-rose-50"]:hover {
+    background-color: rgba(244, 63, 94, 0.20) !important;
+  }
+  [data-theme="dark"] [class~="bg-orange-50"],
+  [data-theme="dark"] [class~="bg-orange-50/50"],
+  [data-theme="dark"] [class~="bg-orange-50/30"],
+  [data-theme="dark"] [class~="bg-orange-100"],
+  [data-theme="dark"] [class~="bg-amber-50"],
+  [data-theme="dark"] [class~="bg-amber-50/50"],
+  [data-theme="dark"] [class~="bg-amber-50/30"],
+  [data-theme="dark"] [class~="bg-amber-50/70"],
+  [data-theme="dark"] [class~="bg-amber-100"],
+  [data-theme="dark"] [class~="bg-amber-100/50"],
+  [data-theme="dark"] [class~="bg-yellow-50"],
+  [data-theme="dark"] [class~="bg-yellow-100"],
+  [data-theme="dark"] [class~="hover:bg-orange-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-amber-50"]:hover {
+    background-color: #88373e !important;
+    background-image: linear-gradient(135deg, #7f2f41 0%, #913b40 52%, #984539 100%) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-50"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-amber-50/50"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-amber-50/30"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-orange-50"] .text-stone-500 {
+    color: rgba(255, 232, 226, 0.88) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-50"] .text-stone-300,
+  [data-theme="dark"] [class~="bg-amber-50/50"] .text-stone-300,
+  [data-theme="dark"] [class~="bg-orange-50"] .text-stone-300 {
+    color: rgba(255, 206, 196, 0.65) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-200"],
+  [data-theme="dark"] [class~="bg-orange-200"],
+  [data-theme="dark"] [class~="hover:bg-amber-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-amber-200"]:hover {
+    background-color: #9c4244 !important;
+    background-image: linear-gradient(135deg, #913747 0%, #a24644 52%, #a9503f 100%) !important;
+    color: #fff5f2 !important;
+  }
+  [data-theme="dark"] [class~="bg-blue-50"],
+  [data-theme="dark"] [class~="bg-blue-50/50"],
+  [data-theme="dark"] [class~="bg-blue-50/30"],
+  [data-theme="dark"] [class~="bg-blue-100"],
+  [data-theme="dark"] [class~="bg-sky-50"],
+  [data-theme="dark"] [class~="bg-sky-100"],
+  [data-theme="dark"] [class~="bg-cyan-50"],
+  [data-theme="dark"] [class~="bg-cyan-100"],
+  [data-theme="dark"] [class~="bg-indigo-50"],
+  [data-theme="dark"] [class~="bg-indigo-100"],
+  [data-theme="dark"] [class~="hover:bg-blue-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-blue-100"]:hover {
+    background-color: rgba(59, 130, 246, 0.22) !important;
+  }
+  [data-theme="dark"] [class~="bg-violet-50"],
+  [data-theme="dark"] [class~="bg-violet-100"],
+  [data-theme="dark"] [class~="bg-purple-50"],
+  [data-theme="dark"] [class~="bg-purple-100"],
+  [data-theme="dark"] [class~="bg-fuchsia-50"],
+  [data-theme="dark"] [class~="bg-fuchsia-100"],
+  [data-theme="dark"] [class~="hover:bg-violet-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-purple-50"]:hover {
+    background-color: rgba(139, 92, 246, 0.22) !important;
+  }
+  [data-theme="dark"] [class~="bg-emerald-50"],
+  [data-theme="dark"] [class~="bg-emerald-50/50"],
+  [data-theme="dark"] [class~="bg-emerald-50/30"],
+  [data-theme="dark"] [class~="bg-emerald-100"],
+  [data-theme="dark"] [class~="bg-green-50"],
+  [data-theme="dark"] [class~="bg-green-100"],
+  [data-theme="dark"] [class~="bg-teal-50"],
+  [data-theme="dark"] [class~="bg-teal-100"],
+  [data-theme="dark"] [class~="bg-lime-50"],
+  [data-theme="dark"] [class~="hover:bg-emerald-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-emerald-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-green-50"]:hover {
+    background-color: rgba(16, 185, 129, 0.20) !important;
+  }
+  [data-theme="dark"] [class~="bg-pink-50"],
+  [data-theme="dark"] [class~="bg-pink-100"] {
+    background-color: rgba(236, 72, 153, 0.20) !important;
+  }
+
+  /* Light theme pastel borders */
+  :root:not([data-theme="dark"]) [class~="border-red-100"],
+  :root:not([data-theme="dark"]) [class~="border-red-200"],
+  :root:not([data-theme="dark"]) [class~="hover:border-red-100"]:hover,
+  :root:not([data-theme="dark"]) [class~="border-rose-100"],
+  :root:not([data-theme="dark"]) [class~="border-rose-200"] {
+    border-color: oklch(0.84 0.05 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-amber-100"],
+  :root:not([data-theme="dark"]) [class~="border-amber-200"],
+  :root:not([data-theme="dark"]) [class~="border-yellow-100"],
+  :root:not([data-theme="dark"]) [class~="border-orange-100"],
+  :root:not([data-theme="dark"]) [class~="border-orange-200"] {
+    border-color: oklch(0.84 0.06 68) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-emerald-100"],
+  :root:not([data-theme="dark"]) [class~="border-emerald-200"],
+  :root:not([data-theme="dark"]) [class~="border-green-100"],
+  :root:not([data-theme="dark"]) [class~="border-green-200"],
+  :root:not([data-theme="dark"]) [class~="border-teal-100"] {
+    border-color: oklch(0.84 0.05 155) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-blue-100"],
+  :root:not([data-theme="dark"]) [class~="border-blue-200"],
+  :root:not([data-theme="dark"]) [class~="border-sky-100"],
+  :root:not([data-theme="dark"]) [class~="border-indigo-100"] {
+    border-color: oklch(0.84 0.05 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-violet-100"],
+  :root:not([data-theme="dark"]) [class~="border-purple-100"] {
+    border-color: oklch(0.84 0.05 295) !important;
+  }
+
+  /* Dark Obsidian luminous semantic borders (warm rose-coral-orange border for amber/orange cards) */
+  [data-theme="dark"] [class~="border-red-100"],
+  [data-theme="dark"] [class~="border-red-200"],
+  [data-theme="dark"] [class~="border-red-300"],
+  [data-theme="dark"] [class~="hover:border-red-100"]:hover,
+  [data-theme="dark"] [class~="border-rose-100"],
+  [data-theme="dark"] [class~="border-rose-200"] {
+    border-color: rgba(251, 113, 133, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-amber-100"],
+  [data-theme="dark"] [class~="border-amber-200"],
+  [data-theme="dark"] [class~="border-amber-200/50"],
+  [data-theme="dark"] [class~="border-amber-200/60"],
+  [data-theme="dark"] [class~="border-amber-200/70"],
+  [data-theme="dark"] [class~="border-amber-200/80"],
+  [data-theme="dark"] [class~="border-amber-300"],
+  [data-theme="dark"] [class~="border-yellow-100"],
+  [data-theme="dark"] [class~="border-yellow-200"],
+  [data-theme="dark"] [class~="border-orange-100"],
+  [data-theme="dark"] [class~="border-orange-200"],
+  [data-theme="dark"] [class~="border-orange-200/60"],
+  [data-theme="dark"] [class~="border-orange-200/70"],
+  [data-theme="dark"] [class~="border-orange-300"] {
+    border-color: rgba(244, 132, 122, 0.54) !important;
+  }
+  [data-theme="dark"] [class~="border-emerald-100"],
+  [data-theme="dark"] [class~="border-emerald-200"],
+  [data-theme="dark"] [class~="border-emerald-300"],
+  [data-theme="dark"] [class~="border-green-100"],
+  [data-theme="dark"] [class~="border-green-200"],
+  [data-theme="dark"] [class~="border-teal-100"] {
+    border-color: rgba(52, 211, 153, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-blue-100"],
+  [data-theme="dark"] [class~="border-blue-200"],
+  [data-theme="dark"] [class~="border-blue-300"],
+  [data-theme="dark"] [class~="border-sky-100"],
+  [data-theme="dark"] [class~="border-indigo-100"] {
+    border-color: rgba(96, 165, 250, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-violet-100"],
+  [data-theme="dark"] [class~="border-violet-200"],
+  [data-theme="dark"] [class~="border-purple-100"],
+  [data-theme="dark"] [class~="border-purple-200"] {
+    border-color: rgba(167, 139, 250, 0.42) !important;
   }
 }
 
-/* Keep the compact desktop baseline without forcing translated/multiline
-   labels into a fixed-height box. Touch overrides follow below. */
 button.min-h-11:not(.flex-col):not([class*="text-left"]),
 a.min-h-11:not(.flex-col):not([class*="text-left"]),
 button.h-11:not(.flex-col):not([class*="text-left"]),
 a.h-11:not(.flex-col):not([class*="text-left"]) {
   min-height: var(--studio-dash-h);
   height: auto;
-  padding-block: 0;
+  padding-block: 0.22rem;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 button.h-12:not(.flex-col):not([class*="text-left"]),
@@ -467,7 +1191,8 @@ button.min-h-16:not(.flex-col):not([class*="text-left"]),
 a.min-h-16:not(.flex-col):not([class*="text-left"]) {
   height: auto;
   min-height: var(--studio-dash-h);
-  padding-block: 0;
+  padding-block: 0.22rem;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 button.w-14.h-14, a.w-14.h-14,
@@ -478,98 +1203,97 @@ button.w-12.h-12, a.w-12.h-12 {
 }
 button.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
 a.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
-  padding-block: 0;
+  padding-block: 0.24rem;
   min-height: var(--studio-dash-h);
   height: auto;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
 a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
-  padding-block: 0;
+  padding-block: 0.22rem;
   min-height: var(--studio-dash-h);
   height: auto;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 button[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]),
 a[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]) {
-  padding-block: 0;
+  padding-block: 0.22rem;
   min-height: var(--studio-dash-h);
   height: auto;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 button[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]),
 a[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]) {
-  padding-block: 0;
+  padding-block: 0.22rem;
   min-height: var(--studio-dash-h);
   height: auto;
+  line-height: 1.3;
   box-sizing: border-box;
 }
-/* Icon chrome (p-3/p-4/p-5). Leave row/tile buttons (text-left, stacked, full-width, block cards). */
 button.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
 a.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
 button.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
 a.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
 button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
 a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)) {
-  padding-block: 0;
+  padding-block: 0.22rem;
   min-height: var(--studio-dash-h);
   height: auto;
+  line-height: 1.3;
   box-sizing: border-box;
 }
 aside nav a {
   min-height: var(--studio-dash-h);
   height: auto;
-  padding-block: 0;
-  line-height: 1.15;
+  padding-block: 0.2rem;
+  line-height: 1.25;
   box-sizing: border-box;
 }
-aside nav a span { line-height: 1.15; }
+aside nav a span { line-height: 1.25; }
 aside .grid.grid-cols-2 a,
 aside .grid.grid-cols-2 button {
   min-height: var(--studio-dash-h);
   height: auto;
-  padding-block: 0;
-  line-height: 1.15;
+  padding-block: 0.2rem;
+  line-height: 1.25;
   box-sizing: border-box;
 }
-/* Start stays 32px. Button+h-8 (min-h-11) was taller — cap to Dashboard. */
 .scroll-tabs > button {
   height: auto;
   min-height: var(--studio-dash-h);
-  padding-block: 0;
+  padding-block: 0.22rem;
+  line-height: 1.3;
   box-sizing: border-box;
 }
-button.h-8:not([class*="min-h-"]) { height: 2rem; min-height: 2rem; }
-button.h-8[class*="min-h-"] { height: auto; min-height: var(--studio-dash-h); padding-block: 0; }
-/* No global max-height on actions: content, translation and text zoom must
-   be allowed to grow instead of clipping or painting outside the button. */
+button.h-8:not([class*="min-h-"]) { height: auto; min-height: 1.94rem; padding-block: 0.2rem; line-height: 1.3; }
+button.h-8[class*="min-h-"] { height: auto; min-height: var(--studio-dash-h); padding-block: 0.2rem; line-height: 1.3; }
 
-/* Shared actions retain the compact baseline but grow when a translated label
-   wraps or text is zoomed. Do not cap their content to one physical line. */
 button[data-ui="button"],
 a[data-ui="button"] {
   height: auto;
   max-height: none;
   min-height: var(--studio-dash-h);
-  padding-block: 0.25rem;
+  padding-block: 0.2425rem;
+  line-height: 1.3;
 }
-
 button[data-ui="button"][data-size="sm"] {
-  min-height: 1.75rem;
-  padding-block: 0.125rem;
+  min-height: 1.6975rem;
+  padding-block: 0.16rem;
+  line-height: 1.25;
 }
 button[data-ui="button"][data-size="lg"] {
-  min-height: 2.25rem;
-  padding-block: 0.375rem;
+  min-height: 2.1825rem;
+  padding-block: 0.36375rem;
+  line-height: 1.35;
 }
 button[data-ui="button"][data-size="icon"] {
-  min-height: 2rem;
-  min-width: 2rem;
+  min-height: 1.94rem;
+  min-width: 1.94rem;
 }
 
-/* The user explicitly rejected blanket touch-height inflation. Keep controls
-   compact, wrap only when needed, and never impose a maximum label height.
-   Leave switches, calendar cells, media and card tiles out of this rule. */
 @media (max-width: 1279px), (any-pointer: coarse) {
   button[data-ui="button"],
   a[data-ui="button"],
@@ -586,29 +1310,35 @@ button[data-ui="button"][data-size="icon"] {
   aside .grid.grid-cols-2 a,
   aside .grid.grid-cols-2 button {
     height: auto;
-    min-height: 2rem;
+    min-height: 1.94rem;
     max-height: none;
-    padding-block: 0.25rem;
+    padding-block: 0.2425rem;
+    line-height: 1.3;
   }
+
   button[data-size="icon"],
   button.w-12.h-12,
   button.w-14.h-14 {
-    min-width: 2rem;
+    min-width: 1.94rem;
     flex-shrink: 0;
   }
+
   aside nav a {
     white-space: normal;
   }
+
   input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
   select {
-    min-height: 2.25rem;
-    padding-block: 0.375rem;
+    min-height: 2.1825rem;
+    padding-block: 0.36375rem;
     max-width: 100%;
   }
+
   .scroll-tabs {
     flex-wrap: wrap;
     overflow: visible;
   }
+
   .scroll-tabs > button {
     flex: 0 1 auto;
     min-width: 0;
@@ -617,6 +1347,7 @@ button[data-ui="button"][data-size="icon"] {
     overflow-wrap: anywhere;
     line-height: 1.3;
   }
+
   [data-ui="view-option"] > svg,
   [data-ui="view-option"] > span > svg {
     flex-shrink: 0;
@@ -628,13 +1359,71 @@ button[data-ui="button"][data-size="icon"] {
     width: 100%;
     gap: 0.5rem;
   }
+
   [data-ui="page-actions"] > button,
   [data-ui="page-actions"] > a[data-ui="button"] {
     flex: 0 1 auto;
   }
 }
 
-/* Motion accessibility — respect users who prefer reduced motion (WCAG 2.3.3) */
+/* ── Global 3% Height Reduction with Safe Text-Comfort Guard ── */
+button.min-h-10:not(.flex-col):not([class*="text-left"]),
+a.min-h-10:not(.flex-col):not([class*="text-left"]) {
+  min-height: var(--studio-dash-h);
+  height: auto;
+  padding-block: 0.22rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-9:not(.flex-col):not([class*="text-left"]),
+a.min-h-9:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.9097511563rem;
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-8:not(.flex-col):not([class*="text-left"]),
+a.min-h-8:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.94rem;
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-7:not(.flex-col):not([class*="text-left"]),
+a.min-h-7:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.6975rem;
+  height: auto;
+  padding-block: 0.16rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+button.py-2:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a.py-2:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.485rem;
+  height: auto;
+  line-height: 1.3;
+}
+button[class*="py-1.5"]:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a[class*="py-1.5"]:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.36375rem;
+  height: auto;
+  line-height: 1.3;
+}
+button.py-1:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a.py-1:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.2425rem;
+  height: auto;
+  line-height: 1.25;
+}
+select.h-8,
+input.h-8 {
+  min-height: 1.94rem;
+  height: auto;
+  padding-block: 0.16rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -645,3 +1434,4 @@ button[data-ui="button"][data-size="icon"] {
     scroll-behavior: auto !important;
   }
 }
+

@@ -33,11 +33,13 @@ import { avatarOf, cofounderPool, type Person } from '../lib/peopleSource';
 import { profileViews as loadProfileViews, sendConnectionRequest, useConnections } from '../lib/social';
 import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
+import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { greetingFor, formatWhen, localizeAxisLabel } from '../lib/dates';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { useNotificationFeed } from '../lib/notificationFeed';
 import { useLanguage, useT } from '../lib/language';
+import { useUIStore } from '../stores/useUIStore';
 import NextMove from '../components/ui/NextMove';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
@@ -56,14 +58,14 @@ const ACTIVITY_DATA = [
 
 function circlesFromPeople(profile: Parameters<typeof fromProfile>[0], people: Person[]) {
   const pool = new Set(cofounderPool().map((person) => person.id));
-  return rankPeople(fromProfile(profile), people.filter((person) => pool.has(person.id)))
+  return rankPeople(fromProfile(mergeFitIntoViewer(profile)), people.filter((person) => pool.has(person.id)))
     .slice(0, 5)
     .map(({ person, fit }) => ({ id: person.id, name: person.fullName, role: person.headline || person.role, roleEl: person.headlineEl, match: fit.score ?? 0, avatar: avatarOf(person) }));
 }
 
 function circlesFromCast(profile: Parameters<typeof fromProfile>[0]) {
   return rankPeople(
-    fromProfile(profile),
+    fromProfile(mergeFitIntoViewer(profile)),
     CAST.filter((person) => person.role === 'Founder' || person.role === 'Co-Founder Candidate'),
   ).slice(0, 5).map(({ person, fit }) => ({
     id: person.id,
@@ -462,8 +464,8 @@ export default function DashboardPage() {
   const chartSeries = rawSeries?.map((point) => ({ ...point, name: localizeAxisLabel(point.name, mode) })) ?? null;
   const communities = isDemoMode ? ACTIVE_COMMUNITIES : (live.communities ?? []);
   const prospect = isDemoMode
-    ? rankedCircles[0] ?? null
-    : (rankedCircles[0] ?? live.prospect);
+    ? (rankedCircles[1] ?? rankedCircles[0] ?? null)
+    : (rankedCircles[1] ?? rankedCircles[0] ?? live.prospect);
   const streakDays = isDemoMode ? (streak?.currentStreak ?? 12) : (streak?.currentStreak ?? 0);
   const profileViews = isDemoMode ? demoWeeklyViews() : (viewCount ?? live.profileViews);
   const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
@@ -594,7 +596,7 @@ export default function DashboardPage() {
             </div>
           )}
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {nowChips.map((chip) => (
+            {nowChips.filter((chip) => chip.count > 0).map((chip) => (
               <button
                 key={chip.en}
                 type="button"
@@ -620,13 +622,6 @@ export default function DashboardPage() {
               className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
             >
               {bothText('Search people in Discovery', 'Αναζήτηση ατόμων στην Εξερεύνηση')}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/discovery')}
-              className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
-            >
-              {bothText('Filters', 'Φίλτρα')}
             </button>
           </div>
         </div>
@@ -719,10 +714,55 @@ export default function DashboardPage() {
             </div>
           </div>
           {leadMatch && (
-            <button type="button" className="mt-2 text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${leadMatch.name}?` } }))}>
-              <Both en={`Why ${leadMatch.name.split(' ')[0]}?`} el="Γιατί ταιριάζετε;" />
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, leadMatch.id)}>
+                <Both en={`Why ${leadMatch.name.split(' ')[0]}? See the score breakdown`} el={`Γιατί ${leadMatch.name.split(' ')[0]}; Δες την ανάλυση σκορ`} />
+              </button>
+              <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${leadMatch.name}?` } }))}>
+                <Both en="Ask the assistant" el="Ρώτα τον βοηθό" />
+              </button>
+            </div>
           )}
+        </div>
+
+        {/* Glanceable numbers sit above the long feed, so they are seen without scrolling. */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            {
+              label: t('Profile Views', 'Προβολές προφίλ'),
+              value: profileViews == null ? '—' : String(profileViews),
+              sub: profileViews == null && !isDemoMode ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
+              href: '/profile',
+              hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
+            },
+            {
+              label: t('Match Score', 'Σκορ αντιστοίχισης'),
+              value: matchScore == null ? '—' : `${matchScore}%`,
+              sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
+              href: '/matches',
+              hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
+            },
+            {
+              label: t('Requests', 'Αιτήματα'),
+              value: String(pendingRequests),
+              sub: null,
+              href: '/network?tab=Requests',
+              hint: bothText('Pending connection requests waiting for your response', 'Εκκρεμή αιτήματα σύνδεσης που περιμένουν απάντηση'),
+            },
+            {
+              label: t('Messages', 'Μηνύματα'),
+              value: unread == null ? '—' : String(unread),
+              sub: null,
+              href: '/messages',
+              hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
+            },
+          ].map((stat) => (
+            <button type="button" key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
+              <p className="text-xs font-semibold text-stone-400 tracking-wider">{stat.label}</p>
+              <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
+              {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
+            </button>
+          ))}
         </div>
 
         <div className="space-y-4">
@@ -777,45 +817,6 @@ export default function DashboardPage() {
           })}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            {
-              label: t('Profile Views', 'Προβολές προφίλ'),
-              value: profileViews == null ? '—' : String(profileViews),
-              sub: profileViews == null && !isDemoMode ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
-              href: '/profile',
-              hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
-            },
-            {
-              label: t('Match Score', 'Σκορ αντιστοίχισης'),
-              value: matchScore == null ? '—' : `${matchScore}%`,
-              sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
-              href: '/matches',
-              hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
-            },
-            {
-              label: t('Streak', 'Σερί'),
-              value: `${streakDays}d`,
-              sub: null,
-              href: '/milestones',
-              hint: bothText('Days in a row the work kept going', 'Μέρες στη σειρά που η δουλειά συνεχίστηκε'),
-            },
-            {
-              label: t('Messages', 'Μηνύματα'),
-              value: unread == null ? '—' : String(unread),
-              sub: null,
-              href: '/messages',
-              hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
-            },
-          ].map((stat) => (
-            <div key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
-              <p className="text-xs font-semibold text-stone-400 tracking-wider">{stat.label}</p>
-              <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
-              {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
-            </div>
-          ))}
-        </div>
-
         {chartSeries && chartSeries.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
             <div className="h-32">
@@ -832,7 +833,9 @@ export default function DashboardPage() {
           {prospect && (
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
               <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">
-                <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
+                {prospect.id === leadMatch?.id
+                  ? <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
+                  : <Both en="Also worth meeting" el="Αξίζει επίσης να γνωρίσεις" />}
               </p>
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
@@ -844,7 +847,14 @@ export default function DashboardPage() {
                   <FactLine className="text-xs" items={[labelOf(prospect.role)]} label={t('Role', 'Ρόλος')} />
                 </div>
                 {prospect.match > 0 && (
-                  <span className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg">{prospect.match}%</span>
+                  <button
+                    type="button"
+                    onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
+                    title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
+                    className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
+                  >
+                    {prospect.match}%
+                  </button>
                 )}
               </div>
               <div className="flex gap-2 mt-3">

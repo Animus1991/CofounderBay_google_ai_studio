@@ -29,24 +29,22 @@ export function studioNextStep(profile: CompatibilityInput | null): StudioNext {
   if (!fit && looking.length === 0) {
     return {
       id: 'quiz',
-      en: 'Take the 60-second fit check so Matches can score people on the same five fields.',
-      el: 'Κάνε το fit check 60″ ώστε οι Αντιστοιχίσεις να βαθμολογήσουν στα ίδια πέντε πεδία.',
-      href: '/quiz',
-      title: { en: 'Take the 60-second fit check', el: 'Κάνε το fit check των 60″' },
-      why: { en: 'Matches scores people on the same five fields.', el: 'Οι Αντιστοιχίσεις βαθμολογούν στα ίδια πέντε πεδία.' },
-      action: { en: 'Open fit check', el: 'Άνοιγμα fit check' },
+      en: 'Complete the 60-second fit check to unlock compatibility scoring.',
+      el: 'Ολοκλήρωσε το fit check 60″ για να ξεκλειδώσεις τη βαθμολόγηση συμβατότητας.',
+      href: '/quiz?from=/matches',
+      title: { en: 'Complete the 60-second fit check', el: 'Ολοκλήρωσε το fit check των 60″' },
+      action: { en: 'Fit check', el: 'Fit check' },
     };
   }
   if (looking.length === 0) {
     return {
       id: 'looking',
-      en: 'Add what you still need on Profile — matching ranks people who cover those skills.',
-      el: 'Πρόσθεσε στο Προφίλ τι χρειάζεσαι ακόμα — η αντιστοίχιση βαθμολογεί όσους τα καλύπτουν.',
+      en: 'Add the roles and skills you are looking for on your Profile.',
+      el: 'Πρόσθεσε στο Προφίλ τους ρόλους και τις δεξιότητες που αναζητάς.',
       href: '/profile',
       prompt: 'What does my founding team still lack?',
-      title: { en: 'Add what you still need on Profile', el: 'Πρόσθεσε στο Προφίλ τι χρειάζεσαι ακόμα' },
-      why: { en: 'Matching ranks people who cover those skills.', el: 'Η αντιστοίχιση βαθμολογεί όσους τα καλύπτουν.' },
-      action: { en: 'Open profile', el: 'Άνοιγμα προφίλ' },
+      title: { en: 'Add what you are looking for on your Profile', el: 'Πρόσθεσε στο Προφίλ τι αναζητάς στην ομάδα σου' },
+      action: { en: 'Profile', el: 'Προφίλ' },
     };
   }
   const overdue = readMilestones()
@@ -55,28 +53,27 @@ export function studioNextStep(profile: CompatibilityInput | null): StudioNext {
   if (overdue[0]) {
     return {
       id: 'overdue',
-      en: `${overdue[0].title} is overdue. Open Milestones to move it, or ask the assistant.`,
-      el: `Το ${overdue[0].title} είναι εκπρόθεσμο. Άνοιξε τα Ορόσημα ή ρώτα τον βοηθό.`,
+      en: `Milestone "${overdue[0].title}" is overdue.`,
+      el: `Το ορόσημο «${overdue[0].title}» είναι εκπρόθεσμο.`,
       href: '/milestones',
       prompt: 'What is overdue?',
-      title: { en: `${overdue[0].title} is overdue`, el: `Το «${overdue[0].title}» είναι εκπρόθεσμο` },
+      title: { en: `"${overdue[0].title}" is overdue`, el: `Το «${overdue[0].title}» είναι εκπρόθεσμο` },
       why: overdue.length > 1
-        ? { en: `${overdue.length - 1} more overdue on Milestones.`, el: `Ακόμα ${overdue.length - 1} εκπρόθεσμα στα Ορόσημα.` }
-        : { en: 'Move the date or close it on Milestones.', el: 'Άλλαξε την ημερομηνία ή κλείσ’ το στα Ορόσημα.' },
-      action: { en: 'Open milestones', el: 'Άνοιγμα οροσήμων' },
+        ? { en: `+${overdue.length - 1} more overdue`, el: `+${overdue.length - 1} ακόμη εκπρόθεσμα` }
+        : undefined,
+      action: { en: 'Milestones', el: 'Ορόσημα' },
     };
   }
   const openNeeds = readNeeds().filter((item) => item.status === 'open');
   if (openNeeds.length === 0) {
     return {
       id: 'need',
-      en: 'Write a need card: what exists, the outcome, who is missing. The assistant stores the same list Network can read.',
-      el: 'Γράψε κάρτα ανάγκης: τι υπάρχει, το αποτέλεσμα, ποιος λείπει. Ο βοηθός κρατά την ίδια λίστα.',
+      en: 'Publish a need card to share what role or outcome your team needs next.',
+      el: 'Δημοσίευσε μια κάρτα ανάγκης για τον ρόλο ή τον στόχο που χρειάζεσαι.',
       href: '/network?tab=needs',
       prompt: 'Draft a need card for a co-founder',
-      title: { en: 'Write a need card', el: 'Γράψε κάρτα ανάγκης' },
-      why: { en: 'What exists, the outcome, who is missing — Network keeps the same list.', el: 'Τι υπάρχει, το αποτέλεσμα, ποιος λείπει — το Δίκτυο κρατά την ίδια λίστα.' },
-      action: { en: 'Open need cards', el: 'Άνοιγμα καρτών' },
+      title: { en: 'Publish a startup need card', el: 'Δημοσίευσε μια κάρτα ανάγκης' },
+      action: { en: 'Need cards', el: 'Κάρτες ανάγκης' },
     };
   }
   const ranked = rankPeople(
@@ -86,21 +83,21 @@ export function studioNextStep(profile: CompatibilityInput | null): StudioNext {
   if (ranked?.fit.score != null) {
     return {
       id: 'match',
-      en: `Next: talk to ${ranked.person.fullName} (${ranked.fit.score}%). ${ranked.fit.headline?.en ?? ranked.person.headline}`,
-      el: `Επόμενο: μίλα με ${ranked.person.fullName} (${ranked.fit.score}%). ${ranked.fit.headline?.el ?? ranked.person.headline}`,
+      en: `Top match: ${ranked.person.fullName} (${ranked.fit.score}%).`,
+      el: `Κορυφαία αντιστοίχιση: ${ranked.person.fullName} (${ranked.fit.score}%).`,
       href: `/profile/${ranked.person.id}`,
       prompt: `Why do I match with ${ranked.person.fullName}?`,
       title: { en: `Talk to ${ranked.person.fullName} · ${ranked.fit.score}%`, el: `Μίλα με ${ranked.person.fullName} · ${ranked.fit.score}%` },
       why: { en: ranked.fit.headline?.en ?? ranked.person.headline, el: ranked.fit.headline?.el ?? ranked.person.headline },
-      action: { en: 'Open profile', el: 'Άνοιγμα προφίλ' },
+      action: { en: 'Profile', el: 'Προφίλ' },
     };
   }
   return {
     id: 'matches',
-    en: 'Open Matches to rank people on this profile.',
-    el: 'Άνοιξε τις Αντιστοιχίσεις για κατάταξη σε αυτό το προφίλ.',
+    en: 'Explore ranked co-founder matches for your profile.',
+    el: 'Δες τις προτεινόμενες αντιστοιχίσεις για το προφίλ σου.',
     href: '/matches',
-    action: { en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' },
+    action: { en: 'Matches', el: 'Αντιστοιχίσεις' },
   };
 }
 
@@ -119,21 +116,21 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
       href: '/calendar',
       title: { en: `${soon.session.title} starts in ${minutes} min`, el: `Το «${soon.session.title}» ξεκινά σε ${minutes} λεπτά` },
       why: soon.session.location ? { en: soon.session.location, el: soon.session.location } : undefined,
-      action: { en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' },
+      action: { en: 'Calendar', el: 'Ημερολόγιο' },
     };
   }
   const due = readTasks().filter((task) => task.status !== 'Done' && /^today$/i.test(task.deadline.trim()));
   if (due[0]) {
     return {
       id: `task-${due[0].id}`,
-      en: `${due[0].title} is due today on Workspace.`,
-      el: `Το «${due[0].title}» λήγει σήμερα στον Χώρο εργασίας.`,
+      en: `${due[0].title} is due today.`,
+      el: `Το «${due[0].title}» λήγει σήμερα.`,
       href: '/workspace',
       title: { en: `${due[0].title} is due today`, el: `Το «${due[0].title}» λήγει σήμερα` },
       why: due.length > 1
-        ? { en: `+${due.length - 1} more due today on Workspace.`, el: `+${due.length - 1} ακόμα λήγουν σήμερα στον Χώρο εργασίας.` }
-        : { en: 'Same board as Workspace and the assistant.', el: 'Ο ίδιος πίνακας με τον Χώρο εργασίας και τον βοηθό.' },
-      action: { en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' },
+        ? { en: `+${due.length - 1} more due today`, el: `+${due.length - 1} ακόμη σήμερα` }
+        : undefined,
+      action: { en: 'Workspace', el: 'Χώρος εργασίας' },
     };
   }
   return null;

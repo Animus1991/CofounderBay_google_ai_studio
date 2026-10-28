@@ -16,6 +16,7 @@ import { directoryPeople } from '../lib/peopleSource';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
 import { onPageControlsChange, readPageControls } from '../lib/pageControls';
+import { useUIStore } from '../stores/useUIStore';
 
 type Bubble = AssistantTurn & {
   links?: AssistantLink[];
@@ -314,20 +315,36 @@ export default function ChatWidget() {
       const userBubble: Bubble = { id: `u-${Date.now()}`, role: 'user', text: payload, at: new Date().toISOString() };
       setAgentTurns((prev) => [...prev, userBubble]);
       setIsTyping(true);
+      const viewer = viewerFromAuth(profile);
+      const isDirectOp = text.startsWith('/') || /^(?:set|update|change|write|fill|open|show|ορισε|όρισε|αλλαξε|άλλαξε|γραψε|γράψε|συμπληρωσε|συμπλήρωσε|ανοιξε|άνοιξε)\b/i.test(text);
+      const directResult = isDirectOp ? runAssistant(payload, viewer, { propose: false }) : null;
       try {
-        const context = `${agent.role}. On ${page.en}. ${assistantContextBlock(viewerFromAuth(profile))}`;
+        const opSummary = directResult ? `\nExecuted studio action (${directResult.tool}): ${speak(directResult)}` : '';
+        const context = `${agent.role}. On ${page.en}. ${assistantContextBlock(viewer)}${opSummary}`;
         const response = await AIService.chat(payload, context);
         if (stopRef.current) {
           setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
           return;
         }
-        setAgentTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: response.text, at: new Date().toISOString() }]);
+        setAgentTurns((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: 'assistant',
+            text: response.text?.trim() || (directResult ? speak(directResult) : '…'),
+            href: directResult?.href,
+            links: directResult?.links,
+            followUps: directResult?.followUps,
+            tool: directResult?.tool,
+            at: new Date().toISOString(),
+          },
+        ]);
       } catch {
         if (stopRef.current) {
           setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
           return;
         }
-        const fallback = runAssistant(payload, viewerFromAuth(profile));
+        const fallback = directResult ?? runAssistant(payload, viewer);
         setAgentTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: speak(fallback), href: fallback.href, links: fallback.links, followUps: fallback.followUps, tool: fallback.tool, at: new Date().toISOString() }]);
       } finally {
         setIsTyping(false);
@@ -658,6 +675,19 @@ export default function ChatWidget() {
                               <X className="w-3 h-3" />
                             </button>
                           )}
+                          {pinnedContext && (() => {
+                            const pinnedPerson = directoryPeople().find((p) => p.fullName.toLowerCase() === pinnedContext.toLowerCase());
+                            return pinnedPerson ? (
+                              <button
+                                type="button"
+                                onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, pinnedPerson.id)}
+                                className="px-2 py-0.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+                                title={t(`See how your score with ${pinnedPerson.fullName} is built`, `Δες πώς προκύπτει το σκορ σου με ${pinnedPerson.fullName}`)}
+                              >
+                                {t('Score breakdown', 'Ανάλυση σκορ')}
+                              </button>
+                            ) : null;
+                          })()}
                         </div>
                         {pageOpen && (
                           <div className="mt-1.5 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">

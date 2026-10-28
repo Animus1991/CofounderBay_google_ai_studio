@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import AssistantReplyCard from "../components/AssistantReplyCard";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { cn } from "../lib/utils";
@@ -562,6 +563,8 @@ export default function Settings() {
             </div>
           </Card>
 
+          <AssistantReplyCard />
+
           <Card title={t("Save", "Αποθήκευση")} subtitle={t("Name, startup, links, and region.", "Όνομα, startup, σύνδεσμοι και περιοχή.")}>
             <div className="flex h-full flex-col justify-between gap-4">
               <p className="text-sm text-stone-500">
@@ -924,9 +927,9 @@ export default function Settings() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-base font-semibold">{plan === "pro" ? "Pro Founder" : plan === "studio" ? "Studio" : "Starter"}</p>
-                  <p className="mt-1 text-sm text-white/70">{plan === "starter" ? t("Free", "Δωρεάν") : plan === "studio" ? t("Talk to us", "Επικοινώνησε") : (form.currency === "USD" ? "$240" : form.currency === "GBP" ? "£190" : "€220") + " · " + t("per year", "τον χρόνο")}</p>
+                  <p className="mt-1 text-sm text-white/85">{plan === "starter" ? t("Free", "Δωρεάν") : plan === "studio" ? t("Talk to us", "Επικοινώνησε") : (form.currency === "USD" ? "$240" : form.currency === "GBP" ? "£190" : "€220") + " · " + t("per year", "τον χρόνο")}</p>
                 </div>
-                <span className="inline-flex min-h-8 items-center rounded-full border border-white/15 px-3 text-xs font-semibold">{t("Active", "Ενεργό")}</span>
+                <span className="inline-flex min-h-8 items-center rounded-full border border-white/25 bg-white/10 px-3 text-xs font-semibold text-white">{t("Active", "Ενεργό")}</span>
               </div>
               <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {(plan === "starter"
@@ -944,7 +947,7 @@ export default function Settings() {
                     ]
                 ).map(([label, value]) => (
                   <div key={label}>
-                    <p className="text-xs text-white/50">{label}</p>
+                    <p className="text-xs text-white/80">{label}</p>
                     <p className="mt-1 text-sm font-semibold">{value}</p>
                   </div>
                 ))}

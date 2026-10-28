@@ -171,6 +171,26 @@ export const MOCK_PLANS: BillingPlan[] = [
   },
 ];
 
+export const ALL_PLAN_FEATURE_KEYS = [
+  "communityModules",
+  "advancedFilters",
+  "mentorModules",
+  "privateCommunities",
+  "advancedAnalytics",
+  "cohortModules",
+  "programManagement",
+  "advancedExports",
+  "sso",
+  "whiteLabeling",
+] as const;
+
+export function hasPlanFeature(features: unknown, key: string): boolean {
+  if (!features) return false;
+  if (Array.isArray(features)) return features.includes(key);
+  if (typeof features === "object") return Boolean((features as Record<string, unknown>)[key]);
+  return false;
+}
+
 // --- Service Implementation ---
 //
 // Subscriptions and invoices are Firestore documents. There is no payment

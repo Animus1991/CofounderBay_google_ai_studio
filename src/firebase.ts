@@ -2,9 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
   type Firestore,
 } from 'firebase/firestore';
 import bundledConfig from '../firebase-applet-config.json';
@@ -54,17 +51,10 @@ export const auth = getAuth(app);
  * watch target is torn down, which bricks every later listener (b815).
  */
 function createDb(): Firestore {
-  const canPersist = typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv.isTest;
-  if (canPersist) {
-    try {
-      return initializeFirestore(
-        app,
-        { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
-        firebaseConfig.firestoreDatabaseId,
-      );
-    } catch (error) {
-      log.warn('persistent cache unavailable, using memory cache', { error: String(error) });
-    }
+  // Clear any previously corrupted IndexedDB persistence databases in the background
+  // so browsers that hit Firebase 12.x ca9/b815 multi-tab assertion errors self-heal.
+  if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv.isTest) {
+    void clearFirestoreIdb().catch(() => undefined);
   }
   return getFirestore(app, firebaseConfig.firestoreDatabaseId);
 }

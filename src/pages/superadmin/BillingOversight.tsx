@@ -129,7 +129,7 @@ export default function BillingOversight() {
  }
 
  return (
-  <div className="space-y-8">
+  <div className="w-full min-w-0 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem] space-y-6">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing Oversight', 'Εποπτεία χρέωσης')}</h1>
@@ -288,7 +288,7 @@ export default function BillingOversight() {
       <button
        type="button"
        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Help me design a new subscription plan' } }))}
-       className="h-full min-h-[200px] border-2 border-dashed border-stone-200 rounded-3xl flex flex-col items-center justify-center gap-3 text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-all group"
+       className="h-full min-h-[200px] border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-3 text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-all group"
       >
        <div className="p-3 bg-stone-50 rounded-2xl group-hover:bg-stone-100 transition-colors">
         <Plus className="w-6 h-6" />

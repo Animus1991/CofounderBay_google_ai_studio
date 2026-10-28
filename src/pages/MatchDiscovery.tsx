@@ -10,7 +10,11 @@ import {
  Clock,
  SlidersHorizontal,
  EyeOff,
+ BarChart2,
+ Layers,
+ Sparkles,
 } from 'lucide-react';
+import { mergeFitIntoViewer, readFitCheck } from '../lib/fitCheck';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { keys, logActivity, readIds, readMatchFilters, readSaved, removeSaved, saveProfile, saveRequest, toggleId, writeMatchFilters } from '../lib/localLists';
@@ -31,6 +35,7 @@ import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from '../lib/se
 import { usePeople } from '../lib/directory';
 import { avatarOf, cofounderPool, isOnline, type Person } from '../lib/peopleSource';
 import { connectionStateWith, respondToConnection, sendConnectionRequest, useConnections, withdrawConnection } from '../lib/social';
+import { useUIStore } from '../stores/useUIStore';
 
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
 const ROLES = ['Founder', 'Co-Founder Candidate', 'Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
@@ -41,6 +46,9 @@ export default function MatchDiscovery() {
  useLanguage();
  const t = useT();
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
+ const setMatchBreakdownModalOpen = useUIStore((s) => s.setMatchBreakdownModalOpen);
+ const setNeedWallModalOpen = useUIStore((s) => s.setNeedWallModalOpen);
+ const fitResult = useStored(readFitCheck, [keys.fitCheck]);
  const navigate = useNavigate();
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
  const real = !isDemoMode && Boolean(currentUser?.uid);
@@ -80,6 +88,8 @@ export default function MatchDiscovery() {
 
  usePageControls(() => [
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowFilters(true) },
+  { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id || 'fp-1') },
+  { id: 'open-need-wall', en: 'Open roles (Needs Wall)', el: 'Ανοιχτοί ρόλοι (Πίνακας Αναγκών)', run: () => setNeedWallModalOpen(true) },
   { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); setVisibleCount(PAGE); } },
   { id: 'open-explore', en: 'Open Explore', el: 'Άνοιγμα Εξερεύνησης', run: () => navigate('/discovery') },
  ], [searchQuery, filters]);
@@ -136,7 +146,8 @@ export default function MatchDiscovery() {
   navigate(`/messages?user=${targetUid}`);
  };
 
- const viewer = fromProfile(viewerProfile);
+ // Same viewer the assistant ranks with: the profile, with fit-check answers filling only empty fields.
+ const viewer = fromProfile(mergeFitIntoViewer(viewerProfile));
  const parsedSearch = parseQualifiers(searchQuery);
  const scored = profiles
   .filter((person) => !hiddenIds.includes(person.id))
@@ -180,11 +191,37 @@ export default function MatchDiscovery() {
    sample={isDemoMode}
    title={t('Find co-founders', 'Βρες συνιδρυτές')}
    description={t('Members ranked by how well they complement your skills, stage, commitment and working hours — every score explained. Communities and programs live in Explore.', 'Μέλη ταξινομημένα κατά το πόσο συμπληρώνουν τις δεξιότητες, το στάδιο, τη δέσμευση και τις ώρες εργασίας σου — κάθε σκορ με εξήγηση. Κοινότητες και προγράμματα είναι στην Εξερεύνηση.')}
+   actions={
+    <>
+    <button
+     type="button"
+     data-ui="button"
+     onClick={() => navigate('/quiz?from=/matches')}
+     title={fitResult
+      ? t(`Your fit check: ${fitResult.archetype.en}. Retake it when your stage, commitment or what you look for changes — then apply it to your profile to re-rank.`, `Το fit check σου: ${fitResult.archetype.el}. Επανάλαβέ το όταν αλλάξει το στάδιο, η δέσμευση ή τι ψάχνεις — και εφάρμοσέ το στο προφίλ για νέα κατάταξη.`)
+      : t('60 seconds, five questions — sharpens how members are ranked for you.', '60 δευτερόλεπτα, πέντε ερωτήσεις — κάνει πιο ακριβή την κατάταξη των μελών για σένα.')}
+     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+    >
+     <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+     {fitResult ? t('Retake fit check', 'Νέο fit check') : t('Take fit check', 'Κάνε το fit check')}
+    </button>
+    <button
+     type="button"
+     data-ui="button"
+     onClick={() => setNeedWallModalOpen(true)}
+     title={t('Roles that startups on the platform are looking to fill', 'Ρόλοι που αναζητούν να καλύψουν startups της πλατφόρμας')}
+     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+    >
+     <Layers className="w-3.5 h-3.5" aria-hidden="true" />
+     {t('Open roles', 'Ανοιχτοί ρόλοι')}
+    </button>
+    </>
+   }
   >
    <div className="space-y-5">
     <div className="space-y-3">
-    <div className="flex gap-2">
-     <div className="flex-1 relative">
+    <div className="flex flex-wrap sm:flex-nowrap gap-2">
+     <div className="w-full sm:flex-1 relative min-w-0">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
       <input
        type="search"
@@ -192,23 +229,35 @@ export default function MatchDiscovery() {
        placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, τίτλος ή ${QUALIFIER_HINT_EL}`)}
        value={searchQuery}
        onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); setVisibleCount(PAGE); }}
-       className="w-full min-h-11 pl-9 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
+       className="w-full min-h-11 pl-9 pr-4 py-[0.606rem] bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
       />
      </div>
      <button
       type="button"
+      data-ui="button"
       onClick={() => setShowFilters(!showFilters)}
       aria-expanded={showFilters}
       className={cn(
-       "flex items-center gap-2 min-h-11 px-3 rounded-xl text-xs font-medium transition-all border",
+       "flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-3 rounded-xl text-xs font-medium transition-all border shrink-0",
        showFilters ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-300"
       )}
      >
-      <SlidersHorizontal className="w-3.5 h-3.5" />
-      {t('Filters', 'Φίλτρα')}
+      <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+      <span>{t('Filters', 'Φίλτρα')}</span>
       {Object.values(filters).filter(Boolean).length > 0 && (
        <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-semibold">{Object.values(filters).filter(Boolean).length}</span>
       )}
+     </button>
+     <button
+      type="button"
+      data-ui="button"
+      disabled={filteredProfiles.length === 0}
+      onClick={() => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id ?? null)}
+      title={t('See how the score of your top match is built — the same breakdown opens from every score badge.', 'Δες πώς προκύπτει το σκορ της κορυφαίας αντιστοίχισης — η ίδια ανάλυση ανοίγει από κάθε σήμα σκορ.')}
+      className="flex flex-1 sm:flex-none items-center justify-center gap-2 min-h-11 px-3 rounded-xl text-xs font-medium transition-all border bg-white text-stone-600 border-stone-200 hover:border-stone-300 hover:text-stone-900 shrink-0 disabled:opacity-50"
+     >
+      <BarChart2 className="w-3.5 h-3.5 shrink-0" />
+      <span>{t('How scores work', 'Πώς βγαίνει το σκορ')}</span>
      </button>
     </div>
     {searchQuery.trim().length > 1 && (
@@ -261,7 +310,7 @@ export default function MatchDiscovery() {
     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">{t('The member list could not be refreshed. Showing what was last loaded.', 'Η λίστα μελών δεν ανανεώθηκε. Εμφανίζεται ό,τι φορτώθηκε τελευταία.')}</p>
    )}
 
-   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
     {loading ? (
      Array.from({ length: 6 }).map((_, i) => (
       <div key={i} className="bg-white rounded-2xl border border-stone-100 p-5 space-y-4 animate-pulse">
@@ -306,7 +355,15 @@ export default function MatchDiscovery() {
           {fit.headline && <p className="text-xs text-stone-500">{bothText(fit.headline.en, fit.headline.el)}</p>}
          </div>
         </div>
-        <span className="text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 px-2 py-1 rounded-lg shrink-0 tabular-nums" title={t('Compatibility with your profile', 'Συμβατότητα με το προφίλ σου')}>{fit.score == null ? '—' : `${fit.score}%`}</span>
+        <button
+         type="button"
+         onClick={(e) => { e.stopPropagation(); setMatchBreakdownModalOpen(true, person.id); }}
+         className="inline-flex items-center gap-1 text-xs font-semibold text-stone-900 bg-stone-50 hover:bg-stone-900 hover:text-white border border-stone-200 hover:border-stone-900 px-2 py-1 rounded-lg shrink-0 tabular-nums transition-colors"
+         title={t('Open 6-Axis Compatibility Breakdown for this founder', 'Άνοιγμα Ανάλυσης Συμβατότητας 6 Αξόνων για αυτόν τον ιδρυτή')}
+        >
+         <BarChart2 className="w-3 h-3" />
+         {fit.score == null ? '—' : `${fit.score}%`}
+        </button>
        </div>
 
        <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">

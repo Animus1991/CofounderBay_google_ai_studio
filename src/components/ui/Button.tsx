@@ -33,10 +33,10 @@ export default function Button({
  };
 
  const sizes = {
-  sm: "min-h-7 px-3 py-1 text-sm font-medium rounded-lg",
-  md: "min-h-8 px-4 py-1 text-sm font-medium rounded-lg",
-  lg: "min-h-9 px-5 py-1.5 text-sm font-medium rounded-xl",
-  icon: "min-h-8 min-w-8 p-1.5 rounded-lg",
+  sm: "min-h-[1.6975rem] px-3 py-[0.2425rem] text-sm leading-snug font-medium rounded-lg",
+  md: "min-h-[1.9364rem] px-4 py-[0.2425rem] text-sm leading-snug font-medium rounded-lg",
+  lg: "min-h-[2.1825rem] px-5 py-[0.3638rem] text-sm leading-snug font-medium rounded-xl",
+  icon: "min-h-[1.94rem] min-w-[1.94rem] p-[0.3638rem] rounded-lg",
  };
 
  return (

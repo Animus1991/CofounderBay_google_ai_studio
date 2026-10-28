@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { keys, listKeys, logActivity, readIds, readInvites, readMilestones, readNotificationPrefs, readOpenTo, readProfileLocal, readRound, readSaved, readSessions, readTasks, readTracked, readValue, resetAllLists, unreadActivityCount, upsertNeed } from '../lib/localLists';
+import { keys, listKeys, logActivity, readChat, readIds, readInvites, readMilestones, readNotificationPrefs, readOpenTo, readProfileLocal, readRound, readSaved, readSessions, readTasks, readTracked, readValue, resetAllLists, unreadActivityCount, upsertNeed } from '../lib/localLists';
 import { readSwitches } from '../lib/privacySwitches';
+import { useUIStore } from '../stores/useUIStore';
+import { getLang } from '../lib/language';
 import { runAssistant } from './assistantOps';
+import { readUxPrefs, writeUxPrefs } from '../lib/personalization';
+import { trackVisit } from '../lib/usage';
 
 const demo = {
   fullName: 'Demo User',
@@ -527,3 +531,166 @@ describe('notifications-read', () => {
   });
 });
 
+describe('studio extended co-pilot tools', () => {
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+    useUIStore.setState({
+      paletteTheme: 'stone',
+      matchBreakdownModalOpen: false,
+      dealRoomModalOpen: false,
+      needWallModalOpen: false,
+      selectedFounderId: null,
+      selectedStartupId: null,
+    });
+  });
+
+  it('reads and updates Lean Canvas sections with proposal and undo', async () => {
+    const readRes = runAssistant('/canvas', demo);
+    expect(readRes.tool).toBe('canvas');
+    expect(readRes.en).toContain('Lean Canvas');
+
+    const writeRes = runAssistant('set canvas problem to Fragmented cross-border B2B settlements', demo, { propose: true });
+    expect(writeRes.tool).toBe('canvas');
+    expect(writeRes.proposal?.reversal).toBe('full');
+    await writeRes.proposal!.apply();
+    expect(readValue<Record<string, string>>(keys.canvas, {}).problem).toBe('Fragmented cross-border B2B settlements');
+    await writeRes.proposal!.undo!();
+    expect(readValue<Record<string, string>>(keys.canvas, {}).problem).toBeUndefined();
+  });
+
+  it('reads and updates Startup Builder modules with proposal and undo', async () => {
+    const readRes = runAssistant('Show my Startup Builder progress', demo);
+    expect(readRes.tool).toBe('builder');
+
+    const writeRes = runAssistant('set builder market to €48B European B2B embedded finance TAM', demo, { propose: true });
+    expect(writeRes.tool).toBe('builder');
+    expect(writeRes.proposal?.reversal).toBe('full');
+    await writeRes.proposal!.apply();
+    expect(readValue<Record<string, string>>(keys.builderInputs, {})['3-0']).toBe('€48B European B2B embedded finance TAM');
+    await writeRes.proposal!.undo!();
+    expect(readValue<Record<string, string>>(keys.builderInputs, {})['3-0']).toBeUndefined();
+  });
+
+  it('reads Readiness Index and updates venture name with undo', async () => {
+    const readRes = runAssistant('What is my readiness score?', demo);
+    expect(readRes.tool).toBe('readiness');
+    expect(readRes.en).toContain('Readiness Index');
+
+    const writeRes = runAssistant('set startup name to AegeanFlow AI', demo, { propose: true });
+    expect(writeRes.tool).toBe('readiness');
+    expect(writeRes.proposal?.reversal).toBe('full');
+    await writeRes.proposal!.apply();
+    expect(readValue<Record<string, unknown>>('cfb.startup', {}).name).toBe('AegeanFlow AI');
+    await writeRes.proposal!.undo!();
+    expect(readValue<Record<string, unknown>>('cfb.startup', {}).name).toBeUndefined();
+  });
+
+  it('opens 6-Axis Match, Deal Room, and Need Wall modals via commands and natural language', () => {
+    const m1 = runAssistant('/6axis Sarah Chen', demo);
+    expect(m1.tool).toBe('studio-modal');
+    expect(useUIStore.getState().matchBreakdownModalOpen).toBe(true);
+    expect(useUIStore.getState().selectedFounderId).toBe('sarah-chen');
+
+    const m2 = runAssistant('open deal room', demo);
+    expect(m2.tool).toBe('studio-modal');
+    expect(useUIStore.getState().dealRoomModalOpen).toBe(true);
+
+    const m3 = runAssistant('/needwall', demo);
+    expect(m3.tool).toBe('studio-modal');
+    expect(useUIStore.getState().needWallModalOpen).toBe(true);
+  });
+
+  it('switches theme palette and UI language via assistant commands', () => {
+    const tRes = runAssistant('/theme dark', demo);
+    expect(tRes.tool).toBe('settings-set');
+    expect(useUIStore.getState().paletteTheme).toBe('dark');
+
+    const lRes = runAssistant('/lang el', demo);
+    expect(lRes.tool).toBe('settings-set');
+    expect(getLang()).toBe('el');
+    runAssistant('/lang en', demo);
+    expect(getLang()).toBe('en');
+  });
+
+  it('lists and adds workspace tasks via /tasks and sends direct messages via /msg with undo', async () => {
+    const addRes = runAssistant('/tasks Finalize seed data room', demo, { propose: true });
+    expect(addRes.tool).toBe('task-add');
+    await addRes.proposal!.apply();
+    expect(readTasks().some((t) => t.title.includes('Finalize seed data room'))).toBe(true);
+
+    const msgRes = runAssistant('/msg Sarah Chen: Let us review the term sheet tomorrow', demo, { propose: true });
+    expect(msgRes.tool).toBe('inbox');
+    expect(msgRes.proposal?.reversal).toBe('full');
+    await msgRes.proposal!.apply();
+    expect(readChat().messages.some((m) => m.body.includes('Let us review the term sheet tomorrow'))).toBe(true);
+    await msgRes.proposal!.undo!();
+    expect(readChat().messages.some((m) => m.body.includes('Let us review the term sheet tomorrow'))).toBe(false);
+  });
+});
+
+
+describe('assistant reply style', () => {
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  it('reads the current style and changes it with proposal + undo', async () => {
+    const read = runAssistant('/style', demo);
+    expect(read.tool).toBe('settings-set');
+    expect(read.en).toMatch(/balanced · friendly · emoji off/);
+    const res = runAssistant('/style short direct emoji on', demo, { propose: true });
+    expect(res.proposal?.reversal).toBe('full');
+    await res.proposal!.apply();
+    expect(readValue<Record<string, unknown>>('cfb.assistantPrefs', {})).toMatchObject({ length: 'short', tone: 'direct', emoji: true });
+    await res.proposal!.undo!();
+    expect(readValue<Record<string, unknown>>('cfb.assistantPrefs', {})).toMatchObject({ length: 'balanced', tone: 'friendly', emoji: false });
+  });
+});
+
+describe('ux coach + pins', () => {
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  it('/pin and /unpin a page with proposal + undo, and /home sets the landing route', async () => {
+    const pin = runAssistant('/pin matches', demo, { propose: true });
+    expect(pin.tool).toBe('pin');
+    expect(pin.proposal?.reversal).toBe('full');
+    await pin.proposal!.apply();
+    expect(readUxPrefs().favorites).toContain('/matches');
+    await pin.proposal!.undo!();
+    expect(readUxPrefs().favorites).not.toContain('/matches');
+
+    writeUxPrefs({ favorites: ['/events'] });
+    const unpin = runAssistant('/unpin events', demo, { propose: true });
+    await unpin.proposal!.apply();
+    expect(readUxPrefs().favorites).not.toContain('/events');
+    await unpin.proposal!.undo!();
+    expect(readUxPrefs().favorites).toContain('/events');
+
+    const home = runAssistant('/home matches', demo, { propose: true });
+    await home.proposal!.apply();
+    expect(readUxPrefs().homePath).toBe('/matches');
+    await home.proposal!.undo!();
+    expect(readUxPrefs().homePath).toBeNull();
+  });
+
+  it('/coach is honest with no usage and proposes pinning frequent pages', async () => {
+    const cold = runAssistant('/coach', demo);
+    expect(cold.tool).toBe('coach');
+    expect(cold.en).toMatch(/haven’t seen enough/i);
+    expect(cold.proposal).toBeUndefined();
+
+    for (let i = 0; i < 4; i += 1) trackVisit('/fundraising');
+    for (let i = 0; i < 3; i += 1) trackVisit('/events');
+    const res = runAssistant('/coach', demo, { propose: true });
+    expect(res.proposal?.reversal).toBe('full');
+    await res.proposal!.apply();
+    expect(readUxPrefs().favorites).toContain('/fundraising');
+    await res.proposal!.undo!();
+    expect(readUxPrefs().favorites).not.toContain('/fundraising');
+  });
+});

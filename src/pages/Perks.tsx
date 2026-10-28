@@ -180,10 +180,10 @@ export default function Perks() {
     </Card>
     <Card className="bg-stone-900 text-white border-none p-4 self-start" contentClassName="flex items-center justify-between gap-3">
      <div>
-      <p className="text-md font-medium text-white/40 tracking-wide">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
-      <h4 className="text-lg font-semibold">{isDemoMode ? perkDollarTotal(DEMO_PERKS) : perks.length}</h4>
+      <p className="text-base font-medium text-white/80 tracking-wide">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
+      <h4 className="text-lg font-semibold text-white">{isDemoMode ? perkDollarTotal(DEMO_PERKS) : perks.length}</h4>
      </div>
-     <Zap className="w-8 h-8 text-amber-500 fill-current" />
+     <Zap className="w-8 h-8 text-amber-300 fill-current shrink-0" />
     </Card>
    </div>
 
@@ -247,11 +247,11 @@ export default function Perks() {
    {featured && (
    <Card className="bg-stone-50 border-stone-200 p-5 sm:p-8 relative overflow-hidden">
     <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-     <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center text-stone-900 font-medium text-md shadow-xl border border-stone-100">
+     <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center text-stone-900 font-medium text-base shadow-xl border border-stone-100">
       {featured.logo}
      </div>
      <div className="flex-1 text-center md:text-left space-y-2">
-      <h3 className="text-md font-medium text-stone-900">{isDemoMode ? t('AWS Activate for CoFounderBay', 'AWS Activate για το CoFounderBay') : featured.name}</h3>
+      <h3 className="text-base font-medium text-stone-900">{isDemoMode ? t('AWS Activate for CoFounderBay', 'AWS Activate για το CoFounderBay') : featured.name}</h3>
       <p className="text-stone-500 max-w-2xl">{isDemoMode
        ? t('Get exclusive access to the AWS Activate program through our partnership. Includes $100,000 in credits, technical support, and training resources.', 'Αποκλειστική πρόσβαση στο πρόγραμμα AWS Activate μέσω της συνεργασίας μας. Περιλαμβάνει $100,000 πιστώσεις, τεχνική υποστήριξη και εκπαιδευτικούς πόρους.')
        : featured.description}</p>

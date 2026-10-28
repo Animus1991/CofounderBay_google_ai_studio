@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { trackPage } from '../lib/analytics';
+import { trackVisit } from '../lib/usage';
 import { bothText } from '../lib/labels';
 import { useLanguage } from '../lib/language';
 
@@ -118,6 +119,7 @@ export default function RouteLifecycle() {
     document.getElementById('main-content')?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
     trackPage(pathname, { title: pageTitle });
+    trackVisit(pathname);
     setAnnouncement(pageTitle);
   }, [pathname, mode]);
 

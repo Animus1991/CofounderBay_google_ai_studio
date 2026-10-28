@@ -8,7 +8,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
-import { runAssistant, type AssistantProfile } from '../services/assistantOps';
+import { assistantContextBlock, runAssistant, type AssistantProfile } from '../services/assistantOps';
 import { avatarFor, findCast } from '../data/cast';
 import { keys, readValue, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
@@ -504,24 +504,35 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
   const askAgent = useCallback(async (conversationId: string, agentId: string, text: string) => {
     const agent = MOCK_AGENTS.find((item) => item.id === agentId);
     setAiTyping(true);
+    const assistantProfile = selfRef.current.assistant ?? null;
+    const isDirectCommand = text.trim().startsWith('/') || /^(?:set|update|change|write|fill|open|show|ορισε|όρισε|αλλαξε|άλλαξε|γραψε|γράψε|συμπληρωσε|συμπλήρωσε|ανοιξε|άνοιξε)\b/i.test(text.trim());
+    const studioOp = isDirectCommand ? runAssistant(text, assistantProfile, { propose: false }) : null;
     try {
       const history = readAi().messages
         .filter((message) => message.conversationId === conversationId)
         .slice(-8)
         .map((message) => `${message.isAI ? 'Assistant' : 'Founder'}: ${message.body}`)
         .join('\n');
-      const response = await AIService.chat(text, `${agent?.role || 'Advisor'}. ${agent?.description || ''}\nRecent conversation:\n${history}`);
+      const liveContext = assistantContextBlock(assistantProfile);
+      const opNote = studioOp ? `\nExecuted studio tool "${studioOp.tool}": ${getLang() === 'el' ? studioOp.el : studioOp.en}` : '';
+      const response = await AIService.chat(
+        text,
+        `${agent?.role || 'Advisor'}. ${agent?.description || ''}\nLive Workspace State:\n${liveContext}${opNote}\nRecent conversation:\n${history}`,
+      );
+      const fallbackBody = studioOp ? (getLang() === 'el' ? studioOp.el : studioOp.en) : localSpecialistReply(text, assistantProfile);
       writeAi((store) => ({
         ...store,
         messages: [
           ...store.messages,
-          { id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', body: response.text || '…', createdAt: Date.now(), isAI: true },
+          { id: `ai-${Date.now()}`, conversationId, senderId: agentId, senderName: agent?.name || 'AI', body: response.text?.trim() || fallbackBody || '…', createdAt: Date.now(), isAI: true },
         ].slice(-400),
       }));
     } catch {
       // Gemini is optional. Answer from the same workspace data as the studio
       // panel instead of leaving a dead "try again" bubble in the thread.
-      const body = localSpecialistReply(text, selfRef.current.assistant ?? null);
+      const body = studioOp
+        ? (getLang() === 'el' ? studioOp.el : studioOp.en)
+        : localSpecialistReply(text, assistantProfile);
       writeAi((store) => ({
         ...store,
         messages: [

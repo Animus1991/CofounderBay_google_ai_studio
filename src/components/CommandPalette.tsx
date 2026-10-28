@@ -5,6 +5,7 @@ import {
   Search, LayoutDashboard, User, Users, GraduationCap, MessageSquare, Trophy, Compass,
   Calendar, Rocket, DollarSign, Briefcase, Share2, BookOpen, Activity, Scale, Gift,
   Bell, Settings, ShieldCheck, Globe, Zap, ArrowRight, Command, Sparkles, Target,
+  BarChart2, Layers, Palette, CreditCard, Lock, Tags,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
@@ -12,6 +13,7 @@ import { pageHelp } from '../lib/navHelp';
 import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { directoryPeople, onPeopleChange } from '../lib/peopleSource';
+import { useUIStore } from '../stores/useUIStore';
 
 const COMMAND_PATH: Record<string, string> = {
   dashboard: '/dashboard',
@@ -35,11 +37,17 @@ const COMMAND_PATH: Record<string, string> = {
   perks: '/perks',
   notifications: '/notifications',
   settings: '/settings',
+  'settings-billing': '/settings/billing',
   pricing: '/pricing',
   admin: '/admin',
   'admin-users': '/admin/users',
   'admin-automation': '/admin/automation',
   'admin-branding': '/admin/branding',
+  'admin-sso': '/admin/sso',
+  'admin-taxonomy': '/admin/taxonomy',
+  'admin-domains': '/admin/domains',
+  'admin-billing': '/admin/billing',
+  'admin-billing-oversight': '/admin/billing-oversight',
 };
 
 type Prefix = 'command' | 'people' | 'page' | 'all';
@@ -75,6 +83,10 @@ export default function CommandPalette() {
   const listRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { isAdmin, isDemoMode } = useAuth();
+  const setMatchBreakdownModalOpen = useUIStore((s) => s.setMatchBreakdownModalOpen);
+  const setDealRoomModalOpen = useUIStore((s) => s.setDealRoomModalOpen);
+  const setNeedWallModalOpen = useUIStore((s) => s.setNeedWallModalOpen);
+  const setPaletteTheme = useUIStore((s) => s.setPaletteTheme);
 
   const go = useCallback((path: string) => {
     navigate(path);
@@ -88,6 +100,9 @@ export default function CommandPalette() {
 
   const commands: CommandItem[] = useMemo(() => {
     const items: CommandItem[] = [
+      { id: 'match-6axis', label: 'Open 6-Axis Match Breakdown', labelEl: 'Άνοιγμα Ανάλυσης Συμβατότητας 6 Αξόνων', icon: BarChart2, action: () => { setOpen(false); setMatchBreakdownModalOpen(true, 'fp-1'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['6-axis', 'breakdown', 'score', 'matching'], kind: 'command' },
+      { id: 'deal-room', label: 'Open my Deal Room & Pitch Deck', labelEl: 'Άνοιγμα του Deal Room & Pitch Deck μου', icon: Briefcase, action: () => { setOpen(false); setDealRoomModalOpen(true, 'sv-my-venture'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['deal room', 'pitch deck', 'venture', 'apply'], kind: 'command' },
+      { id: 'need-wall', label: 'Open Startup Need Cards Wall', labelEl: 'Άνοιγμα Πίνακα Αναγκών & Ρόλων Startup', icon: Layers, action: () => { setOpen(false); setNeedWallModalOpen(true); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['need', 'bounties', 'roles', 'wall'], kind: 'command' },
       { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Studio', sectionEl: 'Βοηθός', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },
       { id: 'ask-match', label: 'Who is my best match?', labelEl: 'Ποια είναι η καλύτερη αντιστοίχιση;', icon: Users, action: () => ask('who is my best match'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['match', 'cofounder', 'αντιστοιχ'], kind: 'command' },
       { id: 'ask-overdue', label: 'What is overdue?', labelEl: 'Τι είναι εκπρόθεσμο;', icon: Trophy, action: () => ask('What is overdue?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['milestone', 'overdue', 'εκπρόθεσμ'], kind: 'command' },
@@ -106,6 +121,12 @@ export default function CommandPalette() {
       { id: 'ask-next', label: 'What should I do first?', labelEl: 'Τι να κάνω πρώτα;', icon: Sparkles, action: () => ask('What should I do first?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['next', 'πρώτα', '/next'], kind: 'command' },
       { id: 'ask-inbox', label: 'Search my messages', labelEl: 'Αναζήτηση στα μηνύματα', icon: MessageSquare, action: () => ask('search my messages for intro'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['inbox', '/inbox'], kind: 'command' },
       { id: 'quiz', label: 'Fit check', labelEl: 'Fit check', icon: Sparkles, action: () => go('/quiz'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['quiz', 'archetype'], kind: 'command' },
+      { id: 'theme-stone', label: 'Theme: Comfort Stone', labelEl: 'Θέμα: Comfort Stone', icon: Palette, action: () => { setPaletteTheme('stone'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'stone', 'light'], kind: 'command' },
+      { id: 'theme-dark', label: 'Theme: Dark Obsidian', labelEl: 'Θέμα: Dark Obsidian', icon: Palette, action: () => { setPaletteTheme('dark'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'dark', 'obsidian'], kind: 'command' },
+      { id: 'theme-cyan', label: 'Theme: Cyan Pulse', labelEl: 'Θέμα: Cyan Pulse', icon: Palette, action: () => { setPaletteTheme('cyan'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'cyan'], kind: 'command' },
+      { id: 'theme-mint', label: 'Theme: Mint Catalyst', labelEl: 'Θέμα: Mint Catalyst', icon: Palette, action: () => { setPaletteTheme('mint'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'mint'], kind: 'command' },
+      { id: 'theme-apricot', label: 'Theme: Apricot Warmth', labelEl: 'Θέμα: Apricot Warmth', icon: Palette, action: () => { setPaletteTheme('apricot'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'apricot'], kind: 'command' },
+      { id: 'theme-lilac', label: 'Theme: Lilac Vision', labelEl: 'Θέμα: Lilac Vision', icon: Palette, action: () => { setPaletteTheme('lilac'); setOpen(false); }, section: 'Themes', sectionEl: 'Θέματα', keywords: ['theme', 'palette', 'lilac'], kind: 'command' },
       { id: 'dashboard', label: 'Dashboard', labelEl: 'Πίνακας', icon: LayoutDashboard, action: () => go('/dashboard'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['home', 'main'], kind: 'page' },
       { id: 'profile', label: 'My Profile', labelEl: 'Το προφίλ μου', icon: User, action: () => go('/profile'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['account', 'me'], kind: 'page' },
       { id: 'discovery', label: 'Explore', labelEl: 'Εξερεύνηση', icon: Compass, action: () => go('/discovery'), section: 'Navigation', sectionEl: 'Πλοήγηση', keywords: ['explore', 'browse', 'find', 'discovery'], kind: 'page' },
@@ -127,6 +148,7 @@ export default function CommandPalette() {
       { id: 'perks', label: 'Startup Perks', labelEl: 'Παροχές', icon: Gift, action: () => go('/perks'), section: 'Resources', sectionEl: 'Πόροι', keywords: ['deals', 'discounts', 'offers'], kind: 'page' },
       { id: 'notifications', label: 'Notifications', labelEl: 'Ειδοποιήσεις', icon: Bell, action: () => go('/notifications'), section: 'User', sectionEl: 'Λογαριασμός', keywords: ['alerts', 'updates'], kind: 'page' },
       { id: 'settings', label: 'Settings', labelEl: 'Ρυθμίσεις', icon: Settings, action: () => go('/settings'), section: 'User', sectionEl: 'Λογαριασμός', keywords: ['preferences', 'account'], kind: 'page' },
+      { id: 'settings-billing', label: 'Billing & Subscription', labelEl: 'Χρέωση & Συνδρομή', icon: CreditCard, action: () => go('/settings/billing'), section: 'User', sectionEl: 'Λογαριασμός', keywords: ['billing', 'invoices', 'plan'], kind: 'page' },
       { id: 'pricing', label: 'Pricing', labelEl: 'Τιμές', icon: DollarSign, action: () => go('/pricing'), section: 'User', sectionEl: 'Λογαριασμός', keywords: ['plans', 'billing', 'subscription'], kind: 'page' },
     ];
 
@@ -136,11 +158,16 @@ export default function CommandPalette() {
         { id: 'admin-users', label: 'User Management', labelEl: 'Μέλη', icon: Users, action: () => go('/admin/users'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['manage users'], kind: 'page' },
         { id: 'admin-automation', label: 'Automation Engine', labelEl: 'Αυτοματισμοί', icon: Zap, action: () => go('/admin/automation'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['workflows', 'rules'], kind: 'page' },
         { id: 'admin-branding', label: 'Branding Settings', labelEl: 'Ταυτότητα', icon: Globe, action: () => go('/admin/branding'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['theme', 'logo'], kind: 'page' },
+        { id: 'admin-sso', label: 'SSO Settings', labelEl: 'Ρυθμίσεις SSO', icon: Lock, action: () => go('/admin/sso'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['sso', 'saml', 'oidc'], kind: 'page' },
+        { id: 'admin-taxonomy', label: 'Taxonomy Settings', labelEl: 'Ταξινομίες', icon: Tags, action: () => go('/admin/taxonomy'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['taxonomy', 'skills', 'tags'], kind: 'page' },
+        { id: 'admin-domains', label: 'Domain Settings', labelEl: 'Domains', icon: Globe, action: () => go('/admin/domains'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['domains', 'dns'], kind: 'page' },
+        { id: 'admin-billing', label: 'Tenant Billing', labelEl: 'Χρέωση Οργανισμού', icon: CreditCard, action: () => go('/admin/billing'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['tenant billing'], kind: 'page' },
+        { id: 'admin-billing-oversight', label: 'SuperAdmin Billing Oversight', labelEl: 'Εποπτεία Χρεώσεων SuperAdmin', icon: DollarSign, action: () => go('/admin/billing-oversight'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['superadmin', 'oversight', 'mrr'], kind: 'page' },
       );
     }
 
     return items.map((item) => ({ ...item, description: pageHelp(COMMAND_PATH[item.id] || '') }));
-  }, [ask, go, isAdmin, isDemoMode]);
+  }, [ask, go, isAdmin, isDemoMode, setDealRoomModalOpen, setMatchBreakdownModalOpen, setNeedWallModalOpen, setPaletteTheme]);
 
   const { prefix, needle } = prefixOf(query);
   const q = needle.toLowerCase();
@@ -203,8 +230,18 @@ export default function CommandPalette() {
         setOpen(false);
       }
     };
+    // Visible search triggers (header, sidebar) open the same palette as Ctrl/⌘ K.
+    const openFromUi = () => {
+      setOpen(true);
+      setQuery('');
+      setSelectedIndex(0);
+    };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('OPEN_COMMAND_PALETTE', openFromUi);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('OPEN_COMMAND_PALETTE', openFromUi);
+    };
   }, [open]);
 
   useEffect(() => {

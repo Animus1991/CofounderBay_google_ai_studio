@@ -180,13 +180,23 @@ export default function Programs({ user: _user }: ProgramsProps) {
   ];
 
  return (
-  <PageShell sample={isDemoMode} title={t("Programs", "Προγράμματα")} description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}>
+  <PageShell
+   sample={isDemoMode}
+   title={t("Programs", "Προγράμματα")}
+   description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}
+   actions={
+    <Button
+     type="button"
+     variant="primary"
+     className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white"
+     title={t('Ask the assistant which programs fit your stage and profile', 'Ρώτα τον βοηθό ποια προγράμματα ταιριάζουν στο στάδιο και το προφίλ σου')}
+     onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}
+    >
+     {t('Find Programs', 'Εύρεση προγραμμάτων')}
+    </Button>
+   }
+  >
    <div className="space-y-6">
-    <div className="flex flex-wrap items-center gap-2">
-     <Button type="button" variant="primary" className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
-      {t('Find Programs', 'Εύρεση προγραμμάτων')}
-     </Button>
-    </div>
 
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
     {/* Main Programs List */}

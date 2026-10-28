@@ -5,7 +5,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { Tenant, Subscription, Invoice, User } from "../../types";
-import { billingService, MOCK_PLANS } from "../../services/billingService";
+import { billingService, MOCK_PLANS, hasPlanFeature } from "../../services/billingService";
 import { db } from "../../firebase";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
@@ -88,7 +88,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
  }
 
  return (
-  <div className="space-y-8 max-w-6xl mx-auto">
+  <div className="w-full min-w-0 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem] space-y-6">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Organization Billing', 'Χρέωση οργανισμού')}</h1>
@@ -205,50 +205,59 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
        <Card title={t('Core Features', 'Βασικές δυνατότητες')} className="p-6">
         <ul className="space-y-3">
-         {['communityModules', 'mentorModules', 'cohortModules', 'programManagement'].map(f => (
-          <li key={f} className="flex items-center gap-3 text-sm">
-           {currentPlan?.features[f as keyof typeof currentPlan.features] ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-           ) : (
-            <AlertCircle className="w-4 h-4 text-stone-200" />
-           )}
-           <span className={currentPlan?.features[f as keyof typeof currentPlan.features] ? 'text-stone-900' : 'text-stone-400'}>
-            {featureName(f)}
-           </span>
-          </li>
-         ))}
+         {['communityModules', 'mentorModules', 'cohortModules', 'programManagement'].map(f => {
+          const enabled = hasPlanFeature(currentPlan?.features, f);
+          return (
+           <li key={f} className="flex items-center gap-3 text-sm">
+            {enabled ? (
+             <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ) : (
+             <AlertCircle className="w-4 h-4 text-stone-300" />
+            )}
+            <span className={enabled ? 'text-stone-900' : 'text-stone-400'}>
+             {featureName(f)}
+            </span>
+           </li>
+          );
+         })}
         </ul>
        </Card>
        <Card title={t('Advanced Tools', 'Προχωρημένα εργαλεία')} className="p-6">
         <ul className="space-y-3">
-         {['advancedAnalytics', 'advancedFilters', 'advancedExports', 'privateCommunities'].map(f => (
-          <li key={f} className="flex items-center gap-3 text-sm">
-           {currentPlan?.features[f as keyof typeof currentPlan.features] ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-           ) : (
-            <AlertCircle className="w-4 h-4 text-stone-200" />
-           )}
-           <span className={currentPlan?.features[f as keyof typeof currentPlan.features] ? 'text-stone-900' : 'text-stone-400'}>
-            {featureName(f)}
-           </span>
-          </li>
-         ))}
+         {['advancedAnalytics', 'advancedFilters', 'advancedExports', 'privateCommunities'].map(f => {
+          const enabled = hasPlanFeature(currentPlan?.features, f);
+          return (
+           <li key={f} className="flex items-center gap-3 text-sm">
+            {enabled ? (
+             <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ) : (
+             <AlertCircle className="w-4 h-4 text-stone-300" />
+            )}
+            <span className={enabled ? 'text-stone-900' : 'text-stone-400'}>
+             {featureName(f)}
+            </span>
+           </li>
+          );
+         })}
         </ul>
        </Card>
        <Card title={t('Enterprise Features', 'Δυνατότητες enterprise')} className="p-6">
         <ul className="space-y-3">
-         {['sso', 'whiteLabeling'].map(f => (
-          <li key={f} className="flex items-center gap-3 text-sm">
-           {currentPlan?.features[f as keyof typeof currentPlan.features] ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-           ) : (
-            <AlertCircle className="w-4 h-4 text-stone-200" />
-           )}
-           <span className={currentPlan?.features[f as keyof typeof currentPlan.features] ? 'text-stone-900' : 'text-stone-400'}>
-            {featureName(f)}
-           </span>
-          </li>
-         ))}
+         {['sso', 'whiteLabeling'].map(f => {
+          const enabled = hasPlanFeature(currentPlan?.features, f);
+          return (
+           <li key={f} className="flex items-center gap-3 text-sm">
+            {enabled ? (
+             <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ) : (
+             <AlertCircle className="w-4 h-4 text-stone-300" />
+            )}
+            <span className={enabled ? 'text-stone-900' : 'text-stone-400'}>
+             {featureName(f)}
+            </span>
+           </li>
+          );
+         })}
         </ul>
        </Card>
       </div>

@@ -20,7 +20,8 @@ vi.mock('../../lib/account', () => ({
 }));
 vi.mock('../../lib/language', () => ({
   getLang: () => 'en',
-  useLanguage: () => 'en',
+  useLanguage: () => ({ mode: 'en', cycle: () => {}, setMode: () => {} }),
+  useT: () => (en: string) => en,
 }));
 
 type SidebarProps = ComponentProps<typeof Sidebar>;

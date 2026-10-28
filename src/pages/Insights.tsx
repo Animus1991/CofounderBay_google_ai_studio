@@ -371,11 +371,11 @@ export default function Insights({ user }: InsightsProps) {
         {badges.map((badge, i) => (
          <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } })); }} className={cn(
           "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
-          badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-stone-100 opacity-40 grayscale"
+          badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-dashed border-stone-200 hover:border-stone-300"
          )}>
           <div className={cn(
            "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
-           badge.unlocked ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-400"
+           badge.unlocked ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-400 opacity-60 grayscale"
           )}>
            <badge.icon className="w-4 h-4" />
           </div>
@@ -387,7 +387,7 @@ export default function Insights({ user }: InsightsProps) {
 
       {/* Strategic Insight — honest, no fabricated stats */}
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
-       <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
+       <p className="text-xs font-semibold text-stone-500 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
         {t('Your readiness score is the share of profile fields matching reads — a complete profile produces sharper matches.', 'Ο δείκτης ετοιμότητας είναι το ποσοστό των πεδίων που διαβάζει η αντιστοίχιση — πλήρες προφίλ σημαίνει καλύτερες αντιστοιχίσεις.')}
        </p>

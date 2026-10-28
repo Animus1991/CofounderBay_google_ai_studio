@@ -4,7 +4,7 @@ import { Check, X, ArrowRight, Shield, Globe, Sparkles, ZapIcon } from "lucide-r
 import { motion } from "motion/react";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
-import { MOCK_PLANS } from "../services/billingService";
+import { MOCK_PLANS, hasPlanFeature } from "../services/billingService";
 import { useT } from "../lib/language";
 
 export default function Pricing() {
@@ -118,16 +118,19 @@ export default function Pricing() {
           <Check className="w-4 h-4 text-green-500 mt-0.5" />
           <span>{(plan.limits?.seats === -1 || !plan.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : plan.limits.seats} {plan.customerType === 'Individual' ? t('User', 'χρήστης') : t('Seats', 'θέσεις')}</span>
          </li>
-         {features.map(f => (
-          <li key={f.key} className={`flex items-start gap-3 text-sm ${plan.features.includes(f.key) ? 'text-stone-900' : 'text-stone-500'}`}>
-           {plan.features.includes(f.key) ? (
-            <Check className="w-4 h-4 text-green-500 mt-0.5" />
-           ) : (
-            <X className="w-4 h-4 mt-0.5" />
-           )}
-           <span>{f.label}</span>
-          </li>
-         ))}
+         {features.map(f => {
+          const included = hasPlanFeature(plan.features, f.key);
+          return (
+           <li key={f.key} className={`flex items-start gap-3 text-sm ${included ? 'text-stone-900' : 'text-stone-500'}`}>
+            {included ? (
+             <Check className="w-4 h-4 text-green-500 mt-0.5" />
+            ) : (
+             <X className="w-4 h-4 mt-0.5" />
+            )}
+            <span>{f.label}</span>
+           </li>
+          );
+         })}
         </ul>
        </div>
 
@@ -208,15 +211,18 @@ export default function Pricing() {
        {features.map(f => (
         <tr key={f.key} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
          <th scope="row" className="sticky left-0 z-10 bg-stone-50 py-4 px-4 text-sm font-medium text-stone-600">{f.label}</th>
-         {plans.map(p => (
-          <td key={p.id} aria-label={p.features.includes(f.key) ? t('Included', 'Περιλαμβάνεται') : t('Not included', 'Δεν περιλαμβάνεται')} className="py-4 px-4 text-center">
-           {p.features.includes(f.key) ? (
-            <Check aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" />
-           ) : (
-            <X aria-hidden="true" className="w-5 h-5 text-stone-500 mx-auto" />
-           )}
-          </td>
-         ))}
+         {plans.map(p => {
+          const included = hasPlanFeature(p.features, f.key);
+          return (
+           <td key={p.id} aria-label={included ? t('Included', 'Περιλαμβάνεται') : t('Not included', 'Δεν περιλαμβάνεται')} className="py-4 px-4 text-center">
+            {included ? (
+             <Check aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" />
+            ) : (
+             <X aria-hidden="true" className="w-5 h-5 text-stone-500 mx-auto" />
+            )}
+           </td>
+          );
+         })}
         </tr>
        ))}
        <tr className="border-b border-stone-100 hover:bg-stone-50 transition-colors">

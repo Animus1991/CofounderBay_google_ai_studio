@@ -40,6 +40,21 @@ export default function AdminDashboard() {
   // The demo account has no Firestore access — the sample numbers below are
   // rendered without touching the backend.
   if (isDemoMode || !user) {
+   setAnalytics({
+    totalUsers: 148,
+    totalXP: 42650,
+    totalBadgesAwarded: 312,
+    xpEventsCount: 1240,
+    aiUsageCount: 385,
+    eventTypeDistribution: {
+     PROFILE_COMPLETED: 148,
+     MATCH_CONNECTED: 320,
+     MILESTONE_COMPLETED: 290,
+     MENTOR_SESSION: 185,
+     COMMUNITY_POST: 297,
+    },
+   });
+   setAbuseFlags([]);
    setLoading(false);
    return;
   }
@@ -65,7 +80,7 @@ export default function AdminDashboard() {
   );
  }
 
- const distributionData = analytics ? Object.entries(analytics.eventTypeDistribution).map(([name, value]) => ({
+ const distributionData = analytics?.eventTypeDistribution ? Object.entries(analytics.eventTypeDistribution).map(([name, value]) => ({
   name: name.replace(/_/g, ' '),
   value
  })) : [];
@@ -115,10 +130,10 @@ export default function AdminDashboard() {
      {/* Stats Grid */}
      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {[
-       { label: t('Total Users', 'Σύνολο χρηστών'), value: analytics?.totalUsers, icon: Users, color: 'blue' },
-       { label: t('Ecosystem XP', 'XP οικοσυστήματος'), value: analytics?.totalXP.toLocaleString(), icon: TrendingUp, color: 'green' },
-       { label: t('Badges Earned', 'Σήματα που απονεμήθηκαν'), value: analytics?.totalBadgesAwarded, icon: Award, color: 'amber' },
-       { label: t('XP Events', 'Συμβάντα XP'), value: analytics?.xpEventsCount, icon: Activity, color: 'purple' },
+       { label: t('Total Users', 'Σύνολο χρηστών'), value: (analytics?.totalUsers ?? 0).toLocaleString(), icon: Users, color: 'blue' },
+       { label: t('Ecosystem XP', 'XP οικοσυστήματος'), value: (analytics?.totalXP ?? 0).toLocaleString(), icon: TrendingUp, color: 'green' },
+       { label: t('Badges Earned', 'Σήματα που απονεμήθηκαν'), value: (analytics?.totalBadgesAwarded ?? 0).toLocaleString(), icon: Award, color: 'amber' },
+       { label: t('XP Events', 'Συμβάντα XP'), value: (analytics?.xpEventsCount ?? 0).toLocaleString(), icon: Activity, color: 'purple' },
       ].map((stat, idx) => (
        <motion.div 
         key={stat.label}

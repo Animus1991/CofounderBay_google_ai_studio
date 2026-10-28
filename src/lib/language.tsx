@@ -21,6 +21,14 @@ export function getLang(): LangMode {
   return current;
 }
 
+export function setGlobalLang(next: LangMode) {
+  current = next;
+  try { localStorage.setItem(KEY, next); } catch { /* ignore */ }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent<LangMode>('SET_LANGUAGE', { detail: next }));
+  }
+}
+
 type LanguageValue = { mode: LangMode; cycle: () => void; setMode: (mode: LangMode) => void };
 
 const LanguageContext = createContext<LanguageValue>({ mode: 'en', cycle: () => {}, setMode: () => {} });
@@ -32,6 +40,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = mode;
   }, [mode]);
+
+  useEffect(() => {
+    const onSetLang = (e: Event) => {
+      const next = (e as CustomEvent<LangMode>).detail;
+      if (next === 'en' || next === 'el') setMode(next);
+    };
+    window.addEventListener('SET_LANGUAGE', onSetLang);
+    return () => window.removeEventListener('SET_LANGUAGE', onSetLang);
+  }, []);
 
   const apply = (next: LangMode) => {
     current = next;
@@ -71,12 +88,13 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
   return (
     <button
       type="button"
+      data-ui="button"
       onClick={cycle}
       title={hint[mode]}
       aria-label={hint[mode]}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-1 sm:gap-1.5 rounded-lg border border-stone-200 bg-white px-2 sm:px-2.5 text-xs sm:text-sm font-medium text-stone-900 shrink-0 ${className}`}
     >
-      <Languages className="h-4 w-4 shrink-0" />
+      <Languages className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
       <span className="whitespace-nowrap">{label}</span>
     </button>
   );

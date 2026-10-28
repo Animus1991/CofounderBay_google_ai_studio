@@ -85,7 +85,7 @@ export default function DomainSettings() {
  };
 
  return (
-  <div className="space-y-6 max-w-5xl mx-auto">
+  <div className="w-full min-w-0 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem] space-y-6">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <h1 className="section-header">{t('Domain Management', 'Τομείς')}</h1>

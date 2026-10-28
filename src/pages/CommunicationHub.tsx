@@ -1130,7 +1130,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     <div className="w-20 h-20 mx-auto mb-8 bg-stone-900 rounded-xl flex items-center justify-center">
      <MessageSquare className="w-9 h-9 text-white" />
     </div>
-    <h2 className="text-xl sm:text-2xl font-semibold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
+    <h2 className="text-base font-semibold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
     <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
      {t("Message co-founders, mentors and investors, share files, start a call, or ask an AI specialist.", "Στείλε μήνυμα σε συνιδρυτές, μέντορες και επενδυτές, μοιράσου αρχεία, ξεκίνα κλήση ή ρώτησε έναν ειδικό AI.")}
     </p>
@@ -1345,7 +1345,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <Ban className="w-4 h-4 shrink-0 text-stone-400" />
        <span className="flex-1">
         {isBlockedByMe ? t("You blocked this member. Unblock them to write again.", "Έχεις αποκλείσει αυτό το μέλος. Άρσε τον αποκλεισμό για να γράψεις ξανά.")
-         : permission.ok ? "" : permission.reason === "blocked" ? t("This member is not accepting messages from you.", "Αυτό το μέλος δεν δέχεται μηνύματα από εσένα.")
+         : permission.ok !== false ? "" : permission.reason === "blocked" ? t("This member is not accepting messages from you.", "Αυτό το μέλος δεν δέχεται μηνύματα από εσένα.")
          : permission.reason === "connections-only" ? t("This member accepts messages from connections only. Send a connection request first.", "Αυτό το μέλος δέχεται μηνύματα μόνο από συνδέσεις. Στείλε πρώτα αίτημα σύνδεσης.")
          : permission.reason === "self" ? t("This is your own account.", "Αυτός είναι ο δικός σου λογαριασμός.")
          : t("This member has turned off new messages.", "Αυτό το μέλος έχει απενεργοποιήσει τα νέα μηνύματα.")}
@@ -1462,7 +1462,35 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <h3 className="font-semibold text-stone-900 text-sm mb-0.5">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h3>
       <p className="text-xs text-stone-500 mb-3">{activeAgent ? agentRole(activeAgent) : active.other.headline || labelOf(active.other.role) || t("Member", "Μέλος")}</p>
       {isAIChat && activeAgent ? (
-       <div className="flex flex-wrap justify-center gap-1.5">{agentCapabilities(activeAgent).map((cap) => <span key={cap} className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs rounded-full">{cap}</span>)}</div>
+       <div className="space-y-3 text-left mt-3">
+        <div className="flex flex-wrap justify-center gap-1.5">{agentCapabilities(activeAgent).map((cap) => <span key={cap} className="px-2 py-0.5 bg-stone-100 text-stone-600 text-xs rounded-full">{cap}</span>)}</div>
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+         <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+          {t("1-Click Studio Actions", "1-Click Ενέργειες Studio")}
+         </p>
+         <div className="grid grid-cols-1 gap-1.5">
+          {[
+           { label: t("Check Lean Canvas", "Έλεγχος Lean Canvas"), cmd: "/canvas" },
+           { label: t("Check Startup Builder", "Πρόοδος Startup Builder"), cmd: "/builder" },
+           { label: t("Readiness Score Diagnostic", "Δείκτης Ετοιμότητας"), cmd: "/readiness" },
+           { label: t("Rank Top Co-Founder Matches", "Κατάταξη Κορυφαίων Matches"), cmd: "/match" },
+           { label: t("Open 6-Axis Match Modal", "Άνοιγμα 6-Axis Match Modal"), cmd: "/6axis" },
+           { label: t("Open Deal Room & Pitch Deck", "Άνοιγμα Deal Room & Pitch"), cmd: "/dealroom" },
+           { label: t("Inspect Fundraising Round", "Επισκόπηση Γύρου Χρηματοδότησης"), cmd: "/round" },
+          ].map((item) => (
+           <button
+            key={item.cmd}
+            type="button"
+            onClick={() => void messaging.send(item.cmd)}
+            className="flex items-center justify-between w-full px-2.5 py-1.5 text-xs font-medium text-stone-700 bg-white hover:bg-stone-900 hover:text-white rounded-lg border border-stone-200 transition-colors"
+           >
+            <span>{item.label}</span>
+            <span className="font-mono text-[10px] opacity-60">{item.cmd}</span>
+           </button>
+          ))}
+         </div>
+        </div>
+       </div>
       ) : (
        <button type="button" onClick={() => navigate(`/profile/${active.otherId}`)} className="inline-flex items-center gap-1.5 min-h-11 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 transition-all">
         <UserIcon className="w-3 h-3" /> {t("View profile", "Προβολή προφίλ")}

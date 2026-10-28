@@ -31,6 +31,8 @@ export default function Card({
  onClick
 }: CardProps) {
  const paddedByCaller = noPadding || callerSetsPadding(className);
+ // Inverse (dark / accent) cards: the title must not keep the default dark ink.
+ const inverse = /(?:^|\s)bg-(?:stone-900|stone-800|black)(?:\s|$)/.test(className ?? '');
  return (
   <div 
    data-ui="card"
@@ -43,9 +45,9 @@ export default function Card({
    )}
   >
    {(title || subtitle) && (
-    <div className={cn("border-b border-stone-200/60", paddedByCaller ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
-     {title && <h3 className="text-sm font-medium text-stone-900 tracking-tight">{title}</h3>}
-     {subtitle && <p className="text-xs text-stone-400 font-medium tracking-wider mt-0.5">{subtitle}</p>}
+    <div className={cn("border-b", inverse ? "border-white/15" : "border-stone-200/60", paddedByCaller ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
+     {title && <h3 className={cn("text-sm font-medium tracking-tight leading-snug", inverse ? "text-white" : "text-stone-900")}>{title}</h3>}
+     {subtitle && <p className={cn("text-xs font-medium tracking-wider mt-0.5 leading-normal", inverse ? "text-white/85" : "text-stone-400")}>{subtitle}</p>}
     </div>
    )}
    <div data-ui="card-content" className={cn(

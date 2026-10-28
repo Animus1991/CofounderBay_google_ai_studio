@@ -171,15 +171,18 @@ export default function CommunitiesPage() {
  const isJoined = (card: CommunityCardData) =>
   (user ? card.memberIds.includes(user.uid) : false) || localJoined.has(card.id);
 
- const visibleCommunities = cards.filter((community) => {
+ // One rule per tab, used for both the list and the tab's counter.
+ const inTab = (community: CommunityCardData, tab: string) => {
   const q = searchQuery.trim().toLowerCase();
   const matchesQuery = !q || community.name.toLowerCase().includes(q) || community.description.toLowerCase().includes(q) || community.category.toLowerCase().includes(q);
   const joined = isJoined(community);
-  if (activeTab === 'joined') return matchesQuery && joined;
-  if (activeTab === 'trending') return matchesQuery && (community.posts ?? 0) > (isDemoMode ? 80 : 0);
-  if (activeTab === 'new') return matchesQuery && !joined;
+  if (tab === 'joined') return matchesQuery && joined;
+  if (tab === 'trending') return matchesQuery && (community.posts ?? 0) > (isDemoMode ? 80 : 0);
+  if (tab === 'new') return matchesQuery && !joined;
   return matchesQuery;
- });
+ };
+ const visibleCommunities = cards.filter((community) => inTab(community, activeTab));
+ const tabCount = (tab: string) => cards.filter((community) => inTab(community, tab)).length;
 
  const join = async (card: CommunityCardData) => {
   setId(listKeys.communities, card.id, true);
@@ -244,13 +247,14 @@ export default function CommunitiesPage() {
        key={tab}
        onClick={() => setActiveTab(tab)}
        className={cn(
-        "px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all",
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all",
         activeTab === tab
          ? "bg-white text-stone-900 shadow-sm border border-stone-100"
          : "text-stone-500 hover:text-stone-900"
        )}
       >
        {t(tab, TAB_EL[tab])}
+       <span className="min-w-5 px-1.5 rounded-full bg-stone-200/70 text-stone-600 text-xs tabular-nums leading-5">{tabCount(tab)}</span>
       </button>
      ))}
     </div>

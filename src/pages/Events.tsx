@@ -204,6 +204,17 @@ export default function Events(_props: EventsProps = {}) {
    return filtered;
   }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, isDemoMode, now]);
 
+ // A counter on every tab, read from the same list the tab shows.
+ const tabCounts = useMemo(() => {
+  const byType = typeFilter === 'All' ? allEvents : allEvents.filter((e) => e.type === typeFilter);
+  return {
+   Upcoming: byType.filter((e) => isDemoMode || e.startsAt == null || e.startsAt >= now).length,
+   'My Events': byType.filter((e) => registeredEvents.includes(e.id)).length,
+   Past: byType.filter((e) => e.startsAt != null && e.startsAt < now).length,
+   Bookmarked: byType.filter((e) => bookmarkedEvents.includes(e.id)).length,
+  } as Record<string, number>;
+ }, [allEvents, typeFilter, registeredEvents, bookmarkedEvents, isDemoMode, now]);
+
  const featured = allEvents[0] ?? null;
  const typeCounts = useMemo(() => {
   const counts = new Map<Event['type'], number>();
@@ -245,13 +256,16 @@ export default function Events(_props: EventsProps = {}) {
         key={tab}
         onClick={() => setActiveTab(tab)}
         className={cn(
-         "px-4 py-2 text-sm font-medium rounded-lg transition-all",
+         "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
          activeTab === tab 
           ? "bg-stone-900 text-white shadow-sm" 
           : "text-stone-400 hover:text-stone-900 hover:bg-white"
         )}
        >
         {t(tab, TAB_EL[tab])}
+        <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", activeTab === tab ? "bg-white/20 text-white" : "bg-stone-200/70 text-stone-600")}>
+         {tabCounts[tab] ?? 0}
+        </span>
        </button>
       ))}
      </div>
@@ -381,7 +395,7 @@ export default function Events(_props: EventsProps = {}) {
      {featured && (
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
       <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
-      <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3">
+      <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3 bg-stone-900">
        {featured.image ? (
         <img
          src={featured.image}
@@ -396,7 +410,7 @@ export default function Events(_props: EventsProps = {}) {
        )}
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
-        <span className="text-xs font-semibold text-white tracking-wider bg-amber-500 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
+        <span className="text-xs font-semibold text-amber-950 tracking-wider bg-amber-300 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
         <p className="text-white text-sm font-semibold leading-tight">{t(featured.title, featured.titleEl ?? featured.title)}</p>
        </div>
       </div>

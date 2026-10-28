@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { User, Subscription, Invoice } from "../../types";
-import { billingService, MOCK_PLANS } from "../../services/billingService";
+import { billingService, MOCK_PLANS, ALL_PLAN_FEATURE_KEYS, hasPlanFeature } from "../../services/billingService";
 import { keys, readIds, readSessions, readValue, writeValue } from "../../lib/localLists";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
@@ -112,7 +112,9 @@ export default function Billing({ user }: BillingProps) {
  }
 
  return (
-  <div className="space-y-8 max-w-4xl mx-auto">
+  // Same gutters and widest content tier as PageShell — previously this page bypassed
+  // it entirely, so the content rendered flush against the sidebar edge.
+  <div className="space-y-8 w-full max-w-7xl min-w-0 mx-auto px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem]">
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing & Subscription', 'Χρέωση και συνδρομή')}</h1>
@@ -214,18 +216,21 @@ export default function Billing({ user }: BillingProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
        <Card title={t("Included Features", "Δυνατότητες που περιλαμβάνονται")} className="p-6">
         <ul className="space-y-3">
-         {Object.entries(currentPlan?.features ?? {}).map(([key, value]) => (
-          <li key={key} className="flex items-center gap-3 text-sm">
-           {value ? (
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-           ) : (
-            <AlertCircle className="w-4 h-4 text-stone-200" />
-           )}
-           <span className={value ? 'text-stone-900' : 'text-stone-400 line-through'}>
-            {featureLabel(typeof value === 'string' ? value : key)}
-           </span>
-          </li>
-         ))}
+         {ALL_PLAN_FEATURE_KEYS.map((key) => {
+          const enabled = hasPlanFeature(currentPlan?.features, key);
+          return (
+           <li key={key} className="flex items-center gap-3 text-sm">
+            {enabled ? (
+             <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ) : (
+             <AlertCircle className="w-4 h-4 text-stone-300" />
+            )}
+            <span className={enabled ? 'text-stone-900' : 'text-stone-400 line-through'}>
+             {featureLabel(key)}
+            </span>
+           </li>
+          );
+         })}
         </ul>
        </Card>
 

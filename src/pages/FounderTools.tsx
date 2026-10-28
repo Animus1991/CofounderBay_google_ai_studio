@@ -64,6 +64,7 @@ import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, ty
 import { useStored } from "../lib/useStored";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
+import { useUIStore } from "../stores/useUIStore";
 
 interface FounderToolsProps {
  user: User;
@@ -167,6 +168,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
   { id: 'tab-applications', en: 'Open applications', el: 'Άνοιγμα αιτήσεων', run: () => setActiveTab('applications') },
   { id: 'tab-tools', en: 'Open tool library', el: 'Βιβλιοθήκη εργαλείων', run: () => setActiveTab('tools') },
   { id: 'tab-templates', en: 'Open templates', el: 'Πρότυπα', run: () => setActiveTab('templates') },
+  { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
+  { id: 'open-need-wall', en: 'Open Need Wall', el: 'Πίνακας Αναγκών', run: () => useUIStore.getState().setNeedCardWallOpen(true) },
   { id: 'clear-tool-search', en: 'Clear tool search', el: 'Καθάρισε την αναζήτηση εργαλείων', run: () => setSearchQuery('') },
  ], []);
  const [showAssessment, setShowAssessment] = useState(false);
@@ -441,7 +444,23 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
  return (
   <>
-  <PageShell title={t("Founder Tools", "Εργαλεία ιδρυτή")} description={t("Diagnostic and construction suite — from concept to scale.", "Σουίτα διάγνωσης και κατασκευής — από την ιδέα στην κλίμακα.")} maxWidth="full">
+  <PageShell
+   title={t("Founder Tools", "Εργαλεία ιδρυτή")}
+   description={t("Diagnostic and construction suite — from concept to scale.", "Σουίτα διάγνωσης και κατασκευής — από την ιδέα στην κλίμακα.")}
+   maxWidth="full"
+   actions={
+    <button
+     type="button"
+     data-ui="button"
+     onClick={() => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture')}
+     title={t("Preview how your builder answers, pitch and readiness appear to investors and candidates.", "Προεπισκόπηση του πώς εμφανίζονται σε επενδυτές και υποψήφιους οι απαντήσεις του builder, το pitch και η ετοιμότητα.")}
+     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+    >
+     <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+     {t("Preview Deal Room", "Προεπισκόπηση Deal Room")}
+    </button>
+   }
+  >
    <div className="space-y-6">
     {/* Assessment Modal */}
    <AnimatePresence>
@@ -771,23 +790,23 @@ export default function FounderTools({ user }: FounderToolsProps) {
         >
          <div className={cn(
           "w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0",
-          builderStep === step.id ? "bg-white/10 text-white" : "bg-stone-50 text-stone-400 border border-stone-100 group-hover:text-stone-700"
+          builderStep === step.id ? "bg-white border border-stone-300/80 text-stone-900 shadow-2xs" : "bg-stone-50 text-stone-500 border border-stone-100 group-hover:text-stone-700"
          )}>
           <step.icon className="w-3.5 h-3.5" />
          </div>
          <div className="flex-1 min-w-0">
           <p className={cn(
            "text-xs tracking-wider mb-0.5",
-           builderStep === step.id ? "text-stone-400" : "text-stone-400"
+           builderStep === step.id ? "text-stone-600 font-medium" : "text-stone-400"
           )}>{t("Module", "Ενότητα")} {step.id}</p>
-          <h4 className={cn("min-w-0 text-sm font-semibold", builderStep === step.id ? "text-white" : "text-stone-900")}>{moduleName(step.title)}</h4>
+          <h4 className={cn("min-w-0 text-sm font-semibold", builderStep === step.id ? "text-stone-900" : "text-stone-900")}>{moduleName(step.title)}</h4>
          </div>
          {step.status === "Completed" ? (
           <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
            <Check className="w-2.5 h-2.5 text-white" />
           </div>
          ) : step.status === "In-Progress" ? (
-          <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+          <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
            <div className="w-1.5 h-1.5 rounded-full bg-white" />
           </div>
          ) : null}
@@ -878,7 +897,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <h4 className="text-sm font-semibold text-amber-900">{t("Strategic Advisory", "Στρατηγική συμβουλή")}</h4>
          <span className="text-xs font-mono text-amber-600 tracking-wider">{t("Priority:", "Προτεραιότητα:")} {labelOf("High")}</span>
         </div>
-        <p className="text-sm text-amber-800/80 leading-relaxed">
+        <p className="text-sm text-stone-700 leading-relaxed">
          {t("Precision is more valuable than speed at this stage. Ensure your", "Σε αυτό το στάδιο η ακρίβεια μετράει περισσότερο από την ταχύτητα. Βεβαιώσου ότι η")} <span className="font-semibold text-amber-900">{t("Value Proposition", "πρόταση αξίας")}</span> {t("is explicitly linked to a verified market pain point before proceeding.", "συνδέεται ρητά με ένα επαληθευμένο πρόβλημα της αγοράς πριν προχωρήσεις.")}
         </p>
        </div>
@@ -906,19 +925,19 @@ export default function FounderTools({ user }: FounderToolsProps) {
         >
          <div className={cn(
           "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all",
-          pitchSlide === slide.id ? "bg-white/10 text-white" : "bg-stone-50 text-stone-500"
+          pitchSlide === slide.id ? "bg-white border border-stone-300/80 text-stone-900 shadow-2xs" : "bg-stone-50 text-stone-500 border border-stone-100"
          )}>
           <slide.icon className="w-3.5 h-3.5" />
          </div>
          <div className="flex-1 min-w-0">
-          <p className={cn("text-xs font-mono mb-0.5", pitchSlide === slide.id ? "text-white/60" : "text-stone-400")}>{t("Slide", "Διαφάνεια")} {String(slide.id).padStart(2,'0')}</p>
-          <p className="text-sm font-semibold truncate">{slideTitle(slide.title)}</p>
+          <p className={cn("text-xs font-mono mb-0.5", pitchSlide === slide.id ? "text-stone-600 font-medium" : "text-stone-400")}>{t("Slide", "Διαφάνεια")} {String(slide.id).padStart(2,'0')}</p>
+          <p className="text-sm font-semibold text-stone-900 truncate">{slideTitle(slide.title)}</p>
          </div>
          <div className={cn(
           "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-          slide.status === "complete" ? "bg-emerald-500" : slide.status === "in-progress" ? "bg-amber-400" : "bg-stone-200"
+          slide.status === "complete" ? "bg-emerald-500" : slide.status === "in-progress" ? "bg-orange-500" : "bg-stone-200"
          )}>
-          {slide.status === "complete" ? <Check className="w-2.5 h-2.5 text-white" /> : slide.status === "in-progress" ? <div className="w-1 h-1 rounded-full bg-white" /> : null}
+          {slide.status === "complete" ? <Check className="w-2.5 h-2.5 text-white" /> : slide.status === "in-progress" ? <div className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
          </div>
         </button>
        ))}
@@ -966,8 +985,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
               <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto border border-stone-200">
                <s.icon className="w-6 h-6 text-stone-400" />
               </div>
-              <p className="text-stone-400 text-sm font-mono tracking-wide">{t("Slide", "Διαφάνεια")} {pitchSlide} · {slideTitle(s.title)}</p>
-              <p className="text-stone-300 text-sm">{t("Click", "Πάτα")} <span className="text-stone-500">{t("Edit", "Επεξεργασία")}</span> {t("to add content to this slide", "για να προσθέσεις περιεχόμενο σε αυτή τη διαφάνεια")}</p>
+              <p className="text-stone-500 text-sm font-mono tracking-wide">{t("Slide", "Διαφάνεια")} {pitchSlide} · {slideTitle(s.title)}</p>
+              <p className="text-stone-500 text-sm">{t("Click", "Πάτα")} <span className="font-semibold text-stone-700">{t("Edit", "Επεξεργασία")}</span> {t("to add content to this slide", "για να προσθέσεις περιεχόμενο σε αυτή τη διαφάνεια")}</p>
              </>
             );
            })()}
@@ -1185,37 +1204,37 @@ export default function FounderTools({ user }: FounderToolsProps) {
        >
         <Card className={cn("p-5 border rounded-2xl", category.color)}>
          <div className="flex items-start justify-between mb-4">
-          <div className="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-white border border-stone-200/70 flex items-center justify-center shadow-2xs">
            <category.icon className="w-5 h-5" />
           </div>
-          <span className="text-xs font-medium opacity-60">{category.tools.length} {t("tools", "εργαλεία")}</span>
+          <span className="text-xs font-semibold text-stone-600">{category.tools.length} {t("tools", "εργαλεία")}</span>
          </div>
-         <h3 className="text-base font-semibold mb-1">{category.name}</h3>
-         <p className="text-xs opacity-70 mb-4">{category.description}</p>
+         <h3 className="text-base font-semibold text-stone-900 mb-1">{category.name}</h3>
+         <p className="text-xs text-stone-600 mb-4">{category.description}</p>
 
          <div className="space-y-2">
           {(toolQuery ? category.tools : category.tools.slice(0, 3)).map((tool) => (
            <button
             key={tool.id}
             onClick={() => markToolUsed(tool.id)}
-            className="w-full flex items-center gap-2 p-2.5 rounded-lg bg-white/60 hover:bg-white transition-all text-left group"
+            className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-stone-200/60 hover:border-stone-300 hover:shadow-2xs transition-all text-left group"
            >
-            <tool.icon className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100" />
+            <tool.icon className="w-4 h-4 shrink-0 opacity-85 group-hover:opacity-100" />
             <div className="flex-1 min-w-0">
-             <p className="text-xs font-medium truncate">{tool.name}</p>
-             <p className="text-xs opacity-50 truncate">{tool.desc}</p>
+             <p className="text-xs font-semibold text-stone-900 truncate">{tool.name}</p>
+             <p className="text-xs text-stone-500 truncate">{tool.desc}</p>
             </div>
             <Pin 
              className={cn(
-              "w-3 h-3 transition-all cursor-pointer",
-              pinnedTools.includes(tool.id) ? "fill-current" : "opacity-0 group-hover:opacity-100"
+              "w-3.5 h-3.5 shrink-0 transition-all cursor-pointer",
+              pinnedTools.includes(tool.id) ? "fill-current text-stone-900" : "text-stone-400 opacity-0 group-hover:opacity-100"
              )}
              onClick={(e) => { e.stopPropagation(); togglePin(tool.id); }}
             />
            </button>
           ))}
           {!toolQuery && category.tools.length > 3 && (
-           <p className="text-xs opacity-50 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
+           <p className="text-xs font-medium text-stone-600 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
           )}
          </div>
         </Card>
@@ -1255,19 +1274,19 @@ export default function FounderTools({ user }: FounderToolsProps) {
        <Sparkles className="w-4 h-4 text-amber-600" />
        <h4 className="text-sm font-semibold text-amber-900">{t("AI-Recommended for You", "Προτάσεις AI για σένα")}</h4>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
        {aiSuggestions.map((suggestion) => (
-        <div key={suggestion.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-amber-100/50">
-         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-           <suggestion.icon className="w-3.5 h-3.5 text-amber-600" />
+        <div key={suggestion.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white rounded-xl border border-amber-200/60">
+         <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200/70 flex items-center justify-center shrink-0">
+           <suggestion.icon className="w-3.5 h-3.5 text-amber-700" />
           </div>
-          <div>
-           <p className="text-sm font-medium text-stone-900">{suggestion.title}</p>
-           <p className="text-xs text-stone-400">{suggestion.reason}</p>
+          <div className="min-w-0">
+           <p className="text-sm font-semibold text-stone-900">{suggestion.title}</p>
+           <p className="text-xs text-stone-500 leading-relaxed">{suggestion.reason}</p>
           </div>
          </div>
-         <Button size="sm" variant="secondary" className="h-7 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-200" onClick={() => { if (suggestion.id === 1) setActiveTab('pitch'); else if (suggestion.id === 2) setActiveTab('tools'); else setActiveTab('tools'); }}>
+         <Button size="sm" variant="secondary" className="h-8 px-3.5 text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shrink-0 self-start sm:self-center" onClick={() => { if (suggestion.id === 1) setActiveTab('pitch'); else if (suggestion.id === 2) setActiveTab('tools'); else setActiveTab('tools'); }}>
           {suggestion.action}
          </Button>
         </div>

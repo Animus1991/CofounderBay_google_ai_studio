@@ -15,7 +15,7 @@ describe('studioNextStep', () => {
   it('asks for the fit check when looking-for is empty', () => {
     const next = studioNextStep({});
     expect(next.id).toBe('quiz');
-    expect(next.href).toBe('/quiz');
+    expect(next.href).toBe('/quiz?from=/matches');
   });
 
   it('points at a named match when looking-for is filled', () => {

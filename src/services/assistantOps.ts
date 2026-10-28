@@ -35,6 +35,8 @@ import {
   saveProfile,
   saveRequest,
   readChat,
+  appendChatMessage,
+  ensureChatConversation,
   searchChat,
   setId,
   trackApplication,
@@ -50,6 +52,7 @@ import {
   readNotificationPrefs,
   writeNotificationPrefs,
   writeProfileLocal,
+  keys,
   type ActivityKind,
   type NeedCard,
   type NeedField,
@@ -59,7 +62,14 @@ import {
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
+import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
+import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
+import { setGlobalLang } from '../lib/language';
 import { applySwitches, readSwitches, type Switches } from '../lib/privacySwitches';
+import { readAssistantPrefs, writeAssistantPrefs, type AssistantPrefs } from '../lib/assistantPrefs';
+import { topPages, unvisited } from '../lib/usage';
+import { readUxPrefs, writeUxPrefs, pinFavorite } from '../lib/personalization';
+import { navLabel, NAV_PATHS } from '../lib/navMap';
 import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notificationFeed';
 import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
@@ -144,6 +154,9 @@ const SOURCE = {
   invites: { kind: 'people', en: 'Founder invites', el: 'Προσκλήσεις ιδρυτών', href: '/network' },
   saved: { kind: 'people', en: 'Saved people', el: 'Αποθηκευμένα πρόσωπα', href: '/network?tab=saved' },
   requests: { kind: 'people', en: 'Connection requests', el: 'Αιτήματα σύνδεσης', href: '/network' },
+  canvas: { kind: 'tasks', en: 'Lean Canvas · Workspace', el: 'Lean Canvas · Χώρος εργασίας', href: '/workspace' },
+  builder: { kind: 'tasks', en: 'Startup Builder · Founder Tools', el: 'Startup Builder · Εργαλεία ιδρυτή', href: '/founder-tools?step=1' },
+  readiness: { kind: 'tasks', en: 'Readiness Index · Founder Tools', el: 'Δείκτης Ετοιμότητας · Εργαλεία ιδρυτή', href: '/founder-tools' },
 } satisfies Record<string, AssistantSource>;
 
 const TOOL_SOURCES: Record<string, AssistantSource[]> = {
@@ -186,6 +199,10 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   'fit-check': [SOURCE.fit],
   save: [SOURCE.saved],
   connect: [SOURCE.requests],
+  canvas: [SOURCE.canvas],
+  builder: [SOURCE.builder],
+  readiness: [SOURCE.readiness],
+  'studio-modal': [SOURCE.people, SOURCE.round],
 };
 
 export const ASSISTANT_PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
@@ -219,6 +236,21 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/scout', en: 'Propose three people — never send', el: 'Πρότεινε τρεις — χωρίς αποστολή' },
   { cmd: '/need', en: 'List or draft a need card', el: 'Δείξε ή γράψε κάρτα ανάγκης' },
   { cmd: '/next', en: 'What to do first', el: 'Τι να κάνεις πρώτα' },
+  { cmd: '/canvas', en: 'Read or update Lean Canvas sections', el: 'Διάβασε ή ενημέρωσε το Lean Canvas' },
+  { cmd: '/builder', en: 'Read or fill Startup Builder modules', el: 'Διάβασε ή συμπλήρωσε το Startup Builder' },
+  { cmd: '/readiness', en: 'Inspect or update Venture Readiness Index', el: 'Έλεγξε ή ενημέρωσε τον Δείκτη Ετοιμότητας' },
+  { cmd: '/6axis', en: 'Open 6-Axis Match Breakdown (or /6axis Sarah)', el: 'Άνοιξε το modal Ανάλυσης 6 Αξόνων (ή /6axis Sarah)' },
+  { cmd: '/dealroom', en: 'Open Startup Deal Room & Pitch Deck modal', el: 'Άνοιξε το modal Deal Room & Pitch Deck' },
+  { cmd: '/needwall', en: 'Open Startup Need Cards Wall modal', el: 'Άνοιξε τον Πίνακα Αναγκών & Ρόλων Startup' },
+  { cmd: '/tasks', en: 'List or add Workspace tasks', el: 'Δείξε ή πρόσθεσε εργασίες στον Χώρο Εργασίας' },
+  { cmd: '/msg', en: 'Send a direct message (e.g. /msg Sarah: Hello)', el: 'Στείλε άμεσο μήνυμα (π.χ. /msg Sarah: Γεια)' },
+  { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac)' },
+  { cmd: '/lang', en: 'Switch language (/lang el or /lang en)', el: 'Εναλλαγή γλώσσας (/lang el ή /lang en)' },
+  { cmd: '/style', en: 'How I reply: /style short | balanced | detailed, friendly | direct | formal, emoji on | off', el: 'Πώς απαντώ: /style short | balanced | detailed, friendly | direct | formal, emoji on | off' },
+  { cmd: '/coach', en: 'UX coach: reads how you use the app and suggests shortcuts', el: 'UX coach: διαβάζει πώς χρησιμοποιείς την εφαρμογή και προτείνει συντομεύσεις' },
+  { cmd: '/pin', en: 'Pin a page to your sidebar (/pin matches)', el: 'Καρφίτσωσε σελίδα στο μενού (/pin matches)' },
+  { cmd: '/unpin', en: 'Remove a pinned page (/unpin matches)', el: 'Ξεκαρφίτσωσε σελίδα (/unpin matches)' },
+  { cmd: '/home', en: 'Choose the page you land on (/home matches, /home off)', el: 'Διάλεξε σε ποια σελίδα προσγειώνεσαι (/home matches, /home off)' },
   { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον περιηγητή' },
   { cmd: '/plan', en: 'Write a 7-day match plan', el: 'Γράψε πλάνο 7 ημερών' },
   { cmd: '/invite', en: 'Prepare three founder invites', el: 'Ετοίμασε τρεις προσκλήσεις ιδρυτών' },
@@ -1527,9 +1559,13 @@ function sessionAddResult(query: string, propose: boolean): AssistantResult {
   const title = meeting ? 'Investor meeting' : 'Studio event';
   const sessionId = `ses-studio-${Date.now()}`;
   let logged: LoggedWrite | null = null;
+  // "on 2026-11-05" (e.g. from the Calendar's empty day) schedules that day; otherwise tomorrow.
+  const dayMatch = query.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  const onDay = dayMatch ? new Date(Number(dayMatch[1]), Number(dayMatch[2]) - 1, Number(dayMatch[3]), 10, 0, 0, 0) : null;
+  const dayLabel = onDay && !Number.isNaN(onDay.getTime()) ? onDay.toISOString().slice(0, 10) : null;
   const apply = (): AssistantResult => {
-    const when = new Date();
-    when.setDate(when.getDate() + 1);
+    const when = dayLabel && onDay ? new Date(onDay) : new Date();
+    if (!dayLabel) when.setDate(when.getDate() + 1);
     when.setHours(10, 0, 0, 0);
     addSession({
       id: sessionId,
@@ -1545,8 +1581,8 @@ function sessionAddResult(query: string, propose: boolean): AssistantResult {
     logActivity({ ...logged, byAssistant: true });
     return {
       tool: 'session-add',
-      en: `Put “${title}” on Calendar for tomorrow 10:00. Same list the Calendar page reads.`,
-      el: `Μπήκε το «${title}» στο Ημερολόγιο για αύριο 10:00. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
+      en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} 10:00. Same list the Calendar page reads.`,
+      el: `Μπήκε το «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} 10:00. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
       href: '/calendar',
       links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
     };
@@ -1554,7 +1590,7 @@ function sessionAddResult(query: string, propose: boolean): AssistantResult {
   if (!propose) return apply();
   return proposalResult(
     {
-      summary: { en: `Put “${title}” on Calendar for tomorrow 10:00?`, el: `Προσθήκη «${title}» στο Ημερολόγιο για αύριο 10:00;` },
+      summary: { en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} 10:00?`, el: `Προσθήκη «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} 10:00;` },
       reversal: 'full',
       apply,
       undo: () => { removeSession(sessionId); logUndo(logged); },
@@ -2111,14 +2147,656 @@ function fitCheckResult(): AssistantResult {
 function helpResult(): AssistantResult {
   return {
     tool: 'help',
-    en: 'I read the same lists as the rest of the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “search my messages for intro”, “set monthly burn to 18k”, “hide my email”, “change my headline to …”, “mark all notifications read”, or type /match /scout /need /next /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.',
-    el: 'Διαβάζω τις ίδιες λίστες με την υπόλοιπη εφαρμογή. Δοκίμασε: «ποια είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το burn σε 18k», «κρύψε το email μου», «όρισε την τοποθεσία μου σε …», «σήμανε όλες τις ειδοποιήσεις ως αναγνωσμένες», ή πληκτρολόγησε /match /scout /need /next /inbox /plan /help. Φίλτραρε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.',
+    en: `I read and write the exact same lists as every page and modal in the studio. Try: “who is my best match”, “propose three people”, “draft a need card”, “what should I do first”, “set canvas problem to …”, “set builder problem to …”, “readiness score”, “open 6-axis match”, “open deal room”, “set monthly burn to 18k”, “hide my email”, “change my headline to …”, or type /match /scout /need /next /canvas /builder /readiness /6axis /dealroom /inbox /plan /invite /round /quiz /overdue /help. Narrow people with role: location: skill: industry: stage: (Greek: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Type @ to pin a person, /new to start over.`,
+    el: `Διαβάζω και γράφω τις ίδιες λίστες με κάθε σελίδα και modal της πλατφόρμας. Δοκίμασε: «ποια είναι η καλύτερη αντιστοίχιση», «πρότεινε τρεις», «γράψε κάρτα ανάγκης», «τι να κάνω πρώτα», «όρισε το canvas problem σε …», «όρισε το builder problem σε …», «δείξε readiness score», «άνοιξε 6-axis match», «άνοιξε deal room», «όρισε το burn σε 18k», ή πληκτρολόγησε /match /scout /need /next /canvas /builder /readiness /6axis /dealroom /inbox /plan /help. Φίλτραρε ανθρώπους με role: location: skill: industry: stage: (ελληνικά: ρόλος: τόπος: δεξιότητα: κλάδος: στάδιο:). Πληκτρολόγησε @ για άτομο, /new για νέα συνομιλία.`,
     links: [
       { href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
-      { href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
+      { href: '/workspace', en: 'Workspace & Canvas', el: 'Χώρος Εργασίας & Canvas' },
+      { href: '/founder-tools', en: 'Founder Tools & Builder', el: 'Εργαλεία Ιδρυτή & Builder' },
       { href: '/fundraising', en: 'Fundraising', el: 'Χρηματοδότηση' },
     ],
   };
+}
+
+const CANVAS_FIELDS: { key: string; en: string; el: string; aliases: string[] }[] = [
+  { key: 'problem', en: 'Problem', el: 'Πρόβλημα', aliases: ['problem', 'προβλημα', 'πρόβλημα'] },
+  { key: 'solution', en: 'Solution', el: 'Λύση', aliases: ['solution', 'λυση', 'λύση'] },
+  { key: 'keyMetrics', en: 'Key Metrics', el: 'Βασικές Μετρικές', aliases: ['key metrics', 'metrics', 'keymetrics', 'μετρικες', 'μετρικές'] },
+  { key: 'uvp', en: 'Unique Value Prop', el: 'Μοναδική Πρόταση Αξίας', aliases: ['uvp', 'value prop', 'unique value', 'προταση αξιας', 'πρόταση αξίας'] },
+  { key: 'advantage', en: 'Unfair Advantage', el: 'Αθέμιτο Πλεονέκτημα', aliases: ['unfair advantage', 'advantage', 'πλεονεκτημα', 'πλεονέκτημα'] },
+];
+
+const DEMO_CANVAS_FALLBACK: Record<string, string> = {
+  problem: 'Existing solutions are too complex and expensive for early-stage startups.',
+  solution: 'A minimalist, AI-powered workspace designed specifically for founders.',
+  keyMetrics: 'Daily Active Users, Task Completion Rate, Retention.',
+  uvp: 'The only workspace that actively guides you through the startup lifecycle.',
+  advantage: 'Proprietary AI matching engine and exclusive mentor network.',
+};
+
+const cleanText = (v: string) => v.trim().replace(/^[“"«']+|[”"»'.]+$/g, '').trim();
+
+function canvasResult(query: string, propose: boolean): AssistantResult {
+  const current = readValue<Record<string, string>>(keys.canvas, {});
+  const effective: Record<string, string> = isDemoData() ? { ...DEMO_CANVAS_FALLBACK, ...current } : current;
+  const links: AssistantLink[] = [{ href: '/workspace', en: 'Open Workspace Canvas', el: 'Άνοιγμα Lean Canvas' }];
+
+  const writeMatch = query.match(/(?:set|update|change|write|fill|ορισε|όρισε|αλλαξε|άλλαξε|γραψε|γράψε)\s+(?:the\s+)?(?:lean\s+)?(?:canvas\s+)?(problem|solution|key\s*metrics|metrics|uvp|value\s*prop|unfair\s*advantage|advantage|προβλημα|πρόβλημα|λυση|λύση|μετρικες|μετρικές|προταση\s*αξιας|πρόταση\s*αξίας|πλεονεκτημα|πλεονέκτημα)\s*(?:to|as|in|σε|:|=)\s+(.+)$/i)
+    || query.match(/^(?:\/canvas\s+)?(problem|solution|keymetrics|metrics|uvp|advantage|προβλημα|λυση|μετρικες|πλεονεκτημα)\s*[:=]\s*(.+)$/i);
+
+  if (writeMatch) {
+    const rawField = fold(writeMatch[1] || '');
+    const nextVal = cleanText(writeMatch[2] || '');
+    const target = CANVAS_FIELDS.find((f) => f.aliases.some((a) => rawField.includes(fold(a))));
+    if (target && nextVal) {
+      const before = { ...current };
+      let logged: LoggedWrite | null = null;
+      const apply = (): AssistantResult => {
+        writeValue(keys.canvas, { ...before, [target.key]: nextVal });
+        logged = { kind: 'milestone', title: `Updated Lean Canvas · ${target.en}`, titleEl: `Ενημερώθηκε το Lean Canvas · ${target.el}`, href: '/workspace' };
+        logActivity({ ...logged, byAssistant: true });
+        return {
+          tool: 'canvas',
+          en: `Updated Lean Canvas → ${target.en} to “${nextVal}”. Open Workspace → Canvas to inspect or edit all 5 sections.`,
+          el: `Ενημερώθηκε το Lean Canvas → ${target.el} σε «${nextVal}». Άνοιξε Χώρος Εργασίας → Canvas για όλες τις 5 ενότητες.`,
+          href: '/workspace',
+          links,
+        };
+      };
+      if (!propose) return apply();
+      return proposalResult(
+        {
+          summary: {
+            en: `Set Lean Canvas → ${target.en} to “${nextVal}”?`,
+            el: `Ορισμός Lean Canvas → ${target.el} σε «${nextVal}»;`,
+          },
+          reversal: 'full',
+          apply,
+          undo: () => {
+            writeValue(keys.canvas, before);
+            logUndo(logged);
+          },
+        },
+        { tool: 'canvas', href: '/workspace', links },
+      );
+    }
+  }
+
+  const filledCount = CANVAS_FIELDS.filter((f) => (effective[f.key] || '').trim().length > 0).length;
+  const summaryEn = CANVAS_FIELDS.map((f) => `${f.en}: ${(effective[f.key] || 'empty').trim()}`).join(' · ');
+  const summaryEl = CANVAS_FIELDS.map((f) => `${f.el}: ${(effective[f.key] || 'κενό').trim()}`).join(' · ');
+  return {
+    tool: 'canvas',
+    en: `Lean Canvas (${filledCount}/5 sections filled on Workspace → Canvas): ${summaryEn}. To update a section right from chat, say “set canvas problem to …” or “set canvas uvp to …”.`,
+    el: `Lean Canvas (${filledCount}/5 ενότητες συμπληρωμένες στο Χώρος Εργασίας → Canvas): ${summaryEl}. Για ενημέρωση από το chat, πες «όρισε το canvas problem σε …» ή «/canvas uvp: …».`,
+    href: '/workspace',
+    links,
+  };
+}
+
+function builderResult(query: string, propose: boolean): AssistantResult {
+  const inputs = readBuilderInputs();
+  const rawStored = readValue<Record<string, string>>(keys.builderInputs, {});
+  const links: AssistantLink[] = [
+    { href: '/founder-tools?step=1', en: 'Open Startup Builder', el: 'Άνοιγμα Startup Builder' },
+    { href: '/workspace', en: 'Open Workspace Builder', el: 'Άνοιγμα Builder στον Χώρο Εργασίας' },
+  ];
+
+  const writeMatch = query.match(/(?:set|update|fill|write|ορισε|όρισε|συμπληρωσε|συμπλήρωσε|γραψε|γράψε)\s+(?:the\s+)?(?:startup\s+)?(?:builder\s+)?(problem|solution|market|business\s*model|model|gtm|go-to-market|module\s*[1-5]|προβλημα|πρόβλημα|λυση|λύση|αγορα|αγορά|μοντελο|μοντέλο|στρατηγικη)\s*(?:to|as|in|σε|:|=)\s+(.+)$/i)
+    || query.match(/^(?:\/builder\s+)?(problem|solution|market|model|gtm|[1-5])\s*[:=]\s*(.+)$/i);
+
+  if (writeMatch) {
+    const token = fold(writeMatch[1] || '');
+    const value = cleanText(writeMatch[2] || '');
+    const modId =
+      /1|problem|προβλημ/.test(token) ? 1 :
+      /2|solution|λυσ/.test(token) ? 2 :
+      /3|market|αγορ/.test(token) ? 3 :
+      /4|model|μοντελ/.test(token) ? 4 :
+      /5|gtm|go-to-market|στρατηγικ/.test(token) ? 5 : 0;
+    const mod = BUILDER_MODULES.find((m) => m.id === modId);
+    if (mod && value) {
+      const before = { ...rawStored };
+      let logged: LoggedWrite | null = null;
+      const apply = (): AssistantResult => {
+        writeValue(keys.builderInputs, { ...before, [`${mod.id}-0`]: value });
+        logged = { kind: 'milestone', title: `Updated Builder · ${mod.title}`, titleEl: `Ενημερώθηκε το Builder · ${mod.titleEl}`, href: `/founder-tools?step=${mod.id}` };
+        logActivity({ ...logged, byAssistant: true });
+        return {
+          tool: 'builder',
+          en: `Saved to Startup Builder → ${mod.title}: “${value}”. Same field Founder Tools → Builder and Workspace → Builder read.`,
+          el: `Αποθηκεύτηκε στο Startup Builder → ${mod.titleEl}: «${value}». Το ίδιο πεδίο που διαβάζουν τα Εργαλεία Ιδρυτή και ο Χώρος Εργασίας.`,
+          href: `/founder-tools?step=${mod.id}`,
+          links,
+        };
+      };
+      if (!propose) return apply();
+      return proposalResult(
+        {
+          summary: {
+            en: `Save “${value}” to Startup Builder → ${mod.title}?`,
+            el: `Αποθήκευση «${value}» στο Startup Builder → ${mod.titleEl};`,
+          },
+          reversal: 'full',
+          apply,
+          undo: () => {
+            writeValue(keys.builderInputs, before);
+            logUndo(logged);
+          },
+        },
+        { tool: 'builder', href: `/founder-tools?step=${mod.id}`, links },
+      );
+    }
+  }
+
+  const statuses = BUILDER_MODULES.map((m) => {
+    const st = builderStatus(m.id, inputs);
+    return { ...m, ...st };
+  });
+  const completed = statuses.filter((s) => s.status === 'Completed').length;
+  const inProgress = statuses.filter((s) => s.status === 'In-Progress').length;
+  const listEn = statuses.map((s) => `${s.id}. ${s.title} (${s.filled}/${s.total})`).join(', ');
+  const listEl = statuses.map((s) => `${s.id}. ${s.titleEl} (${s.filled}/${s.total})`).join(', ');
+
+  return {
+    tool: 'builder',
+    en: `Startup Builder has ${completed} completed and ${inProgress} in-progress modules: ${listEn}. Say “set builder problem to …” or “/builder market: …” to write directly into any module.`,
+    el: `Το Startup Builder έχει ${completed} ολοκληρωμένες και ${inProgress} σε εξέλιξη ενότητες: ${listEl}. Πες «όρισε το builder problem σε …» ή «/builder market: …» για απευθείας εγγραφή.`,
+    href: '/founder-tools?step=1',
+    links,
+  };
+}
+
+function readinessResult(query: string, propose: boolean): AssistantResult {
+  const saved = readValue<Record<string, unknown>>('cfb.startup', {});
+  const name = typeof saved.name === 'string' && saved.name ? saved.name : (isDemoData() ? 'EcoFlow Systems' : 'Your Venture');
+  const oneLiner = typeof saved.oneLiner === 'string' && saved.oneLiner ? saved.oneLiner : (isDemoData() ? 'Next-gen water purification for urban environments.' : '');
+  const score = typeof saved.readinessScore === 'number' ? saved.readinessScore : (isDemoData() ? 68 : 0);
+  const links: AssistantLink[] = [
+    { href: '/founder-tools', en: 'Open Founder Tools & Readiness', el: 'Άνοιγμα Εργαλείων Ιδρυτή & Ετοιμότητας' },
+    { href: '/insights', en: 'Open Insights', el: 'Άνοιγμα Στατιστικών' },
+  ];
+
+  const nameMatch = query.match(/(?:set|change|update|ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:my\s+)?(?:startup|venture)\s+(?:name|ονομα|όνομα)\s+(?:to|σε)\s+(.+)$/i);
+  const linerMatch = query.match(/(?:set|change|update|ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:my\s+)?(?:startup\s+|venture\s+)?(?:one-?liner|pitch\s+line)\s+(?:to|σε)\s+(.+)$/i);
+  if (nameMatch || linerMatch) {
+    const field = nameMatch ? 'name' : 'oneLiner';
+    const nextVal = cleanText((nameMatch?.[1] ?? linerMatch?.[1]) || '');
+    if (nextVal) {
+      const before = { ...saved };
+      let logged: LoggedWrite | null = null;
+      const apply = (): AssistantResult => {
+        writeValue('cfb.startup', { ...before, [field]: nextVal, updatedAt: new Date().toISOString() });
+        logged = { kind: 'profile', title: `Updated venture ${field === 'name' ? 'name' : 'one-liner'}`, titleEl: `Ενημερώθηκε το ${field === 'name' ? 'όνομα' : 'one-liner'} του venture`, href: '/founder-tools' };
+        logActivity({ ...logged, byAssistant: true });
+        return {
+          tool: 'readiness',
+          en: `Updated venture ${field === 'name' ? 'name' : 'one-liner'} to “${nextVal}” on Founder Tools.`,
+          el: `Ενημερώθηκε το ${field === 'name' ? 'όνομα' : 'one-liner'} του venture σε «${nextVal}» στα Εργαλεία Ιδρυτή.`,
+          href: '/founder-tools',
+          links,
+        };
+      };
+      if (!propose) return apply();
+      return proposalResult(
+        {
+          summary: {
+            en: `Set venture ${field === 'name' ? 'name' : 'one-liner'} to “${nextVal}”?`,
+            el: `Ορισμός ${field === 'name' ? 'ονόματος' : 'one-liner'} venture σε «${nextVal}»;`,
+          },
+          reversal: 'full',
+          apply,
+          undo: () => {
+            writeValue('cfb.startup', before);
+            logUndo(logged);
+          },
+        },
+        { tool: 'readiness', href: '/founder-tools', links },
+      );
+    }
+  }
+
+  return {
+    tool: 'readiness',
+    en: `${name}${oneLiner ? ` — “${oneLiner}”` : ''} has a Startup Readiness Index of ${score}/100 across Team Composition, Market Validation, Product/Tech, Financial Planning, and Pitch Readiness. Open Founder Tools to run the 5-step diagnostic or say “set startup name to …”.`,
+    el: `Το ${name}${oneLiner ? ` — «${oneLiner}»` : ''} έχει Δείκτη Ετοιμότητας ${score}/100 (Σύνθεση Ομάδας, Επικύρωση Αγοράς, Προϊόν/Τεχνολογία, Οικονομικός Σχεδιασμός, Ετοιμότητα Pitch). Άνοιξε τα Εργαλεία Ιδρυτή για το διαγνωστικό 5 βημάτων ή πες «όρισε το startup name σε …».`,
+    href: '/founder-tools',
+    links,
+  };
+}
+
+function studioModalResult(kind: '6axis' | 'dealroom' | 'needwall', query = '', profile?: AssistantProfile | null): AssistantResult {
+  const ui = useUIStore.getState();
+  if (kind === '6axis') {
+    const person = query ? namedPerson(query) : undefined;
+    const targetId = person ? person.id : 'fp-1';
+    ui.setMatchBreakdownModalOpen(true, targetId);
+    if (person) {
+      const fit = compatibility(fromProfile(profile ?? null), fromCast(person));
+      const scoreText = fit.score != null ? ` (${fit.score}% compatibility)` : '';
+      const scoreTextEl = fit.score != null ? ` (${fit.score}% συμβατότητα)` : '';
+      return {
+        tool: 'studio-modal',
+        en: `Opened the 6-Axis Match Breakdown modal for ${person.fullName}${scoreText} — inspecting Role Complementarity, Skills Synergy, Stage, Commitment, Location, and Verification.`,
+        el: `Άνοιξε το modal Ανάλυσης Συμβατότητας 6 Αξόνων για ${person.fullName}${scoreTextEl} — έλεγχος Συμπληρωματικότητας Ρόλου, Δεξιοτήτων, Σταδίου, Δέσμευσης, Τοποθεσίας & Επαλήθευσης.`,
+        href: `/profile/${person.id}`,
+        links: [
+          { href: `/profile/${person.id}`, en: `Open ${person.fullName}`, el: `Άνοιγμα ${person.fullName}` },
+          { href: '/matches', en: 'Open Matches', el: 'Άνοιγμα Αντιστοιχίσεων' },
+        ],
+      };
+    }
+    return {
+      tool: 'studio-modal',
+      en: 'Opened the 6-Axis Match Breakdown modal (Skills, Stage, Industry, Commitment, Workstyle, Values Radar + Risk Flags & Icebreaker Prompts). You can also say “/6axis Sarah Chen” for any founder.',
+      el: 'Άνοιξε το modal Ανάλυσης Συμβατότητας 6 Αξόνων (Δεξιότητες, Στάδιο, Κλάδος, Δέσμευση, Τρόπος Εργασίας, Αξίες + Risk Flags & Icebreakers). Μπορείς επίσης να πεις «/6axis Sarah Chen» για κάθε ιδρυτή.',
+      href: '/matches',
+      links: [{ href: '/matches', en: 'Open Matches', el: 'Άνοιγμα Αντιστοιχίσεων' }],
+    };
+  }
+  if (kind === 'dealroom') {
+    const folded = fold(query);
+    const startupId = /\b(create|new|launch|νεα|δημιουργ)\b/.test(folded)
+      ? 'create'
+      : /\b(browse|other|others|startups|all|αλλες|άλλες|ολες|όλες)\b/.test(folded)
+        ? 'sv-1'
+        : 'sv-my-venture';
+    ui.setDealRoomModalOpen(true, startupId);
+    return {
+      tool: 'studio-modal',
+      en: startupId === 'create'
+        ? 'Opened the Startup Deal Room modal in Create Venture mode.'
+        : 'Opened the Startup Deal Room & Pitch Deck modal (Overview, Pitch Deck Slides, Traction KPIs, Open Roles, and Investor Commit — synchronized with your Venture & Fundraising Round).',
+      el: startupId === 'create'
+        ? 'Άνοιξε το modal Startup Deal Room σε λειτουργία Δημιουργίας Νέας Startup.'
+        : 'Άνοιξε το modal Startup Deal Room & Pitch Deck (Επισκόπηση, Διαφάνειες Pitch Deck, Μετρικές Traction, Ανοιχτοί Ρόλοι & Επενδυτικό Ενδιαφέρον — συγχρονισμένο με το Venture & τον Γύρο Χρηματοδότησης).',
+      href: '/fundraising',
+      links: [{ href: '/fundraising', en: 'Open Fundraising', el: 'Άνοιγμα Χρηματοδότησης' }],
+    };
+  }
+  ui.setNeedWallModalOpen(true);
+  return {
+    tool: 'studio-modal',
+    en: 'Opened the Startup Role Need Cards Wall modal (synchronized live with your /need cards and Network).',
+    el: 'Άνοιξε το modal Πίνακα Αναγκών & Ρόλων Startup (συγχρονισμένο σε πραγματικό χρόνο με τις κάρτες /need και το Δίκτυο).',
+    href: '/network?tab=needs',
+    links: [{ href: '/network?tab=needs', en: 'Open Need Cards', el: 'Άνοιγμα Καρτών Ανάγκης' }],
+  };
+}
+
+function styleResult(query: string, propose: boolean): AssistantResult {
+  const folded = fold(query);
+  const before = readAssistantPrefs();
+  const patch: Partial<AssistantPrefs> = {};
+  if (/\b(short|shorter|brief|συντομ)/.test(folded)) patch.length = 'short';
+  else if (/\b(detailed|longer|thorough|αναλυτικ)/.test(folded)) patch.length = 'detailed';
+  else if (/\b(balanced|normal|ισορροπ)/.test(folded)) patch.length = 'balanced';
+  if (/\b(direct|plain|αμεσ)/.test(folded)) patch.tone = 'direct';
+  else if (/\b(formal|επισημ)/.test(folded)) patch.tone = 'formal';
+  else if (/\b(friendly|warm|φιλικ)/.test(folded)) patch.tone = 'friendly';
+  if (/emoji\s*(on|yes|ναι)|with emoji|με emoji/.test(folded)) patch.emoji = true;
+  else if (/emoji\s*(off|no|οχι)|no emoji|χωρις emoji/.test(folded)) patch.emoji = false;
+  const links: AssistantLink[] = [{ href: '/settings', en: 'Open Settings', el: 'Άνοιγμα Ρυθμίσεων' }];
+  const describe = (p: AssistantPrefs) => `${p.length} · ${p.tone} · emoji ${p.emoji ? 'on' : 'off'}`;
+  if (Object.keys(patch).length === 0) {
+    return {
+      tool: 'settings-set',
+      en: `I reply ${describe(before)}. Change it with “/style short”, “/style detailed formal” or “/style emoji on” — or in Settings → Assistant replies.`,
+      el: `Απαντώ ${describe(before)}. Άλλαξέ το με «/style short», «/style detailed formal» ή «/style emoji on» — ή στις Ρυθμίσεις → Απαντήσεις βοηθού.`,
+      href: '/settings',
+      links,
+    };
+  }
+  const next = { ...before, ...patch };
+  const apply = (): AssistantResult => {
+    writeAssistantPrefs(patch);
+    logActivity({ kind: 'profile', title: `Assistant replies: ${describe(next)}`, titleEl: `Απαντήσεις βοηθού: ${describe(next)}`, href: '/settings', byAssistant: true });
+    return {
+      tool: 'settings-set',
+      en: `From now on I reply ${describe(next)}. Same setting as Settings → Assistant replies.`,
+      el: `Από τώρα απαντώ ${describe(next)}. Ίδια ρύθμιση με Ρυθμίσεις → Απαντήσεις βοηθού.`,
+      href: '/settings',
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Reply ${describe(next)} from now on?`, el: `Να απαντώ ${describe(next)} από τώρα;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeAssistantPrefs(before); },
+    },
+    { tool: 'settings-set', href: '/settings', links },
+  );
+}
+
+function resolvePageArg(query: string): string | undefined {
+  const folded = fold(query).replace(/^\/+|\/+$/g, '').trim();
+  if (!folded) return undefined;
+  return NAV_PATHS.find((path) => {
+    const stem = path.slice(1);
+    const label = navLabel(path);
+    return folded === stem || folded === fold(label.en) || folded === fold(label.el ?? '')
+      || stem.endsWith(`/${folded}`) || stem.split('/').pop() === folded;
+  });
+}
+
+function coachResult(propose: boolean): AssistantResult {
+  const top = topPages(6);
+  const ux = readUxPrefs();
+  const links: AssistantLink[] = [{ href: '/dashboard', en: 'Open dashboard', el: 'Άνοιγμα πίνακα' }];
+  const unpinned = top.filter((row) => row.path !== '/' && !ux.favorites.includes(row.path) && !['/dashboard', '/messages'].includes(row.path));
+  if (top.length === 0) {
+    return {
+      tool: 'coach',
+      en: 'I haven’t seen enough of how you use the app yet to coach you. Browse a few pages — after a couple of visits I can suggest shortcuts, pins and a home page based on where you actually spend time.',
+      el: 'Δεν έχω δει ακόμα αρκετή χρήση για να προτείνω βελτιώσεις. Περίηγήσου λίγο — μετά από μερικές επισκέψεις μπορώ να προτείνω συντομεύσεις, καρφιτσώματα και αρχική σελίδα με βάση το πού περνάς πραγματικά χρόνο.',
+      href: '/dashboard',
+      links,
+    };
+  }
+  const unseen = unvisited(NAV_PATHS).slice(0, 3);
+  const unseenLine = unseen.length
+    ? ` Not visited yet: ${unseen.map((path) => navLabel(path).en).join(', ')} — worth a look if relevant.`
+    : '';
+  const lines = [
+    `Most visited: ${top.map((row) => `${navLabel(row.path).en} ×${row.count}`).join(', ')}.`,
+    ux.favorites.length ? `Pinned: ${ux.favorites.map((path) => navLabel(path).en).join(', ')}.` : 'Nothing pinned yet.',
+    ux.homePath ? `Home page: ${navLabel(ux.homePath).en}.` : 'Home page: landing (say “/home matches” to change it).',
+  ];
+  if (unpinned.length === 0) {
+    return {
+      tool: 'coach',
+      en: `${lines.join(' ')}${unseenLine} Your frequent pages are already reachable — say “/pin <page>” or “/home <page>” to adjust.`,
+      el: `${lines.join(' ')}${unseenLine} Οι συχνές σελίδες σου είναι ήδη προσβάσιμες — πες «/pin <σελίδα>» ή «/home <σελίδα>» για προσαρμογή.`,
+      href: '/dashboard',
+      links,
+    };
+  }
+  const toPin = unpinned.slice(0, 2).map((row) => row.path);
+  const names = toPin.map((path) => navLabel(path).en).join(' & ');
+  const apply = (): AssistantResult => {
+    toPin.forEach((path) => pinFavorite(path));
+    logActivity({ kind: 'profile', title: `Pinned ${names}`, titleEl: `Καρφίτσωσα ${names}`, href: toPin[0], byAssistant: true });
+    return {
+      tool: 'coach',
+      en: `Pinned ${names} to the top of your sidebar. Unpin anytime with the page star or “/unpin”.`,
+      el: `Καρφίτσωσα ${names} στην κορυφή του μενού. Ξεκαρφίτσωσε με το αστέρι της σελίδας ή «/unpin».`,
+      href: toPin[0],
+      links,
+    };
+  };
+  if (!propose) return apply();
+  const before = [...ux.favorites];
+  return proposalResult(
+    {
+      summary: { en: `You visit ${names} often — pin them to your sidebar?`, el: `Επισκέπτεσαι συχνά ${names} — να τα καρφιτσώσω στο μενού;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeUxPrefs({ favorites: before }); },
+    },
+    { tool: 'coach', href: '/dashboard', links },
+  );
+}
+
+function pinResult(query: string, propose: boolean): AssistantResult {
+  const ux = readUxPrefs();
+  if (!query.trim()) {
+    return {
+      tool: 'pin',
+      en: ux.favorites.length
+        ? `Pinned pages: ${ux.favorites.map((path) => navLabel(path).en).join(', ')}. Pin another with “/pin matches”.`
+        : 'Nothing pinned yet. Use “/pin matches” or the star on any page header.',
+      el: ux.favorites.length
+        ? `Καρφιτσωμένες: ${ux.favorites.map((path) => navLabel(path).el).join(', ')}. Καρφίτσωσε άλλη με «/pin matches».`
+        : 'Τίποτα καρφιτσωμένο. Πες «/pin matches» ή πάτα το αστέρι στην κεφαλίδα σελίδας.',
+      links: [],
+    };
+  }
+  const path = resolvePageArg(query);
+  if (!path) {
+    return {
+      tool: 'pin',
+      en: `I don’t know a page called “${query.trim()}”. Try “/pin matches”, “/pin events”, “/pin fundraising”…`,
+      el: `Δεν ξέρω σελίδα «${query.trim()}». Δοκίμασε «/pin matches», «/pin events», «/pin fundraising»…`,
+      links: [],
+    };
+  }
+  const label = navLabel(path);
+  const pageLink: AssistantLink[] = [{ href: path, en: `Open ${label.en}`, el: `Άνοιγμα ${label.el}` }];
+  if (ux.favorites.includes(path)) {
+    return { tool: 'pin', en: `${label.en} is already pinned.`, el: `${label.el} είναι ήδη καρφιτσωμένη.`, href: path, links: pageLink };
+  }
+  const apply = (): AssistantResult => {
+    pinFavorite(path);
+    logActivity({ kind: 'profile', title: `Pinned ${label.en}`, titleEl: `Καρφίτσωσα ${label.el}`, href: path, byAssistant: true });
+    return {
+      tool: 'pin',
+      en: `Pinned ${label.en} — it now sits at the top of your sidebar.`,
+      el: `Καρφίτσωσα ${label.el} — βρίσκεται τώρα στην κορυφή του μενού.`,
+      href: path,
+      links: pageLink,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Pin ${label.en} to your sidebar?`, el: `Καρφίτσωμα ${label.el} στο μενού;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeUxPrefs({ favorites: ux.favorites }); },
+    },
+    { tool: 'pin', href: path, links: pageLink },
+  );
+}
+
+function unpinResult(query: string, propose: boolean): AssistantResult {
+  const ux = readUxPrefs();
+  const path = resolvePageArg(query);
+  if (!path || !ux.favorites.includes(path)) {
+    return {
+      tool: 'pin',
+      en: path ? `${navLabel(path).en} isn’t pinned.` : `Nothing pinned called “${query.trim()}”.`,
+      el: path ? `${navLabel(path).el} δεν είναι καρφιτσωμένη.` : `Τίποτα καρφιτσωμένο ως «${query.trim()}».`,
+      links: [],
+    };
+  }
+  const label = navLabel(path);
+  const apply = (): AssistantResult => {
+    writeUxPrefs({ favorites: ux.favorites.filter((f) => f !== path) });
+    return {
+      tool: 'pin',
+      en: `Unpinned ${label.en}.`,
+      el: `Ξεκαρφίτσωσα ${label.el}.`,
+      links: [],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Unpin ${label.en} from your sidebar?`, el: `Ξεκαρφίτσωμα ${label.el} από το μενού;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeUxPrefs({ favorites: ux.favorites }); },
+    },
+    { tool: 'pin', links: [] },
+  );
+}
+
+function homeResult(query: string, propose: boolean): AssistantResult {
+  const ux = readUxPrefs();
+  const folded = fold(query).trim();
+  if (!folded) {
+    return {
+      tool: 'home',
+      en: ux.homePath ? `You land on ${navLabel(ux.homePath).en}. Change with “/home matches”, clear with “/home off”.` : 'You land on the dashboard by default. Say “/home matches” to land somewhere else.',
+      el: ux.homePath ? `Προσγειώνεσαι σε ${navLabel(ux.homePath).el}. Άλλαξε με «/home matches», καθάρισε με «/home off».` : 'Προσγειώνεσαι στον πίνακα. Πες «/home matches» για αλλαγή.',
+      links: ux.homePath ? [{ href: ux.homePath, en: 'Open your home', el: 'Άνοιγμα της αρχικής σου' }] : [],
+    };
+  }
+  const next = /\b(off|none|clear|default|κανενα|κανένα|καθαρισε|καθάρισε)\b/.test(folded) ? null : resolvePageArg(folded);
+  if (next === undefined) {
+    return {
+      tool: 'home',
+      en: `I don’t know a page called “${query.trim()}”. Try “/home matches” or “/home off”.`,
+      el: `Δεν ξέρω σελίδα «${query.trim()}». Δοκίμασε «/home matches» ή «/home off».`,
+      links: [],
+    };
+  }
+  const label = next ? navLabel(next) : { en: 'the dashboard', el: 'ο πίνακας' };
+  const apply = (): AssistantResult => {
+    writeUxPrefs({ homePath: next });
+    return {
+      tool: 'home',
+      en: `Done — “/” now takes you to ${label.en}.`,
+      el: `Έγινε — το «/» σε πηγαίνει πλέον σε ${label.el}.`,
+      href: next || '/dashboard',
+      links: next ? [{ href: next, en: `Open ${label.en}`, el: `Άνοιγμα ${label.el}` }] : [],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Land on ${label.en} when you open “/”?`, el: `Να προσγειώνεσαι σε ${label.el} όταν ανοίγεις «/»;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeUxPrefs({ homePath: ux.homePath }); },
+    },
+    { tool: 'home', href: next || '/dashboard', links: next ? [{ href: next, en: `Open ${label.en}`, el: `Άνοιγμα ${label.el}` }] : [] },
+  );
+}
+
+function themeResult(query: string): AssistantResult {
+  const folded = fold(query);
+  const ui = useUIStore.getState();
+  const nextTheme: PaletteTheme =
+    /\b(dark|obsidian|σκοτειν)\b/.test(folded) ? 'dark' :
+    /\b(cyan|pulse|κυαν)\b/.test(folded) ? 'cyan' :
+    /\b(mint|catalyst|μεντ|πρασιν)\b/.test(folded) ? 'mint' :
+    /\b(apricot|warmth|βερικοκ|πορτοκαλ)\b/.test(folded) ? 'apricot' :
+    /\b(lilac|vision|λιλα|μωβ)\b/.test(folded) ? 'lilac' : 'stone';
+  ui.setPaletteTheme(nextTheme);
+  const labelMap: Record<PaletteTheme, string> = {
+    stone: 'Comfort Stone',
+    dark: 'Dark Obsidian',
+    cyan: 'Cyan Pulse',
+    mint: 'Mint Catalyst',
+    apricot: 'Apricot Warmth',
+    lilac: 'Lilac Vision',
+  };
+  return {
+    tool: 'settings-set',
+    en: `Switched platform theme palette to ${labelMap[nextTheme]}. Available themes: stone, dark, cyan, mint, apricot, lilac.`,
+    el: `Η χρωματική παλέτα της πλατφόρμας άλλαξε σε ${labelMap[nextTheme]}. Διαθέσιμα θέματα: stone, dark, cyan, mint, apricot, lilac.`,
+    href: '/settings',
+    links: [{ href: '/settings', en: 'Open Settings', el: 'Άνοιγμα Ρυθμίσεων' }],
+  };
+}
+
+function langResult(query: string): AssistantResult {
+  const folded = fold(query);
+  const next = /\b(el|greek|ελληνικ|gr)\b/.test(folded) ? 'el' : 'en';
+  setGlobalLang(next);
+  return {
+    tool: 'settings-set',
+    en: next === 'el' ? 'Switched interface language to Greek (Ελληνικά).' : 'Switched interface language to English.',
+    el: next === 'el' ? 'Η γλώσσα της εφαρμογής άλλαξε σε Ελληνικά.' : 'Η γλώσσα της εφαρμογής άλλαξε σε Αγγλικά (English).',
+    href: '/settings',
+    links: [{ href: '/settings', en: 'Open Settings', el: 'Άνοιγμα Ρυθμίσεων' }],
+  };
+}
+
+function tasksListOrAddResult(query: string, propose: boolean): AssistantResult {
+  const cleaned = query.replace(/^\/tasks?\b\s*/i, '').trim();
+  if (cleaned && !/^(list|show|what|ποιες|δειξε|δείξε)$/i.test(cleaned)) {
+    return addTaskResult(`add task ${cleaned}`, propose);
+  }
+  const tasks = readTasks();
+  const links: AssistantLink[] = [{ href: '/workspace', en: 'Open Workspace Tasks', el: 'Άνοιγμα Εργασιών στον Χώρο Εργασίας' }];
+  if (tasks.length === 0) {
+    return {
+      tool: 'task-add',
+      en: 'No custom workspace tasks added yet. Say “/tasks Prepare investor deck” or “add task …” to add one to Workspace.',
+      el: 'Δεν έχουν προστεθεί εργασίες ακόμη. Πες «/tasks Ετοιμασία investor deck» ή «add task …» για προσθήκη στον Χώρο Εργασίας.',
+      href: '/workspace',
+      links,
+    };
+  }
+  const summary = tasks.slice(0, 6).map((tItem) => `• ${tItem.title} (${tItem.priority})`).join('\n');
+  return {
+    tool: 'task-add',
+    en: `Workspace Tasks (${tasks.length}):\n${summary}\nTo add another task, say “/tasks <title>” or “add task <title>”.`,
+    el: `Εργασίες Χώρου Εργασίας (${tasks.length}):\n${summary}\nΓια προσθήκη νέας εργασίας, πες «/tasks <τίτλος>» ή «add task <τίτλος>».`,
+    href: '/workspace',
+    links,
+  };
+}
+
+function directMessageResult(query: string, propose: boolean): AssistantResult {
+  const cleaned = query.replace(/^\/msg\b\s*/i, '').trim();
+  const colonIdx = cleaned.indexOf(':');
+  const personPart = colonIdx > 0 ? cleaned.slice(0, colonIdx).trim() : cleaned;
+  const bodyPart = colonIdx > 0 ? cleanText(cleaned.slice(colonIdx + 1)) : '';
+  const person = namedPerson(personPart) || namedPerson(query);
+  if (!person) {
+    return {
+      tool: 'inbox',
+      en: 'Specify a member and message, for example: “/msg Sarah Chen: Let’s review your FinTech MVP this week.”',
+      el: 'Όρισε μέλος και μήνυμα, π.χ.: «/msg Sarah Chen: Ας δούμε το FinTech MVP σου αυτή την εβδομάδα.»',
+      href: '/messages',
+      links: [{ href: '/messages', en: 'Open Messages', el: 'Άνοιγμα Μηνυμάτων' }],
+    };
+  }
+  const messageBody = bodyPart || `Hi ${person.fullName.split(' ')[0]}, I saw our compatibility on CoFounderBay and would love to connect!`;
+  const links: AssistantLink[] = [
+    { href: `/messages?user=${person.id}`, en: `Open chat with ${person.fullName}`, el: `Άνοιγμα συνομιλίας με ${person.fullName}` },
+    { href: `/profile/${person.id}`, en: `View ${person.fullName}`, el: `Προβολή ${person.fullName}` },
+  ];
+  const beforeChat = readChat();
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const conv = ensureChatConversation(person.id);
+    appendChatMessage({
+      id: `msg-ai-${Date.now()}`,
+      conversationId: conv.id,
+      senderId: 'demo-user',
+      senderName: 'You',
+      body: messageBody,
+      createdAt: new Date().toISOString(),
+      readStatus: true,
+    });
+    logged = {
+      kind: 'message',
+      title: `Sent message to ${person.fullName}`,
+      titleEl: `Στάλθηκε μήνυμα σε ${person.fullName}`,
+      href: `/messages?user=${person.id}`,
+    };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'inbox',
+      en: `Sent to ${person.fullName}: “${messageBody}”. The conversation thread on Messages is updated.`,
+      el: `Στάλθηκε σε ${person.fullName}: «${messageBody}». Η συνομιλία στα Μηνύματα ενημερώθηκε.`,
+      href: `/messages?user=${person.id}`,
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Send message to ${person.fullName}: “${messageBody}”?`,
+        el: `Αποστολή μηνύματος σε ${person.fullName}: «${messageBody}»;`,
+      },
+      reversal: 'full',
+      apply,
+      undo: () => {
+        writeValue(keys.chat, beforeChat);
+        logUndo(logged);
+      },
+    },
+    { tool: 'inbox', href: `/messages?user=${person.id}`, links },
+  );
 }
 
 function attachSources(result: AssistantResult): AssistantResult {
@@ -2141,7 +2819,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   const folded = fold(query);
   if (!query) return helpResult();
 
-  const slash = folded.match(/^\/([a-z-]+)(?:\s+(.*))?$/);
+  const slash = folded.match(/^\/([a-z0-9-]+)(?:\s+(.*))?$/);
   if (slash) {
     const cmd = slash[1];
     const rest = (slash[2] || '').trim();
@@ -2149,6 +2827,21 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'scout') return scoutResult(profile);
     if (cmd === 'need') return needResult(rest || query, propose);
     if (cmd === 'next') return nextStepAssistant(profile);
+    if (cmd === 'canvas') return canvasResult(rest ? `/canvas ${rest}` : query, propose);
+    if (cmd === 'builder') return builderResult(rest ? `/builder ${rest}` : query, propose);
+    if (cmd === 'readiness') return readinessResult(rest || query, propose);
+    if (cmd === '6axis') return studioModalResult('6axis', rest || query, profile);
+    if (cmd === 'dealroom') return studioModalResult('dealroom', rest || query, profile);
+    if (cmd === 'needwall') return studioModalResult('needwall', rest || query, profile);
+    if (cmd === 'theme' || cmd === 'palette') return themeResult(rest || query);
+    if (cmd === 'lang' || cmd === 'language') return langResult(rest || query);
+    if (cmd === 'style') return styleResult(rest || query, propose);
+    if (cmd === 'coach' || cmd === 'ux' || cmd === 'tips') return coachResult(propose);
+    if (cmd === 'pin') return pinResult(rest || query, propose);
+    if (cmd === 'unpin') return unpinResult(rest || query, propose);
+    if (cmd === 'home' || cmd === 'start') return homeResult(rest || query, propose);
+    if (cmd === 'tasks' || cmd === 'task') return tasksListOrAddResult(query, propose);
+    if (cmd === 'msg' || cmd === 'message') return directMessageResult(query, propose);
     if (cmd === 'inbox') return inboxResult(rest || query);
     if (cmd === 'plan') return playbookResult(propose);
     if (cmd === 'invite') return inviteResult(propose);
@@ -2156,6 +2849,30 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'quiz') return fitCheckResult();
     if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue', propose);
     if (cmd === 'help') return helpResult();
+  }
+
+  if (/\b(6-axis|6 axis|six axis|radar match)\b/.test(folded) || /6\s*αξον/.test(folded)) return studioModalResult('6axis', query, profile);
+  if (/\b(open|show|launch)\b.{0,20}\b(deal\s*room)\b/.test(folded) || /ανοιξ.{0,20}deal\s*room/.test(folded)) return studioModalResult('dealroom', query, profile);
+  if (/\b(open|show)\b.{0,20}\b(need\s*wall|need\s*cards?\s*wall)\b/.test(folded) || /πινακ.{0,15}αναγκ/.test(folded)) return studioModalResult('needwall', query, profile);
+
+  if ((/\b(switch|change|set)\b.{0,15}\b(theme|palette)\b/.test(folded) || /\b(dark|stone|cyan|mint|apricot|lilac)\s+(theme|mode|palette)\b/.test(folded) || /αλλαξ.{0,15}(θεμα|παλετ)/.test(folded))) {
+    return themeResult(query);
+  }
+  if ((/\b(switch|change|set)\b.{0,15}\b(language|greek|english)\b/.test(folded) || /αλλαξ.{0,15}γλωσσ/.test(folded))) {
+    return langResult(query);
+  }
+  if ((/\b(send|write)\s+(a\s+)?message\s+to\b/i.test(query) || /στειλ.{0,10}μηνυμα\s+(στ|σε)/i.test(folded)) && namedPerson(query)) {
+    return directMessageResult(query, propose);
+  }
+
+  if (/\b(lean\s*canvas|canvas)\b/.test(folded) || /καμβα/.test(folded)) {
+    return canvasResult(query, propose);
+  }
+  if (/\b(startup\s*builder|builder\s*module|set\s+builder|fill\s+builder)\b/.test(folded) || (/builder/.test(folded) && /\b(problem|solution|market|model|gtm|module|status)\b/.test(folded))) {
+    return builderResult(query, propose);
+  }
+  if (!/^(tell me about|πες μου για)\b/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded))) {
+    return readinessResult(query, propose);
   }
 
   const roundSet = parseRoundSet(query);
@@ -2231,10 +2948,29 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
   const brief = platformBriefing(profile);
   const matches = brief.ranked.slice(0, 3).map((row) => `${row.person.fullName} (${row.fit.score}%)`).join(', ');
   const overdue = brief.overdue.map((item) => item.title).join(', ') || 'none';
+  const canvasRaw = readValue<Record<string, string>>(keys.canvas, {});
+  const canvasEffective = isDemoData() ? { ...DEMO_CANVAS_FALLBACK, ...canvasRaw } : canvasRaw;
+  const canvasLine = CANVAS_FIELDS.map((f) => `${f.en}: ${(canvasEffective[f.key] || 'empty').trim()}`).join(' | ');
+  const builderInputs = readBuilderInputs();
+  const builderLine = BUILDER_MODULES.map((m) => {
+    const st = builderStatus(m.id, builderInputs);
+    return `${m.title} (${st.filled}/${st.total})`;
+  }).join(', ');
+  const startup = readValue<Record<string, unknown>>('cfb.startup', {});
+  const ventureName = typeof startup.name === 'string' && startup.name ? startup.name : (isDemoData() ? 'EcoFlow Systems' : 'Unset');
+  const readinessScore = typeof startup.readinessScore === 'number' ? startup.readinessScore : (isDemoData() ? 68 : 0);
+  const needsCount = readNeeds().filter((n) => n.status === 'open').length;
+  const uxPrefs = readUxPrefs();
+  const visited = topPages(4).map((row) => `${row.path}(${row.count})`).join(', ') || 'nothing yet';
+  const usageLine = `Usage: most visited ${visited} · pinned [${uxPrefs.favorites.join(', ') || 'none'}] · home ${uxPrefs.homePath || '/'}`;
   return [
     `Viewer: ${profile?.fullName || 'Demo User'} · ${profile?.headline || ''} · ${profile?.industry || ''}`,
+    `Venture: ${ventureName} · Readiness Score: ${readinessScore}/100 · Open Need Cards: ${needsCount}`,
     `Top matches: ${matches || 'none scored'}`,
     `Overdue milestones: ${overdue}`,
-    `Round: ${brief.round.name} ${brief.round.committedAmount}/${brief.round.targetAmount}`,
+    `Round: ${brief.round.name} ($${brief.round.committedAmount.toLocaleString()} / $${brief.round.targetAmount.toLocaleString()}, burn $${brief.round.monthlyBurn.toLocaleString()}/mo)`,
+    `Lean Canvas: ${canvasLine}`,
+    `Startup Builder: ${builderLine}`,
+    usageLine,
   ].join('\n');
 }

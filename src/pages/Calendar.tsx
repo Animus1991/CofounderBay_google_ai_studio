@@ -474,9 +474,12 @@ export default function Calendar() {
          {dayEvents.length === 0 ? (
           <EmptyHint
            title={t("Nothing scheduled for this day.", "Δεν υπάρχει τίποτα προγραμματισμένο για αυτή την ημέρα.")}
-           detail={t("Ask the studio assistant to add a session.", "Ρώτα τον βοηθό να προσθέσει μια συνάντηση.")}
+           detail={t("The assistant can put a session on this exact day.", "Ο βοηθός μπορεί να βάλει μια συνάντηση ακριβώς σε αυτή την ημέρα.")}
           >
-           <AskLink prompt="schedule a session" />
+           {/* Schedules on the day being viewed, not on a default day. */}
+           <AskLink prompt={`schedule a session on ${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}>
+            {t(`Schedule on ${formatDate(selectedDate, { day: 'numeric', month: 'short' })}`, `Προγραμμάτισε για ${formatDate(selectedDate, { day: 'numeric', month: 'short' })}`)}
+           </AskLink>
           </EmptyHint>
          ) : (
           dayEvents.map((ev) => {
