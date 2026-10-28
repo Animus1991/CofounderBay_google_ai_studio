@@ -777,7 +777,7 @@
   :root:not([data-theme="dark"]) [class~="text-yellow-600"],
   :root:not([data-theme="dark"]) [class~="hover:text-amber-500"]:hover,
   :root:not([data-theme="dark"]) [class~="hover:text-amber-600"]:hover {
-    color: rgba(199, 110, 57, 0.9) !important;
+    color: rgba(179, 99, 51, 0.9) !important;
   }
   :root:not([data-theme="dark"]) [class~="text-blue-500"],
   :root:not([data-theme="dark"]) [class~="text-blue-600"],
