@@ -69,6 +69,8 @@ import { useAuth } from "../App";
 import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { useUIStore } from "../stores/useUIStore";
 import { askAssistant } from '../lib/assistantBus';
+import { formatBytes, uploadFile, UploadError } from '../lib/files';
+import { DEMO_FUNDING_OPPORTUNITIES, DEMO_FUNDING_PROGRAMS, DEMO_INVESTOR_MEETINGS, DEMO_ROOM_FILES, demoDay } from '../data/demoCatalog';
 
 interface FundraisingProps {
  user: User;
@@ -109,12 +111,8 @@ const mockInvestors: InvestorCard[] = [
  { id: "inv_6", name: "Index Ventures",         type: "VC",    focus: ["Fintech", "Gaming", "Marketplaces"],   stage: ["Seed", "Series A"],              location: "London / SF",       checkSize: "$1M–$15M",    portfolio: 180 },
 ];
 
-const SEED_ROOM_FILES: RoomFile[] = [
- { name: "Pitch_Deck_v3.pdf", size: "4.2 MB", views: 24, updated: "2026-04-20" },
- { name: "Financial_Projections_2026.xlsx", size: "1.8 MB", views: 12, updated: "2026-04-18" },
- { name: "Cap_Table_Safe.v2.pdf", size: "890 KB", views: 8, updated: "2026-04-15" },
- { name: "IP_Assignments.zip", size: "12.4 MB", views: 3, updated: "2026-04-12" },
-];
+/** Sample data-room files, "updated" a few days before today (data/demoCatalog). */
+const seedRoomFiles = (): RoomFile[] => DEMO_ROOM_FILES.map((file) => ({ name: file.name, size: file.size, views: file.views, updated: demoDay(-file.daysAgo) }));
 
 export default function Fundraising({ user }: FundraisingProps) {
  const t = useT();
@@ -141,11 +139,28 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [opportunityType, setOpportunityType] = useState('All');
  const [investorType, setInvestorType] = useState('All');
  const roomFileRef = useRef<HTMLInputElement>(null);
+ const [roomUploading, setRoomUploading] = useState(false);
+ /** Uploads the bytes (Cloud Storage, or inline for small files) before listing the file — a name alone cannot be downloaded. */
+ const uploadRoomFile = async (file: File) => {
+  setRoomUploading(true);
+  try {
+   const uploaded = await uploadFile(file, { folder: 'dataroom', uid: user.id });
+   addRoomFile({ name: file.name, size: formatBytes(file.size), views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined, url: uploaded.url, storage: uploaded.storage, path: uploaded.path });
+   showToast(t(`${file.name} uploaded`, `Ανέβηκε: ${file.name}`));
+  } catch (error) {
+   const code = error instanceof UploadError ? error.code : 'failed';
+   showToast(code === 'too-large'
+    ? t('That file is over 15 MB — nothing was uploaded.', 'Το αρχείο ξεπερνά τα 15 MB — δεν ανέβηκε.')
+    : t('Storage is not available for files this size — nothing was uploaded.', 'Ο χώρος αποθήκευσης δεν είναι διαθέσιμος για αυτό το μέγεθος — δεν ανέβηκε τίποτα.'));
+  } finally {
+   setRoomUploading(false);
+  }
+ };
  const extraRoom = useStored(readRoomFiles, [keys.room]);
  const roomFiles = useMemo(() => {
   if (!isDemoMode) return extraRoom;
   const names = new Set(extraRoom.map((file) => file.name));
-  return [...extraRoom, ...SEED_ROOM_FILES.filter((file) => !names.has(file.name))];
+  return [...extraRoom, ...seedRoomFiles().filter((file) => !names.has(file.name))];
  }, [extraRoom, isDemoMode]);
  const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
  const [roundEditing, setRoundEditing] = useState(false);
@@ -234,12 +249,8 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  // Real-world programs every founder can apply to; the demo keeps its seeded match
  // scores, a real account gets a score computed from its own profile's tags.
- const mockPrograms = [
-  { id: "prog_1", title: "Y Combinator S26",       deadline: "2026-04-19", type: "Accelerator", grant: "$500k",  location: "Remote / SF",  match: 96, tags: ["AI", "B2B", "Global"],     status: "open" },
-  { id: "prog_2", title: "Techstars Sustainability", deadline: "2026-05-01", type: "Accelerator", grant: "$120k",  location: "NYC",          match: 88, tags: ["CleanTech", "Impact"],    status: "open" },
-  { id: "prog_3", title: "NSF SBIR Phase I",         deadline: "2026-06-18", type: "Grant",       grant: "$275k",  location: "US Only",      match: 72, tags: ["R&D", "DeepTech"],        status: "open" },
-  { id: "prog_4", title: "Founders Factory EU",      deadline: "2026-07-10", type: "Studio",      grant: "€150k",  location: "London / Paris", match: 81, tags: ["B2B SaaS", "Series A"], status: "upcoming" },
- ];
+ type FundingProgram = { id: string; title: string; deadline: string; type: string; grant: string; location: string; match: number; tags: string[]; status: string };
+ const mockPrograms: FundingProgram[] = DEMO_FUNDING_PROGRAMS.map(({ inDays, tags, ...program }) => ({ ...program, tags: [...tags], deadline: demoDay(inDays) }));
  const [livePrograms, setLivePrograms] = useState<typeof mockPrograms | null>(null);
  useEffect(() => {
   if (isDemoMode) { setLivePrograms(null); return; }
@@ -279,13 +290,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  const startupName = (profile as { company?: string } | null)?.company || (isDemoMode ? 'EcoFlow Systems' : '');
  const roomStartup = startupName || t('your startup', 'το startup σου');
 
- const mockOpportunities = [
-  { id: "opp_1", title: "Series A Scout Network",     org: "Sequoia Capital",       type: "Intro Request",    amount: "$5M+",    deadline: "Rolling",     tags: ["AI", "SaaS"],      status: "active" },
-  { id: "opp_2", title: "Impact Investor Roundtable", org: "Impact Capital Forum",  type: "Pitch Event",      amount: "$1–3M",   deadline: "2026-05-12",  tags: ["Impact", "ESG"],   status: "active" },
-  { id: "opp_3", title: "Founder Grant — Q2 2026",    org: "Stripe Foundation",     type: "Non-dilutive Grant",amount: "$50k",   deadline: "2026-05-30",  tags: ["Fintech", "SMB"],  status: "active" },
-  { id: "opp_4", title: "EU Horizon Innovation Fund", org: "European Commission",   type: "Grant",            amount: "€250k",   deadline: "2026-06-01",  tags: ["DeepTech", "EU"],  status: "active" },
-  { id: "opp_5", title: "Debt Facility — Revenue-Based",org: "Clearco",             type: "Revenue-Based",    amount: "up to $2M",deadline: "Rolling",   tags: ["SaaS", "MRR>$30k"],status: "active" },
- ];
+ const mockOpportunities: { id: string; title: string; org: string; type: string; amount: string; deadline: string; tags: string[]; status: string }[] = DEMO_FUNDING_OPPORTUNITIES.map(({ inDays, tags, ...opportunity }) => ({ ...opportunity, tags: [...tags], deadline: inDays === null ? 'Rolling' : demoDay(inDays) }));
  const opportunities = isDemoMode ? mockOpportunities : [];
 
  const stageOrder = [...PIPELINE_STAGES];
@@ -328,11 +333,7 @@ export default function Fundraising({ user }: FundraisingProps) {
  ];
 
  // Meeting Scheduler Data
- const upcomingMeetings = isDemoMode ? [
-  { id: "m1", investor: "Sequoia Capital", type: "Video Call", date: "2026-04-28", time: "10:00", duration: "45 min", status: "confirmed", notes: "Partnership discussion" },
-  { id: "m2", investor: "Naval Ravikant", type: "Coffee Chat", date: "2026-04-30", time: "14:00", duration: "30 min", status: "pending", notes: "Advisory role" },
-  { id: "m3", investor: "First Round", type: "Pitch", date: "2026-05-02", time: "11:00", duration: "60 min", status: "confirmed", notes: "Seed round pitch" },
- ] : [];
+ const upcomingMeetings: { id: string; investor: string; type: string; date: string; time: string; duration: string; status: string; notes: string }[] = isDemoMode ? DEMO_INVESTOR_MEETINGS.map(({ inDays, ...meeting }) => ({ ...meeting, date: demoDay(inDays) })) : [];
 
  // Folder counts come from the documents that are actually in the room — a file joins a
  // folder by the folder it was uploaded under, or by its name when none was chosen.
@@ -1469,10 +1470,10 @@ export default function Fundraising({ user }: FundraisingProps) {
          <span className="text-xs font-semibold text-stone-500 tracking-wider">
           {selectedFolder ? labelOf(documentFolders.find(f => f.id === selectedFolder)?.name ?? "") : t("All Documents", "Όλα τα έγγραφα")}
          </span>
-         <Button size="sm" className="min-h-11 text-xs px-2 bg-stone-900 text-white" onClick={() => roomFileRef.current?.click()}>
-          <Plus className="w-3 h-3 mr-1" /> {t("Upload", "Μεταφόρτωση")}
+         <Button size="sm" className="min-h-11 text-xs px-2 bg-stone-900 text-white" disabled={roomUploading} onClick={() => roomFileRef.current?.click()}>
+          <Plus className="w-3 h-3 mr-1" /> {roomUploading ? t("Uploading…", "Μεταφόρτωση…") : t("Upload", "Μεταφόρτωση")}
          </Button>
-         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const size = file.size > 1_000_000 ? `${(file.size / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1000))} KB`; addRoomFile({ name: file.name, size, views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined }); e.target.value = ''; }} />
+         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadRoomFile(file); }} />
         </div>
         <div className="space-y-1">
          {visibleRoomFiles.map(file => (
@@ -1490,9 +1491,15 @@ export default function Fundraising({ user }: FundraisingProps) {
             <span className="text-xs text-stone-400 flex items-center gap-1">
              <Eye className="w-3 h-3" /> {file.views}
             </span>
-            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t("Download", "Λήψη")} title={t("Download", "Λήψη")} onClick={() => askAssistant(`Tell me about workspace assets and ${file.name}`)}>
-             <Download className="w-3.5 h-3.5 text-stone-400" />
-            </button>
+            {file.url ? (
+             <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t(`Download ${file.name}`, `Λήψη ${file.name}`)} title={t("Download", "Λήψη")}>
+              <Download className="w-3.5 h-3.5 text-stone-500" />
+             </a>
+            ) : (
+             <span className="p-1.5 rounded-lg cursor-not-allowed" title={t("Sample file — there is nothing to download", "Δοκιμαστικό αρχείο — δεν υπάρχει περιεχόμενο για λήψη")} aria-label={t("Sample file — nothing to download", "Δοκιμαστικό αρχείο — τίποτα για λήψη")}>
+              <Download className="w-3.5 h-3.5 text-stone-200" />
+             </span>
+            )}
            </div>
           </div>
          ))}
@@ -1507,7 +1514,7 @@ export default function Fundraising({ user }: FundraisingProps) {
        <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2 text-xs text-stone-400">
          <Shield className="w-3.5 h-3.5" />
-         <span>{t("End-to-end encrypted. Access logged.", "Κρυπτογράφηση από άκρο σε άκρο. Η πρόσβαση καταγράφεται.")}</span>
+         <span>{t("Stored with your account. Share a file by sending its link — there is no per-investor access log yet.", "Αποθηκεύεται στον λογαριασμό σου. Μοιράσου ένα αρχείο στέλνοντας τον σύνδεσμό του — δεν υπάρχει ακόμη καταγραφή πρόσβασης ανά επενδυτή.")}</span>
         </div>
         <Button variant="outline" className="min-h-11 text-sm" onClick={() => setShowDocumentRoom(false)}>{t("Close", "Κλείσιμο")}</Button>
        </div>

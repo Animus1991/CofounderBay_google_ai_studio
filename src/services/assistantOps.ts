@@ -80,6 +80,8 @@ import { roundMetrics } from '../lib/roundMetrics';
 import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
+import { DEMO_EVENTS, datedKnowledge, demoEventsLine } from '../data/demoCatalog';
+import { daysFromToday, shortDay } from '../data/demoClock';
 
 export type AssistantProfile = CompatibilityInput & {
   fullName?: string;
@@ -259,23 +261,10 @@ type KnowledgeCard = { keys: string[]; href: string; en: string; el: string; /**
 
 const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['series a scout', 'scout network'], href: '/fundraising', demo: true, en: 'Series A Scout Network is a rolling Sequoia intro on Fundraising → Opportunities ($5M+, AI/SaaS). Open the tab and apply, or I can walk the round numbers.', el: 'Το Series A Scout Network είναι rolling intro της Sequoia στη Χρηματοδότηση → Ευκαιρίες ($5M+, AI/SaaS). Άνοιξε την καρτέλα ή ρώτα για τον γύρο.' },
-  { keys: ['impact investor roundtable'], href: '/fundraising', demo: true, en: 'Impact Investor Roundtable is a pitch event on Fundraising → Opportunities ($1–3M, 12 May 2026, ESG). Same list as the Opportunities tab.', el: 'Το Impact Investor Roundtable είναι pitch event στη Χρηματοδότηση → Ευκαιρίες ($1–3M, 12 Μαΐ 2026).' },
-  { keys: ['founder grant', 'stripe foundation'], href: '/fundraising', demo: true, en: 'Founder Grant — Q2 2026 is a $50k non-dilutive Stripe Foundation grant on Fundraising → Opportunities (deadline 30 May 2026).', el: 'Το Founder Grant — Q2 2026 είναι μη αραιωτική επιχορήγηση $50k από Stripe Foundation στη Χρηματοδότηση → Ευκαιρίες (30 Μαΐ 2026).' },
-  { keys: ['eu horizon', 'horizon innovation'], href: '/fundraising', demo: true, en: 'EU Horizon Innovation Fund is a €250k grant from the European Commission on Fundraising → Opportunities (1 Jun 2026, DeepTech/EU).', el: 'Το EU Horizon Innovation Fund είναι επιχορήγηση €250k από την Ευρωπαϊκή Επιτροπή στη Χρηματοδότηση → Ευκαιρίες (1 Ιουν 2026).' },
   { keys: ['debt facility', 'clearco', 'revenue-based'], href: '/fundraising', demo: true, en: 'Debt Facility — Revenue-Based is a Clearco line up to $2M on Fundraising → Opportunities (rolling, SaaS with MRR over $30k).', el: 'Το Debt Facility — Revenue-Based είναι γραμμή Clearco έως $2M στη Χρηματοδότηση → Ευκαιρίες (rolling).' },
   { keys: ['sequoia'], href: '/fundraising', demo: true, en: 'Sequoia Capital is in the Fundraising investor list and pipeline (Due Diligence). VC, SaaS/FinTech/AI, checks $500k–$5M. Open Fundraising to move the stage or send a note.', el: 'Η Sequoia Capital είναι στη λίστα επενδυτών και στον αγωγό (Due Diligence). VC, SaaS/FinTech/AI, $500k–$5M. Άνοιξε τη Χρηματοδότηση για το στάδιο.' },
   { keys: ['andreessen', 'a16z'], href: '/fundraising', demo: true, en: 'Andreessen Horowitz is on Fundraising → Investors (Contacted). VC, Consumer/Enterprise/Bio, $1M–$50M.', el: 'Η Andreessen Horowitz είναι στη Χρηματοδότηση → Επενδυτές (Contacted). VC, $1M–$50M.' },
   { keys: ['first round'], href: '/fundraising', demo: true, en: 'First Round Capital is Identified on the Fundraising pipeline. Seed specialist, $250k–$3M.', el: 'Η First Round Capital είναι Identified στον αγωγό Χρηματοδότησης. Seed, $250k–$3M.' },
-  { keys: ['y combinator', 'yc s26'], href: '/fundraising', demo: true, en: 'Y Combinator S26 is on Fundraising → Programs: $500k accelerator, deadline 19 Apr 2026, 96% match.', el: 'Το Y Combinator S26 είναι στη Χρηματοδότηση → Προγράμματα: $500k, προθεσμία 19 Απρ 2026, 96% match.' },
-  { keys: ['techstars'], href: '/fundraising', demo: true, en: 'Techstars Sustainability is on Fundraising → Programs: $120k, NYC, deadline 1 May 2026.', el: 'Το Techstars Sustainability είναι στη Χρηματοδότηση → Προγράμματα: $120k, NYC, 1 Μαΐ 2026.' },
-  { keys: ['nsf sbir'], href: '/fundraising', demo: true, en: 'NSF SBIR Phase I is a $275k US grant on Fundraising → Programs (18 Jun 2026).', el: 'Το NSF SBIR Phase I είναι επιχορήγηση $275k στη Χρηματοδότηση → Προγράμματα (18 Ιουν 2026).' },
-  { keys: ['founders factory'], href: '/fundraising', demo: true, en: 'Founders Factory EU is a studio on Fundraising → Programs (€150k, London/Paris, 10 Jul 2026).', el: 'Το Founders Factory EU είναι studio στη Χρηματοδότηση → Προγράμματα (€150k, 10 Ιουλ 2026).' },
-  { keys: ['fintech accelerator'], href: '/programs', demo: true, en: 'FinTech Accelerator Q3 2026 is on Programs: $120k, 12 weeks, deadline 15 Apr 2026. Same card as the Programs page.', el: 'Το FinTech Accelerator Q3 2026 είναι στα Προγράμματα: $120k, 12 εβδομάδες, 15 Απρ 2026.' },
-  { keys: ['cleantech innovation'], href: '/programs', demo: true, en: 'CleanTech Innovation Grant is on Programs: $50k non-dilutive, deadline 1 May 2026.', el: 'Το CleanTech Innovation Grant είναι στα Προγράμματα: $50k μη αραιωτικά, 1 Μαΐ 2026.' },
-  { keys: ['saas growth bootcamp', 'founders academy'], href: '/programs', demo: true, en: 'SaaS Growth Bootcamp / Founders Academy is on Programs: 4 weeks, deadline 30 Mar 2026.', el: 'Το SaaS Growth Bootcamp είναι στα Προγράμματα: 4 εβδομάδες, 30 Μαρ 2026.' },
-  { keys: ['networking night', 'startup founders networking'], href: '/events', demo: true, en: 'Startup Founders Networking Night is on Events: London, 28 Mar 2026, 6–9 PM. Register on the Events page.', el: 'Το Startup Founders Networking Night είναι στις Εκδηλώσεις: Λονδίνο, 28 Μαρ 2026.' },
-  { keys: ['seed round pitch', 'mastering the seed'], href: '/events', demo: true, en: 'Mastering the Seed Round Pitch is an online workshop on Events, 2 Apr 2026, hosted by Sarah Chen.', el: 'Το Mastering the Seed Round Pitch είναι online workshop στις Εκδηλώσεις, 2 Απρ 2026.' },
-  { keys: ['fintech demo day'], href: '/events', demo: true, en: 'FinTech Demo Day Q2 is on Events: New York, 15 Apr 2026, 10 AM–1 PM.', el: 'Το FinTech Demo Day Q2 είναι στις Εκδηλώσεις: Νέα Υόρκη, 15 Απρ 2026.' },
   { keys: ['global startup summit'], href: '/events', demo: true, en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
   { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate is the flagship public founder program listed on Perks — apply on the provider site from that card. Open Perks to see every published perk.', el: 'Το AWS Activate είναι δημόσιο πρόγραμμα στις Παροχές — κάνε αίτηση στον πάροχο από την κάρτα. Άνοιξε Παροχές για όλες.' },
   { keys: ['readiness score'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
@@ -290,13 +279,18 @@ const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['export my pitch', 'share my pitch', 'pitch deck', 'pitch slide', 'cover & hook', 'εξαγω το pitch', 'μοιραστω το pitch'], href: '/founder-tools', en: 'Pitch lives on Founder Tools → Pitch: Cover & Hook, Problem, Solution, Market Size, Business Model, Traction, Team, Ask. Export, share, or send to a mentor from that tab — I can also book a mentor.', el: 'Το pitch είναι στα Εργαλεία ιδρυτή → Pitch. Export, share ή αποστολή σε μέντορα από εκεί. Μπορώ και να κλείσω μέντορα.' },
   { keys: ['lean canvas'], href: '/workspace', en: 'Lean Canvas is on Workspace → Canvas. Save keeps the draft on that page; AI Refine opens this assistant on the same nine boxes.', el: 'Το Lean Canvas είναι στο Workspace → Canvas. Το Save κρατά το draft εκεί· το AI Refine ανοίγει αυτόν τον βοηθό.' },
   { keys: ['workspace assets', 'project assets'], href: '/workspace', demo: true, en: 'Project assets sit on Workspace → Dashboard: Pitch Deck v2.pdf, Brand Guidelines.zip, Market Research.docx. Open Workspace to download, or Founder Tools for the live pitch.', el: 'Τα αρχεία είναι στο Workspace → Dashboard. Άνοιξε Workspace ή τα Εργαλεία ιδρυτή για το live pitch.' },
-  { keys: ['ecosphere'], href: '/discovery', demo: true, en: 'EcoSphere Accelerator is on Discovery → Opportunities: 12 weeks, remote, sustainability, deadline 30 Oct. Same card as Explore.', el: 'Το EcoSphere Accelerator είναι στην Εξερεύνηση → Ευκαιρίες: 12 εβδομάδες, remote, 30 Οκτ.' },
-  { keys: ['web3 founders grant'], href: '/discovery', demo: true, en: 'Web3 Founders Grant is on Discovery → Opportunities: equity-free funding for core infrastructure, deadline 15 Nov.', el: 'Το Web3 Founders Grant είναι στην Εξερεύνηση → Ευκαιρίες: χωρίς equity, 15 Νοε.' },
-  { keys: ['ai innovation lab'], href: '/discovery', demo: true, en: 'AI Innovation Lab is on Discovery → Opportunities: Berlin incubator for enterprise automation, deadline 5 Dec.', el: 'Το AI Innovation Lab είναι στην Εξερεύνηση → Ευκαιρίες: Βερολίνο, 5 Δεκ.' },
-  { keys: ['founder mixer'], href: '/events', demo: true, en: 'Founder Mixer SF is on Discovery → Upcoming Sessions and Events. Register on Events to put it on Calendar.', el: 'Το Founder Mixer SF είναι στην Εξερεύνηση και στις Εκδηλώσεις. Κάνε Register για το Ημερολόγιο.' },
-  { keys: ['ai product workshop'], href: '/events', demo: true, en: 'AI Product Workshop is on Discovery → Upcoming Sessions (20 Oct, virtual). Register from Events.', el: 'Το AI Product Workshop είναι στην Εξερεύνηση (20 Οκτ, virtual).' },
-  { keys: ['seed funding webinar'], href: '/events', demo: true, en: 'Seed Funding Webinar is on Discovery → Upcoming Sessions (25 Oct). Same ecosystem list.', el: 'Το Seed Funding Webinar είναι στην Εξερεύνηση (25 Οκτ).' },
 ];
+
+/**
+ * Dated sample cards come from `data/demoCatalog` — the same offsets the pages
+ * use — so a deadline the assistant quotes is the deadline the card shows.
+ */
+function knowledgeCards(): KnowledgeCard[] {
+  const en = datedKnowledge('en');
+  const el = datedKnowledge('el');
+  const dated = en.map((card, index) => ({ keys: card.keys, href: card.href, demo: true, en: card.text, el: el[index]?.text ?? card.text }));
+  return [...KNOWLEDGE, ...dated];
+}
 
 function fold(text: string): string {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -1834,10 +1828,10 @@ function eventsResult(query: string, propose: boolean): AssistantResult {
   return {
     tool: 'events',
     en: demoCopy
-      ? 'Same list as the Events page: Startup Founders Networking Night (London, 28 Mar), Mastering the Seed Round Pitch (online, 2 Apr), FinTech Demo Day Q2 (New York, 15 Apr).'
+      ? `Same list as the Events page: ${demoEventsLine('en')}.`
       : 'Events shows every session published by the platform and members — newest first, with real RSVP counts. Open Events to register; anything you register for lands on your Calendar.',
     el: demoCopy
-      ? 'Η ίδια λίστα με τη σελίδα Εκδηλώσεις: Startup Founders Networking Night (Λονδίνο, 28 Μαρ), Mastering the Seed Round Pitch (online, 2 Απρ), FinTech Demo Day Q2 (Νέα Υόρκη, 15 Απρ).'
+      ? `Η ίδια λίστα με τη σελίδα Εκδηλώσεις: ${demoEventsLine('el')}.`
       : 'Οι Εκδηλώσεις δείχνουν κάθε session που δημοσίευσε η πλατφόρμα ή μέλη — με πραγματικά RSVP. Άνοιξε Εκδηλώσεις για εγγραφή· ό,τι δηλώσεις πάει στο Ημερολόγιό σου.',
     href: '/events',
     links: [{ href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' }, { href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
@@ -1862,7 +1856,7 @@ function programsResult(): AssistantResult {
 function aboutResult(query: string): AssistantResult | null {
   const folded = fold(query);
   const asking = hasStem(folded, 'tell me about', 'what is', "what's", 'whats', 'explain', 'who is', 'πληροφορ', 'τι ειναι', 'ποιος ειναι', 'ποια ειναι', 'πες μου για', 'εξηγησε');
-  const hit = KNOWLEDGE.find((card) => (!card.demo || isDemoData()) && card.keys.some((key) => folded.includes(key)));
+  const hit = knowledgeCards().find((card) => (!card.demo || isDemoData()) && card.keys.some((key) => folded.includes(key)));
   if (hit && (asking || hit.keys.some((key) => key.length >= 10 && folded.includes(key)))) {
     return {
       tool: 'about',
@@ -2088,11 +2082,12 @@ function inviteResult(propose: boolean): AssistantResult {
 function weekMeetResult(profile: AssistantProfile | null): AssistantResult {
   const ranked = rankPeople(fromProfile(profile ?? {}), cofounderPool()).slice(0, 2);
   const who = ranked[0]?.person;
+  const next = DEMO_EVENTS[0];
   const eventLineEn = isDemoData()
-    ? 'register for Startup Founders Networking Night on Events (London, 28 Mar 2026)'
+    ? `register for ${next.title} on Events (${next.place.en}, ${shortDay(daysFromToday(next.inDays), 'en')})`
     : 'register for the next published session on Events';
   const eventLineEl = isDemoData()
-    ? 'εγγράψου στο Startup Founders Networking Night στις Εκδηλώσεις (Λονδίνο, 28 Μαρ 2026)'
+    ? `εγγράψου στο ${next.title} στις Εκδηλώσεις (${next.place.el}, ${shortDay(daysFromToday(next.inDays), 'el')})`
     : 'εγγράψου στην επόμενη δημοσιευμένη συνεδρία στις Εκδηλώσεις';
   return {
     tool: 'week-meet',

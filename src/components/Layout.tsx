@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Menu, Palette, Sparkles, Check, ChevronDown, Search } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { RouteErrorBoundary } from './ErrorBoundary';
@@ -15,13 +15,13 @@ import { pageContext } from '../services/assistantOps';
 import { openAssistant } from '../lib/assistantBus';
 
 const PALETTES: { id: PaletteTheme; labelEn: string; labelEl: string; dot: string }[] = [
-  { id: 'stone', labelEn: 'Comfort Stone', labelEl: 'Comfort Stone', dot: 'bg-stone-800' },
-  { id: 'dark', labelEn: 'Dark Obsidian', labelEl: 'Dark Obsidian', dot: 'bg-indigo-500' },
-  { id: 'cyan', labelEn: 'Cyan Pulse', labelEl: 'Cyan Pulse', dot: 'bg-cyan-500' },
-  { id: 'mint', labelEn: 'Mint Catalyst', labelEl: 'Mint Catalyst', dot: 'bg-emerald-600' },
-  { id: 'apricot', labelEn: 'Apricot Warmth', labelEl: 'Apricot Warmth', dot: 'bg-orange-500' },
-  { id: 'lilac', labelEn: 'Lilac Vision', labelEl: 'Lilac Vision', dot: 'bg-purple-500' },
-  { id: 'burgundy', labelEn: 'Burgundy Velvet', labelEl: 'Burgundy Velvet', dot: 'bg-[#853341]' },
+  { id: 'stone', labelEn: 'Comfort Stone', labelEl: 'Πέτρα', dot: 'bg-stone-800' },
+  { id: 'dark', labelEn: 'Dark Obsidian', labelEl: 'Σκοτεινό', dot: 'bg-indigo-500' },
+  { id: 'cyan', labelEn: 'Cyan Pulse', labelEl: 'Κυανό', dot: 'bg-cyan-500' },
+  { id: 'mint', labelEn: 'Mint Catalyst', labelEl: 'Μέντα', dot: 'bg-emerald-600' },
+  { id: 'apricot', labelEn: 'Apricot Warmth', labelEl: 'Βερίκοκο', dot: 'bg-orange-500' },
+  { id: 'lilac', labelEn: 'Lilac Vision', labelEl: 'Λιλά', dot: 'bg-purple-500' },
+  { id: 'burgundy', labelEn: 'Burgundy Velvet', labelEl: 'Μπορντό', dot: 'bg-[#853341]' },
 ];
 
 function ThemePalettePicker({
@@ -63,12 +63,9 @@ function ThemePalettePicker({
         data-ui="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        aria-haspopup="true"
-        aria-label={t('Switch Comfort / 5-Palette Theme', 'Εναλλαγή Χρωματικής Παλέτας')}
-        title={t(
-          `Theme: ${activePalette.labelEn} (Click to choose color)`,
-          `Θέμα: ${activePalette.labelEl} (Κλικ για επιλογή χρώματος)`
-        )}
+        aria-haspopup="menu"
+        aria-label={t(`Theme: ${activePalette.labelEn}`, `Θέμα: ${activePalette.labelEl}`)}
+        title={t(`Theme: ${activePalette.labelEn}`, `Θέμα: ${activePalette.labelEl}`)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2 sm:px-2.5 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
       >
         <Palette className="w-3.5 h-3.5 text-stone-500 shrink-0" />
@@ -85,36 +82,11 @@ function ThemePalettePicker({
       {open && (
         <div
           role="menu"
-          aria-label={t('Theme Palettes', 'Χρωματικές Παλέτες')}
+          aria-label={t('Themes', 'Θέματα')}
           className="absolute right-0 top-full mt-1.5 z-[120] w-56 rounded-xl border border-stone-200 bg-white p-2.5 shadow-xl"
         >
-          <div className="px-1.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-            {t('Quick Swatches (Horizontal)', 'Γρήγορη Επιλογή (Οριζόντια)')}
-          </div>
-          <div className="flex items-center justify-between gap-1.5 rounded-lg bg-stone-50 px-2.5 py-2 mb-2 border border-stone-100">
-            {PALETTES.map((p) => (
-              <button
-                key={`horiz-${p.id}`}
-                type="button"
-                onClick={() => {
-                  setPaletteTheme(p.id);
-                  setOpen(false);
-                }}
-                title={t(p.labelEn, p.labelEl)}
-                aria-label={t(p.labelEn, p.labelEl)}
-                className={`w-5 h-5 rounded-full transition-transform flex items-center justify-center ${
-                  p.dot
-                } ${
-                  paletteTheme === p.id
-                    ? 'ring-2 ring-offset-2 ring-stone-900 scale-110'
-                    : 'opacity-75 hover:opacity-100 hover:scale-105'
-                }`}
-              />
-            ))}
-          </div>
-
-          <div className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-            {t('All Themes (Vertical)', 'Όλα τα Θέματα (Κάθετα)')}
+          <div className="px-1.5 pb-1.5 text-xs font-medium text-stone-500">
+            {t('Theme', 'Θέμα')}
           </div>
           <div className="flex flex-col gap-0.5">
             {PALETTES.map((p) => {
@@ -319,7 +291,17 @@ export default function Layout() {
             className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onAssistantPage ? 'pb-4' : 'pb-20 sm:pb-24'}`}
           >
             <RouteErrorBoundary>
-              <Outlet />
+              {/* Pages load as their own chunks; the frame (sidebar, header, assistant) stays put meanwhile. */}
+              <Suspense
+                fallback={
+                  <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-live="polite">
+                    <div className="w-7 h-7 border-[3px] border-stone-200 border-t-stone-900 rounded-full animate-spin" aria-hidden="true" />
+                    <span className="sr-only">{t('Loading page', 'Φόρτωση σελίδας')}</span>
+                  </div>
+                }
+              >
+                <Outlet />
+              </Suspense>
             </RouteErrorBoundary>
           </main>
         </div>

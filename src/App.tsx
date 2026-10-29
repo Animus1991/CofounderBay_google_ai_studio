@@ -30,47 +30,50 @@ import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, sto
 import { getLang } from './lib/language';
 import { markEmailVerified } from './lib/account';
 import { coverFor } from './data/photos';
+import { lazyPage, prefetchPages } from './lib/lazyPage';
+import { topPages } from './lib/usage';
 
-// Static page imports (eliminates dynamic chunk fetch & HMR dep-hash mismatch failures across all routes)
+// First-paint pages load with the app; every other page is its own chunk (see lib/lazyPage).
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
-import FitCheck from './pages/FitCheck';
-import OnboardingWizard from './pages/OnboardingWizard';
 import DashboardPage from './pages/DashboardPage';
-import ProfilePage from './pages/ProfilePage';
-import MatchDiscovery from './pages/MatchDiscovery';
-import MentorsPage from './pages/MentorsPage';
-import CommunitiesPage from './pages/CommunitiesPage';
-import CommunicationHub from './pages/CommunicationHub';
-import MilestonesPage from './pages/MilestonesPage';
-import AdminDashboard from './pages/AdminDashboard';
-import EventsPage from './pages/Events';
-import DiscoveryPage from './pages/Discovery';
-import FounderTools from './pages/FounderTools';
-import Fundraising from './pages/Fundraising';
-import Workspace from './pages/Workspace';
-import CalendarPage from './pages/Calendar';
-import Network from './pages/Network';
-import Programs from './pages/Programs';
-import Resources from './pages/Resources';
-import Insights from './pages/Insights';
-import LegalHub from './pages/LegalHub';
-import Perks from './pages/Perks';
-import Notifications from './pages/Notifications';
-import SettingsPage from './pages/Settings';
-import Pricing from './pages/Pricing';
-import UserManagement from './pages/admin/UserManagement';
-import AutomationDashboard from './pages/admin/AutomationDashboard';
-import BrandingSettings from './pages/admin/BrandingSettings';
-import SSOSettings from './pages/admin/SSOSettings';
-import TaxonomySettings from './pages/admin/TaxonomySettings';
-import DomainSettings from './pages/admin/DomainSettings';
-import TenantBilling from './pages/admin/TenantBilling';
-import BillingPage from './pages/settings/Billing';
-import BillingOversight from './pages/superadmin/BillingOversight';
 import NotFoundPage from './pages/NotFound';
-import AssistantPage from './pages/AssistantPage';
+
+const FitCheck = lazyPage('FitCheck', () => import('./pages/FitCheck'));
+const OnboardingWizard = lazyPage('OnboardingWizard', () => import('./pages/OnboardingWizard'));
+const ProfilePage = lazyPage('ProfilePage', () => import('./pages/ProfilePage'));
+const MatchDiscovery = lazyPage('MatchDiscovery', () => import('./pages/MatchDiscovery'));
+const MentorsPage = lazyPage('MentorsPage', () => import('./pages/MentorsPage'));
+const CommunitiesPage = lazyPage('CommunitiesPage', () => import('./pages/CommunitiesPage'));
+const CommunicationHub = lazyPage('CommunicationHub', () => import('./pages/CommunicationHub'));
+const MilestonesPage = lazyPage('MilestonesPage', () => import('./pages/MilestonesPage'));
+const AdminDashboard = lazyPage('AdminDashboard', () => import('./pages/AdminDashboard'));
+const EventsPage = lazyPage('EventsPage', () => import('./pages/Events'));
+const DiscoveryPage = lazyPage('DiscoveryPage', () => import('./pages/Discovery'));
+const FounderTools = lazyPage('FounderTools', () => import('./pages/FounderTools'));
+const Fundraising = lazyPage('Fundraising', () => import('./pages/Fundraising'));
+const Workspace = lazyPage('Workspace', () => import('./pages/Workspace'));
+const CalendarPage = lazyPage('CalendarPage', () => import('./pages/Calendar'));
+const Network = lazyPage('Network', () => import('./pages/Network'));
+const Programs = lazyPage('Programs', () => import('./pages/Programs'));
+const Resources = lazyPage('Resources', () => import('./pages/Resources'));
+const Insights = lazyPage('Insights', () => import('./pages/Insights'));
+const LegalHub = lazyPage('LegalHub', () => import('./pages/LegalHub'));
+const Perks = lazyPage('Perks', () => import('./pages/Perks'));
+const Notifications = lazyPage('Notifications', () => import('./pages/Notifications'));
+const SettingsPage = lazyPage('SettingsPage', () => import('./pages/Settings'));
+const Pricing = lazyPage('Pricing', () => import('./pages/Pricing'));
+const UserManagement = lazyPage('UserManagement', () => import('./pages/admin/UserManagement'));
+const AutomationDashboard = lazyPage('AutomationDashboard', () => import('./pages/admin/AutomationDashboard'));
+const BrandingSettings = lazyPage('BrandingSettings', () => import('./pages/admin/BrandingSettings'));
+const SSOSettings = lazyPage('SSOSettings', () => import('./pages/admin/SSOSettings'));
+const TaxonomySettings = lazyPage('TaxonomySettings', () => import('./pages/admin/TaxonomySettings'));
+const DomainSettings = lazyPage('DomainSettings', () => import('./pages/admin/DomainSettings'));
+const TenantBilling = lazyPage('TenantBilling', () => import('./pages/admin/TenantBilling'));
+const BillingPage = lazyPage('BillingPage', () => import('./pages/settings/Billing'));
+const BillingOversight = lazyPage('BillingOversight', () => import('./pages/superadmin/BillingOversight'));
+const AssistantPage = lazyPage('AssistantPage', () => import('./pages/AssistantPage'));
 
 // Page loading fallback
 function PageLoader() {
@@ -316,6 +319,18 @@ export default function App() {
     }
     return stored === 'true';
   });
+
+  // Warm the chunks of the pages this account opens most (plus the core loop) once the app is idle.
+  useEffect(() => {
+    const chunkFor: Record<string, string> = {
+      '/matches': 'MatchDiscovery', '/messages': 'CommunicationHub', '/profile': 'ProfilePage', '/discovery': 'DiscoveryPage',
+      '/network': 'Network', '/workspace': 'Workspace', '/fundraising': 'Fundraising', '/founder-tools': 'FounderTools',
+      '/milestones': 'MilestonesPage', '/calendar': 'CalendarPage', '/events': 'EventsPage', '/mentors': 'MentorsPage',
+      '/assistant': 'AssistantPage', '/settings': 'SettingsPage', '/notifications': 'Notifications',
+    };
+    const visited = topPages(4).map((row) => chunkFor[row.path]).filter((name): name is string => Boolean(name));
+    prefetchPages([...new Set([...visited, 'MatchDiscovery', 'CommunicationHub'])]);
+  }, []);
 
   const paletteTheme = useUIStore((s) => s.paletteTheme);
   useEffect(() => {

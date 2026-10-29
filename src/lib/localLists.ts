@@ -625,7 +625,17 @@ export function removeSession(id: string): StudioSession[] {
 
 // ── Data room files ────────────────────────────────────────────────────────
 
-export type RoomFile = { name: string; size: string; views: number; updated: string; folder?: string };
+export type RoomFile = {
+  name: string;
+  size: string;
+  views: number;
+  updated: string;
+  folder?: string;
+  /** Where the uploaded bytes live (Cloud Storage URL or an inline data URL). Sample files have none. */
+  url?: string;
+  storage?: 'cloud' | 'inline';
+  path?: string;
+};
 
 export function readRoomFiles(): RoomFile[] {
   const stored = readJson<RoomFile[] | null>(keys.room, null);

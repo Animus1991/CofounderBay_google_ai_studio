@@ -35,6 +35,7 @@ import { User } from "../types";
 import { collection, limit, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
 import { askAssistant } from "../lib/assistantBus";
+import { DEMO_EVENTS } from "../data/demoCatalog";
 
 const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
@@ -160,6 +161,8 @@ export default function Events(_props: EventsProps = {}) {
    d.setHours(hour, 0, 0, 0);
    return d;
   };
+  // Offsets shared with the assistant (data/demoCatalog), so both name the same day.
+  const EV = (id: string) => DEMO_EVENTS.find((item) => item.id === id)!;
   const mk = (id: string, title: string, titleEl: string, description: string, descriptionEl: string, start: Date, endHour: number, location: string, locationEl: string, type: Event['type'], attendees: number, image: string, isOnline: boolean, organizer: string): Event => {
    const end = new Date(start.getTime());
    end.setHours(endHour, 0, 0, 0);
@@ -174,9 +177,9 @@ export default function Events(_props: EventsProps = {}) {
    };
   };
   return [
-   mk("1", "Startup Founders Networking Night", "Βραδιά δικτύωσης ιδρυτών startup", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", "Γνώρισε συνιδρυτές, μοιράσου εμπειρίες και βρες πιθανούς συνεργάτες σε χαλαρό περιβάλλον.", at(7, 18), 21, "Tech Hub, London", "Tech Hub, Λονδίνο", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
-   mk("2", "Mastering the Seed Round Pitch", "Πώς να πετύχεις το seed round pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", "Μάθε τα μυστικά ενός επιτυχημένου seed round pitch από επενδυτές κεφαλαίου και έμπειρα ιδρυτικά μέλη.", at(12, 14), 16, "Zoom / Online", "Zoom / Διαδικτυακά", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
-   mk("3", "FinTech Demo Day Q2", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", "Δες τα πιο πολλά υποσχόμενα fintech startups του οικοσυστήματος να κάνουν pitch σε κορυφαίους επενδυτές.", at(25, 10), 13, "Innovation Center, NY", "Innovation Center, Νέα Υόρκη", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
+   mk("1", "Startup Founders Networking Night", "Βραδιά δικτύωσης ιδρυτών startup", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", "Γνώρισε συνιδρυτές, μοιράσου εμπειρίες και βρες πιθανούς συνεργάτες σε χαλαρό περιβάλλον.", at(EV("1").inDays, EV("1").startHour), EV("1").endHour, "Tech Hub, London", "Tech Hub, Λονδίνο", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
+   mk("2", "Mastering the Seed Round Pitch", "Πώς να πετύχεις το seed round pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", "Μάθε τα μυστικά ενός επιτυχημένου seed round pitch από επενδυτές κεφαλαίου και έμπειρα ιδρυτικά μέλη.", at(EV("2").inDays, EV("2").startHour), EV("2").endHour, "Zoom / Online", "Zoom / Διαδικτυακά", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
+   mk("3", "FinTech Demo Day Q2", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", "Δες τα πιο πολλά υποσχόμενα fintech startups του οικοσυστήματος να κάνουν pitch σε κορυφαίους επενδυτές.", at(EV("3").inDays, EV("3").startHour), EV("3").endHour, "Innovation Center, NY", "Innovation Center, Νέα Υόρκη", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
   ];
  };
  const mockEvents = useMemo(() => buildMockEvents(), []);

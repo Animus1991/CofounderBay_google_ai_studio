@@ -32,6 +32,7 @@ import { keys, readIds, readTracked, toggleId } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { coverFor } from "../data/photos";
 import { askAssistant } from "../lib/assistantBus";
+import { DEMO_PROGRAM_DEADLINES } from "../data/demoCatalog";
 
 const TAB_EL: Record<string, string> = {
  All: 'Όλα',
@@ -114,7 +115,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
    type: 'Accelerator',
    funding: "$120,000",
    duration: "12 Weeks",
-   deadline: ahead(14),
+   deadline: ahead(DEMO_PROGRAM_DEADLINES["FinTech Accelerator Q3 2026"] ?? 14),
    focus: ["FinTech", "Blockchain", "SaaS"],
    image: coverFor("prog-1", ["FinTech Accelerator Q3 2026", 'Accelerator', "FinTech"], 800, 400),
    organizer: "Finly Ventures"
@@ -126,7 +127,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
    type: 'Grant',
    funding: "$50,000",
    duration: "N/A",
-   deadline: ahead(30),
+   deadline: ahead(DEMO_PROGRAM_DEADLINES["CleanTech Innovation Grant"] ?? 30),
    focus: ["CleanTech", "Energy", "Sustainability"],
    image: coverFor("prog-2", ["CleanTech Innovation Grant", 'Grant', "CleanTech", "Energy"], 800, 400),
    organizer: "Green Earth Foundation"
@@ -138,7 +139,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
    type: 'Bootcamp',
    funding: "N/A",
    duration: "4 Weeks",
-   deadline: ahead(45),
+   deadline: ahead(DEMO_PROGRAM_DEADLINES["SaaS Growth Bootcamp"] ?? 45),
    focus: ["SaaS", "Growth", "Marketing"],
    image: coverFor("prog-3", ["SaaS Growth Bootcamp", 'Bootcamp', "SaaS", "Growth"], 800, 400),
    organizer: "Founders Academy"

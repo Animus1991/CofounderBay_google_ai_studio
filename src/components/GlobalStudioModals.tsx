@@ -342,15 +342,21 @@ export const GlobalStudioModals: React.FC = () => {
 
   // One score everywhere: the breakdown uses the same engine as Matches cards, profiles,
   // the dashboard and the assistant, so the number in the modal equals the badge clicked.
-  const activeFit = useMemo(() => {
-    if (!activeFounder) return null;
-    const person = directoryPeople().find((p) => p.id === activeFounder.id);
-    const them = person
-      ? fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })
-      : fromCast({ skills: activeFounder.skills, lookingFor: activeFounder.lookingFor, stage: activeFounder.stage, commitment: activeFounder.commitment, city: activeFounder.location.split(/[,/]/)[0]?.trim() });
-    const fit = compatibility(fromProfile(mergeFitIntoViewer(authProfile)), them);
-    return fit.score == null ? null : fit;
-  }, [activeFounder, authProfile]);
+  const fitFor = useMemo(() => {
+    const viewer = fromProfile(mergeFitIntoViewer(authProfile));
+    const directory = directoryPeople();
+    return (founder: FounderProfile) => {
+      const person = directory.find((p) => p.id === founder.id);
+      const them = person
+        ? fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })
+        : fromCast({ skills: founder.skills, lookingFor: founder.lookingFor, stage: founder.stage, commitment: founder.commitment, city: founder.location.split(/[,/]/)[0]?.trim() });
+      const fit = compatibility(viewer, them);
+      return fit.score == null ? null : fit;
+    };
+  }, [authProfile]);
+  const activeFit = useMemo(() => (activeFounder ? fitFor(activeFounder) : null), [activeFounder, fitFor]);
+  /** The picker chips show the same engine's number as the modal they open — never the older heuristic. */
+  const pickerScores = useMemo(() => new Map(founders.slice(0, 10).map((f) => [f.id, fitFor(f)?.score ?? f.matchScore])), [founders, fitFor]);
 
   const handleSaveMyProfile = (updated: FounderProfile) => {
     setMyProfileBase(updated);
@@ -505,8 +511,8 @@ export const GlobalStudioModals: React.FC = () => {
   return (
     <>
       {matchBreakdownModalOpen && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/95 border border-indigo-500/40 shadow-xl backdrop-blur-md max-w-[95vw] overflow-x-auto">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1 px-2 shrink-0">
+        <div role="toolbar" aria-label={lang === 'el' ? 'Επιλογή υποψηφίου' : 'Inspect candidate'} className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 border border-stone-200 shadow-lg backdrop-blur-md max-w-[95vw] overflow-x-auto">
+          <span className="text-xs font-semibold text-stone-500 flex items-center gap-1 px-2 shrink-0">
             <BarChart2 className="w-3.5 h-3.5" />
             {lang === 'el' ? 'Επιλογή Υποψηφίου:' : 'Inspect Candidate:'}
           </span>
@@ -515,13 +521,14 @@ export const GlobalStudioModals: React.FC = () => {
               key={f.id}
               type="button"
               onClick={() => setActiveFounderId(f.id)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
+              aria-pressed={activeFounder?.id === f.id}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all shrink-0 tabular-nums ${
                 activeFounder?.id === f.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-stone-900 text-white shadow-sm'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
               }`}
             >
-              {f.name.split(' ')[0]} · {f.matchScore}%
+              {f.name.split(' ')[0]} · {pickerScores.get(f.id) ?? f.matchScore}%
             </button>
           ))}
         </div>

@@ -43,6 +43,7 @@ import { onCommunities } from "../lib/communities";
 import { useStored } from "../lib/useStored";
 import { connectionStateWith, respondToConnection, useConnections } from "../lib/social";
 import { askAssistant } from "../lib/assistantBus";
+import { DEMO_DISCOVERY_DEADLINES, DEMO_DISCOVERY_SESSIONS, demoAt } from "../data/demoCatalog";
 
 interface DiscoveryProps {
  user: User;
@@ -257,9 +258,9 @@ export default function Discovery({ user }: DiscoveryProps) {
   // Demo deadlines stay in the future relative to today.
   const ahead = (days: number) => formatDate(new Date(Date.now() + days * 86_400_000), { month: 'short', day: 'numeric' });
   return [
-   { id: 'd1', title: "EcoSphere Accelerator", type: "Accelerator", location: "Remote", deadline: ahead(9), tags: ["Sustainability", "Seed"], photo: coverFor('d1', ["EcoSphere Accelerator", "Accelerator", "Sustainability", "Seed"], 800, 600), description: "A 12-week program for early-stage startups building solutions for a sustainable future." },
-   { id: 'd2', title: "Web3 Founders Grant", type: "Grant", location: "Global", deadline: ahead(25), tags: ["Crypto", "Infrastructure"], photo: coverFor('d2', ["Web3 Founders Grant", "Grant", "Crypto", "Infrastructure"], 800, 600), description: "Equity-free funding for developers building core Web3 infrastructure and protocols." },
-   { id: 'd3', title: "AI Innovation Lab", type: "Incubator", location: "Berlin", deadline: ahead(45), tags: ["AI", "Enterprise"], photo: coverFor('d3', ["AI Innovation Lab", "Incubator", "AI", "Enterprise"], 800, 600), description: "Deep-tech incubation for AI startups focusing on enterprise automation and efficiency." },
+   { id: 'd1', title: "EcoSphere Accelerator", type: "Accelerator", location: "Remote", deadline: ahead(DEMO_DISCOVERY_DEADLINES["EcoSphere Accelerator"] ?? 9), tags: ["Sustainability", "Seed"], photo: coverFor('d1', ["EcoSphere Accelerator", "Accelerator", "Sustainability", "Seed"], 800, 600), description: "A 12-week program for early-stage startups building solutions for a sustainable future." },
+   { id: 'd2', title: "Web3 Founders Grant", type: "Grant", location: "Global", deadline: ahead(DEMO_DISCOVERY_DEADLINES["Web3 Founders Grant"] ?? 25), tags: ["Crypto", "Infrastructure"], photo: coverFor('d2', ["Web3 Founders Grant", "Grant", "Crypto", "Infrastructure"], 800, 600), description: "Equity-free funding for developers building core Web3 infrastructure and protocols." },
+   { id: 'd3', title: "AI Innovation Lab", type: "Incubator", location: "Berlin", deadline: ahead(DEMO_DISCOVERY_DEADLINES["AI Innovation Lab"] ?? 45), tags: ["AI", "Enterprise"], photo: coverFor('d3', ["AI Innovation Lab", "Incubator", "AI", "Enterprise"], 800, 600), description: "Deep-tech incubation for AI startups focusing on enterprise automation and efficiency." },
   ];
  }, []);
 
@@ -791,11 +792,7 @@ export default function Discovery({ user }: DiscoveryProps) {
        ) : (
         <div className="space-y-2">
          {(isDemoMode
-           ? [
-            { id: 'demo-e1', title: 'Founder Mixer SF', at: new Date(Date.now() + 2 * 86_400_000).setHours(18, 0, 0, 0), type: 'In-Person' },
-            { id: 'demo-e2', title: 'AI Product Workshop', at: new Date(Date.now() + 4 * 86_400_000).setHours(10, 0, 0, 0), type: 'Virtual' },
-            { id: 'demo-e3', title: 'Seed Funding Webinar', at: new Date(Date.now() + 9 * 86_400_000).setHours(14, 0, 0, 0), type: 'Virtual' },
-           ]
+           ? DEMO_DISCOVERY_SESSIONS.map((item) => ({ id: item.id, title: item.title, at: demoAt(item.inDays, item.hour).getTime(), type: item.type as string }))
            : (liveEvents ?? [])
          ).map((event) => (
           <div key={event.id} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-white hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">
@@ -881,11 +878,7 @@ export default function Discovery({ user }: DiscoveryProps) {
          <Link to="/events" className="text-xs font-medium text-stone-900 hover:underline">{t('Open Events', 'Άνοιγμα Εκδηλώσεων')}</Link>
         </EmptyHint>
        ) : (isDemoMode
-         ? [
-        { title: "Founder Mixer SF", at: new Date(Date.now() + 2 * 86_400_000).setHours(18, 0, 0, 0), type: "In-Person", capacity: "85%", status: "FILLING" },
-        { title: "AI Product Workshop", at: new Date(Date.now() + 4 * 86_400_000).setHours(10, 0, 0, 0), type: "Virtual", capacity: "40%", status: "OPEN" },
-        { title: "Seed Funding Webinar", at: new Date(Date.now() + 9 * 86_400_000).setHours(14, 0, 0, 0), type: "Virtual", capacity: "95%", status: "LAST_CALL" },
-           ]
+         ? DEMO_DISCOVERY_SESSIONS.map((item) => ({ title: item.title, at: demoAt(item.inDays, item.hour).getTime(), type: item.type as string, capacity: item.capacity as string, status: item.status as string }))
          : (liveEvents ?? []).map((event) => ({ title: event.title, at: event.at, type: event.type, capacity: '', status: '' }))
        ).map((event) => (
         <div key={event.title} role="button" tabIndex={0} onClick={() => ask(`Tell me about ${event.title}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ask(`Tell me about ${event.title}`); }} className="group p-3 rounded-xl border border-stone-100 bg-stone-50 hover:border-stone-200 transition-all cursor-pointer flex items-center gap-3">

@@ -47,7 +47,6 @@ import {
  Pin,
  Search,
  Copy,
- ExternalLink,
  Bookmark,
  BookOpen
 } from "lucide-react";
@@ -60,12 +59,19 @@ import { User, Startup, FounderStage } from "../types";
 import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
-import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, type TrackedApplication } from "../lib/localLists";
+import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, readMilestones, effectiveStatus, type TrackedApplication } from "../lib/localLists";
+import { DEMO_APPLICATIONS, DEMO_TOOL_DEADLINES, SOON_DAYS, demoDay } from "../data/demoCatalog";
+import { monthFromToday, shortDay } from "../data/demoClock";
+import { formatDate } from "../lib/dates";
 import { useStored } from "../lib/useStored";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
 import { useUIStore } from "../stores/useUIStore";
 import { askAssistant } from "../lib/assistantBus";
+import { PITCH_SLIDES, draftPitch, effectivePitch, pitchMarkdown, slideStatus, writePitchSlide, type PitchSlideKey } from "../lib/pitch";
+import { FOUNDER_TEMPLATES } from "../data/templates";
+import { copyText, downloadCsv, downloadWord, markdownToHtml, openPrintable, slugify } from "../lib/download";
+import { useLanguage } from "../lib/language";
 
 interface FounderToolsProps {
  user: User;
@@ -78,6 +84,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
  const t = useT();
  const navigate = useNavigate();
  const { profile, isDemoMode } = useAuth();
+ const { mode } = useLanguage();
  const tabLabel = (tab: string) => ({
   dashboard: t('Dashboard', 'Πίνακας ελέγχου'),
   builder: t('Builder', 'Δημιουργός'),
@@ -302,24 +309,95 @@ export default function FounderTools({ user }: FounderToolsProps) {
   }])
  );
 
- const pitchSlides = [
-  { id: 1, title: "Cover & Hook", icon: Presentation, status: "complete", tip: t("Lead with a bold statement that captures the problem's magnitude.", "Ξεκίνα με μια τολμηρή δήλωση που δείχνει το μέγεθος του προβλήματος.") },
-  { id: 2, title: "Problem", icon: AlertCircle, status: "complete", tip: t("Use real data points — customer quotes and market research strengthen credibility.", "Χρησιμοποίησε πραγματικά δεδομένα — αποφθέγματα πελατών και έρευνα αγοράς δίνουν αξιοπιστία.") },
-  { id: 3, title: "Solution", icon: Lightbulb, status: "complete", tip: t("One clear diagram beats 200 words. Show, don't tell.", "Ένα καθαρό διάγραμμα κερδίζει 200 λέξεις. Δείξε, μην εξηγείς.") },
-  { id: 4, title: "Market Size", icon: Globe, status: "in-progress", tip: t("TAM → SAM → SOM funnel. Investors want to see a $1B+ TAM.", "Χωνί TAM → SAM → SOM. Οι επενδυτές θέλουν να δουν TAM $1B+.") },
-  { id: 5, title: "Business Model", icon: DollarSign, status: "in-progress", tip: t("Keep it to one revenue stream in early stage — complexity signals confusion.", "Μείνε σε μία ροή εσόδων στο early stage — η πολυπλοκότητα δείχνει σύγχυση.") },
-  { id: 6, title: "Traction", icon: TrendingUp, status: "pending", tip: t("Show week-over-week growth. Even small numbers with strong growth rate impress.", "Δείξε week-over-week ανάπτυξη. Ακόμα και μικροί αριθμοί με δυνατό ρυθμό εντυπωσιάζουν.") },
-  { id: 7, title: "Team", icon: Users, status: "pending", tip: t("Highlight unfair advantages — why is YOUR team the one to win this?", "Ανάδειξε τα unfair advantages — γιατί η δική σου ομάδα θα το κερδίσει;") },
-  { id: 8, title: "Ask & Use of Funds", icon: Target, status: "pending", tip: t("Be specific: '$1.2M to hire 3 engineers and reach $500K ARR by Q4'.", "Πες το συγκεκριμένα: «$1.2M για 3 μηχανικούς και $500K ARR μέχρι το Q4».") },
- ];
+ // Slide text lives in the account's pitch list; status is computed from it, never fixed.
+ const pitchContent = useStored(effectivePitch, [keys.pitch, keys.canvas, keys.builderInputs, keys.startup, keys.round]);
+ const pitchDraft = useMemo(() => draftPitch(), [pitchContent]); // eslint-disable-line react-hooks/exhaustive-deps -- re-derive when any source list changes
+ const PITCH_ICONS: Record<PitchSlideKey, typeof Presentation> = { cover: Presentation, problem: AlertCircle, solution: Lightbulb, market: Globe, model: DollarSign, traction: TrendingUp, team: Users, ask: Target };
+ const PITCH_TIPS: Record<PitchSlideKey, string> = {
+  cover: t("Lead with a bold statement that captures the problem's magnitude.", "Ξεκίνα με μια τολμηρή δήλωση που δείχνει το μέγεθος του προβλήματος."),
+  problem: t("Use real data points — customer quotes and market research strengthen credibility.", "Χρησιμοποίησε πραγματικά δεδομένα — αποφθέγματα πελατών και έρευνα αγοράς δίνουν αξιοπιστία."),
+  solution: t("One clear diagram beats 200 words. Show, don't tell.", "Ένα καθαρό διάγραμμα κερδίζει 200 λέξεις. Δείξε, μην εξηγείς."),
+  market: t("TAM → SAM → SOM funnel. Investors want to see a $1B+ TAM.", "Χωνί TAM → SAM → SOM. Οι επενδυτές θέλουν να δουν TAM $1B+."),
+  model: t("Keep it to one revenue stream in early stage — complexity signals confusion.", "Μείνε σε μία ροή εσόδων στο early stage — η πολυπλοκότητα δείχνει σύγχυση."),
+  traction: t("Show week-over-week growth. Even small numbers with strong growth rate impress.", "Δείξε week-over-week ανάπτυξη. Ακόμα και μικροί αριθμοί με δυνατό ρυθμό εντυπωσιάζουν."),
+  team: t("Highlight unfair advantages — why is YOUR team the one to win this?", "Ανάδειξε τα unfair advantages — γιατί η δική σου ομάδα θα το κερδίσει;"),
+  ask: t("Be specific: '$1.2M to hire 3 engineers and reach $500K ARR by Q4'.", "Πες το συγκεκριμένα: «$1.2M για 3 μηχανικούς και $500K ARR μέχρι το Q4»."),
+ };
+ const pitchSlides = PITCH_SLIDES.map((slide, index) => ({
+  id: index + 1,
+  key: slide.key,
+  title: slide.en,
+  icon: PITCH_ICONS[slide.key],
+  status: slideStatus(pitchContent[slide.key]),
+  tip: PITCH_TIPS[slide.key],
+ }));
+ const [editingSlide, setEditingSlide] = useState<PitchSlideKey | null>(null);
+ const [slideDraft, setSlideDraft] = useState('');
+ const startEditingSlide = (key: PitchSlideKey) => { setEditingSlide(key); setSlideDraft(pitchContent[key] ?? pitchDraft[key] ?? ''); };
+ const saveSlide = () => {
+  if (!editingSlide) return;
+  writePitchSlide(editingSlide, slideDraft.trim());
+  logActivity({ kind: 'profile', title: `Pitch slide updated: ${editingSlide}`, titleEl: `Ενημερώθηκε διαφάνεια pitch: ${editingSlide}`, href: '/founder-tools' });
+  setEditingSlide(null);
+  showToast(t('Slide saved', 'Η διαφάνεια αποθηκεύτηκε'));
+ };
+ const deckTitle = () => `${(readValue<Record<string, unknown>>(keys.startup, {}).name as string | undefined)?.trim() || t('Pitch deck', 'Pitch deck')}`;
+ const deckMarkdown = () => pitchMarkdown(pitchContent, mode, deckTitle());
+ const downloadDeck = () => {
+  downloadWord(`${slugify(deckTitle()) || 'pitch-deck'}-pitch`, deckTitle(), deckMarkdown());
+  showToast(t('Pitch outline downloaded (.doc)', 'Το περίγραμμα pitch κατέβηκε (.doc)'));
+ };
+ const printDeck = () => {
+  if (!openPrintable(deckTitle(), markdownToHtml(deckMarkdown()))) showToast(t('Allow pop-ups to print or save as PDF', 'Επίτρεψε τα αναδυόμενα για εκτύπωση ή αποθήκευση PDF'));
+ };
+ const shareDeck = async () => {
+  const text = deckMarkdown();
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+   try { await navigator.share({ title: deckTitle(), text }); return; } catch { /* fall through to copy */ }
+  }
+  showToast((await copyText(text)) ? t('Pitch outline copied', 'Το περίγραμμα pitch αντιγράφηκε') : t('Copy did not work in this browser', 'Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή'));
+ };
 
- const starterApplications: TrackedApplication[] = [
-  { id: 1, program: "Y Combinator W27", type: "Accelerator", status: "submitted", deadline: "Jan 15, 2027", decision: "Mar 2027", match: 91, note: "Strong product-market fit narrative. Weakness: team completeness." },
-  { id: 2, program: "Techstars NYC 2026", type: "Accelerator", status: "in-review", deadline: "Aug 1, 2026", decision: "Oct 2026", match: 78, note: "Application under review. Interview scheduled." },
-  { id: 3, program: "NSF SBIR Phase I", type: "Grant", status: "draft", deadline: "Jun 10, 2026", decision: "Sep 2026", match: 65, note: "Complete technical commercialization section." },
-  { id: 4, program: "First Round Capital", type: "VC Intro", status: "rejected", deadline: "N/A", decision: "Apr 2026", match: 55, note: "Revisit after first revenue milestone. Keep in pipeline." },
-  { id: 5, program: "Sequoia Arc", type: "Program", status: "draft", deadline: "May 30, 2026", decision: "Jul 2026", match: 82, note: "Requires product demo video and 1-pager." },
- ];
+ // Sample applications keep their place in time relative to today (data/demoCatalog).
+ const starterApplications: TrackedApplication[] = DEMO_APPLICATIONS.map((app) => ({
+  id: app.id,
+  program: app.program,
+  type: app.type,
+  status: app.status,
+  deadline: app.deadlineInDays === null ? t('N/A', 'Δ/Υ') : shortDay(demoDay(app.deadlineInDays), mode),
+  decision: monthFromToday(app.decisionInDays, mode),
+  match: app.match,
+  note: app.note,
+ }));
+ // Recent achievements and deadlines come from the account's milestones; the sample account keeps its samples.
+ const milestoneList = useStored(readMilestones, [keys.milestones]);
+ const recentAchievements = isDemoMode
+  ? [
+    { title: t("First 10 Interviews", "Πρώτες 10 συνεντεύξεις"), date: t("2 days ago", "πριν από 2 ημέρες"), icon: Trophy, color: "text-amber-500", bg: "bg-amber-50 border-amber-100", nav: '/milestones' },
+    { title: t("Pitch Deck v1.0", "Pitch deck v1.0"), date: t("1 week ago", "πριν από 1 εβδομάδα"), icon: FileText, color: "text-blue-500", bg: "bg-blue-50 border-blue-100", nav: '/founder-tools' },
+   ]
+  : milestoneList
+   .filter((item) => effectiveStatus(item) === 'Completed')
+   .sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')))
+   .slice(0, 2)
+   .map((item) => ({ title: item.title, date: formatDate(item.updatedAt ?? item.targetDate), icon: Trophy, color: "text-amber-500", bg: "bg-amber-50 border-amber-100", nav: '/milestones' }));
+ const dayDiff = (iso: string) => Math.round((new Date(`${iso.slice(0, 10)}T12:00:00`).getTime() - new Date(`${demoDay(0)}T12:00:00`).getTime()) / 86_400_000);
+ const deadlineRow = (title: string, inDays: number, nav?: string) => ({
+  title,
+  date: shortDay(demoDay(inDays), mode),
+  icon: Clock,
+  urgent: inDays <= SOON_DAYS,
+  color: inDays <= SOON_DAYS ? "text-red-500" : "text-amber-500",
+  bg: inDays <= SOON_DAYS ? "bg-red-50 border-red-100" : "bg-amber-50 border-amber-100",
+  nav,
+ });
+ const upcomingDeadlines = isDemoMode
+  ? DEMO_TOOL_DEADLINES.map((item) => deadlineRow(item.title, item.inDays))
+  : milestoneList
+   .filter((item) => effectiveStatus(item) !== 'Completed' && item.targetDate && dayDiff(item.targetDate) >= 0)
+   .sort((a, b) => a.targetDate.localeCompare(b.targetDate))
+   .slice(0, 2)
+   .map((item) => deadlineRow(item.title, dayDiff(item.targetDate), '/milestones'));
  const [applications, setApplications] = useState<TrackedApplication[]>(() => [...readTracked(), ...(isDemoMode ? starterApplications : [])]);
  const [trackingName, setTrackingName] = useState<string | null>(null);
 
@@ -397,17 +475,26 @@ export default function FounderTools({ user }: FounderToolsProps) {
   },
  ];
 
- // Templates Library
- const templates = [
-  { id: 1, name: t('YC Application', 'Αίτηση YC'), category: 'Accelerator', format: 'Google Docs', downloads: 12450, pinned: true, icon: FileText },
-  { id: 2, name: t('Pitch Deck - Series A', 'Pitch deck — Series A'), category: 'Fundraising', format: 'Keynote/PPT', downloads: 8320, pinned: true, icon: Presentation },
-  { id: 3, name: t('SAFE Note Template', 'Πρότυπο SAFE Note'), category: 'Legal', format: 'Word', downloads: 6780, pinned: false, icon: Scale },
-  { id: 4, name: t('Financial Model v2', 'Οικονομικό μοντέλο v2'), category: 'Finance', format: 'Excel', downloads: 5430, pinned: false, icon: BarChart3 },
-  { id: 5, name: t('Product Roadmap Q4', 'Product roadmap Q4'), category: 'Product', format: 'Notion', downloads: 4210, pinned: false, icon: Map },
-  { id: 6, name: t('Employee Offer Letter', 'Επιστολή προσφοράς'), category: 'HR', format: 'Word', downloads: 3890, pinned: false, icon: Users },
-  { id: 7, name: t('Go-to-Market Playbook', 'Playbook go-to-market'), category: 'Marketing', format: 'PDF', downloads: 3150, pinned: false, icon: ShoppingCart },
-  { id: 8, name: t('Technical Spec Template', 'Πρότυπο τεχνικών προδιαγραφών'), category: 'Product', format: 'Notion', downloads: 2980, pinned: false, icon: FileCode },
- ];
+ // Templates Library — real starter files, built in the reader's language.
+ const TEMPLATE_ICONS: Record<string, typeof FileText> = { Accelerator: FileText, Fundraising: Presentation, Legal: Scale, Finance: BarChart3, Product: Map, HR: Users, Marketing: ShoppingCart };
+ const templates = FOUNDER_TEMPLATES.map((template) => ({
+  ...template,
+  name: t(template.name.en, template.name.el),
+  icon: template.id === 8 ? FileCode : TEMPLATE_ICONS[template.category] ?? FileText,
+  formatLabel: template.format === 'csv' ? t('Spreadsheet (.csv)', 'Λογιστικό φύλλο (.csv)') : t('Word outline (.doc)', 'Περίγραμμα Word (.doc)'),
+ }));
+ const downloadTemplate = (template: (typeof templates)[number]) => {
+  const built = template.build(mode);
+  const file = slugify(template.name) || `template-${template.id}`;
+  if (built.rows) downloadCsv(`${file}.csv`, built.rows);
+  else downloadWord(file, template.name, built.markdown ?? '');
+  showToast(t(`${template.name} downloaded`, `Κατέβηκε: ${template.name}`));
+ };
+ const copyTemplate = async (template: (typeof templates)[number]) => {
+  const built = template.build(mode);
+  const text = built.markdown ?? (built.rows ?? []).map((row) => row.join('\t')).join('\n');
+  showToast((await copyText(text)) ? t('Outline copied', 'Το περίγραμμα αντιγράφηκε') : t('Copy did not work in this browser', 'Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή'));
+ };
 
  // AI Suggestions based on startup stage
  const aiSuggestions = [
@@ -729,17 +816,17 @@ export default function FounderTools({ user }: FounderToolsProps) {
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Recent Achievements", "Πρόσφατα επιτεύγματα")}</h3>
         <p className="text-xs text-stone-400 mb-4">{t("Verified venture milestones", "Επαληθευμένα ορόσημα")}</p>
         <div className="space-y-3">
-         {[
-          { title: "First 10 Interviews", date: "2 days ago", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50 border-amber-100", nav: '/milestones' },
-          { title: "Pitch Deck v1.0", date: "1 week ago", icon: FileText, color: "text-blue-500", bg: "bg-blue-50 border-blue-100", nav: '/founder-tools' },
-         ].map((ach, i) => (
+         {recentAchievements.length === 0 && (
+          <p className="text-xs text-stone-500">{t('Complete a milestone and it shows here.', 'Ολοκλήρωσε ένα ορόσημο και θα εμφανιστεί εδώ.')}</p>
+         )}
+         {recentAchievements.map((ach, i) => (
           <div key={i} className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate(ach.nav)}>
            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center border shrink-0", ach.bg, ach.color)}>
             <ach.icon className="w-4 h-4" />
            </div>
            <div>
             <p className="text-sm font-semibold text-stone-900">{ach.title}</p>
-            <p className="text-xs text-stone-400">{whenLabel(ach.date)}</p>
+            <p className="text-xs text-stone-400">{ach.date}</p>
            </div>
           </div>
          ))}
@@ -750,17 +837,17 @@ export default function FounderTools({ user }: FounderToolsProps) {
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")}</h3>
         <p className="text-xs text-stone-400 mb-4">{t("Critical ecosystem windows", "Κρίσιμα παράθυρα οικοσυστήματος")}</p>
         <div className="space-y-3">
-         {[
-          { title: "YC Summer Application", date: "Apr 15", icon: Clock, color: "text-red-500", bg: "bg-red-50 border-red-100", urgent: true },
-          { title: "Techstars Demo Day", date: "May 20", icon: Clock, color: "text-amber-500", bg: "bg-amber-50 border-amber-100", urgent: false },
-         ].map((dl, i) => (
-          <div key={i} className="flex items-center gap-3 group cursor-pointer" onClick={() => { setActiveTab('applications'); }}>
+         {upcomingDeadlines.length === 0 && (
+          <p className="text-xs text-stone-500">{t('No dated milestones ahead. Give a milestone a target date and it shows here.', 'Κανένα ορόσημο με ημερομηνία μπροστά. Δώσε ημερομηνία-στόχο σε ένα ορόσημο και θα εμφανιστεί εδώ.')}</p>
+         )}
+         {upcomingDeadlines.map((dl, i) => (
+          <div key={i} className="flex items-center gap-3 group cursor-pointer" onClick={() => { if (dl.nav) navigate(dl.nav); else setActiveTab('applications'); }}>
            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center border shrink-0", dl.bg, dl.color)}>
             <dl.icon className="w-4 h-4" />
            </div>
            <div className="flex-1">
             <p className="text-sm font-semibold text-stone-900">{dl.title}</p>
-            <p className={cn("text-xs", dl.urgent ? "text-red-500 font-medium" : "text-stone-400")}>{t("Due", "Λήξη")} {whenLabel(dl.date)}</p>
+            <p className={cn("text-xs", dl.urgent ? "text-red-500 font-medium" : "text-stone-400")}>{t("Due", "Λήξη")} {dl.date}</p>
            </div>
            {dl.urgent && <span className="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full tracking-wider">{t("Soon", "Σύντομα")}</span>}
           </div>
@@ -968,31 +1055,67 @@ export default function FounderTools({ user }: FounderToolsProps) {
            </div>
           </div>
           <div className="flex items-center gap-2">
-           <Button variant="ghost" size="icon" title={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} aria-label={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => askAssistant(`Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}`)}><Eye className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => askAssistant(`Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}`)}><Edit3 className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" aria-label={t("Download this deck", "Λήψη του deck")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast(t('Download started', 'Η λήψη ξεκίνησε')); askAssistant('How do I export my pitch deck?'); }}><Download className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} aria-label={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; askAssistant(`Review my ${s?.title ?? 'pitch'} slide: ${(s && pitchContent[s.key]) || 'empty'}`, { agentId: 'a2' }); }}><Eye className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-pressed={editingSlide !== null} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; if (s) startEditingSlide(s.key); }}><Edit3 className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={t("Download the deck outline (.doc)", "Λήψη περιγράμματος deck (.doc)")} aria-label={t("Download the deck outline (.doc)", "Λήψη περιγράμματος deck (.doc)")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={downloadDeck}><Download className="w-4 h-4" /></Button>
           </div>
          </div>
 
-         {/* Slide Canvas Preview */}
-         <div className="aspect-video bg-stone-50 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden mb-5">
-          <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #78716c 1px, transparent 0)', backgroundSize: '20px 20px' }} />
-          <div className="relative z-10 text-center space-y-3 p-8">
-           {(() => {
-            const s = pitchSlides[pitchSlide - 1];
-            if (!s) return null;
-            return (
-             <>
-              <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto border border-stone-200">
-               <s.icon className="w-6 h-6 text-stone-400" />
+         {/* Slide canvas: the slide's own text, an editor, or a draft from the founder's data */}
+         {(() => {
+          const s = pitchSlides[pitchSlide - 1];
+          if (!s) return null;
+          const text = (pitchContent[s.key] ?? '').trim();
+          const draft = (pitchDraft[s.key] ?? '').trim();
+          if (editingSlide === s.key) {
+           return (
+            <div className="mb-5 space-y-2">
+             <label htmlFor="pitch-slide-editor" className="text-xs font-medium text-stone-500">{t(`What this slide says (${slideTitle(s.title)})`, `Τι λέει η διαφάνεια (${slideTitle(s.title)})`)}</label>
+             <textarea
+              id="pitch-slide-editor"
+              value={slideDraft}
+              onChange={(event) => setSlideDraft(event.target.value)}
+              rows={6}
+              maxLength={1200}
+              className="w-full rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-800 focus:border-stone-400 focus:outline-none"
+              placeholder={s.tip}
+             />
+             <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-stone-400">{slideDraft.trim().length}/1200 · {t('60+ characters marks the slide complete', '60+ χαρακτήρες = ολοκληρωμένη διαφάνεια')}</span>
+              <div className="flex flex-wrap gap-2">
+               {draft && draft !== slideDraft.trim() && (
+                <Button type="button" variant="outline" size="sm" className="text-sm" onClick={() => setSlideDraft(draft)}>{t('Use the draft from your data', 'Χρήση πρόχειρου από τα δεδομένα σου')}</Button>
+               )}
+               <Button type="button" variant="outline" size="sm" className="text-sm" onClick={() => setEditingSlide(null)}>{t('Cancel', 'Ακύρωση')}</Button>
+               <Button type="button" size="sm" className="text-sm bg-stone-900 text-white" onClick={saveSlide}>{t('Save slide', 'Αποθήκευση διαφάνειας')}</Button>
               </div>
-              <p className="text-stone-500 text-sm font-mono tracking-wide">{t("Slide", "Διαφάνεια")} {pitchSlide} · {slideTitle(s.title)}</p>
-              <p className="text-stone-500 text-sm">{t("Click", "Πάτα")} <span className="font-semibold text-stone-700">{t("Edit", "Επεξεργασία")}</span> {t("to add content to this slide", "για να προσθέσεις περιεχόμενο σε αυτή τη διαφάνεια")}</p>
-             </>
-            );
-           })()}
-          </div>
-         </div>
+             </div>
+            </div>
+           );
+          }
+          return (
+           <div className="aspect-video bg-stone-50 rounded-xl flex items-center justify-center border border-stone-100 relative overflow-hidden mb-5">
+            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #78716c 1px, transparent 0)', backgroundSize: '20px 20px' }} />
+            <div className="relative z-10 max-w-xl space-y-3 p-6 sm:p-8 text-center">
+             <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto border border-stone-200">
+              <s.icon className="w-6 h-6 text-stone-400" />
+             </div>
+             <p className="text-stone-500 text-sm font-mono tracking-wide">{t("Slide", "Διαφάνεια")} {pitchSlide} · {slideTitle(s.title)}</p>
+             {text ? (
+              <p className="text-stone-800 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">{text}</p>
+             ) : draft ? (
+              <div className="space-y-2">
+               <p className="text-stone-500 text-sm leading-relaxed">{t('Draft from your canvas, builder and round:', 'Πρόχειρο από τον καμβά, το builder και τον γύρο σου:')}</p>
+               <p className="text-stone-700 text-sm italic leading-relaxed break-words">{draft}</p>
+               <Button type="button" variant="outline" size="sm" className="text-sm" onClick={() => startEditingSlide(s.key)}>{t('Edit from this draft', 'Επεξεργασία από το πρόχειρο')}</Button>
+              </div>
+             ) : (
+              <Button type="button" variant="outline" size="sm" className="text-sm" onClick={() => startEditingSlide(s.key)}>{t('Write this slide', 'Γράψε τη διαφάνεια')}</Button>
+             )}
+            </div>
+           </div>
+          );
+         })()}
 
          <div className="flex items-center justify-between">
           <Button
@@ -1039,9 +1162,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
           { label: "Share Link", icon: Globe },
           { label: "Send to Mentor", icon: Send },
          ].map((a) => (
-          <button key={a.label} type="button" onClick={() => a.label === 'Send to Mentor' ? navigate('/mentors') : askAssistant(a.label === 'Export PDF' ? 'How do I export my pitch deck?' : 'How do I share my pitch deck?')} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
+          <button key={a.label} type="button" onClick={() => { if (a.label === 'Send to Mentor') navigate('/mentors'); else if (a.label === 'Export PDF') printDeck(); else void shareDeck(); }} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
            <a.icon className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-900 transition-colors" />
-           <span className="text-xs font-medium text-stone-500 group-hover:text-stone-900">{a.label === 'Export PDF' ? t('Export PDF', 'Εξαγωγή PDF') : a.label === 'Share Link' ? t('Share Link', 'Κοινοποίηση συνδέσμου') : t('Send to Mentor', 'Αποστολή σε μέντορα')}</span>
+           <span className="text-xs font-medium text-stone-500 group-hover:text-stone-900">{a.label === 'Export PDF' ? t('Print / PDF', 'Εκτύπωση / PDF') : a.label === 'Share Link' ? t('Share outline', 'Κοινοποίηση περιγράμματος') : t('Send to Mentor', 'Αποστολή σε μέντορα')}</span>
           </button>
          ))}
         </div>
@@ -1326,19 +1449,18 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <h4 className="text-sm font-semibold text-stone-900 mb-1 truncate">{template.name}</h4>
          <div className="flex items-center gap-2 mb-3">
           <span className="text-xs px-1.5 py-0.5 bg-stone-100 rounded text-stone-500">{template.category === 'HR' ? t('HR', 'HR') : template.category === 'Fundraising' ? t('Fundraising', 'Χρηματοδότηση') : labelOf(template.category)}</span>
-          <span className="text-xs text-stone-400">{template.format}</span>
+          <span className="text-xs text-stone-400">{template.formatLabel}</span>
          </div>
          <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-          <span className="text-xs text-stone-400">{template.downloads.toLocaleString()} {t("downloads", "λήψεις")}</span>
+          <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => askAssistant(`Tell me about ${template.name}`)}>
+           {t("Ask about it", "Ρώτα γι’ αυτό")}
+          </button>
           <div className="flex items-center gap-1">
-           <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Copy link", "Αντιγραφή συνδέσμου")} onClick={() => { navigator.clipboard.writeText(`https://cofounderbay.app/templates/${template.id}`); showToast(t('Link copied!', 'Ο σύνδεσμος αντιγράφηκε!')); }}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Copy the outline", "Αντιγραφή περιγράμματος")} aria-label={t(`Copy the ${template.name} outline`, `Αντιγραφή περιγράμματος: ${template.name}`)} onClick={() => { void copyTemplate(template); }}>
             <Copy className="w-3 h-3 text-stone-400" />
            </button>
-           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Download", "Λήψη")} onClick={() => { showToast(`${t('Downloading', 'Λήψη')} ${template.name}...`); askAssistant(`Tell me about ${template.name}`); }}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Download", "Λήψη")} aria-label={t(`Download ${template.name}`, `Λήψη: ${template.name}`)} onClick={() => downloadTemplate(template)}>
             <Download className="w-3 h-3 text-stone-400" />
-           </button>
-           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Open", "Άνοιξε")} onClick={() => askAssistant(`Tell me about ${template.name}`)}>
-            <ExternalLink className="w-3 h-3 text-stone-400" />
            </button>
           </div>
          </div>

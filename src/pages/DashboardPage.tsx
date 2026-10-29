@@ -11,7 +11,7 @@ import {
   Flame,
   Sparkles,
 } from 'lucide-react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+import Sparkline from '../components/ui/Sparkline';
 import { motion, AnimatePresence } from 'motion/react';
 import { arrayRemove, arrayUnion, collection, doc, increment, limit, onSnapshot, query, updateDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
@@ -821,11 +821,13 @@ export default function DashboardPage() {
         {chartSeries && chartSeries.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
             <div className="h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartSeries}>
-                  <Area type="monotone" dataKey="views" stroke="#1c1917" fill="#e7e5e4" strokeWidth={1.5} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <Sparkline
+                values={chartSeries.map((point) => Number(point.views) || 0)}
+                label={t(
+                  `Profile views, ${chartSeries[0]?.name ?? ''} to ${chartSeries[chartSeries.length - 1]?.name ?? ''}: ${chartSeries.map((point) => point.views).join(', ')}`,
+                  `Προβολές προφίλ, ${chartSeries[0]?.name ?? ''} έως ${chartSeries[chartSeries.length - 1]?.name ?? ''}: ${chartSeries.map((point) => point.views).join(', ')}`,
+                )}
+              />
             </div>
           </div>
         )}

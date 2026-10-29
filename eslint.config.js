@@ -17,10 +17,8 @@ export default tseslint.config(
       '*.config.js',
       '*.config.ts',
       'server.ts',
-      'apply-responsive-typo.ts',
-      'fix-headers.ts',
-      'refactor.ts',
-      'fix_*.cjs',
+      // One-off historical codemods (see scripts/codemods/README.md).
+      'scripts/codemods/**',
     ],
   },
   {
