@@ -24,7 +24,10 @@ async function startServer() {
   });
   const PORT = API_PORT;
 
-  app.use(express.json());
+  // Default 100 kB JSON bodies everywhere except the AI proxy, which parses its
+  // own larger body (slide images) — a global parser would reject it first.
+  const defaultJson = express.json();
+  app.use((req, res, next) => (req.path === "/api/ai/generate" ? next() : defaultJson(req, res, next)));
 
   // Allow cross-origin access (needed when served from same port via Vite middleware)
   app.use((req, res, next) => {
@@ -556,23 +559,56 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.get("/api/messages/:conversationId", (req, res) => {
-    const messages = db.messages.filter(m => m.conversationId === req.params.conversationId);
-    res.json(messages);
-  });
-
   // ── AI Proxy ─────────────────────────────────────────────────────────────
   // Keeps the Gemini API key server-side (process.env.GEMINI_API_KEY) so it is
-  // never shipped in the client bundle. Includes a simple per-IP rate limiter.
+  // never shipped in the client bundle. Includes a simple per-caller limiter.
+  //
+  // Hardening:
+  // - Its own JSON body limit (8 MB): the Pitch Deck Reviewer sends a slide
+  //   image as base64, which the app-wide 100 kB default silently rejected.
+  // - A model allow-list: the client names a model, but only the configured
+  //   model (and AI_MODEL_ALLOWLIST additions) are forwarded, so a caller cannot
+  //   pick an arbitrarily expensive one.
+  // - An output-token ceiling and a forwarded-config allow-list.
+  // - Function calls are returned next to the text, so the assistant can offer
+  //   its action catalogue (tool use) through the proxy as well.
   const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
   const AI_RATE_LIMIT_PER_MINUTE = parseInt(process.env.AI_RATE_LIMIT_PER_MINUTE || "30");
+  const AI_DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const AI_ALLOWED_MODELS = new Set(
+    [AI_DEFAULT_MODEL, ...(process.env.AI_MODEL_ALLOWLIST || "").split(",")].map((m) => m.trim()).filter(Boolean),
+  );
+  const AI_MAX_OUTPUT_TOKENS = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || "2048");
+  const FORWARDED_CONFIG_KEYS = new Set([
+    "systemInstruction",
+    "responseMimeType",
+    "responseSchema",
+    "temperature",
+    "topP",
+    "tools",
+    "toolConfig",
+    "maxOutputTokens",
+  ]);
 
-  app.post("/api/ai/generate", async (req, res) => {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
+  /** Rate-limit key: the bearer token's tail when present (per member), else the IP. */
+  const callerKey = (req: express.Request): string => {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (token.length > 24) return `t:${token.slice(-24)}`;
+    return `ip:${req.ip || req.socket.remoteAddress || "unknown"}`;
+  };
+
+  app.get("/api/ai/status", (_req, res) => {
+    const configured = Boolean(process.env.GEMINI_API_KEY);
+    res.json({ configured, model: configured ? AI_DEFAULT_MODEL : null });
+  });
+
+  app.post("/api/ai/generate", express.json({ limit: "8mb" }), async (req, res) => {
+    const key = callerKey(req);
     const now = Date.now();
-    const bucket = aiRateBuckets.get(ip);
+    const bucket = aiRateBuckets.get(key);
     if (!bucket || bucket.resetAt < now) {
-      aiRateBuckets.set(ip, { count: 1, resetAt: now + 60_000 });
+      aiRateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
     } else if (++bucket.count > AI_RATE_LIMIT_PER_MINUTE) {
       return res.status(429).json({
         error: "Rate limit exceeded",
@@ -587,16 +623,34 @@ async function startServer() {
       });
     }
 
-    const { model, contents, config } = req.body ?? {};
-    if (typeof model !== "string" || !model || contents === undefined) {
-      return res.status(400).json({ error: "`model` and `contents` are required" });
+    const { model: requestedModel, contents, config } = req.body ?? {};
+    if (contents === undefined) {
+      return res.status(400).json({ error: "`contents` is required" });
     }
+    const model = typeof requestedModel === "string" && AI_ALLOWED_MODELS.has(requestedModel) ? requestedModel : AI_DEFAULT_MODEL;
+    const safeConfig: Record<string, unknown> = {};
+    if (config && typeof config === "object") {
+      for (const [k, v] of Object.entries(config as Record<string, unknown>)) {
+        if (FORWARDED_CONFIG_KEYS.has(k)) safeConfig[k] = v;
+      }
+    }
+    const askedTokens = Number(safeConfig.maxOutputTokens);
+    safeConfig.maxOutputTokens = Number.isFinite(askedTokens) && askedTokens > 0 ? Math.min(askedTokens, AI_MAX_OUTPUT_TOKENS) : AI_MAX_OUTPUT_TOKENS;
 
     try {
       const { GoogleGenAI } = await import("@google/genai");
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({ model, contents, config });
-      return res.json({ text: response.text ?? "" });
+      const response = await ai.models.generateContent({ model, contents, config: safeConfig });
+      const functionCalls = (response.functionCalls ?? [])
+        .filter((call) => call.name)
+        .map((call) => ({ name: call.name, args: call.args ?? {} }));
+      let text = "";
+      try {
+        text = response.text ?? "";
+      } catch {
+        text = "";
+      }
+      return res.json({ text, functionCalls, model });
     } catch (err) {
       console.error("AI proxy upstream error:", err);
       return res.status(502).json({ error: "Upstream AI provider error" });

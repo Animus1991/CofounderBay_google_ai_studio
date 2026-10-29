@@ -14,6 +14,7 @@ import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { directoryPeople, onPeopleChange } from '../lib/peopleSource';
 import { useUIStore } from '../stores/useUIStore';
+import { askAssistant, openAssistant } from '../lib/assistantBus';
 
 const COMMAND_PATH: Record<string, string> = {
   dashboard: '/dashboard',
@@ -94,7 +95,7 @@ export default function CommandPalette() {
   }, [navigate]);
 
   const ask = useCallback((prompt: string) => {
-    window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+    askAssistant(prompt);
     setOpen(false);
   }, []);
 
@@ -103,7 +104,7 @@ export default function CommandPalette() {
       { id: 'match-6axis', label: 'Open 6-Axis Match Breakdown', labelEl: 'Άνοιγμα Ανάλυσης Συμβατότητας 6 Αξόνων', icon: BarChart2, action: () => { setOpen(false); setMatchBreakdownModalOpen(true, 'fp-1'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['6-axis', 'breakdown', 'score', 'matching'], kind: 'command' },
       { id: 'deal-room', label: 'Open my Deal Room & Pitch Deck', labelEl: 'Άνοιγμα του Deal Room & Pitch Deck μου', icon: Briefcase, action: () => { setOpen(false); setDealRoomModalOpen(true, 'sv-my-venture'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['deal room', 'pitch deck', 'venture', 'apply'], kind: 'command' },
       { id: 'need-wall', label: 'Open Startup Need Cards Wall', labelEl: 'Άνοιγμα Πίνακα Αναγκών & Ρόλων Startup', icon: Layers, action: () => { setOpen(false); setNeedWallModalOpen(true); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['need', 'bounties', 'roles', 'wall'], kind: 'command' },
-      { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό', icon: Sparkles, action: () => { window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT')); setOpen(false); }, section: 'Studio', sectionEl: 'Βοηθός', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },
+      { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό', icon: Sparkles, action: () => { openAssistant(); setOpen(false); }, section: 'Studio', sectionEl: 'Βοηθός', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },
       { id: 'ask-match', label: 'Who is my best match?', labelEl: 'Ποια είναι η καλύτερη αντιστοίχιση;', icon: Users, action: () => ask('who is my best match'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['match', 'cofounder', 'αντιστοιχ'], kind: 'command' },
       { id: 'ask-overdue', label: 'What is overdue?', labelEl: 'Τι είναι εκπρόθεσμο;', icon: Trophy, action: () => ask('What is overdue?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['milestone', 'overdue', 'εκπρόθεσμ'], kind: 'command' },
       { id: 'ask-round', label: 'How is my round?', labelEl: 'Πώς πάει ο γύρος;', icon: DollarSign, action: () => ask('How is my round?'), section: 'Studio', sectionEl: 'Βοηθός', keywords: ['raise', 'fundraising', 'γύρ'], kind: 'command' },

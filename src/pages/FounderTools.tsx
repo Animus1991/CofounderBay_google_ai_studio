@@ -65,6 +65,7 @@ import { useStored } from "../lib/useStored";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
 import { useUIStore } from "../stores/useUIStore";
+import { askAssistant } from "../lib/assistantBus";
 
 interface FounderToolsProps {
  user: User;
@@ -967,9 +968,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
            </div>
           </div>
           <div className="flex items-center gap-2">
-           <Button variant="ghost" size="icon" title={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} aria-label={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Eye className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}` } }))}><Edit3 className="w-4 h-4" /></Button>
-           <Button variant="ghost" size="icon" aria-label={t("Download this deck", "Λήψη του deck")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast(t('Download started', 'Η λήψη ξεκίνησε')); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I export my pitch deck?' } })); }}><Download className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} aria-label={t("Preview this slide with the studio assistant.", "Προεπισκόπηση της διαφάνειας με τον βοηθό.")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => askAssistant(`Tell me about pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}`)}><Eye className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => askAssistant(`Help me edit pitch slide ${pitchSlides[pitchSlide - 1]?.title || pitchSlide}`)}><Edit3 className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" aria-label={t("Download this deck", "Λήψη του deck")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { showToast(t('Download started', 'Η λήψη ξεκίνησε')); askAssistant('How do I export my pitch deck?'); }}><Download className="w-4 h-4" /></Button>
           </div>
          </div>
 
@@ -1038,7 +1039,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
           { label: "Share Link", icon: Globe },
           { label: "Send to Mentor", icon: Send },
          ].map((a) => (
-          <button key={a.label} type="button" onClick={() => a.label === 'Send to Mentor' ? navigate('/mentors') : window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: a.label === 'Export PDF' ? 'How do I export my pitch deck?' : 'How do I share my pitch deck?' } }))} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
+          <button key={a.label} type="button" onClick={() => a.label === 'Send to Mentor' ? navigate('/mentors') : askAssistant(a.label === 'Export PDF' ? 'How do I export my pitch deck?' : 'How do I share my pitch deck?')} className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-stone-200 hover:border-stone-400 hover:bg-stone-50 transition-all group text-center">
            <a.icon className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-900 transition-colors" />
            <span className="text-xs font-medium text-stone-500 group-hover:text-stone-900">{a.label === 'Export PDF' ? t('Export PDF', 'Εξαγωγή PDF') : a.label === 'Share Link' ? t('Share Link', 'Κοινοποίηση συνδέσμου') : t('Send to Mentor', 'Αποστολή σε μέντορα')}</span>
           </button>
@@ -1333,10 +1334,10 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Copy link", "Αντιγραφή συνδέσμου")} onClick={() => { navigator.clipboard.writeText(`https://cofounderbay.app/templates/${template.id}`); showToast(t('Link copied!', 'Ο σύνδεσμος αντιγράφηκε!')); }}>
             <Copy className="w-3 h-3 text-stone-400" />
            </button>
-           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Download", "Λήψη")} onClick={() => { showToast(`${t('Downloading', 'Λήψη')} ${template.name}...`); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } })); }}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Download", "Λήψη")} onClick={() => { showToast(`${t('Downloading', 'Λήψη')} ${template.name}...`); askAssistant(`Tell me about ${template.name}`); }}>
             <Download className="w-3 h-3 text-stone-400" />
            </button>
-           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Open", "Άνοιξε")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${template.name}` } }))}>
+           <button type="button" className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" title={t("Open", "Άνοιξε")} onClick={() => askAssistant(`Tell me about ${template.name}`)}>
             <ExternalLink className="w-3 h-3 text-stone-400" />
            </button>
           </div>

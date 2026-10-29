@@ -31,6 +31,7 @@ import {
  type CommunityDoc,
  type CommunityPost,
 } from '../lib/communities';
+import { askAssistant } from '../lib/assistantBus';
 
 const TAB_EL: Record<string, string> = {
  all: 'Όλα',
@@ -115,7 +116,7 @@ export default function CommunitiesPage() {
  const [activeTab, setActiveTab] = useState('all');
  const joinedList = useStored(() => readIds(listKeys.communities), ['cfb.joinedCommunities']);
  const localJoined = new Set(joinedList);
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  const [cloud, setCloud] = useState<CommunityDoc[] | null>(isDemoMode ? [] : null);
  const [createOpen, setCreateOpen] = useState(false);

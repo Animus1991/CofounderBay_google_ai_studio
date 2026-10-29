@@ -42,6 +42,7 @@ import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { onCommunities } from "../lib/communities";
 import { useStored } from "../lib/useStored";
 import { connectionStateWith, respondToConnection, useConnections } from "../lib/social";
+import { askAssistant } from "../lib/assistantBus";
 
 interface DiscoveryProps {
  user: User;
@@ -76,7 +77,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  }, [searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations]);
  const [briefingEmail, setBriefingEmail] = useState(() => String(readValue<Record<string, string>>(keys.prefs, {}).briefingEmail ?? authUser?.email ?? ''));
  const [briefingSaved, setBriefingSaved] = useState(false);
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
  const savedSearches = useStored(readSavedSearches, [keys.savedSearches]);
  const hasActiveFilters = Boolean(searchQuery.trim() || selectedSkills.length || selectedIndustries.length || selectedStages.length || selectedLocations.length);
 
@@ -310,7 +311,7 @@ export default function Discovery({ user }: DiscoveryProps) {
  const filteredCommunities = isDemoMode ? demoCommunities : (liveCommunities ?? []);
 
  return (
-  <PageShell sample={isDemoMode} title={bothText("Discovery", "Εξερεύνηση")} description={bothText("Founders, communities, opportunities and events. Ranked co-founder matches live in Matches.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις. Οι ταξινομημένες αντιστοιχίσεις συνιδρυτή είναι στις Αντιστοιχίσεις.")} noPadding={false}>
+  <PageShell sample={isDemoMode} title={bothText("Explore", "Εξερεύνηση")} description={bothText("Founders, communities, opportunities and events. Ranked co-founder matches live in Matches.", "Ιδρυτές, κοινότητες, ευκαιρίες και εκδηλώσεις. Οι ταξινομημένες αντιστοιχίσεις συνιδρυτή είναι στις Αντιστοιχίσεις.")} noPadding={false}>
   <div className="space-y-8">
    {/* Filter Overlay */}
    <AnimatePresence>

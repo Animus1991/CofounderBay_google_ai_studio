@@ -83,6 +83,7 @@ import {
  type ProfileView,
 } from '../lib/social';
 import { UserProfile, Endorsement, ReadinessScore } from '../types';
+import { askAssistant } from '../lib/assistantBus';
 
 enum OperationType {
  CREATE = 'create',
@@ -773,7 +774,7 @@ export default function ProfilePage() {
             <button
              type="button"
              className="mt-1 min-h-11 text-sm text-stone-500 hover:text-stone-800"
-             onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))}
+             onClick={() => askAssistant('What does my founding team still lack?')}
             >
              {t('Ask what the team still lacks', 'Ρώτα τι λείπει ακόμη από την ομάδα')}
             </button>

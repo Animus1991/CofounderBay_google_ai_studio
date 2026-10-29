@@ -11,6 +11,7 @@ import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useAuth } from "../../App";
+import { askAssistant } from "../../lib/assistantBus";
 
 interface SSOSettingsProps {
  user: User;
@@ -557,7 +558,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
               </p>
              </div>
             </div>
-            <Button variant="ghost" size="icon" title={t('Event details', 'Λεπτομέρειες συμβάντος')} className="h-7 w-7 text-stone-400 hover:text-stone-900" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Explain SSO event ${log.event} for ${log.user}` } }))}>
+            <Button variant="ghost" size="icon" title={t('Event details', 'Λεπτομέρειες συμβάντος')} className="h-7 w-7 text-stone-400 hover:text-stone-900" onClick={() => askAssistant(`Explain SSO event ${log.event} for ${log.user}`)}>
              <Info className="w-3.5 h-3.5" />
             </Button>
            </div>
@@ -598,7 +599,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
        <Button
         variant="secondary"
         className="w-full gap-2 h-9 text-xs font-medium shadow-lg shadow-black/20"
-        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Walk me through setting up SSO for my organization' } }))}
+        onClick={() => askAssistant('Walk me through setting up SSO for my organization')}
        >
         <ExternalLink className="w-3.5 h-3.5" /> {t('Setup guidance', 'Καθοδήγηση ρύθμισης')}
        </Button>
@@ -634,7 +635,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
         className="w-full gap-2 h-9 text-xs font-medium"
         disabled={!ssoEnabled}
         title={ssoEnabled ? t('Saves the configuration, then opens a test sign-in window.', 'Αποθηκεύει τη διαμόρφωση και ανοίγει δοκιμαστική είσοδο.') : t('Enable SSO above first.', 'Ενεργοποίησε πρώτα το SSO παραπάνω.')}
-        onClick={async () => { await handleSave(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Test the ${providerName} SSO connection for ${tenantName}` } })); }}
+        onClick={async () => { await handleSave(); askAssistant(`Test the ${providerName} SSO connection for ${tenantName}`); }}
        >
         <ArrowRight className="w-3.5 h-3.5" /> {t('Run Test Login', 'Δοκιμαστική είσοδος')}
        </Button>

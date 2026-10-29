@@ -12,6 +12,7 @@ import { UserRole } from '../types';
 import { useUIStore, PaletteTheme } from '../stores/useUIStore';
 import SaveSafetyGuard from './SaveSafetyGuard';
 import { pageContext } from '../services/assistantOps';
+import { openAssistant } from '../lib/assistantBus';
 
 const PALETTES: { id: PaletteTheme; labelEn: string; labelEl: string; dot: string }[] = [
   { id: 'stone', labelEn: 'Comfort Stone', labelEl: 'Comfort Stone', dot: 'bg-stone-800' },
@@ -165,6 +166,7 @@ export default function Layout() {
   useLanguage();
   const t = useT();
   const currentPage = pageContext(location.pathname);
+  const onAssistantPage = location.pathname.replace(/\/+$/, '') === '/assistant';
 
   const isGuest = !user && !isDemoMode;
   const sidebarUser = {
@@ -232,7 +234,7 @@ export default function Layout() {
       <button
         type="button"
         data-ui="button"
-        onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT'))}
+        onClick={() => openAssistant()}
         className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
         title={t('Open Studio AI Co-Pilot (Reads & edits every module)', 'Άνοιγμα Studio AI Co-Pilot (Διαβάζει & ενημερώνει κάθε ενότητα)')}
       >
@@ -314,7 +316,7 @@ export default function Layout() {
           <main
             id="main-content"
             tabIndex={-1}
-            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none sm:pb-16 lg:pb-0"
+            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onAssistantPage ? 'pb-4' : 'pb-20 sm:pb-24'}`}
           >
             <RouteErrorBoundary>
               <Outlet />
@@ -322,8 +324,8 @@ export default function Layout() {
           </main>
         </div>
       </div>
-      <div className="h-14 shrink-0 sm:hidden" aria-hidden="true" />
-      <ChatWidget />
+      {/* The full-page AI Studio hosts the same conversation inline. */}
+      {!onAssistantPage && <ChatWidget />}
     </div>
   );
 }

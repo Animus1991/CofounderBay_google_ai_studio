@@ -3,6 +3,7 @@ import { createLogger } from "../lib/logger";
 import { auth } from "../firebase";
 import { getLang } from "../lib/language";
 import { assistantStyleInstruction } from "../lib/assistantPrefs";
+import type { AIAgent } from "../types";
 const aiLog = createLogger("ai-service");
 
 interface GenerateParams {
@@ -10,6 +11,11 @@ interface GenerateParams {
   contents: unknown;
   config?: Record<string, unknown>;
 }
+
+/** A tool the model asked to run, as the Gemini API returns it. */
+export type ModelFunctionCall = { name: string; args?: Record<string, unknown> };
+
+export type GenerateResult = { text: string; functionCalls: ModelFunctionCall[] };
 
 /** The model the server uses unless GEMINI_MODEL overrides it there. */
 export const DEFAULT_AI_MODEL = appEnv.geminiModel || "gemini-flash-latest";
@@ -22,8 +28,11 @@ export const DEFAULT_AI_MODEL = appEnv.geminiModel || "gemini-flash-latest";
  * member's Firebase ID token, so the API key never ships in the client bundle
  * and the server can rate-limit per member. The direct SDK path (dynamically
  * imported) is kept for local development only.
+ *
+ * Both paths return the text *and* any function calls, so the assistant can
+ * offer the model its action catalogue and run what it picks.
  */
-async function generateContent(params: GenerateParams): Promise<{ text: string }> {
+async function generateContent(params: GenerateParams, signal?: AbortSignal): Promise<GenerateResult> {
   if (appEnv.aiUseProxy || !appEnv.geminiApiKey) {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     try {
@@ -36,18 +45,30 @@ async function generateContent(params: GenerateParams): Promise<{ text: string }
       method: "POST",
       headers,
       body: JSON.stringify(params),
+      signal,
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       throw new Error(`AI proxy error (${response.status}): ${body?.error ?? "unknown"}`);
     }
-    return (await response.json()) as { text: string };
+    const body = (await response.json()) as { text?: string; functionCalls?: ModelFunctionCall[] };
+    return { text: body.text ?? "", functionCalls: Array.isArray(body.functionCalls) ? body.functionCalls : [] };
   }
   const { GoogleGenAI } = await import("@google/genai");
   const client = new GoogleGenAI({ apiKey: appEnv.geminiApiKey });
   const response = await client.models.generateContent(params as never);
-  return { text: response.text ?? "" };
+  const calls = (response.functionCalls ?? []).map((call) => ({ name: call.name ?? "", args: (call.args ?? {}) as Record<string, unknown> }));
+  let text = "";
+  try {
+    text = response.text ?? "";
+  } catch {
+    text = "";
+  }
+  return { text, functionCalls: calls.filter((call) => call.name) };
 }
+
+/** What the server says about its AI configuration (never the key). */
+export type AIStatus = { configured: boolean; model: string | null; source: "proxy" | "direct" | "none" };
 
 export interface ChatMessage {
   role: 'user' | 'model' | 'system';
@@ -297,7 +318,6 @@ export const MOCK_AGENTS: AIAgent[] = [
   }
 ];
 
-import { AIAgent } from "../types";
 
 export class AIService {
   private static isOffline = false;
@@ -403,9 +423,73 @@ If a pitch deck or slide image is provided, review it for clarity, completeness 
   }
 
   /**
+   * Offers the model the assistant's action catalogue for a question the
+   * deterministic router could not place. The model either calls exactly one
+   * declared action (which the caller validates and runs through the same
+   * router, so a write still becomes a confirmation card) or answers in text.
+   */
+  static async plan(input: {
+    prompt: string;
+    context: string;
+    functionDeclarations: unknown[];
+    signal?: AbortSignal;
+  }): Promise<GenerateResult> {
+    this.checkCircuitBreaker();
+    const language = getLang() === 'el' ? 'Greek' : 'English';
+    try {
+      return await generateContent({
+        model: DEFAULT_AI_MODEL,
+        contents: input.prompt,
+        config: {
+          systemInstruction: `You are the operator of CoFounderBay, a studio where founders find co-founders, mentors and investors and build their venture.
+${input.context}
+Rules:
+- If the person's request maps to one of the declared tools, call exactly one tool with arguments taken from the request. Use the person's own words for free-text arguments. Never invent names of members or programs; if a required argument is missing, answer with one short question instead of calling a tool.
+- If the person wants advice, an explanation or a draft that no tool provides, answer directly in ${language}: concrete, practical, specific to an early-stage founder, grounded in the context above. ${assistantStyleInstruction()}
+- Never claim you changed something: only a confirmed tool call changes data.
+- Never invent people, companies, numbers, deadlines or partnerships. If unsure about a fact, say so and say how to check it.`,
+          tools: [{ functionDeclarations: input.functionDeclarations }],
+          toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+          maxOutputTokens: 900,
+          temperature: 0.3,
+        },
+      }, input.signal);
+    } catch (error) {
+      this.recordFailure();
+      throw error;
+    }
+  }
+
+  private static statusCache: { at: number; value: AIStatus } | null = null;
+
+  /** Whether a model is reachable at all — cached for a minute. */
+  static async status(): Promise<AIStatus> {
+    if (this.statusCache && Date.now() - this.statusCache.at < 60_000) return this.statusCache.value;
+    let value: AIStatus;
+    if (!appEnv.aiUseProxy && appEnv.geminiApiKey) {
+      value = { configured: true, model: DEFAULT_AI_MODEL, source: 'direct' };
+    } else {
+      try {
+        const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/status`);
+        const body = response.ok ? ((await response.json()) as { configured?: boolean; model?: string }) : {};
+        value = { configured: Boolean(body.configured), model: body.model ?? null, source: body.configured ? 'proxy' : 'none' };
+      } catch {
+        value = { configured: false, model: null, source: 'none' };
+      }
+    }
+    this.statusCache = { at: Date.now(), value };
+    return value;
+  }
+
+  /** Whether the circuit breaker currently holds the model off. */
+  static get coolingDown(): boolean {
+    return this.isOffline && Date.now() - this.lastFailureTime < this.FAILURE_THRESHOLD;
+  }
+
+  /**
    * Generates personalized dashboard insights.
    */
-  static async getDashboardInsights(user: any, ecosystemStatus: any) {
+  static async getDashboardInsights(user: unknown, ecosystemStatus: unknown) {
     this.checkCircuitBreaker();
 
     try {

@@ -35,6 +35,7 @@ import { coverFor } from "../data/photos";
 import { onCatalog, postJob, str, num } from "../lib/catalog";
 import { useOptionalMessaging } from "../context/MessagingContext";
 import { logActivity } from "../lib/localLists";
+import { askAssistant } from "../lib/assistantBus";
 
 const RESOURCE_TAB_EL: Record<string, string> = {
  learning: 'Μάθηση',
@@ -86,7 +87,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
  const [courseQuery, setCourseQuery] = useState('');
  const [courseLevel, setCourseLevel] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
  const [jobModalOpen, setJobModalOpen] = useState(false);
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
  usePageControls(() => [
   { id: 'tab-learning', en: 'Show learning', el: 'Εμφάνιση μάθησης', run: () => setActiveTab('learning') },
   { id: 'tab-services', en: 'Show services', el: 'Εμφάνιση υπηρεσιών', run: () => setActiveTab('services') },

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProtectedDraft } from './useProtectedDraft';
+import { failStorageWrites } from '../test/storageFailure';
 
 beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
 
@@ -33,7 +34,7 @@ describe('protected, account-scoped drafts', () => {
  });
  it('keeps text and reports non-durable storage instead of claiming success', () => {
   const hook = renderHook(() => useProtectedDraft('example', 'a', { title: '' }));
-  vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError'); });
+  failStorageWrites(new DOMException('Full', 'QuotaExceededError'));
   act(() => hook.result.current.setValue({ title: 'Still here' }));
   expect(hook.result.current.value.title).toBe('Still here');
   expect(hook.result.current.durable).toBe(false);

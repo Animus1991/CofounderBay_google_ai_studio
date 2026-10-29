@@ -20,6 +20,7 @@ import { labelOf } from "../lib/labels";
 import { formatDate, formatTime, formatWeekRange, formatWhen } from "../lib/dates";
 import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
 import { useToast } from "../context/ToastContext";
+import { askAssistant } from "../lib/assistantBus";
 
 interface Event {
  id: string;
@@ -52,7 +53,7 @@ export default function Calendar() {
   return () => window.removeEventListener('click', handleClickOutside);
  }, [openMenuId]);
 
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  const navigateCalendar = (delta: number) => {
   if (view === 'Month') {

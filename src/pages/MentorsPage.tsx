@@ -34,6 +34,7 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../App';
 import { useStored } from '../lib/useStored';
 import { usePageControls } from '../lib/pageControls';
+import { askAssistant } from '../lib/assistantBus';
 
 type MentorCard = {
   id: string;
@@ -259,7 +260,7 @@ export default function MentorsPage() {
      <div className="flex items-center gap-4">
       <button
        type="button"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Find a fundraising mentor' } }))}
+       onClick={() => askAssistant('Find a fundraising mentor')}
        className="flex items-center gap-2 text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors group"
       >
        {t('Ask the assistant', 'Ρώτα τον βοηθό')}
@@ -370,7 +371,7 @@ export default function MentorsPage() {
      </button>
      <button
       type="button"
-      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'How do I become a mentor?' } }))}
+      onClick={() => askAssistant('How do I become a mentor?')}
       className="px-4 py-2 bg-white text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-50 transition-all border border-stone-200"
      >
       {t('Learn More', 'Περισσότερα')}

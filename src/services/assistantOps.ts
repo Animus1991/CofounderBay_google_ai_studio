@@ -70,6 +70,7 @@ import { readAssistantPrefs, writeAssistantPrefs, type AssistantPrefs } from '..
 import { topPages, unvisited } from '../lib/usage';
 import { readUxPrefs, writeUxPrefs, pinFavorite } from '../lib/personalization';
 import { navLabel, NAV_PATHS } from '../lib/navMap';
+import { assistantPages } from '../lib/pageRegistry';
 import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notificationFeed';
 import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
@@ -116,6 +117,13 @@ export type AssistantResult = {
   followUps?: AssistantFollowUp[];
   sources?: AssistantSource[];
   proposal?: AssistantProposal;
+  /**
+   * True only when no studio tool matched and the router fell back to the
+   * briefing. The chat uses it to hand the question to the model (or to say
+   * honestly that it could not map it) instead of answering an unrelated
+   * question with a status summary.
+   */
+  fallback?: boolean;
 };
 
 type LoggedWrite = { kind: ActivityKind; title: string; titleEl?: string; href?: string };
@@ -205,30 +213,8 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   'studio-modal': [SOURCE.people, SOURCE.round],
 };
 
-export const ASSISTANT_PAGES: { keys: string[]; href: string; en: string; el: string }[] = [
-  { keys: ['dashboard', 'home', 'πίνακ', 'αρχικ'], href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' },
-  { keys: ['match', 'cofounder', 'co-founder', 'συνιδρυτ', 'αντιστοιχ'], href: '/matches', en: 'Matches', el: 'Αντιστοιχίσεις' },
-  { keys: ['discover', 'explore', 'εξερεύ'], href: '/discovery', en: 'Discovery', el: 'Εξερεύνηση' },
-  { keys: ['mentor', 'μεντορ'], href: '/mentors', en: 'Mentors', el: 'Μέντορες' },
-  { keys: ['message', 'chat', 'inbox', 'μηνυμ', 'συνομιλ'], href: '/messages', en: 'Messages', el: 'Μηνύματα' },
-  { keys: ['milestone', 'οροσημ', 'στόχ'], href: '/milestones', en: 'Milestones', el: 'Ορόσημα' },
-  { keys: ['fund', 'investor', 'round', 'raise', 'χρηματοδ', 'επενδυτ', 'γύρ'], href: '/fundraising', en: 'Fundraising', el: 'Χρηματοδότηση' },
-  { keys: ['calendar', 'ημερολ', 'ραντεβ'], href: '/calendar', en: 'Calendar', el: 'Ημερολόγιο' },
-  { keys: ['network', 'δικτυ'], href: '/network', en: 'Network', el: 'Δίκτυο' },
-  { keys: ['communit', 'κοινοτ'], href: '/communities', en: 'Communities', el: 'Κοινότητες' },
-  { keys: ['event', 'εκδηλ'], href: '/events', en: 'Events', el: 'Εκδηλώσεις' },
-  { keys: ['program', 'accelerator', 'πρόγραμ', 'προγραμ'], href: '/programs', en: 'Programs', el: 'Προγράμματα' },
-  { keys: ['profile', 'προφιλ'], href: '/profile', en: 'Profile', el: 'Προφίλ' },
-  { keys: ['setting', 'ρυθμισ'], href: '/settings', en: 'Settings', el: 'Ρυθμίσεις' },
-  { keys: ['insight', 'στατιστ'], href: '/insights', en: 'Insights', el: 'Εικόνα' },
-  { keys: ['notification', 'ειδοποι'], href: '/notifications', en: 'Notifications', el: 'Ειδοποιήσεις' },
-  { keys: ['legal', 'νομικ'], href: '/legal', en: 'Legal Hub', el: 'Νομικά' },
-  { keys: ['perk', 'παροχ'], href: '/perks', en: 'Perks', el: 'Παροχές' },
-  { keys: ['founder tool', 'εργαλει ιδρυτ'], href: '/founder-tools', en: 'Founder Tools', el: 'Εργαλεία ιδρυτή' },
-  { keys: ['workspace', 'venture builder', 'χωροσ εργασ'], href: '/workspace', en: 'Workspace', el: 'Χώρος εργασίας' },
-  { keys: ['resource', 'course', 'learning hub', 'πορο'], href: '/resources', en: 'Resources', el: 'Πόροι' },
-  { keys: ['quiz', 'fit check', 'fit-check', 'αρχετυπ'], href: '/quiz', en: 'Fit check', el: 'Fit check' },
-];
+/** Pages the assistant recognises by name, in matching order — derived from the page registry. */
+export const ASSISTANT_PAGES: { keys: string[]; href: string; en: string; el: string }[] = assistantPages();
 
 /** Slash shortcuts in the studio chat — same tools as the natural-language router. */
 export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
@@ -293,15 +279,15 @@ const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['global startup summit'], href: '/events', demo: true, en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
   { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate is the flagship public founder program listed on Perks — apply on the provider site from that card. Open Perks to see every published perk.', el: 'Το AWS Activate είναι δημόσιο πρόγραμμα στις Παροχές — κάνε αίτηση στον πάροχο από την κάρτα. Άνοιξε Παροχές για όλες.' },
   { keys: ['readiness score'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
-  { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download the starter draft there, or book office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασε το αρχικό draft από εκεί ή κλείσε συνεδρία.' },
+  { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda', 'το safe', 'safe note', 'καταστατικ', 'συμφωνια εμπιστευτικοτητας'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download the starter draft there, or book office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασε το αρχικό draft από εκεί ή κλείσε συνεδρία.' },
   { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15-minute sessions you book on Legal Hub — the Book a Session button adds it straight to your Calendar.', el: 'Οι νομικές συνεδρίες είναι 15λεπτες συναντήσεις που κλείνεις στο Legal Hub — το κουμπί τις βάζει στο Ημερολόγιό σου.' },
-  { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
+  { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video', 'φωνητικη κλησ', 'βιντεοκλησ'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
   { keys: ['list a partner service', 'list your service'], href: '/resources', en: 'Partner services are listed on Resources → Services. Tell me the service name and price and I will point you at that tab.', el: 'Οι υπηρεσίες partners είναι στους Πόρους → Services. Πες όνομα και τιμή.' },
   { keys: ['post a job', 'post a role'], href: '/resources', en: 'Jobs sit on Resources → Jobs. Use Post a Job on that tab — the listing goes live for every member.', el: 'Οι θέσεις είναι στους Πόρους → Jobs. Πάτα Post a Job στην καρτέλα — η αγγελία βγαίνει live για όλα τα μέλη.' },
   { keys: ['foundations of fundraising', 'scalable sales engine', 'legal essentials for startups', 'product-market fit workshop'], href: '/resources', demo: true, en: 'That course is on Resources → Learning, same cards as the Learning Hub. Start Learning opens this assistant with the course title.', el: 'Αυτό το μάθημα είναι στους Πόρους → Learning.' },
   { keys: ['create a community'], href: '/communities', en: 'Create stays on Communities. Name the space, pick a category, and I will keep it next to Fintech Founders, AI & Machine Learning, SaaS Builders, and Web3 & Crypto. Open Communities and use Create — or tell me the name.', el: 'Η δημιουργία μένει στις Κοινότητες. Δώσε όνομα και κατηγορία. Άνοιξε Κοινότητες και πάτα Create — ή πες μου το όνομα.' },
   { keys: ['fintech founders', 'ai & machine learning', 'saas builders', 'web3 & crypto'], href: '/communities', en: 'That community is on the Communities page with its real member count. Join there, or tell me “join <name>” and I will do it.', el: 'Αυτή η κοινότητα είναι στη σελίδα Κοινότητες με τον πραγματικό αριθμό μελών. Κάνε Join εκεί, ή πες μου «join <όνομα>».' },
-  { keys: ['export my pitch', 'share my pitch', 'pitch deck', 'pitch slide', 'cover & hook'], href: '/founder-tools', en: 'Pitch lives on Founder Tools → Pitch: Cover & Hook, Problem, Solution, Market Size, Business Model, Traction, Team, Ask. Export, share, or send to a mentor from that tab — I can also book a mentor.', el: 'Το pitch είναι στα Εργαλεία ιδρυτή → Pitch. Export, share ή αποστολή σε μέντορα από εκεί. Μπορώ και να κλείσω μέντορα.' },
+  { keys: ['export my pitch', 'share my pitch', 'pitch deck', 'pitch slide', 'cover & hook', 'εξαγω το pitch', 'μοιραστω το pitch'], href: '/founder-tools', en: 'Pitch lives on Founder Tools → Pitch: Cover & Hook, Problem, Solution, Market Size, Business Model, Traction, Team, Ask. Export, share, or send to a mentor from that tab — I can also book a mentor.', el: 'Το pitch είναι στα Εργαλεία ιδρυτή → Pitch. Export, share ή αποστολή σε μέντορα από εκεί. Μπορώ και να κλείσω μέντορα.' },
   { keys: ['lean canvas'], href: '/workspace', en: 'Lean Canvas is on Workspace → Canvas. Save keeps the draft on that page; AI Refine opens this assistant on the same nine boxes.', el: 'Το Lean Canvas είναι στο Workspace → Canvas. Το Save κρατά το draft εκεί· το AI Refine ανοίγει αυτόν τον βοηθό.' },
   { keys: ['workspace assets', 'project assets'], href: '/workspace', demo: true, en: 'Project assets sit on Workspace → Dashboard: Pitch Deck v2.pdf, Brand Guidelines.zip, Market Research.docx. Open Workspace to download, or Founder Tools for the live pitch.', el: 'Τα αρχεία είναι στο Workspace → Dashboard. Άνοιξε Workspace ή τα Εργαλεία ιδρυτή για το live pitch.' },
   { keys: ['ecosphere'], href: '/discovery', demo: true, en: 'EcoSphere Accelerator is on Discovery → Opportunities: 12 weeks, remote, sustainability, deadline 30 Oct. Same card as Explore.', el: 'Το EcoSphere Accelerator είναι στην Εξερεύνηση → Ευκαιρίες: 12 εβδομάδες, remote, 30 Οκτ.' },
@@ -637,7 +623,7 @@ function needResult(query: string, propose: boolean): AssistantResult {
     }
   }
   const drafting = hasStem(folded, 'draft', 'write', 'create', 'new', 'γραψ', 'φτιαξ', 'δημιουργ');
-  if (drafting || (/\b(need card|καρτα αναγκ)\b/.test(folded) && readNeeds().length === 0)) {
+  if (drafting || (hasStem(folded, 'need card', 'καρτα αναγκ') && readNeeds().length === 0)) {
     const missing = query
       .replace(/^(please\s+)?(draft|write|create|new|γραψε|φτιαξε|δημιουργησε)\s+(a\s+)?(need card|καρτα αναγκης)?\s*(for|για)?\s*/i, '')
       .trim() || 'a co-founder';
@@ -781,7 +767,7 @@ function openToResult(query: string, propose: boolean): AssistantResult {
   if (/\bco-?founder|συνιδρυτ/.test(folded)) kinds.push('cofounder');
   if (/\binvestor|επενδυτ/.test(folded)) kinds.push('investor');
   if (/\badvisor|mentor|συμβουλ|μεντορ/.test(folded)) kinds.push('advisor');
-  if (kinds.length && /\b(open|mark|set|ανοιχτ)\b/.test(folded)) {
+  if (kinds.length && hasStem(folded, 'open', 'mark', 'set', 'ανοιχτ')) {
     const previous = readOpenTo();
     const next = [...new Set([...previous, ...kinds])];
     const ctx = () => ({ uid: dataScope() || null, demo: isDemoData() });
@@ -1062,9 +1048,12 @@ function mentorsResult(query: string): AssistantResult {
 
 function milestonesResult(query: string, propose: boolean): AssistantResult {
   const folded = fold(query);
-  const creating = /\b(add|create|new|προσθεσ|δημιουργ)\b/.test(folded) && /\b(milestone|οροσημ)\b/.test(folded);
+  const creating = hasStem(folded, 'add', 'create', 'new', 'προσθεσ', 'δημιουργ') && hasStem(folded, 'milestone', 'οροσημ');
   if (creating) {
-    const title = query.replace(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε)\s+(a\s+)?(milestone|οροσημο)\s*(called|named|με ονομα|με τίτλο)?\s*/i, '').trim() || 'New milestone';
+    // Matched on the folded text (accents stripped, same length) so «Πρόσθεσε
+    // ορόσημο …» strips its verb exactly like "add milestone …".
+    const lead = fold(query).match(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε)\s+(a\s+|ενα\s+)?(milestone|οροσημο)\s*(called|named|με ονομα|με τιτλο)?\s*/i)?.[0] ?? '';
+    const title = query.slice(lead.length).trim() || 'New milestone';
     const createdId = `m-${Date.now().toString(36)}`;
     let logged: LoggedWrite | null = null;
     const apply = (): AssistantResult => {
@@ -1495,7 +1484,7 @@ function roundResult(): AssistantResult {
 
 function navigateResult(query: string): AssistantResult | null {
   const folded = fold(query);
-  if (!/\b(open|go|show|take me|ανοιξ|πηγαιν|δειξ)\b/.test(folded) && !ASSISTANT_PAGES.some((page) => page.keys.some((key) => folded === key))) {
+  if (!hasStem(folded, 'open', 'go', 'show', 'take me', 'ανοιξ', 'πηγαιν', 'δειξ') && !ASSISTANT_PAGES.some((page) => page.keys.some((key) => folded === key))) {
     return null;
   }
   const page = ASSISTANT_PAGES.find((item) => item.keys.some((key) => folded.includes(key)));
@@ -1872,7 +1861,7 @@ function programsResult(): AssistantResult {
 
 function aboutResult(query: string): AssistantResult | null {
   const folded = fold(query);
-  const asking = /\b(tell me about|what is|what's|whats|explain|who is|πληροφορ|τι ειναι|ποιος)\b/.test(folded);
+  const asking = hasStem(folded, 'tell me about', 'what is', "what's", 'whats', 'explain', 'who is', 'πληροφορ', 'τι ειναι', 'ποιος ειναι', 'ποια ειναι', 'πες μου για', 'εξηγησε');
   const hit = KNOWLEDGE.find((card) => (!card.demo || isDemoData()) && card.keys.some((key) => folded.includes(key)));
   if (hit && (asking || hit.keys.some((key) => key.length >= 10 && folded.includes(key)))) {
     return {
@@ -1938,7 +1927,7 @@ function legalResult(): AssistantResult {
 
 // Same platform spaces the Communities page renders — identical ids, so an
 // assistant join lands on the same Firestore document the page streams.
-const COMMUNITY_CATALOG = [
+export const COMMUNITY_CATALOG = [
   { id: 'fintech-founders', name: 'Fintech Founders', description: 'A space for entrepreneurs building the future of finance, banking, and payments.', category: 'Industry' },
   { id: 'ai-machine-learning', name: 'AI & Machine Learning', description: 'Discussing the latest in LLMs, computer vision, and AI-driven applications.', category: 'Technology' },
   { id: 'saas-builders', name: 'SaaS Builders', description: 'Everything about building, scaling, and selling software as a service.', category: 'Business Model' },
@@ -1947,7 +1936,7 @@ const COMMUNITY_CATALOG = [
 
 function communitiesResult(query: string | undefined, propose: boolean): AssistantResult {
   const folded = fold(query || '');
-  const joining = /\b(join|μπες|κανε join)\b/.test(folded);
+  const joining = hasStem(folded, 'join', 'μπες', 'κανε join', 'γινε μελος', 'γινομαι μελος');
   const hit = COMMUNITY_CATALOG.find((item) => folded.includes(fold(item.name)));
   if (joining && hit) {
     const wasJoined = readIds(listKeys.communities).includes(hit.id);
@@ -2317,7 +2306,9 @@ function readinessResult(query: string, propose: boolean): AssistantResult {
     { href: '/insights', en: 'Open Insights', el: 'Άνοιγμα Στατιστικών' },
   ];
 
-  const nameMatch = query.match(/(?:set|change|update|ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:my\s+)?(?:startup|venture)\s+(?:name|ονομα|όνομα)\s+(?:to|σε)\s+(.+)$/i);
+  const nameMatch = query.match(/(?:set|change|update|ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:my\s+)?(?:startup|venture)\s+(?:name|ονομα|όνομα)\s+(?:to|σε)\s+(.+)$/i)
+    // Greek word order: «όρισε (το) όνομα (του) startup σε …».
+    ?? query.match(/(?:ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:το\s+)?(?:ονομα|όνομα)\s+(?:του\s+|της\s+)?(?:startup|venture|εταιρειας|εταιρείας)\s+σε\s+(.+)$/i);
   const linerMatch = query.match(/(?:set|change|update|ορισε|όρισε|αλλαξε|άλλαξε)\s+(?:my\s+)?(?:startup\s+|venture\s+)?(?:one-?liner|pitch\s+line)\s+(?:to|σε)\s+(.+)$/i);
   if (nameMatch || linerMatch) {
     const field = nameMatch ? 'name' : 'oneLiner';
@@ -2396,9 +2387,9 @@ function studioModalResult(kind: '6axis' | 'dealroom' | 'needwall', query = '', 
   }
   if (kind === 'dealroom') {
     const folded = fold(query);
-    const startupId = /\b(create|new|launch|νεα|δημιουργ)\b/.test(folded)
+    const startupId = hasStem(folded, 'create', 'new', 'launch', 'νεα', 'δημιουργ')
       ? 'create'
-      : /\b(browse|other|others|startups|all|αλλες|άλλες|ολες|όλες)\b/.test(folded)
+      : hasStem(folded, 'browse', 'other', 'others', 'startups', 'all', 'αλλες', 'ολες')
         ? 'sv-1'
         : 'sv-my-venture';
     ui.setDealRoomModalOpen(true, startupId);
@@ -2635,7 +2626,7 @@ function homeResult(query: string, propose: boolean): AssistantResult {
       links: ux.homePath ? [{ href: ux.homePath, en: 'Open your home', el: 'Άνοιγμα της αρχικής σου' }] : [],
     };
   }
-  const next = /\b(off|none|clear|default|κανενα|κανένα|καθαρισε|καθάρισε)\b/.test(folded) ? null : resolvePageArg(folded);
+  const next = hasStem(folded, 'off', 'none', 'clear', 'default', 'κανενα', 'καθαρισε') ? null : resolvePageArg(folded);
   if (next === undefined) {
     return {
       tool: 'home',
@@ -2671,12 +2662,12 @@ function themeResult(query: string): AssistantResult {
   const folded = fold(query);
   const ui = useUIStore.getState();
   const nextTheme: PaletteTheme =
-    /\b(dark|obsidian|σκοτειν)\b/.test(folded) ? 'dark' :
-    /\b(cyan|pulse|κυαν)\b/.test(folded) ? 'cyan' :
-    /\b(mint|catalyst|μεντ|πρασιν)\b/.test(folded) ? 'mint' :
-    /\b(apricot|warmth|βερικοκ|πορτοκαλ)\b/.test(folded) ? 'apricot' :
-    /\b(lilac|vision|λιλα|μωβ)\b/.test(folded) ? 'lilac' :
-    /\b(burgundy|wine|velvet|maroon|μπορντ|κρασι)\b/.test(folded) ? 'burgundy' : 'stone';
+    hasStem(folded, 'dark', 'obsidian', 'σκοτειν') ? 'dark' :
+    hasStem(folded, 'cyan', 'pulse', 'κυαν') ? 'cyan' :
+    hasStem(folded, 'mint', 'catalyst', 'μεντ', 'πρασιν') ? 'mint' :
+    hasStem(folded, 'apricot', 'warmth', 'βερικοκ', 'πορτοκαλ') ? 'apricot' :
+    hasStem(folded, 'lilac', 'vision', 'λιλα', 'μωβ') ? 'lilac' :
+    hasStem(folded, 'burgundy', 'wine', 'velvet', 'maroon', 'μπορντ', 'κρασι') ? 'burgundy' : 'stone';
   ui.setPaletteTheme(nextTheme);
   const labelMap: Record<PaletteTheme, string> = {
     stone: 'Comfort Stone',
@@ -2698,7 +2689,7 @@ function themeResult(query: string): AssistantResult {
 
 function langResult(query: string): AssistantResult {
   const folded = fold(query);
-  const next = /\b(el|greek|ελληνικ|gr)\b/.test(folded) ? 'el' : 'en';
+  const next = hasStem(folded, 'el', 'greek', 'ελληνικ', 'gr') ? 'el' : 'en';
   setGlobalLang(next);
   return {
     tool: 'settings-set',
@@ -2873,7 +2864,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(startup\s*builder|builder\s*module|set\s+builder|fill\s+builder)\b/.test(folded) || (/builder/.test(folded) && /\b(problem|solution|market|model|gtm|module|status)\b/.test(folded))) {
     return builderResult(query, propose);
   }
-  if (!/^(tell me about|πες μου για)\b/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded))) {
+  if (!/^(tell me about|πες μου για)\b/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded) || /ονομα.{0,10}(startup|venture|εταιρει)/.test(folded))) {
     return readinessResult(query, propose);
   }
 
@@ -2889,10 +2880,10 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (parseNotificationsRead(query)) return notificationsReadResult(propose);
 
   const person = namedPerson(query);
-  if (person && /\b(why|γιατι)\b/.test(folded) && /\b(match|ταιριαζ)\b/.test(folded)) return matchDetailResult(profile, person);
-  if (person && /\b(save|watch|αποθηκ)\b/.test(folded)) return saveOrConnect('save', person, propose);
-  if (person && /\b(connect|request|intro|συνδεσ|αιτημ)\b/.test(folded)) return saveOrConnect('connect', person, propose);
-  if (person && /\b(book|schedule|κλεισ|ραντεβ)\b/.test(folded)) return bookMentor(person, propose);
+  if (person && hasStem(folded, 'why', 'γιατι') && hasStem(folded, 'match', 'ταιριαζ')) return matchDetailResult(profile, person);
+  if (person && hasStem(folded, 'save', 'watch', 'αποθηκ')) return saveOrConnect('save', person, propose);
+  if (person && hasStem(folded, 'connect', 'request', 'intro', 'συνδεσ', 'συνδεθ', 'αιτημ')) return saveOrConnect('connect', person, propose);
+  if (person && hasStem(folded, 'book', 'schedule', 'κλεισ', 'ραντεβ')) return bookMentor(person, propose);
   if (/\b(still lack|team lack|founding team)\b/.test(folded) || hasStem(folded, 'τι λειπ', 'τι χρειαζεται η ομαδα')) return teamGapResult(profile);
   if ((/\b(propose|scout|do not send)\b/.test(folded) || hasStem(folded, 'προτειν', 'μην στειλ'))
     && (/\b(people|three|3|match)\b/.test(folded) || hasStem(folded, 'τρεις', 'συνιδρυτ', 'αντιστοιχ'))) return scoutResult(profile);
@@ -2900,7 +2891,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\bsearch( my)? (messages?|inbox|thread)\b|\bunread\b.{0,30}\bmessages?\b|\bmessages?\b.{0,30}\bunread\b/.test(folded)
     || hasStem(folded, 'ψαξε') && hasStem(folded, 'μηνυμ')
     || hasStem(folded, 'αδιαβαστ') && hasStem(folded, 'μηνυμ')) return inboxResult(query);
-  if (/\bopen to (a )?(co-?founder|investor|advisor)\b/.test(folded) || /ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ)|ειμαι ανοιχτ/.test(folded)) return openToResult(query, propose);
+  if (/\bopen to (a )?(co-?founder|investor|advisor)\b/.test(folded) || /\b(am i|i am)\b.{0,20}\bopen to\b/.test(folded) || /ανοιχτ.{0,12}(συνιδρυτ|επενδυτ|συμβουλ)|ειμαι ανοιχτ/.test(folded)) return openToResult(query, propose);
   if (/\b(what should i do first|next step)\b/.test(folded) || hasStem(folded, 'τι να κανω')) return nextStepAssistant(profile);
   if (/\b(7-day|seven-day|playbook|match plan)\b/.test(folded) || hasStem(folded, 'πλανο 7')) return playbookResult(propose);
   if (/\b(invite 3|invite three|bring 3|bring three|1\+3|one plus three)\b/.test(folded) || (hasStem(folded, 'προσκαλεσ') && /\b3\b|τρεις/.test(folded))) return inviteResult(propose);
@@ -2908,11 +2899,18 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(fit check|archetype|quiz)\b/.test(folded) || hasStem(folded, 'τι ειδους')) return fitCheckResult();
 
   if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query, propose);
-  if (/\bclaim\b/.test(folded) && /\b(perk|aws|stripe|hubspot|notion|google cloud|gcp|intercom|slack|mercury|amazon web|παροχ)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) {
+  if (/\bclaim\b/.test(folded) && hasStem(folded, 'perk', 'aws', 'stripe', 'hubspot', 'notion', 'google cloud', 'gcp', 'intercom', 'slack', 'mercury', 'amazon web', 'παροχ') && !/\b(what|which|how)\b/.test(folded)) {
     return claimPerkResult(query, propose);
   }
   if (/\brecord\b/.test(folded) && /\binvest/.test(folded)) return recordInvestmentResult(query, propose);
   if (/\b(add|create|new)\b/.test(folded) && /\b(task|todo)\b/.test(folded)) return addTaskResult(query, propose);
+
+  // A join names the community, which is also a knowledge card ("Fintech
+  // Founders is on the Communities page…"). The verb wins: the card tells the
+  // person to say "join <name>", so saying it must join.
+  if (hasStem(folded, 'join', 'μπες', 'κανε join', 'γινε μελος') && COMMUNITY_CATALOG.some((item) => folded.includes(fold(item.name)))) {
+    return communitiesResult(query, propose);
+  }
 
   const about = aboutResult(query);
   if (about) return about;
@@ -2940,10 +2938,10 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(milestones?|overdue|due)\b/.test(folded) || hasStem(folded, 'οροσημ', 'εκπροθεσμ')) return milestonesResult(query, propose);
   if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return pipelineResult();
   if (/\b(rounds?|raise|runway|valuation)\b/.test(folded) || hasStem(folded, 'γυρο', 'χρηματοδ', 'επενδυτ')) return roundResult();
-  if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν')) return briefingResult(profile);
+  if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν', 'σημεριν', 'κατασταση', 'συνοψη')) return briefingResult(profile);
   if (/\b(help|what can you)\b/.test(folded) || hasStem(folded, 'τι μπορεις')) return helpResult();
 
-  return briefingResult(profile);
+  return { ...briefingResult(profile), fallback: true };
 }
 
 export function assistantContextBlock(profile: AssistantProfile | null): string {

@@ -55,6 +55,7 @@ import { studioNextStep } from "../lib/nextStep";
 import { uploadFile, formatBytes, type UploadFolder } from "../lib/files";
 import { safeMediaUrl } from "../lib/webUrl";
 import type { Milestone } from "../types";
+import { askAssistant } from '../lib/assistantBus';
 
 interface WorkspaceProps {
  user: User;
@@ -133,7 +134,7 @@ export default function Workspace({ user }: WorkspaceProps) {
 
  usePageControls(() => [
   { id: 'toggle-focus', en: focusMode ? 'Exit focus mode' : 'Start focus mode', el: focusMode ? 'Έξοδος από εστίαση' : 'Έναρξη εστίασης', run: () => setFocusMode((prev) => !prev) },
-  { id: 'add-milestone', en: 'Add milestone', el: 'Προσθήκη ορόσημου', run: () => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone' } })) },
+  { id: 'add-milestone', en: 'Add milestone', el: 'Προσθήκη ορόσημου', run: () => askAssistant('add milestone') },
  ], [focusMode]);
  const assets = useStored(() => readValue<AssetRow[]>(keys.assets, []), [keys.assets]);
  const nextStep = useMemo(() => studioNextStep(profile), [profile]);
@@ -178,7 +179,7 @@ export default function Workspace({ user }: WorkspaceProps) {
   addStudioTask((title ?? searchQuery).trim() || 'New task');
   setSearchQuery('');
  };
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  const tabs: TabType[] = ["Dashboard", "Builder", "Canvas", "Milestones", "Calendar"];
  const tabLabel = (tab: TabType) => ({
@@ -526,9 +527,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           variant="outline"
           className="w-full rounded-lg text-sm"
           onClick={() => {
-           window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', {
-            detail: { agentId: 'a3', prompt: nextStep.prompt ?? nextStep.en }
-           }));
+           askAssistant(nextStep.prompt ?? nextStep.en, { agentId: 'a3' });
           }}
          >
           {t(nextStep.action?.en ?? "Open AI Chat", nextStep.action?.el ?? "Άνοιγμα συνομιλίας AI")}
@@ -752,9 +751,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          size="sm"
          className="h-7 bg-stone-900 text-white text-sm px-3"
          onClick={() => {
-          window.dispatchEvent(new CustomEvent('OPEN_AI_CHAT', {
-           detail: { agentId: 'a3', prompt: 'Can you help me refine my Lean Canvas?' }
-          }));
+          askAssistant('Can you help me refine my Lean Canvas?', { agentId: 'a3' });
          }}
         >
          <Sparkles className="w-3 h-3 mr-1.5" /> {t("AI Refine", "Βελτίωση με AI")}
@@ -813,7 +810,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          <Button type="button" variant="outline" size="sm" className="h-7 text-sm rounded-lg" onClick={() => setRoadmapFilter((prev) => prev === 'All' ? 'completed' : prev === 'completed' ? 'in-progress' : prev === 'in-progress' ? 'pending' : 'All')}>
           <Filter className="w-3.5 h-3.5 mr-1.5" /> {roadmapFilter === 'All' ? t("Filter", "Φίλτρο") : labelOf(roadmapFilter)}
          </Button>
-         <Button type="button" size="sm" className="h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'add milestone' } }))}>
+         <Button type="button" size="sm" className="h-7 text-sm rounded-lg bg-stone-900 text-white" onClick={() => askAssistant('add milestone')}>
           <Plus className="w-3.5 h-3.5 mr-1.5" /> {t("Add Milestone", "Προσθήκη ορόσημου")}
          </Button>
         </div>
@@ -1078,7 +1075,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         ))}
        </Card>
       </div>
-      <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: askPrompt } }))}>
+      <Button type="button" className="mt-4 h-8 px-4 rounded-lg bg-stone-900 text-white text-sm" onClick={() => askAssistant(askPrompt)}>
        {t("Ask the studio assistant", "Ρώτα τον βοηθό")}
       </Button>
      </motion.div>

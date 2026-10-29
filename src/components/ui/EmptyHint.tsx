@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
+import { askAssistant } from '../../lib/assistantBus';
 
 /** Compact empty copy that still points the user at the studio assistant. */
 export default function EmptyHint({
@@ -53,7 +54,7 @@ export function AskLink({
     <button
       type="button"
       className="inline-flex items-center gap-1 text-xs font-medium text-stone-900 hover:underline"
-      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }))}
+      onClick={() => askAssistant(prompt)}
     >
       <Sparkles className="w-3 h-3 text-stone-400" aria-hidden="true" />
       {label}

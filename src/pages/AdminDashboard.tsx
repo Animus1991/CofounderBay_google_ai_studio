@@ -24,6 +24,7 @@ import { cn } from '../lib/utils';
 import { getAdminAnalytics, detectAbuse, updateSystemConfig } from '../services/adminService';
 import { useAuth } from '../App';
 import { useT } from '../lib/language';
+import { askAssistant } from '../lib/assistantBus';
 
 export default function AdminDashboard() {
  const { user, isDemoMode } = useAuth();
@@ -95,7 +96,7 @@ export default function AdminDashboard() {
       {t('Admin Control Center', 'Κέντρο διαχείρισης')}
      </div>
      <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h1>
-     <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What is overdue?' } }))}>
+     <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => askAssistant('What is overdue?')}>
       {t('Ask the studio assistant', 'Ρώτα τον βοηθό του studio')}
      </button>
     </div>
@@ -293,7 +294,7 @@ export default function AdminDashboard() {
             <button
              type="button"
              title={t("Inspect this user's score and events", 'Έλεγχος σκορ και συμβάντων του χρήστη')}
-             onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Inspect user ${flag.userId} for XP farming` } }))}
+             onClick={() => askAssistant(`Inspect user ${flag.userId} for XP farming`)}
              className="p-2 text-stone-400 hover:text-red-600 hover:bg-white rounded-lg transition-all shadow-sm"
             >
              <XCircle className="w-4 h-4" />
@@ -373,7 +374,7 @@ export default function AdminDashboard() {
       </div>
       <button
        type="button"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Explain the scoring weights on this page' } }))}
+       onClick={() => askAssistant('Explain the scoring weights on this page')}
        className="px-6 py-2.5 bg-white text-stone-900 border border-stone-200 rounded-xl text-sm font-medium hover:bg-stone-100 transition-all"
       >
        {t('Ask the assistant', 'Ρώτα τον βοηθό')}

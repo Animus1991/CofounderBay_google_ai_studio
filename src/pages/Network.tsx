@@ -68,6 +68,7 @@ import {
   type ConnectionRecord,
   type EndorsementRecord,
 } from '../lib/social';
+import { askAssistant } from '../lib/assistantBus';
 
 interface NetworkProps {
   user: User;
@@ -321,7 +322,7 @@ export default function Network({ user }: NetworkProps) {
           data-ui="button"
           title={t('The assistant prepares the fit-check link for three founders you choose', 'Ο βοηθός ετοιμάζει τον σύνδεσμο fit check για τρεις ιδρυτές της επιλογής σου')}
           className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
-          onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Invite 3 founders' } }))}
+          onClick={() => askAssistant('Invite 3 founders')}
         >
           <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
           {t('Invite founders', 'Πρόσκληση ιδρυτών')}

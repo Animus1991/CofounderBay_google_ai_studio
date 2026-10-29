@@ -68,6 +68,7 @@ import type { Person } from "../lib/peopleSource";
 import { useAuth } from "../App";
 import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { useUIStore } from "../stores/useUIStore";
+import { askAssistant } from '../lib/assistantBus';
 
 interface FundraisingProps {
  user: User;
@@ -597,7 +598,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          <Button variant="outline" className="w-full justify-start gap-2 text-sm min-h-11 rounded-lg" onClick={() => setShowMeetingScheduler(true)}>
           <Users className="w-3.5 h-3.5 shrink-0" /> {t("Log New Meeting", "Καταγραφή νέας συνάντησης")}
          </Button>
-         <Button className="w-full justify-start gap-2 text-sm min-h-11 rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Record a $50k investment in my round' } }))}>
+         <Button className="w-full justify-start gap-2 text-sm min-h-11 rounded-lg bg-stone-900 text-white hover:bg-stone-800" onClick={() => askAssistant('Record a $50k investment in my round')}>
           <DollarSign className="w-3.5 h-3.5 shrink-0" /> {t("Record Investment", "Καταγραφή επένδυσης")}
          </Button>
         </div>
@@ -1031,7 +1032,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          </div>
 
          <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about SAFE agreement' } }))}>
+          <Button variant="outline" size="sm" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => askAssistant('Tell me about SAFE agreement')}>
            <Download className="w-3 h-3 mr-1" /> SAFE
           </Button>
           <Button size="sm" className="flex-1 min-h-11 text-sm rounded-lg bg-stone-900 text-white" onClick={() => { navigator.clipboard.writeText('https://cofounderbay.app/dataroom/safe-note'); showToast(t("Share link copied!", "Ο σύνδεσμος αντιγράφηκε!")); }}>
@@ -1162,7 +1163,7 @@ export default function Fundraising({ user }: FundraisingProps) {
           >
            {pipeline.some((item) => item.investorId === inv.id) ? t("In pipeline", "Στη ροή") : t("Track", "Παρακολούθηση")}
           </Button>
-          <Button variant="ghost" size="icon" aria-label={t("Details", "Λεπτομέρειες")} className="min-h-11 min-w-11 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${inv.name}` } }))}>
+          <Button variant="ghost" size="icon" aria-label={t("Details", "Λεπτομέρειες")} className="min-h-11 min-w-11 rounded-lg border border-stone-100 hover:bg-stone-50" onClick={() => askAssistant(`Tell me about ${inv.name}`)}>
            <ExternalLink className="w-3.5 h-3.5 text-stone-400" />
           </Button>
          </div>
@@ -1242,8 +1243,8 @@ export default function Fundraising({ user }: FundraisingProps) {
             </div>
            </div>
            <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="min-h-11 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${p.title}` } }))}>{t("Details", "Λεπτομέρειες")}</Button>
-            <Button size="sm" className="min-h-11 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${p.title}` } })); }}>{t("Apply", "Αίτηση")}</Button>
+            <Button variant="outline" size="sm" className="min-h-11 text-sm rounded-lg px-3" onClick={() => askAssistant(`Tell me about ${p.title}`)}>{t("Details", "Λεπτομέρειες")}</Button>
+            <Button size="sm" className="min-h-11 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(p.title, p.type); askAssistant(`Apply to ${p.title}`); }}>{t("Apply", "Αίτηση")}</Button>
            </div>
           </div>
          </div>
@@ -1327,8 +1328,8 @@ export default function Fundraising({ user }: FundraisingProps) {
          </div>
 
          <div className="flex gap-1.5 mt-3 pt-3 border-t border-stone-100 justify-end">
-          <Button variant="outline" size="sm" className="min-h-11 text-sm rounded-lg px-3" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about ${opp.title}` } }))}>{t("Learn More", "Μάθετε περισσότερα")}</Button>
-          <Button size="sm" className="min-h-11 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${opp.title}` } })); }}>{t("Apply Now", "Αίτηση τώρα")}</Button>
+          <Button variant="outline" size="sm" className="min-h-11 text-sm rounded-lg px-3" onClick={() => askAssistant(`Tell me about ${opp.title}`)}>{t("Learn More", "Μάθετε περισσότερα")}</Button>
+          <Button size="sm" className="min-h-11 text-sm rounded-lg px-3 bg-stone-900 text-white hover:bg-stone-800" onClick={() => { trackApplication(opp.title, opp.type); askAssistant(`Apply to ${opp.title}`); }}>{t("Apply Now", "Αίτηση τώρα")}</Button>
          </div>
         </div>
        ))}
@@ -1489,7 +1490,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <span className="text-xs text-stone-400 flex items-center gap-1">
              <Eye className="w-3 h-3" /> {file.views}
             </span>
-            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t("Download", "Λήψη")} title={t("Download", "Λήψη")} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about workspace assets and ${file.name}` } }))}>
+            <button className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t("Download", "Λήψη")} title={t("Download", "Λήψη")} onClick={() => askAssistant(`Tell me about workspace assets and ${file.name}`)}>
              <Download className="w-3.5 h-3.5 text-stone-400" />
             </button>
            </div>

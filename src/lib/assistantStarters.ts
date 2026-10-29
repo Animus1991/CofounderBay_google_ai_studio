@@ -2,7 +2,7 @@
  * Starter prompts for the studio assistant — the chat widget shows them on an
  * empty conversation, the dashboard question box shows this page's set.
  */
-const STARTERS: { en: string; el: string }[] = [
+export const DEFAULT_STARTERS: { en: string; el: string }[] = [
   { en: 'Who is my best match?', el: 'Ποια είναι η καλύτερη αντιστοίχιση;' },
   { en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' },
   { en: 'How is my round?', el: 'Πώς πάει ο γύρος;' },
@@ -77,7 +77,7 @@ export function startersFor(pathname: string, role?: string | null): { en: strin
   const path = pathname.split('?')[0]?.replace(/\/+$/, '') || '/dashboard';
   const page = PAGE_STARTERS[path] ?? PAGE_STARTERS[path.split('/').slice(0, 2).join('/')] ?? [];
   const roleList = roleStarters(role);
-  const rest = STARTERS.filter((item) => !page.some((p) => p.en === item.en) && !roleList.some((r) => r.en === item.en));
+  const rest = DEFAULT_STARTERS.filter((item) => !page.some((p) => p.en === item.en) && !roleList.some((r) => r.en === item.en));
   return [...roleList, ...page, ...rest].slice(0, 4);
 }
 

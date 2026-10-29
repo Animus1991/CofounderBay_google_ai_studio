@@ -36,6 +36,7 @@ import { useProtectedDraft } from '../lib/useProtectedDraft';
 import DraftNotice from '../components/ui/DraftNotice';
 import SaveStatus from '../components/ui/SaveStatus';
 import { ConfirmDialog } from '../components/ui/Modal';
+import { askAssistant } from '../lib/assistantBus';
 
 interface MilestonesPageProps {
  user?: User;
@@ -119,7 +120,7 @@ function MilestoneCard({
     <button
      type="button"
      title={t("Ask the studio assistant about this goal", "Ρώτα τον βοηθό για αυτόν τον στόχο")}
-     onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `What should I do about ${milestone.title}?`, context: milestone.title } }))}
+     onClick={() => askAssistant(`What should I do about ${milestone.title}?`, { context: milestone.title })}
      className="p-1 text-stone-400 hover:text-stone-600 rounded transition-all shrink-0 focus-visible:ring-1 focus-visible:ring-stone-400"
     >
      <MoreVertical className="w-3.5 h-3.5" />

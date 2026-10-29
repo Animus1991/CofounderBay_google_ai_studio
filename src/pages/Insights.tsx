@@ -34,6 +34,7 @@ import { useAuth } from "../App";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { DEMO_ACTIVITY, DEMO_READINESS, demoActivityDelta, demoReadinessDelta } from "../data/demoStats";
+import { askAssistant } from "../lib/assistantBus";
 
 interface InsightsProps {
  user: User;
@@ -195,7 +196,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
 
  return (
-  <PageShell sample={isDemoMode} title={t("Insights", "Αναλυτικά στοιχεία")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
+  <PageShell sample={isDemoMode} title={t("Insights", "Αναλύσεις")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}
@@ -369,7 +370,7 @@ export default function Insights({ user }: InsightsProps) {
        </div>
        <div className="grid grid-cols-2 gap-2">
         {badges.map((badge, i) => (
-         <div key={i} role="button" tabIndex={0} onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } }))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Tell me about readiness score and the ${badge.promptName} achievement` } })); }} className={cn(
+         <div key={i} role="button" tabIndex={0} onClick={() => askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`); }} className={cn(
           "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
           badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-dashed border-stone-200 hover:border-stone-300"
          )}>
@@ -396,7 +397,7 @@ export default function Insights({ user }: InsightsProps) {
         <Button onClick={() => navigate('/profile')} className="flex-1 h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
          {t('Optimize Score', 'Βελτιστοποίηση δείκτη')}
         </Button>
-        <Button type="button" variant="outline" className="h-7 rounded-lg text-sm" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Tell me about readiness score' } }))}>
+        <Button type="button" variant="outline" className="h-7 rounded-lg text-sm" onClick={() => askAssistant('Tell me about readiness score')}>
          {t('Ask', 'Ρώτα')}
         </Button>
        </div>

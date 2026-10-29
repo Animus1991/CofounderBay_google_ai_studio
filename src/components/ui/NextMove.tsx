@@ -2,6 +2,7 @@ import type { ElementType, ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
+import { askAssistant } from '../../lib/assistantBus';
 
 export type NextMoveTone = 'next' | 'waiting';
 
@@ -70,7 +71,7 @@ export default function NextMove({
         {askPrompt ? (
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: askPrompt } }))}
+            onClick={() => askAssistant(askPrompt)}
             className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline shrink-0"
           >
             {t('Ask', 'Ρώτα')}

@@ -10,6 +10,7 @@ import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
+import { askAssistant } from '../lib/assistantBus';
 
 export default function FitCheck() {
   useLanguage();
@@ -142,14 +143,14 @@ export default function FitCheck() {
     }
   };
 
-  const askAssistant = () => {
+  const askAboutMatch = () => {
     const prompt = result
       ? `I am a ${result.archetype.en}. Who is my best match?`
       : 'Who is my best match?';
     if (!user && !isDemoMode) toggleDemoMode(true);
     navigate('/dashboard');
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+      askAssistant(prompt);
     }, 400);
   };
 
@@ -377,7 +378,7 @@ export default function FitCheck() {
             </button>
             <button
               type="button"
-              onClick={askAssistant}
+              onClick={askAboutMatch}
               className="min-h-11 inline-flex items-center justify-center gap-2 px-5 rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-900 hover:border-stone-900"
             >
               <Sparkles className="w-4 h-4" />

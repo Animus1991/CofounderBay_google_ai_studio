@@ -11,6 +11,7 @@ import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useAuth } from "../../App";
+import { askAssistant } from "../../lib/assistantBus";
 
 interface TenantBillingProps {
  tenant: Tenant;
@@ -47,7 +48,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
   loadBillingData();
  }, [tenant.id, isDemoMode]);
 
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  const requestBilling = async (kind: 'upgrade' | 'seats', label: string) => {
   if (!subscription) return;

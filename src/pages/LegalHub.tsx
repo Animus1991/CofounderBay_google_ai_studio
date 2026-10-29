@@ -23,6 +23,7 @@ import { useAuth } from "../App";
 import { addSession, keys, readValue, writeValue } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
+import { askAssistant } from "../lib/assistantBus";
 
 type Template = { name: string; promptName: string; description: string; status: string };
 
@@ -71,7 +72,7 @@ export default function LegalHub() {
  const { isDemoMode } = useAuth();
  const navigate = useNavigate();
  const [activeCategory, setActiveCategory] = useState<'incorporation' | 'ip' | 'employment' | 'fundraising'>('incorporation');
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  // Per-account compliance checklist — real accounts start empty, demo gets a
  // head start. Persisted scoped to the account.

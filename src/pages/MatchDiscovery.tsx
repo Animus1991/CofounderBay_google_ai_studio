@@ -36,6 +36,7 @@ import { usePeople } from '../lib/directory';
 import { avatarOf, cofounderPool, isOnline, type Person } from '../lib/peopleSource';
 import { connectionStateWith, respondToConnection, sendConnectionRequest, useConnections, withdrawConnection } from '../lib/social';
 import { useUIStore } from '../stores/useUIStore';
+import { askAssistant } from '../lib/assistantBus';
 
 const STAGES = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
 const ROLES = ['Founder', 'Co-Founder Candidate', 'Technical Founder', 'Product Founder', 'Business Founder', 'Growth Founder', 'Design Founder'];
@@ -375,7 +376,7 @@ export default function MatchDiscovery() {
        <div className="flex items-center gap-2">
         <button
          type="button"
-         onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${person.fullName}?`, context: person.fullName } })); }}
+         onClick={(e) => { e.stopPropagation(); askAssistant(`Why do I match with ${person.fullName}?`, { context: person.fullName }); }}
          className="min-h-10 px-2.5 bg-stone-50 text-stone-700 rounded-xl hover:bg-stone-100 transition-all border border-stone-100 text-xs font-medium"
          title={t('Ask the assistant why this is a match', 'Ρώτα τον βοηθό γιατί ταιριάζετε')}
         >

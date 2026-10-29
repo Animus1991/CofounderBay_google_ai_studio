@@ -34,6 +34,7 @@ import { useAuth } from "../App";
 import { User } from "../types";
 import { collection, limit, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
+import { askAssistant } from "../lib/assistantBus";
 
 const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
@@ -238,7 +239,7 @@ export default function Events(_props: EventsProps = {}) {
      </button>
      <button 
       type="button"
-      onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
+      onClick={() => askAssistant('Schedule a new event on my calendar')}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
      >
       <Plus className="w-3.5 h-3.5" /> {t('Host Event', 'Διοργάνωση εκδήλωσης')}
@@ -464,7 +465,7 @@ export default function Events(_props: EventsProps = {}) {
       </div>
       <button
        type="button"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Schedule a new event on my calendar' } }))}
+       onClick={() => askAssistant('Schedule a new event on my calendar')}
        className="w-full py-2 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-all text-sm font-semibold"
       >
        {t('Create Event', 'Δημιουργία εκδήλωσης')}

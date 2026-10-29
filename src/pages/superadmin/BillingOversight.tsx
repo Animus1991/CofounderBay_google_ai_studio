@@ -26,6 +26,7 @@ import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useAuth } from "../../App";
+import { askAssistant } from "../../lib/assistantBus";
 
 const CHART_COLORS = ['#292524', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4'];
 
@@ -278,7 +279,7 @@ export default function BillingOversight() {
          <Button
           variant="outline"
           className="flex-1 text-xs"
-          onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Draft an updated pricing plan based on ${plan.name}` } }))}
+          onClick={() => askAssistant(`Draft an updated pricing plan based on ${plan.name}`)}
          >
           {t('Edit Plan', 'Επεξεργασία πλάνου')}
          </Button>
@@ -287,7 +288,7 @@ export default function BillingOversight() {
       ))}
       <button
        type="button"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Help me design a new subscription plan' } }))}
+       onClick={() => askAssistant('Help me design a new subscription plan')}
        className="h-full min-h-[200px] border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-3 text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-all group"
       >
        <div className="p-3 bg-stone-50 rounded-2xl group-hover:bg-stone-100 transition-colors">
@@ -355,7 +356,7 @@ export default function BillingOversight() {
             <button
              type="button"
              title={t('Inspect subscription', 'Έλεγχος συνδρομής')}
-             onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Review subscription ${sub.id} (${sub.planId}, ${sub.status})` } }))}
+             onClick={() => askAssistant(`Review subscription ${sub.id} (${sub.planId}, ${sub.status})`)}
              className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
             >
              <MoreHorizontal className="w-4 h-4" />

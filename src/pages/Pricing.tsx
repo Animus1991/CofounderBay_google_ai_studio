@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { MOCK_PLANS, hasPlanFeature } from "../services/billingService";
 import { useT } from "../lib/language";
+import { askAssistant } from "../lib/assistantBus";
 
 export default function Pricing() {
  const t = useT();
@@ -182,7 +183,7 @@ export default function Pricing() {
       <Button
        variant="outline"
        className="w-full"
-       onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'I want to learn about the Enterprise plan' } }))}
+       onClick={() => askAssistant('I want to learn about the Enterprise plan')}
       >
        {t('Contact Sales', 'Επικοινωνία με πωλήσεις')}
       </Button>

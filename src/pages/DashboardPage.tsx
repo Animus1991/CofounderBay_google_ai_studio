@@ -45,6 +45,7 @@ import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import RelTime from '../components/ui/RelTime';
 import FactLine from '../components/ui/FactLine';
+import { askAssistant } from '../lib/assistantBus';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -437,7 +438,7 @@ export default function DashboardPage() {
   const sendAsk = () => {
     const prompt = searchQuery.trim();
     if (!prompt) return;
-    window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+    askAssistant(prompt);
     setSearchQuery('');
   };
 
@@ -490,7 +491,7 @@ export default function DashboardPage() {
     setSearchQuery('');
     setSlashIndex(0);
     if (item.kind === 'control') { navigate('/discovery'); return; }
-    window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: t(item.en, item.el) } }));
+    askAssistant(t(item.en, item.el));
   };
 
   const toggleLike = async (post: FeedPost) => {
@@ -600,7 +601,7 @@ export default function DashboardPage() {
               <button
                 key={chip.en}
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: t(chip.askEn, chip.askEl) } }))}
+                onClick={() => askAssistant(t(chip.askEn, chip.askEl))}
                 className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
               >
                 {t(chip.en, chip.el)} · {chip.count}
@@ -610,7 +611,7 @@ export default function DashboardPage() {
               <button
                 key={prompt.en}
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: bothText(prompt.en, prompt.el) } }))}
+                onClick={() => askAssistant(bothText(prompt.en, prompt.el))}
                 className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
               >
                 {bothText(prompt.en, prompt.el)}
@@ -685,7 +686,7 @@ export default function DashboardPage() {
               </>
             )}
           </button>
-          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'Give me a 7-day match plan' } }))} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
+          <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
             <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
             <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks as the Task button." el="Γράφει τις ίδιες εργασίες με το κουμπί «Εργασία» στον Χώρο εργασίας." /></p>
@@ -718,7 +719,7 @@ export default function DashboardPage() {
               <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, leadMatch.id)}>
                 <Both en={`Why ${leadMatch.name.split(' ')[0]}? See the score breakdown`} el={`Γιατί ${leadMatch.name.split(' ')[0]}; Δες την ανάλυση σκορ`} />
               </button>
-              <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Why do I match with ${leadMatch.name}?` } }))}>
+              <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => askAssistant(`Why do I match with ${leadMatch.name}?`)}>
                 <Both en="Ask the assistant" el="Ρώτα τον βοηθό" />
               </button>
             </div>
@@ -915,7 +916,7 @@ export default function DashboardPage() {
                 {missing.length > 3 ? t(` +${missing.length - 3} more`, ` +${missing.length - 3} ακόμα`) : ''}
               </p>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What does my founding team still lack?' } }))} className="text-xs font-medium text-stone-900 hover:underline">{t('Ask', 'Ρώτα')}</button>
+                <button type="button" onClick={() => askAssistant('What does my founding team still lack?')} className="text-xs font-medium text-stone-900 hover:underline">{t('Ask', 'Ρώτα')}</button>
                 <button onClick={() => navigate('/profile')} className="text-xs font-medium text-stone-900 hover:underline">{t('Edit Profile →', 'Επεξεργασία προφίλ →')}</button>
               </div>
             </div>

@@ -13,94 +13,14 @@ import { trackPage } from '../lib/analytics';
 import { trackVisit } from '../lib/usage';
 import { bothText } from '../lib/labels';
 import { useLanguage } from '../lib/language';
+import { pageTitle } from '../lib/pageRegistry';
 
 const APP_NAME = 'CoFounderBay';
 
-const ROUTE_TITLES: Record<string, string> = {
-  '/': 'Find Your Co-Founder',
-  '/login': 'Sign In',
-  '/signup': 'Create Account',
-  '/quiz': 'Fit check',
-  '/onboarding': 'Onboarding',
-  '/dashboard': 'Dashboard',
-  '/profile': 'Profile',
-  '/matches': 'Matches',
-  '/discovery': 'Discovery',
-  '/events': 'Events',
-  '/mentors': 'Mentors',
-  '/communities': 'Communities',
-  '/community': 'Community',
-  '/messages': 'Messages',
-  '/milestones': 'Milestones',
-  '/founder-tools': 'Founder Tools',
-  '/fundraising': 'Fundraising',
-  '/workspace': 'Workspace',
-  '/calendar': 'Calendar',
-  '/programs': 'Programs',
-  '/network': 'Network',
-  '/resources': 'Resources',
-  '/insights': 'Insights',
-  '/legal': 'Legal Hub',
-  '/perks': 'Perks',
-  '/notifications': 'Notifications',
-  '/settings': 'Settings',
-  '/settings/billing': 'Billing',
-  '/pricing': 'Pricing',
-  '/admin': 'Admin Dashboard',
-  '/admin/users': 'User Management',
-  '/admin/automation': 'Automation',
-  '/admin/branding': 'Branding Settings',
-  '/admin/sso': 'SSO Settings',
-  '/admin/taxonomy': 'Taxonomy Settings',
-  '/admin/domains': 'Domain Settings',
-  '/admin/billing': 'Tenant Billing',
-  '/admin/billing-oversight': 'Billing Oversight',
-};
-
-const EL_TITLES: Record<string, string> = {
-  '/': 'Βρες τον συνιδρυτή σου',
-  '/login': 'Είσοδος',
-  '/signup': 'Εγγραφή',
-  '/quiz': 'Fit check',
-  '/onboarding': 'Εισαγωγή',
-  '/dashboard': 'Πίνακας',
-  '/profile': 'Προφίλ',
-  '/matches': 'Αντιστοιχίσεις',
-  '/discovery': 'Εξερεύνηση',
-  '/events': 'Εκδηλώσεις',
-  '/mentors': 'Μέντορες',
-  '/communities': 'Κοινότητες',
-  '/community': 'Κοινότητα',
-  '/messages': 'Μηνύματα',
-  '/milestones': 'Ορόσημα',
-  '/founder-tools': 'Εργαλεία ιδρυτή',
-  '/fundraising': 'Χρηματοδότηση',
-  '/workspace': 'Χώρος εργασίας',
-  '/calendar': 'Ημερολόγιο',
-  '/programs': 'Προγράμματα',
-  '/network': 'Δίκτυο',
-  '/resources': 'Πόροι',
-  '/insights': 'Εικόνα',
-  '/legal': 'Νομικά',
-  '/perks': 'Παροχές',
-  '/notifications': 'Ειδοποιήσεις',
-  '/settings': 'Ρυθμίσεις',
-  '/settings/billing': 'Χρέωση',
-  '/pricing': 'Τιμές',
-  '/admin': 'Πίνακας διαχείρισης',
-  '/admin/users': 'Διαχείριση μελών',
-  '/admin/automation': 'Αυτοματισμοί',
-  '/admin/branding': 'Ταυτότητα οργανισμού',
-  '/admin/sso': 'Ρυθμίσεις SSO',
-  '/admin/taxonomy': 'Ταξινομίες πλατφόρμας',
-  '/admin/domains': 'Τομείς',
-  '/admin/billing': 'Χρέωση',
-  '/admin/billing-oversight': 'Εποπτεία χρέωσης',
-};
-
+/** Document title for a path, from the page registry (one name per page, both languages). */
 export function titleForPath(pathname: string): string {
-  const exact = ROUTE_TITLES[pathname];
-  if (exact) return bothText(exact, EL_TITLES[pathname] ?? exact);
+  const exact = pageTitle(pathname);
+  if (exact) return bothText(exact.en, exact.el);
   if (pathname.startsWith('/profile/')) return bothText('Profile', 'Προφίλ');
   return bothText('Page Not Found', 'Η σελίδα δεν βρέθηκε');
 }

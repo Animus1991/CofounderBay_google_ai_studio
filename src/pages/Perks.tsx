@@ -26,6 +26,7 @@ import { labelOf } from "../lib/labels";
 import { useAuth } from "../App";
 import { onCatalog, str, type CatalogDoc } from "../lib/catalog";
 import { safeWebUrl } from "../lib/webUrl";
+import { askAssistant } from "../lib/assistantBus";
 
 const PERK_VALUE_EL: Record<string, string> = {
  "$100,000 Credits": "$100,000 πιστώσεις",
@@ -93,7 +94,7 @@ export default function Perks() {
  const [perkQuery, setPerkQuery] = useState('');
  const savedPerks = useStored(() => readValue<string[]>('cfb.savedPerks', []), ['cfb.savedPerks']);
  const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
- const ask = (prompt: string) => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt } }));
+ const ask = (prompt: string) => askAssistant(prompt);
 
  const [cloud, setCloud] = useState<CatalogDoc[] | null>(isDemoMode ? [] : null);
  useEffect(() => {

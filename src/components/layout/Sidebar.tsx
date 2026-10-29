@@ -4,25 +4,13 @@ import {
 import { 
  LayoutDashboard,
  Users,
- GraduationCap,
  MessageSquare,
- Trophy,
- User as UserIcon,
  Settings,
  ShieldCheck,
  Globe,
  Zap,
- Rocket,
  DollarSign,
- Briefcase,
- Compass,
- Calendar,
- Share2,
- BookOpen,
- Activity,
  Bell,
- Scale,
- Gift,
  ChevronRight,
  LogIn,
  LogOut,
@@ -30,11 +18,9 @@ import {
  CreditCard,
  Lock,
  Tags,
- Ticket,
- Award,
- Gem,
  Palette,
- Search
+ Search,
+ Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -43,6 +29,7 @@ import { cn } from "../../lib/utils";
 import { bothText, labelOf, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
 import { navIcon, navLabel } from "../../lib/navMap";
+import { memberPages, type PageSection } from "../../lib/pageRegistry";
 import { readUxPrefs, UX_PREFS_KEY } from "../../lib/personalization";
 import { useStored } from "../../lib/useStored";
 import { useLanguage } from "../../lib/language";
@@ -77,6 +64,8 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
  }, []);
 
  const mobileNavigationHidden = isMobileViewport && !mobileOpen;
+ const [avatarFailed, setAvatarFailed] = useState(false);
+ useEffect(() => setAvatarFailed(false), [user.avatarUrl]);
  const collapsed = desktopCollapsed && !isMobileViewport;
  const drawerRef = useRef<HTMLElement>(null);
  useDialogFocus(Boolean(isMobileViewport && mobileOpen), drawerRef, () => setMobileOpen?.(false));
@@ -97,54 +86,32 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
   * Order follows how often a founder needs each place: find people (the core loop),
   * then build the venture, then reference material, then account. Every item is a
   * destination; contextual tools (score breakdown, deal room, needs wall) live next to
-  * the data they explain, in ⌘K, and in the assistant.
+  * the data they explain, in ⌘K, and in the assistant. Items come from the page
+  * registry, so the menu, page titles, ⌘K and the assistant use one name per page.
   */
- const sections = [
-  {
-   title: "Find",
-   items: [
-    { icon: Users, label: "Matches", path: "/matches" },
-    { icon: Compass, label: "Explore", path: "/discovery" },
-    { icon: Share2, label: "Network", path: "/network" },
-    { icon: GraduationCap, label: "Mentors", path: "/mentors" },
-    { icon: Globe, label: tenant?.content?.communityNamingConvention || "Communities", path: "/communities" },
-    { icon: Ticket, label: "Events", path: "/events" },
-    { icon: Award, label: "Programs", path: "/programs" },
-   ]
-  },
-  {
-   title: "Build",
-   items: [
-    { icon: Briefcase, label: "Workspace", path: "/workspace" },
-    { icon: Rocket, label: "Founder Tools", path: "/founder-tools" },
-    { icon: DollarSign, label: "Fundraising", path: "/fundraising" },
-    { icon: Trophy, label: "Milestones", path: "/milestones" },
-    { icon: Calendar, label: "Calendar", path: "/calendar" },
-   ]
-  },
-  {
-   title: "Resources",
-   items: [
-    { icon: BookOpen, label: "Resources", path: "/resources" },
-    { icon: Activity, label: "Insights", path: "/insights" },
-    { icon: Scale, label: "Legal Hub", path: "/legal" },
-    { icon: Gift, label: "Startup Perks", path: "/perks" },
-   ]
-  },
-  {
-   title: "Account",
-   items: [
-    { icon: UserIcon, label: "My Profile", path: "/profile" },
-    { icon: Settings, label: "Settings", path: "/settings" },
-    { icon: CreditCard, label: "Billing", path: "/settings/billing" },
-    { icon: Gem, label: "Pricing", path: "/pricing" },
-   ]
-  }
+ const SECTION_TITLES: { section: PageSection; title: string }[] = [
+  { section: 'find', title: 'Find' },
+  { section: 'build', title: 'Build' },
+  { section: 'resources', title: 'Resources' },
+  { section: 'account', title: 'Account' },
  ];
+ /* Notifications already has its own control in the footer ("Alerts"). */
+ const IN_FOOTER = new Set(['/notifications']);
+ const sections = SECTION_TITLES.map(({ section, title }) => ({
+  title,
+  items: memberPages()
+   .filter((entry) => entry.section === section && !IN_FOOTER.has(entry.path))
+   .map((entry) => ({
+    icon: entry.icon ?? Globe,
+    label: entry.path === '/communities' ? tenant?.content?.communityNamingConvention || entry.label.en : entry.label.en,
+    path: entry.path,
+   })),
+ }));
 
  const topItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: MessageSquare, label: "Messages", path: "/messages" },
+  { icon: Sparkles, label: "AI Studio", path: "/assistant" },
  ];
 
  /* Pinned pages (star on any page header, or "/pin …" in the assistant). Personal
@@ -447,15 +414,16 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
       )}
      >
      <div className="w-8 h-8 rounded-lg bg-stone-100 overflow-hidden border border-stone-200 shrink-0 flex items-center justify-center">
-      {user.avatarUrl ? (
+      {user.avatarUrl && !avatarFailed ? (
        <img 
         src={user.avatarUrl}
-        alt={user.fullName}
+        alt=""
         className="w-full h-full object-cover"
         referrerPolicy="no-referrer"
+        onError={() => setAvatarFailed(true)}
        />
       ) : (
-       <span className="text-xs font-semibold text-stone-600">{(user.fullName || 'U').charAt(0).toUpperCase()}</span>
+       <span className="text-xs font-semibold text-stone-600" aria-hidden="true">{(user.fullName || 'U').charAt(0).toUpperCase()}</span>
       )}
      </div>
      {!collapsed && (

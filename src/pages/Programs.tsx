@@ -31,6 +31,7 @@ import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { keys, readIds, readTracked, toggleId } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { coverFor } from "../data/photos";
+import { askAssistant } from "../lib/assistantBus";
 
 const TAB_EL: Record<string, string> = {
  All: 'Όλα',
@@ -100,7 +101,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
   { id: 'tab-all', en: 'All programs', el: 'Όλα τα προγράμματα', run: () => setActiveTab('All') },
   { id: 'tab-accelerators', en: 'Accelerators', el: 'Επιταχυντές', run: () => setActiveTab('Accelerators') },
   { id: 'tab-grants', en: 'Grants', el: 'Επιχορηγήσεις', run: () => setActiveTab('Grants') },
-  { id: 'find-programs', en: 'Find programs', el: 'Εύρεση προγραμμάτων', run: () => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } })) },
+  { id: 'find-programs', en: 'Find programs', el: 'Εύρεση προγραμμάτων', run: () => askAssistant('What programs can I apply to?') },
  ], []);
  const savedPrograms = useStored(() => readIds(keys.savedPrograms), [keys.savedPrograms]);
  const tracked = useStored(() => readTracked(), [keys.tracked]);
@@ -190,7 +191,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
      variant="primary"
      className="h-8 rounded-xl px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white"
      title={t('Ask the assistant which programs fit your stage and profile', 'Ρώτα τον βοηθό ποια προγράμματα ταιριάζουν στο στάδιο και το προφίλ σου')}
-     onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}
+     onClick={() => askAssistant('What programs can I apply to?')}
     >
      {t('Find Programs', 'Εύρεση προγραμμάτων')}
     </Button>
@@ -268,7 +269,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
            <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(program.description, PROGRAM_DESC_EL[program.id] ?? program.description)}</p>
            <FactLine items={[program.funding, program.duration === 'N/A' ? 'N/A' : t(program.duration, program.duration.replace('Weeks', 'εβδομάδες')), formatDate(program.deadline), ...program.focus.slice(0, 2)]} label={t('Program facts', 'Στοιχεία προγράμματος')} />
            <div className="flex items-center justify-end gap-3">
-            <Button type="button" variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: `Apply to ${program.title}` } }))}>
+            <Button type="button" variant="primary" className="h-7 rounded-lg px-4 text-sm bg-stone-900 hover:bg-stone-800 text-white whitespace-nowrap shrink-0" onClick={() => askAssistant(`Apply to ${program.title}`)}>
              {t('Apply Now', 'Κάνε αίτηση')}
             </Button>
            </div>
@@ -293,7 +294,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
        </div>
        <span className="text-sm font-semibold text-stone-700">{t('AI-Powered Matching', 'Αντιστοίχιση με AI')}</span>
       </div>
-      <Button type="button" variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all" onClick={() => window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT', { detail: { prompt: 'What programs can I apply to?' } }))}>
+      <Button type="button" variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all" onClick={() => askAssistant('What programs can I apply to?')}>
        {t('Start Finder', 'Έναρξη εύρεσης')}
       </Button>
      </Card>

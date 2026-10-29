@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bot, Check, ChevronRight, Copy, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { Bot, Check, ChevronRight, Copy, Maximize2, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
@@ -10,6 +10,7 @@ import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeed
 import { useStored } from '../lib/useStored';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
+import { respond, type EngineOrigin } from '../ai/engine';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { directoryPeople } from '../lib/peopleSource';
@@ -17,6 +18,7 @@ import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
 import { onPageControlsChange, readPageControls } from '../lib/pageControls';
 import { useUIStore } from '../stores/useUIStore';
+import { onAssistantRequest } from '../lib/assistantBus';
 
 type Bubble = AssistantTurn & {
   links?: AssistantLink[];
@@ -26,6 +28,10 @@ type Bubble = AssistantTurn & {
   resolved?: 'confirmed' | 'cancelled' | 'undone';
   /** Epoch ms until which the inline Undo button shows under a confirmed card. */
   undoUntil?: number;
+  /** How the reply was produced: the studio router, the model choosing an action, the model answering, or neither. */
+  origin?: EngineOrigin;
+  /** The action the model chose, when it chose one. */
+  interpretedAs?: { en: string; el: string };
 };
 
 function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
@@ -47,14 +53,25 @@ function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
   return mergeFitIntoViewer(base);
 }
 
-export default function ChatWidget() {
+const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+/**
+ * The studio assistant.
+ *
+ * `floating` is the panel that opens from the corner button on every page;
+ * `page` renders the same conversation inline on the full-page AI Studio
+ * (`/assistant`). Both read and write one persisted transcript, so a
+ * conversation started in the corner continues on the page and back.
+ */
+export default function ChatWidget({ variant = 'floating' }: { variant?: 'floating' | 'page' }) {
+  const isPage = variant === 'page';
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, user, isDemoMode } = useAuth();
   const { mode } = useLanguage();
   const t = useT();
   const toast = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isPage);
   const [isMinimized, setIsMinimized] = useState(false);
   const [tab, setTab] = useState<'studio' | 'agents'>('studio');
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -69,15 +86,18 @@ export default function ChatWidget() {
   const [queuedPrompt, setQueuedPrompt] = useState<string | null>(null);
   const [pinnedContext, setPinnedContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const runRef = useRef<(raw: string) => Promise<void>>(async () => undefined);
   const stopRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const turnsRef = useRef<Bubble[]>(turns);
   const undoingRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { turnsRef.current = turns; }, [turns]);
 
-  // The persisted transcript is the source of truth across tabs and accounts.
-  // In-memory proposal / undo fields ride along by matching turn ids.
+  // The persisted transcript is the source of truth across tabs, accounts and
+  // the two variants. In-memory proposal / undo fields ride along by matching
+  // turn ids — which is why every turn is written with the id it shows under.
   useEffect(() => {
     setTurns((prev) => {
       const overlay = new Map(prev.map((bubble) => [bubble.id, bubble]));
@@ -89,6 +109,8 @@ export default function ChatWidget() {
           proposal: extra.proposal,
           resolved: extra.resolved,
           undoUntil: extra.undoUntil,
+          origin: extra.origin,
+          interpretedAs: extra.interpretedAs,
           links: extra.links ?? turn.links,
           followUps: extra.followUps ?? turn.followUps,
         };
@@ -103,6 +125,7 @@ export default function ChatWidget() {
   const pageStarters = useMemo(() => startersFor(location.pathname, profile?.role ?? profile?.roles?.[0]), [location.pathname, profile]);
   const feedback = useStored(readAssistantFeedback, [keys.assistantFeedback]);
   const feedbackMap = useMemo(() => new Map(feedback.map((item) => [item.turnId, item.value])), [feedback]);
+  const visible = isPage || (isOpen && !isMinimized);
 
   const rate = (turnId: string, value: 'up' | 'down') => {
     writeAssistantFeedback(turnId, value);
@@ -127,29 +150,21 @@ export default function ChatWidget() {
     ? []
     : directoryPeople().filter((person) => !atQuery || person.fullName.toLowerCase().includes(atQuery)).slice(0, 6);
 
-  useEffect(() => {
-    const open = (event: Event) => {
-      const detail = (event as CustomEvent<{ prompt?: string; agentId?: string; context?: string }>).detail;
-      setIsOpen(true);
-      setIsMinimized(false);
-      if (detail?.agentId) {
-        setTab('agents');
-        setAgentId(detail.agentId);
-        setAgentTurns([]);
-      } else {
-        setTab('studio');
-        setAgentId(null);
-      }
-      if (detail?.context?.trim()) setPinnedContext(detail.context.trim());
-      if (detail?.prompt?.trim()) setQueuedPrompt(detail.prompt.trim());
-    };
-    window.addEventListener('OPEN_AI_CHAT', open);
-    window.addEventListener('OPEN_ASSISTANT', open);
-    return () => {
-      window.removeEventListener('OPEN_AI_CHAT', open);
-      window.removeEventListener('OPEN_ASSISTANT', open);
-    };
-  }, []);
+  useEffect(() => onAssistantRequest((detail) => {
+    setIsOpen(true);
+    setIsMinimized(false);
+    if (detail.agentId) {
+      setTab('agents');
+      setAgentId(detail.agentId);
+      setAgentTurns([]);
+    } else {
+      setTab('studio');
+      setAgentId(null);
+    }
+    if (detail.context?.trim()) setPinnedContext(detail.context.trim());
+    if (detail.prompt?.trim()) setQueuedPrompt(detail.prompt.trim());
+    else window.setTimeout(() => inputRef.current?.focus(), 50);
+  }), []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -157,13 +172,15 @@ export default function ChatWidget() {
 
   const speak = (result: AssistantResult): string => (mode === 'el' ? result.el : result.en);
 
+  /** Appends a turn to the shared transcript *under the id the bubble uses*, so its proposal and undo stay attached. */
   const pushStudio = (bubble: Bubble) => {
-    appendAssistant({ role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool, sources: bubble.sources, links: bubble.links, followUps: bubble.followUps });
+    appendAssistant({ id: bubble.id, at: bubble.at, role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool, sources: bubble.sources, links: bubble.links, followUps: bubble.followUps });
     setTurns((prev) => [...prev, bubble].slice(-80));
   };
 
   const resetStudio = () => {
     stopRef.current = true;
+    abortRef.current?.abort();
     setIsTyping(false);
     setStopped(false);
     setPageOpen(false);
@@ -175,6 +192,7 @@ export default function ChatWidget() {
 
   const stop = () => {
     stopRef.current = true;
+    abortRef.current?.abort();
     setIsTyping(false);
     setStopped(true);
   };
@@ -194,8 +212,9 @@ export default function ChatWidget() {
     }
   };
 
-  /** The same Gemini "polish" step the direct answer path runs. */
+  /** The Gemini "polish" step: rewords a router result without changing a fact. */
   const polishReply = async (replyId: string, payload: string, result: AssistantResult) => {
+    if (AIService.coolingDown) return;
     setIsTyping(true);
     try {
       const polished = await Promise.race([
@@ -244,7 +263,7 @@ export default function ChatWidget() {
       return;
     }
     setIsTyping(false);
-    pushStudio({ id: `a-undone-${Date.now()}`, role: 'assistant', text: t('Undone.', 'Αναιρέθηκε.'), at: new Date().toISOString() });
+    pushStudio({ id: newId('a-undone'), role: 'assistant', text: t('Undone.', 'Αναιρέθηκε.'), at: new Date().toISOString() });
   };
 
   const confirmProposal = async (msg: Bubble) => {
@@ -312,7 +331,7 @@ export default function ChatWidget() {
     stopRef.current = false;
 
     if (tab === 'agents' && agent) {
-      const userBubble: Bubble = { id: `u-${Date.now()}`, role: 'user', text: payload, at: new Date().toISOString() };
+      const userBubble: Bubble = { id: newId('u'), role: 'user', text: payload, at: new Date().toISOString() };
       setAgentTurns((prev) => [...prev, userBubble]);
       setIsTyping(true);
       const viewer = viewerFromAuth(profile);
@@ -323,29 +342,33 @@ export default function ChatWidget() {
         const context = `${agent.role}. On ${page.en}. ${assistantContextBlock(viewer)}${opSummary}`;
         const response = await AIService.chat(payload, context);
         if (stopRef.current) {
-          setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
+          setAgentTurns((prev) => [...prev, { id: newId('stop'), role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
           return;
         }
         setAgentTurns((prev) => [
           ...prev,
           {
-            id: `a-${Date.now()}`,
+            id: newId('a'),
             role: 'assistant',
             text: response.text?.trim() || (directResult ? speak(directResult) : '…'),
             href: directResult?.href,
             links: directResult?.links,
             followUps: directResult?.followUps,
             tool: directResult?.tool,
+            origin: 'model-answer',
             at: new Date().toISOString(),
           },
         ]);
       } catch {
         if (stopRef.current) {
-          setAgentTurns((prev) => [...prev, { id: `stop-${Date.now()}`, role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
+          setAgentTurns((prev) => [...prev, { id: newId('stop'), role: 'assistant', text: t('Stopped', 'Διακόπηκε'), at: new Date().toISOString() }]);
           return;
         }
         const fallback = directResult ?? runAssistant(payload, viewer);
-        setAgentTurns((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: speak(fallback), href: fallback.href, links: fallback.links, followUps: fallback.followUps, tool: fallback.tool, at: new Date().toISOString() }]);
+        const note = fallback.fallback
+          ? t('The specialist model is not reachable right now. Here is what the studio data says:\n', 'Το μοντέλο του ειδικού δεν είναι διαθέσιμο τώρα. Αυτό λένε τα δεδομένα του studio:\n')
+          : '';
+        setAgentTurns((prev) => [...prev, { id: newId('a'), role: 'assistant', text: `${note}${speak(fallback)}`, href: fallback.href, links: fallback.links, followUps: fallback.followUps, tool: fallback.tool, origin: 'router', at: new Date().toISOString() }]);
       } finally {
         setIsTyping(false);
       }
@@ -361,7 +384,8 @@ export default function ChatWidget() {
       ? { ...item, text: cancelledText, resolved: 'cancelled' as const }
       : item)));
 
-    const userBubble: Bubble = { id: `u-${Date.now()}`, role: 'user', text: payload, at: new Date().toISOString() };
+    const history = turnsRef.current.slice(-6).map((item) => ({ role: item.role, text: item.text }));
+    const userBubble: Bubble = { id: newId('u'), role: 'user', text: payload, at: new Date().toISOString() };
     pushStudio(userBubble);
     if (user && !isDemoMode) {
       void import('../firebase').then(async ({ db }) => {
@@ -369,8 +393,25 @@ export default function ChatWidget() {
         await addDoc(collection(db, 'aiUsage'), { userId: user.uid, kind: 'chat', at: new Date().toISOString() });
       }).catch(() => undefined);
     }
-    const result = runAssistant(payload, viewerFromAuth(profile), { propose: true });
-    const replyId = `a-${Date.now()}`;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setIsTyping(true);
+    let result: Awaited<ReturnType<typeof respond>>;
+    try {
+      result = await respond(payload, viewerFromAuth(profile), {
+        lang: mode,
+        page,
+        history,
+        suggestions: pageStarters,
+        signal: controller.signal,
+      });
+    } finally {
+      setIsTyping(false);
+      if (abortRef.current === controller) abortRef.current = null;
+    }
+    if (stopRef.current) return;
+    const replyId = newId('a');
     pushStudio({
       id: replyId,
       role: 'assistant',
@@ -381,27 +422,505 @@ export default function ChatWidget() {
       tool: result.tool,
       sources: result.sources,
       proposal: result.proposal,
+      origin: result.origin,
+      interpretedAs: result.interpretedAs?.label,
       at: new Date().toISOString(),
     });
     if (result.tool === 'navigate' && result.href) navigate(result.href);
     // A proposal is a question — it stays verbatim until confirmed, no polish.
-    if (result.proposal) return;
+    // Model answers are already worded; only router results get the polish.
+    if (result.proposal || result.origin !== 'router') return;
     void polishReply(replyId, payload, result);
   };
 
   runRef.current = run;
 
   useEffect(() => {
-    if (!isOpen || isMinimized || !queuedPrompt) return;
+    if (!visible || !queuedPrompt) return;
     const text = queuedPrompt;
     setQueuedPrompt(null);
     void runRef.current(text);
-  }, [isOpen, isMinimized, queuedPrompt]);
+  }, [visible, queuedPrompt]);
 
   const follow = (link: AssistantLink) => {
     navigate(link.href);
-    setIsMinimized(true);
+    if (!isPage) setIsMinimized(true);
   };
+
+  const originBadge = (msg: Bubble) => {
+    if (msg.origin === 'model-tool' && msg.interpretedAs) {
+      return (
+        <span className="studio-label" title={t('The AI model chose this studio action from your words', 'Το μοντέλο AI επέλεξε αυτή την ενέργεια από τα λόγια σου')}>
+          {t('Understood as', 'Κατανοήθηκε ως')}: {bothText(msg.interpretedAs.en, msg.interpretedAs.el)}
+        </span>
+      );
+    }
+    if (msg.origin === 'model-answer') {
+      return <span className="studio-label" title={t('Written by the AI model from your studio data — check facts that matter', 'Γραμμένο από το μοντέλο AI με βάση τα δεδομένα σου — έλεγξε ό,τι έχει σημασία')}>{t('AI answer', 'Απάντηση AI')}</span>;
+    }
+    if (msg.origin === 'unmatched') {
+      return <span className="studio-label">{t('Not matched', 'Χωρίς αντιστοίχιση')}</span>;
+    }
+    return null;
+  };
+
+  const panel = (
+    <>
+      <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-2xl')}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xs font-medium truncate">
+              {agent ? bothText(agent.name, agent.nameEl ?? agent.name) : <Both en="Assistant" el="Βοηθός" />}
+            </h3>
+            <p className="text-xs text-white/50 truncate">
+              {agent ? bothText(agent.role, agent.roleEl ?? agent.role) : <Both en="Reads and changes the same lists as every page — asks before it changes anything" el="Διαβάζει και αλλάζει τις ίδιες λίστες με κάθε σελίδα — ρωτά πριν αλλάξει κάτι" />}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button type="button" onClick={resetStudio} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('New conversation', 'Νέα συνομιλία')} title={t('New conversation', 'Νέα συνομιλία')}>
+            <SquarePen className="w-3.5 h-3.5" />
+          </button>
+          {!isPage && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); navigate('/assistant'); }}
+                className="p-1.5 hover:bg-white/10 rounded-md"
+                aria-label={t('Open the full-page AI Studio', 'Άνοιγμα του AI Studio σε πλήρη σελίδα')}
+                title={t('Open the full-page AI Studio', 'Άνοιγμα του AI Studio σε πλήρη σελίδα')}
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Minimize', 'Ελαχιστοποίηση')}>
+                <Minimize2 className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={() => { setIsOpen(false); setPageOpen(false); }} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Close', 'Κλείσιμο')}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!agent && (
+        <div className="flex border-b border-stone-100 shrink-0" role="tablist" aria-label={t('Assistant mode', 'Λειτουργία βοηθού')}>
+          {(['studio', 'agents'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              aria-selected={tab === item}
+              onClick={() => setTab(item)}
+              className={cn(
+                'flex-1 py-3 text-xs font-medium transition-colors',
+                tab === item ? 'text-stone-900 border-b-2 border-stone-900' : 'text-stone-400 hover:text-stone-600',
+              )}
+            >
+              {item === 'studio' ? <Both en="Assistant" el="Βοηθός" /> : <Both en="Specialists" el="Ειδικοί" />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-stone-50/30">
+        {tab === 'agents' && !agent ? (
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <p className="px-1 text-xs text-stone-500">
+              <Both
+                en="Specialists answer in depth with the AI model and your studio context. They do not change your data — the Assistant tab does, after you confirm."
+                el="Οι ειδικοί απαντούν σε βάθος με το μοντέλο AI και τα δεδομένα σου. Δεν αλλάζουν δεδομένα — αυτό το κάνει η καρτέλα Βοηθός, αφού επιβεβαιώσεις."
+              />
+            </p>
+            {MOCK_AGENTS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => { setAgentId(item.id); setAgentTurns([]); }}
+                className="w-full p-3 bg-white rounded-xl border border-stone-100 hover:border-stone-300 text-left flex items-start gap-3"
+              >
+                {item.avatar ? (
+                  <img src={item.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <span className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center text-base shrink-0" aria-hidden="true">{item.icon}</span>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-stone-900">{bothText(item.name, item.nameEl ?? item.name)}</p>
+                  <p className="text-xs text-stone-500 line-clamp-2">{bothText(item.description, item.descriptionEl ?? item.description)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <>
+            {agent && (
+              <div className="p-3 bg-white border-b border-stone-100 flex items-center gap-2 shrink-0">
+                <button type="button" onClick={() => { setAgentId(null); setAgentTurns([]); }} className="p-1 hover:bg-stone-100 rounded-md" aria-label={t('Back', 'Πίσω')}>
+                  <ChevronRight className="w-4 h-4 rotate-180" />
+                </button>
+                <span className="text-xs font-medium text-stone-900">{bothText(agent.name, agent.nameEl ?? agent.name)}</span>
+              </div>
+            )}
+            <div ref={scrollRef} className={cn('flex-1 overflow-y-auto space-y-3', isPage ? 'p-4 sm:p-6' : 'p-4')} aria-live="polite">
+              {visibleTurns.length === 0 && (
+                <p className="text-xs text-stone-500 leading-relaxed">
+                  <Both
+                    en={`On ${page.en}. Ask in your own words: I use the same people, scores, milestones and round as the rest of the studio, I can change them after you confirm, and anything I cannot do here goes to the AI model. Type / for shortcuts, @ for a person.`}
+                    el={`Στο ${page.el}. Ρώτα με δικά σου λόγια: χρησιμοποιώ τους ίδιους ανθρώπους, σκορ, ορόσημα και γύρο με την υπόλοιπη εφαρμογή, μπορώ να τα αλλάξω αφού επιβεβαιώσεις, και ό,τι δεν κάνω εδώ πάει στο μοντέλο AI. Πληκτρολόγησε / για συντομεύσεις, @ για άτομο.`}
+                  />
+                </p>
+              )}
+              {visibleTurns.map((msg, index) => {
+                const lastAssistant = msg.role === 'assistant' && visibleTurns.slice(index + 1).every((item) => item.role !== 'assistant');
+                return (
+                  <div key={msg.id} data-turn-role={msg.role} className={cn('flex flex-col gap-1.5', isPage ? 'max-w-[min(90%,44rem)]' : 'max-w-[90%]', msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start')}>
+                    <div className={cn(
+                      'p-3 rounded-2xl leading-relaxed whitespace-pre-wrap break-words',
+                      isPage ? 'text-sm' : 'text-xs',
+                      msg.role === 'user' ? 'bg-stone-900 text-white rounded-tr-none' : 'bg-white border border-stone-100 text-stone-800 rounded-tl-none',
+                    )}>
+                      {msg.text}
+                    </div>
+                    {msg.role === 'assistant' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {originBadge(msg)}
+                        {(msg.tool || msg.href) && msg.origin !== 'model-answer' && msg.origin !== 'unmatched' && (
+                          <span className="studio-label">
+                            {msg.href ? bothText(pageContext(msg.href).en, pageContext(msg.href).el) : bothText(page.en, page.el)}
+                            {msg.tool && !msg.interpretedAs ? ` · ${msg.tool}` : ''}
+                          </span>
+                        )}
+                        <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
+                          {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                        {feedbackMap.has(msg.id) ? (
+                          <span className="text-xs text-stone-400">{t('Thanks', 'Ευχαριστούμε')}</span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => rate(msg.id, 'up')}
+                              className="text-stone-400 hover:text-stone-900 inline-flex items-center"
+                              aria-label={t('Helpful answer', 'Χρήσιμη απάντηση')}
+                            >
+                              <ThumbsUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => rate(msg.id, 'down')}
+                              className="text-stone-400 hover:text-stone-900 inline-flex items-center"
+                              aria-label={t('Unhelpful answer', 'Μη χρήσιμη απάντηση')}
+                            >
+                              <ThumbsDown className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                      <details className="w-full">
+                        <summary className="cursor-pointer text-xs font-medium text-stone-500 hover:text-stone-900">
+                          {t(`Read from (${msg.sources.length})`, `Ανάγνωση από (${msg.sources.length})`)}
+                        </summary>
+                        <ul className="mt-1 flex flex-col gap-0.5">
+                          {msg.sources.map((source, sourceIndex) => (
+                            <li key={`${source.kind}-${sourceIndex}`}>
+                              {source.href ? (
+                                <button
+                                  type="button"
+                                  onClick={() => { navigate(source.href!); if (!isPage) setIsMinimized(true); }}
+                                  className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
+                                >
+                                  {bothText(source.en, source.el)}
+                                </button>
+                              ) : (
+                                <span className="text-xs text-stone-500">{bothText(source.en, source.el)}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    {msg.links && msg.links.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.links.slice(0, 4).map((link) => (
+                          <button
+                            key={link.href}
+                            type="button"
+                            onClick={() => follow(link)}
+                            className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:border-stone-900 hover:text-stone-900"
+                          >
+                            {bothText(link.en, link.el)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {msg.proposal && !msg.resolved && (
+                      <div className="w-full bg-white border border-stone-200 rounded-xl p-3 space-y-2" role="group" aria-label={t('Proposed change', 'Προτεινόμενη αλλαγή')}>
+                        <p className="text-xs font-medium text-stone-900">{bothText(msg.proposal.summary.en, msg.proposal.summary.el)}</p>
+                        <p className="text-xs text-stone-500">
+                          {msg.proposal.reversal === 'full'
+                            ? t('Reversible — Undo available', 'Αναστρέψιμο — διαθέσιμη Αναίρεση')
+                            : msg.proposal.reversal === 'partial'
+                              ? t('Partly reversible', 'Μερικώς αναστρέψιμο')
+                              : t('Not reversible', 'Μη αναστρέψιμο')}
+                          {msg.proposal.reversalNote ? ` — ${bothText(msg.proposal.reversalNote.en, msg.proposal.reversalNote.el)}` : ''}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { void confirmProposal(msg); }}
+                            className="min-h-8 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800"
+                          >
+                            {t('Confirm', 'Επιβεβαίωση')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cancelProposal(msg)}
+                            className="min-h-8 px-3 bg-white border border-stone-200 text-stone-700 rounded-lg text-xs font-medium hover:border-stone-400"
+                          >
+                            {t('Cancel', 'Ακύρωση')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {msg.resolved === 'confirmed' && msg.proposal?.undo && msg.undoUntil ? (
+                      <button
+                        type="button"
+                        onClick={() => { void undoProposal(msg.id); }}
+                        className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline"
+                      >
+                        {t('Undo', 'Αναίρεση')}
+                      </button>
+                    ) : null}
+                    {lastAssistant && msg.followUps && msg.followUps.length > 0 && (
+                      <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρώτα μετά')}>
+                        {msg.followUps.map((prompt) => (
+                          <button
+                            key={prompt.en}
+                            type="button"
+                            onClick={() => run(mode === 'el' ? prompt.el : prompt.en)}
+                            className="text-xs font-medium text-stone-900 hover:underline text-left"
+                          >
+                            {bothText(prompt.en, prompt.el)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {isTyping && (
+                <div className="flex items-center gap-2 text-stone-400" role="status">
+                  <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
+                    <Bot className="w-3 h-3" />
+                  </div>
+                  <p className="text-xs font-medium">
+                    <Both en="Studio is answering…" el="Ο βοηθός απαντά…" />
+                  </p>
+                  <div className="flex gap-1" aria-hidden="true">
+                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1 h-1 bg-stone-400 rounded-full" />
+                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1 h-1 bg-stone-400 rounded-full" />
+                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1 h-1 bg-stone-400 rounded-full" />
+                  </div>
+                </div>
+              )}
+              {stopped && !isTyping && (
+                <p className="studio-label">{t('Stopped', 'Διακόπηκε')}</p>
+              )}
+            </div>
+            <div className="p-3 bg-white border-t border-stone-100 shrink-0">
+              {!agent && (
+                <div className="mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPageOpen((open) => !open)}
+                      className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
+                      aria-expanded={pageOpen}
+                      aria-label={t('Page this chat is on', 'Σελίδα αυτής της συνομιλίας')}
+                    >
+                      {bothText(page.en, page.el)}
+                    </button>
+                    {pinnedContext && (
+                      <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-xs font-medium inline-flex items-center gap-1" aria-label={t(`Remove pinned context ${pinnedContext}`, `Αφαίρεση καρφιτσωμένου ${pinnedContext}`)}>
+                        {pinnedContext}
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                    {pinnedContext && (() => {
+                      const pinnedPerson = directoryPeople().find((p) => p.fullName.toLowerCase() === pinnedContext.toLowerCase());
+                      return pinnedPerson ? (
+                        <button
+                          type="button"
+                          onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, pinnedPerson.id)}
+                          className="px-2 py-0.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+                          title={t(`See how your score with ${pinnedPerson.fullName} is built`, `Δες πώς προκύπτει το σκορ σου με ${pinnedPerson.fullName}`)}
+                        >
+                          {t('Score breakdown', 'Ανάλυση σκορ')}
+                        </button>
+                      ) : null;
+                    })()}
+                  </div>
+                  {pageOpen && (
+                    <div className="mt-1.5 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+                      {ASSISTANT_PAGES.map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => { navigate(item.href); setPageOpen(false); }}
+                          className={cn(
+                            'w-full px-3 py-2 text-left text-xs hover:bg-stone-50',
+                            item.href === page.href ? 'font-medium text-stone-900' : 'text-stone-600',
+                          )}
+                        >
+                          {bothText(item.en, item.el)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {slashHits.length > 0 && (
+                <div className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+                  {slashHits.map((item) => (
+                    <button
+                      key={item.cmd}
+                      type="button"
+                      onClick={() => {
+                        setInputText('');
+                        void run(item.cmd);
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
+                    >
+                      <span className="text-xs font-mono font-medium text-stone-900">{item.cmd}</span>
+                      <span className="text-xs text-stone-400 truncate">{bothText(item.en, item.el)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {atHits.length > 0 && (
+                <div className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+                  {atHits.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() => pinPerson(person.fullName)}
+                      className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
+                    >
+                      <span className="text-xs font-medium text-stone-900">{person.fullName}</span>
+                      <span className="text-xs text-stone-400 truncate">{labelOf(person.role)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 bg-stone-50 rounded-xl border border-stone-200 p-1 pr-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  data-assistant-input
+                  aria-label={t('Message the assistant', 'Μήνυμα στον βοηθό')}
+                  placeholder={isTyping
+                    ? bothText('Studio is answering…', 'Ο βοηθός απαντά…')
+                    : bothText('Ask, or type / or @ …', 'Ρώτα, ή πληκτρολόγησε / ή @ …')}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onClick={() => { if (isTyping) stop(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && (slashHits.length || atHits.length)) { e.preventDefault(); setInputText(''); return; }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (isTyping) { stop(); return; }
+                      const onlyPerson = atHits[0];
+                      if (atHits.length === 1 && onlyPerson) { pinPerson(onlyPerson.fullName); return; }
+                      void run(inputText);
+                    }
+                  }}
+                  className="flex-1 min-h-11 bg-transparent border-none text-base sm:text-sm focus:ring-0 px-2"
+                />
+                {isTyping ? (
+                  <button
+                    type="button"
+                    onClick={stop}
+                    className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center"
+                    aria-label={bothText('Stop', 'Διακοπή')}
+                  >
+                    <Square className="w-3 h-3 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { void run(inputText); }}
+                    disabled={!inputText.trim()}
+                    className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
+                    aria-label={t('Send', 'Αποστολή')}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {pageControls.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-stone-400 mr-0.5">{bothText('On this page:', 'Σε αυτή τη σελίδα:')}</span>
+                  {pageControls.map((control) => (
+                    <button
+                      key={control.id}
+                      type="button"
+                      onClick={() => control.run()}
+                      className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-stone-400" />
+                      {bothText(control.en, control.el)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!agent && visibleTurns.length === 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pageStarters.map((prompt) => (
+                    <button
+                      key={prompt.en}
+                      type="button"
+                      onClick={() => { void run(mode === 'el' ? prompt.el : prompt.en); }}
+                      className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400"
+                    >
+                      {bothText(prompt.en, prompt.el)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {agent && visibleTurns.length === 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {(mode === 'el' && agent.suggestedPromptsEl ? agent.suggestedPromptsEl : agent.suggestedPrompts ?? []).slice(0, 3).map((prompt) => (
+                    <button key={prompt} type="button" onClick={() => { void run(prompt); }} className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400">
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="mt-1.5 text-xs text-stone-400">
+                <Both en="Enter send · / shortcuts · @ person · Stop while answering · ⌘K" el="Enter αποστολή · / συντομεύσεις · @ άτομο · Διακοπή όσο απαντά · ⌘K" />
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+
+  if (isPage) {
+    return (
+      <section
+        aria-label={t('AI Studio conversation', 'Συνομιλία AI Studio')}
+        className="flex h-full min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white"
+      >
+        {panel}
+      </section>
+    );
+  }
 
   return (
     <div className="fixed bottom-3 right-3 left-3 sm:left-auto sm:bottom-6 sm:right-6 z-[55] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
@@ -411,424 +930,11 @@ export default function ChatWidget() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            role="dialog"
+            aria-label={t('Studio assistant', 'Βοηθός studio')}
             className="pointer-events-auto w-full sm:w-[380px] h-[min(560px,72dvh)] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
           >
-            <div className="p-4 bg-stone-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-medium truncate">
-                    {agent ? agent.name : <Both en="Assistant" el="Βοηθός" />}
-                  </h3>
-                  <p className="text-xs text-white/50 truncate">
-                    {agent ? agent.role : <Both en="Reads and changes the same lists as every page" el="Διαβάζει και αλλάζει τις ίδιες λίστες με κάθε σελίδα" />}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button type="button" onClick={resetStudio} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={bothText('New conversation', 'Νέα συνομιλία')}>
-                  <SquarePen className="w-3.5 h-3.5" />
-                </button>
-                <button type="button" onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Minimize', 'Ελαχιστοποίηση')}>
-                  <Minimize2 className="w-3.5 h-3.5" />
-                </button>
-                <button type="button" onClick={() => { setIsOpen(false); setPageOpen(false); }} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('Close', 'Κλείσιμο')}>
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {!agent && (
-              <div className="flex border-b border-stone-100 shrink-0">
-                {(['studio', 'agents'] as const).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setTab(item)}
-                    className={cn(
-                      'flex-1 py-3 text-xs font-medium transition-colors',
-                      tab === item ? 'text-stone-900 border-b-2 border-stone-900' : 'text-stone-400 hover:text-stone-600',
-                    )}
-                  >
-                    {item === 'studio' ? <Both en="Assistant" el="Βοηθός" /> : <Both en="Specialists" el="Ειδικοί" />}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="flex-1 overflow-hidden flex flex-col bg-stone-50/30">
-              {tab === 'agents' && !agent ? (
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  {MOCK_AGENTS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => { setAgentId(item.id); setAgentTurns([]); }}
-                      className="w-full p-3 bg-white rounded-xl border border-stone-100 hover:border-stone-300 text-left flex items-start gap-3"
-                    >
-                      {item.avatar ? (
-                        <img src={item.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                      ) : (
-                        <span className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center text-base shrink-0" aria-hidden="true">{item.icon}</span>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-stone-900">{item.name}</p>
-                        <p className="text-xs text-stone-500 line-clamp-2">{item.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {agent && (
-                    <div className="p-3 bg-white border-b border-stone-100 flex items-center gap-2 shrink-0">
-                      <button type="button" onClick={() => { setAgentId(null); setAgentTurns([]); }} className="p-1 hover:bg-stone-100 rounded-md" aria-label={t('Back', 'Πίσω')}>
-                        <ChevronRight className="w-4 h-4 rotate-180" />
-                      </button>
-                      <span className="text-xs font-medium text-stone-900">{agent.name}</span>
-                    </div>
-                  )}
-                  <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {visibleTurns.length === 0 && (
-                      <p className="text-xs text-stone-500 leading-relaxed">
-                        <Both
-                          en={`On ${page.en}. Questions about this page lead. I use the same people, scores, milestones and round as the rest of the studio — and I can change them. Type / for shortcuts.`}
-                          el={`Στο ${page.el}. Οι ερωτήσεις αυτής της σελίδας προηγούνται. Χρησιμοποιώ τους ίδιους ανθρώπους, σκορ, ορόσημα και γύρο με την υπόλοιπη εφαρμογή — και μπορώ να τα αλλάξω. Πληκτρολόγησε / για συντομεύσεις.`}
-                        />
-                      </p>
-                    )}
-                    {visibleTurns.map((msg, index) => {
-                      const lastAssistant = msg.role === 'assistant' && visibleTurns.slice(index + 1).every((item) => item.role !== 'assistant');
-                      return (
-                      <div key={msg.id} className={cn('flex flex-col max-w-[90%] gap-1.5', msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start')}>
-                        <div className={cn(
-                          'p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap',
-                          msg.role === 'user' ? 'bg-stone-900 text-white rounded-tr-none' : 'bg-white border border-stone-100 text-stone-800 rounded-tl-none',
-                        )}>
-                          {msg.text}
-                        </div>
-                        {msg.role === 'assistant' && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            {(msg.tool || msg.href) && (
-                              <span className="studio-label">
-                                {msg.href ? bothText(pageContext(msg.href).en, pageContext(msg.href).el) : bothText(page.en, page.el)}
-                                {msg.tool ? ` · ${msg.tool}` : ''}
-                              </span>
-                            )}
-                            <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
-                              {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                            </button>
-                            {feedbackMap.has(msg.id) ? (
-                              <span className="text-xs text-stone-400">{t('Thanks', 'Ευχαριστούμε')}</span>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => rate(msg.id, 'up')}
-                                  className="text-stone-400 hover:text-stone-900 inline-flex items-center"
-                                  aria-label={t('Helpful answer', 'Χρήσιμη απάντηση')}
-                                >
-                                  <ThumbsUp className="w-3 h-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => rate(msg.id, 'down')}
-                                  className="text-stone-400 hover:text-stone-900 inline-flex items-center"
-                                  aria-label={t('Unhelpful answer', 'Μη χρήσιμη απάντηση')}
-                                >
-                                  <ThumbsDown className="w-3 h-3" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                        {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                          <details className="w-full">
-                            <summary className="cursor-pointer text-xs font-medium text-stone-500 hover:text-stone-900">
-                              {t(`Read from (${msg.sources.length})`, `Ανάγνωση από (${msg.sources.length})`)}
-                            </summary>
-                            <ul className="mt-1 flex flex-col gap-0.5">
-                              {msg.sources.map((source, sourceIndex) => (
-                                <li key={`${source.kind}-${sourceIndex}`}>
-                                  {source.href ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => { navigate(source.href!); setIsMinimized(true); }}
-                                      className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
-                                    >
-                                      {bothText(source.en, source.el)}
-                                    </button>
-                                  ) : (
-                                    <span className="text-xs text-stone-500">{bothText(source.en, source.el)}</span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        )}
-                        {msg.links && msg.links.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {msg.links.slice(0, 4).map((link) => (
-                              <button
-                                key={link.href}
-                                type="button"
-                                onClick={() => follow(link)}
-                                className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:border-stone-900 hover:text-stone-900"
-                              >
-                                {bothText(link.en, link.el)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {msg.proposal && !msg.resolved && (
-                          <div className="w-full bg-white border border-stone-200 rounded-xl p-3 space-y-2">
-                            <p className="text-xs font-medium text-stone-900">{bothText(msg.proposal.summary.en, msg.proposal.summary.el)}</p>
-                            <p className="text-xs text-stone-500">
-                              {msg.proposal.reversal === 'full'
-                                ? t('Reversible — Undo available', 'Αναστρέψιμο — διαθέσιμη Αναίρεση')
-                                : msg.proposal.reversal === 'partial'
-                                  ? t('Partly reversible', 'Μερικώς αναστρέψιμο')
-                                  : t('Not reversible', 'Μη αναστρέψιμο')}
-                              {msg.proposal.reversalNote ? ` — ${bothText(msg.proposal.reversalNote.en, msg.proposal.reversalNote.el)}` : ''}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => { void confirmProposal(msg); }}
-                                className="min-h-8 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800"
-                              >
-                                {t('Confirm', 'Επιβεβαίωση')}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => cancelProposal(msg)}
-                                className="min-h-8 px-3 bg-white border border-stone-200 text-stone-700 rounded-lg text-xs font-medium hover:border-stone-400"
-                              >
-                                {t('Cancel', 'Ακύρωση')}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {msg.resolved === 'confirmed' && msg.proposal?.undo && msg.undoUntil ? (
-                          <button
-                            type="button"
-                            onClick={() => { void undoProposal(msg.id); }}
-                            className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline"
-                          >
-                            {t('Undo', 'Αναίρεση')}
-                          </button>
-                        ) : null}
-                        {lastAssistant && msg.followUps && msg.followUps.length > 0 && (
-                          <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρώτα μετά')}>
-                            {msg.followUps.map((prompt) => (
-                              <button
-                                key={prompt.en}
-                                type="button"
-                                onClick={() => run(mode === 'el' ? prompt.el : prompt.en)}
-                                className="text-xs font-medium text-stone-900 hover:underline"
-                              >
-                                {bothText(prompt.en, prompt.el)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      );
-                    })}
-                    {isTyping && (
-                      <div className="flex items-center gap-2 text-stone-400">
-                        <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
-                          <Bot className="w-3 h-3" />
-                        </div>
-                        <p className="text-xs font-medium">
-                          <Both en="Studio is answering…" el="Ο βοηθός απαντά…" />
-                        </p>
-                        <div className="flex gap-1">
-                          <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1 h-1 bg-stone-400 rounded-full" />
-                          <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1 h-1 bg-stone-400 rounded-full" />
-                          <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1 h-1 bg-stone-400 rounded-full" />
-                        </div>
-                      </div>
-                    )}
-                    {stopped && !isTyping && (
-                      <p className="studio-label">{t('Stopped', 'Διακόπηκε')}</p>
-                    )}
-                  </div>
-                  <div className="p-3 bg-white border-t border-stone-100 shrink-0">
-                    {!agent && (
-                      <div className="mb-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setPageOpen((open) => !open)}
-                            className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
-                            aria-expanded={pageOpen}
-                            aria-label={t('Page this chat is on', 'Σελίδα αυτής της συνομιλίας')}
-                          >
-                            {bothText(page.en, page.el)}
-                          </button>
-                          {pinnedContext && (
-                            <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-xs font-medium inline-flex items-center gap-1">
-                              {pinnedContext}
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                          {pinnedContext && (() => {
-                            const pinnedPerson = directoryPeople().find((p) => p.fullName.toLowerCase() === pinnedContext.toLowerCase());
-                            return pinnedPerson ? (
-                              <button
-                                type="button"
-                                onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, pinnedPerson.id)}
-                                className="px-2 py-0.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
-                                title={t(`See how your score with ${pinnedPerson.fullName} is built`, `Δες πώς προκύπτει το σκορ σου με ${pinnedPerson.fullName}`)}
-                              >
-                                {t('Score breakdown', 'Ανάλυση σκορ')}
-                              </button>
-                            ) : null;
-                          })()}
-                        </div>
-                        {pageOpen && (
-                          <div className="mt-1.5 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
-                            {ASSISTANT_PAGES.map((item) => (
-                              <button
-                                key={item.href}
-                                type="button"
-                                onClick={() => { navigate(item.href); setPageOpen(false); }}
-                                className={cn(
-                                  'w-full px-3 py-2 text-left text-xs hover:bg-stone-50',
-                                  item.href === page.href ? 'font-medium text-stone-900' : 'text-stone-600',
-                                )}
-                              >
-                                {bothText(item.en, item.el)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {slashHits.length > 0 && (
-                      <div className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
-                        {slashHits.map((item) => (
-                          <button
-                            key={item.cmd}
-                            type="button"
-                            onClick={() => {
-                              setInputText('');
-                              void run(item.cmd);
-                            }}
-                            className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
-                          >
-                            <span className="text-xs font-mono font-medium text-stone-900">{item.cmd}</span>
-                            <span className="text-xs text-stone-400 truncate">{bothText(item.en, item.el)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {atHits.length > 0 && (
-                      <div className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
-                        {atHits.map((person) => (
-                          <button
-                            key={person.id}
-                            type="button"
-                            onClick={() => pinPerson(person.fullName)}
-                            className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
-                          >
-                            <span className="text-xs font-medium text-stone-900">{person.fullName}</span>
-                            <span className="text-xs text-stone-400 truncate">{labelOf(person.role)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 bg-stone-50 rounded-xl border border-stone-200 p-1 pr-2">
-                      <input
-                        type="text"
-                        placeholder={isTyping
-                          ? bothText('Studio is answering…', 'Ο βοηθός απαντά…')
-                          : bothText('Ask, or type / or @ …', 'Ρώτα, ή πληκτρολόγησε / ή @ …')}
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        onClick={() => { if (isTyping) stop(); }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape' && (slashHits.length || atHits.length)) { e.preventDefault(); setInputText(''); return; }
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            if (isTyping) { stop(); return; }
-                            const onlyPerson = atHits[0];
-                            if (atHits.length === 1 && onlyPerson) { pinPerson(onlyPerson.fullName); return; }
-                            run(inputText);
-                          }
-                        }}
-                        className="flex-1 min-h-11 bg-transparent border-none text-base sm:text-sm focus:ring-0 px-2"
-                      />
-                      {isTyping ? (
-                        <button
-                          type="button"
-                          onClick={stop}
-                          className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center"
-                          aria-label={bothText('Stop', 'Διακοπή')}
-                        >
-                          <Square className="w-3 h-3 fill-current" />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => run(inputText)}
-                          disabled={!inputText.trim()}
-                          className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
-                          aria-label={t('Send', 'Αποστολή')}
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    {pageControls.length > 0 && (
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className="text-xs text-stone-400 mr-0.5">{bothText('On this page:', 'Σε αυτή τη σελίδα:')}</span>
-                        {pageControls.map((control) => (
-                          <button
-                            key={control.id}
-                            type="button"
-                            onClick={() => control.run()}
-                            className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center gap-1"
-                          >
-                            <Sparkles className="w-3 h-3 text-stone-400" />
-                            {bothText(control.en, control.el)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {!agent && visibleTurns.length === 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {pageStarters.map((prompt) => (
-                          <button
-                            key={prompt.en}
-                            type="button"
-                            onClick={() => run(mode === 'el' ? prompt.el : prompt.en)}
-                            className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400"
-                          >
-                            {bothText(prompt.en, prompt.el)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {agent?.suggestedPrompts && visibleTurns.length === 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {agent.suggestedPrompts.slice(0, 3).map((prompt) => (
-                          <button key={prompt} type="button" onClick={() => run(prompt)} className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400">
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <p className="mt-1.5 text-xs text-stone-400">
-                      <Both en="Enter send · / shortcuts · @ person · Stop while answering · ⌘K" el="Enter αποστολή · / συντομεύσεις · @ άτομο · Διακοπή όσο απαντά · ⌘K" />
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
+            {panel}
           </motion.div>
         )}
       </AnimatePresence>
@@ -859,6 +965,7 @@ export default function ChatWidget() {
             isOpen && !isMinimized ? 'bg-stone-100 text-stone-900' : 'bg-stone-900 text-white',
           )}
           aria-label={bothText('Open studio assistant', 'Άνοιγμα βοηθού')}
+          aria-expanded={isOpen && !isMinimized}
         >
           {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
         </motion.button>

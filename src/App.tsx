@@ -70,6 +70,7 @@ import TenantBilling from './pages/admin/TenantBilling';
 import BillingPage from './pages/settings/Billing';
 import BillingOversight from './pages/superadmin/BillingOversight';
 import NotFoundPage from './pages/NotFound';
+import AssistantPage from './pages/AssistantPage';
 
 // Page loading fallback
 function PageLoader() {
@@ -509,6 +510,7 @@ export default function App() {
               <Route path="/mentors" element={<ProtectedRoute><MentorsPage /></ProtectedRoute>} />
               <Route path="/communities" element={<ProtectedRoute><CommunitiesPage /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><WithUser render={(u) => <CommunicationHub user={u} />} /></ProtectedRoute>} />
+              <Route path="/assistant" element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
               <Route path="/milestones" element={<ProtectedRoute><MilestonesPage /></ProtectedRoute>} />
 
               {/* Founder Tools */}
