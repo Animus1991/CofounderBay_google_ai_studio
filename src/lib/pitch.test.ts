@@ -29,7 +29,7 @@ describe('pitch deck data', () => {
     writeValue(keys.startup, { name: 'AegeanFlow', oneLiner: 'Instant B2B settlement' });
     writeRound({ targetAmount: 1_500_000, committedAmount: 300_000, instrument: 'SAFE', valuationCap: 12_000_000, monthlyBurn: 20_000 });
     const draft = draftPitch();
-    expect(draft.cover).toBe('AegeanFlow Instant B2B settlement');
+    expect(draft.cover).toBe('AegeanFlow — Instant B2B settlement');
     expect(draft.problem).toMatch(/Cross-border B2B settlement/);
     expect(draft.solution).toMatch(/Settlement in one click/);
     expect(draft.ask).toMatch(/\$1\.5M on a SAFE \(\$12M cap\)/);

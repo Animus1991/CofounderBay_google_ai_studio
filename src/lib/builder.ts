@@ -1,5 +1,6 @@
 import { isDemoData, keys, readValue } from './localLists';
 import { getLang } from './language';
+import { DEMO_BUILDER_INPUTS } from '../data/demoVenture';
 
 export interface BuilderModule {
   id: number;
@@ -80,27 +81,8 @@ export function builderStatus(id: number, inputs: Record<string, string>): { sta
   return { status, filled, total };
 }
 
-/** Demo answers — modules 1–2 filled, module 3 started — so the staged look is real data. */
-export const DEMO_BUILDER_INPUTS: Record<'en' | 'el', Record<string, string>> = {
-  en: {
-    '1-0': 'Founders jump between five tools to find a co-founder.',
-    '1-1': 'They ask their network, post in forums, or cold-message strangers.',
-    '1-2': 'Weeks of searching before a first real conversation.',
-    '2-0': 'One place that matches founders on skills, goals and stage.',
-    '2-1': 'Match score, fit check and a direct intro.',
-    '2-2': 'The match is explained — never a black box.',
-    '3-0': 'Founders actively looking for a co-founder right now.',
-  },
-  el: {
-    '1-0': 'Τα ιδρυτικά μέλη πηγαίνουν από εργαλείο σε εργαλείο για να βρουν συνιδρυτή.',
-    '1-1': 'Ρωτούν το δίκτυό τους, γράφουν σε forum ή στέλνουν κρύα μηνύματα.',
-    '1-2': 'Εβδομάδες αναζήτησης πριν την πρώτη ουσιαστική συζήτηση.',
-    '2-0': 'Ένα μέρος που ταιριάζει ιδρυτικά μέλη σε δεξιότητες, στόχους και στάδιο.',
-    '2-1': 'Σκορ αντιστοίχισης, fit check και απευθείας γνωριμία.',
-    '2-2': 'Η αντιστοίχιση εξηγείται — ποτέ μαύρο κουτί.',
-    '3-0': 'Ιδρυτικά μέλη που ψάχνουν ενεργά συνιδρυτή αυτή τη στιγμή.',
-  },
-};
+/** Demo answers — modules 1–2 filled, module 3 started — from the one sample venture (data/demoVenture). */
+export { DEMO_BUILDER_INPUTS };
 
 export function readBuilderInputs(): Record<string, string> {
   const stored = readValue<Record<string, string>>(keys.builderInputs, {});

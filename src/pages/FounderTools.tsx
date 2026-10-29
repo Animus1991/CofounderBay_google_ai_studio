@@ -61,6 +61,7 @@ import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, readMilestones, effectiveStatus, type TrackedApplication } from "../lib/localLists";
 import { DEMO_APPLICATIONS, DEMO_TOOL_DEADLINES, SOON_DAYS, demoDay } from "../data/demoCatalog";
+import { DEMO_VENTURE } from "../data/demoVenture";
 import { monthFromToday, shortDay } from "../data/demoClock";
 import { formatDate } from "../lib/dates";
 import { useStored } from "../lib/useStored";
@@ -195,13 +196,13 @@ export default function FounderTools({ user }: FounderToolsProps) {
  const mockStartup: StartupDraft = useMemo(() => {
   const stageValues = Object.values(FounderStage) as string[];
   const profileStage = profile?.stage && stageValues.includes(profile.stage) ? (profile.stage as FounderStage) : undefined;
-  const fallbackName = isDemoMode ? 'EcoFlow Systems' : '';
+  const fallbackName = isDemoMode ? DEMO_VENTURE.name : '';
   return {
    id: savedStartup.id ?? 'startup',
    ownerId: user.id,
    name: savedStartup.name ?? profile?.company ?? fallbackName,
-   oneLiner: savedStartup.oneLiner ?? (isDemoMode ? 'Next-gen water purification for urban environments.' : ''),
-   description: savedStartup.description ?? (isDemoMode ? 'EcoFlow uses proprietary bio-filters to recycle gray water in high-density residential buildings.' : ''),
+   oneLiner: savedStartup.oneLiner ?? (isDemoMode ? t(DEMO_VENTURE.oneLiner, DEMO_VENTURE.oneLinerEl) : ''),
+   description: savedStartup.description ?? (isDemoMode ? DEMO_VENTURE.description : ''),
    industry: savedStartup.industry ?? (isDemoMode ? ['Sustainability', 'CleanTech', 'PropTech'] : (profile?.industry ? [String(profile.industry)] : [])),
    stage: savedStartup.stage ?? profileStage ?? (isDemoMode ? FounderStage.PROTOTYPE : FounderStage.IDEA),
    readinessScore: savedStartup.readinessScore ?? (isDemoMode ? 68 : 0),

@@ -944,6 +944,10 @@ export type AssistantTurn = {
   sources?: TurnSource[];
   links?: { href: string; en: string; el: string }[];
   followUps?: { en: string; el: string }[];
+  /** How the reply was produced (router, model tool, model answer, not matched) — kept so a reload shows the same badge. */
+  origin?: 'router' | 'model-tool' | 'model-answer' | 'unmatched';
+  /** The catalogue action the model chose, when it chose one. */
+  interpretedAs?: { en: string; el: string };
 };
 
 export function readAssistant(): AssistantTurn[] {
@@ -962,6 +966,8 @@ export function appendAssistant(turn: Omit<AssistantTurn, 'id' | 'at'> & { id?: 
     sources: turn.sources,
     links: turn.links,
     followUps: turn.followUps,
+    origin: turn.origin,
+    interpretedAs: turn.interpretedAs,
   };
   const next = [...readAssistant(), entry].slice(-80);
   writeJson(keys.assistant, next);

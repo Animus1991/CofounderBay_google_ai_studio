@@ -56,6 +56,7 @@ import { uploadFile, formatBytes, type UploadFolder } from "../lib/files";
 import { safeMediaUrl } from "../lib/webUrl";
 import type { Milestone } from "../types";
 import { askAssistant } from '../lib/assistantBus';
+import { DEMO_CANVAS as SAMPLE_CANVAS } from '../data/demoVenture';
 
 interface WorkspaceProps {
  user: User;
@@ -77,14 +78,8 @@ const CANVAS_SECTIONS = [
  { key: 'advantage', title: 'Unfair Advantage' },
 ] as const;
 
-// Demo-only canvas content — real members start from their own draft.
-const DEMO_CANVAS: CanvasDraft = {
- problem: 'Existing solutions are too complex and expensive for early-stage startups.',
- solution: 'A minimalist, AI-powered workspace designed specifically for founders.',
- keyMetrics: 'Daily Active Users, Task Completion Rate, Retention.',
- uvp: 'The only workspace that actively guides you through the startup lifecycle.',
- advantage: 'Proprietary AI matching engine and exclusive mentor network.',
-};
+// Demo-only canvas content — real members start from their own draft. One sample story: data/demoVenture.
+const DEMO_CANVAS: CanvasDraft = { ...SAMPLE_CANVAS };
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 

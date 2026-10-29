@@ -15,6 +15,8 @@
  */
 import { readBuilderInputs } from './builder';
 import { isDemoData, keys, readRound, readValue, writeValue } from './localLists';
+import { getLang } from './language';
+import { DEMO_CANVAS, DEMO_VENTURE } from '../data/demoVenture';
 
 export const PITCH_SLIDES = [
   { key: 'cover', en: 'Cover & Hook', el: 'Εξώφυλλο & άγκιστρο' },
@@ -64,13 +66,17 @@ const money = (value: number) => {
  * string when there is nothing to draw on. Never invents numbers.
  */
 export function draftPitch(): PitchContent {
-  const canvas = readValue<Record<string, string>>(keys.canvas, {});
+  const demo = isDemoData();
+  // The sample account drafts from the one sample venture (data/demoVenture), like every other page.
+  const canvas = { ...(demo ? DEMO_CANVAS : {}), ...readValue<Record<string, string>>(keys.canvas, {}) } as Record<string, string>;
   const builder = readBuilderInputs();
   const startup = readValue<Record<string, unknown>>(keys.startup, {});
   const round = readRound();
   const pick = (...values: (string | undefined)[]) => values.map((value) => (value ?? '').trim()).filter(Boolean).join(' ');
-  const name = typeof startup.name === 'string' ? startup.name.trim() : '';
-  const oneLiner = typeof startup.oneLiner === 'string' ? startup.oneLiner.trim() : '';
+  const name = typeof startup.name === 'string' && startup.name.trim() ? startup.name.trim() : demo ? DEMO_VENTURE.name : '';
+  const oneLiner = typeof startup.oneLiner === 'string' && startup.oneLiner.trim()
+    ? startup.oneLiner.trim()
+    : demo ? (getLang() === 'el' ? DEMO_VENTURE.oneLinerEl : DEMO_VENTURE.oneLiner) : '';
   const raised = round.committedAmount && round.targetAmount
     ? `${money(round.committedAmount)} of ${money(round.targetAmount)} committed.`
     : '';
@@ -78,7 +84,7 @@ export function draftPitch(): PitchContent {
     ? `Raising ${money(round.targetAmount)} ${round.instrument === 'SAFE' ? 'on a SAFE' : 'in a priced round'}${round.valuationCap ? ` (${money(round.valuationCap)} cap)` : ''}. ${raised}${round.monthlyBurn ? ` Current burn ${money(round.monthlyBurn)}/month.` : ''}`.trim()
     : '';
   return {
-    cover: pick(name, oneLiner),
+    cover: [name, oneLiner].filter(Boolean).join(' — '),
     problem: pick(canvas.problem, builder['1-0'], builder['1-2']),
     solution: pick(canvas.solution, canvas.uvp, builder['2-0'], builder['2-2']),
     market: pick(builder['3-0'], builder['3-1']),

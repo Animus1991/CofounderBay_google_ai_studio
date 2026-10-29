@@ -25,6 +25,7 @@ import {
   createAvatarSvg,
 } from '../data/studioCatalog';
 import { enrichFoundersWithMatches } from '../utils/matchingEngine';
+import { DEMO_VENTURE } from '../data/demoVenture';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { avatarOf, directoryPeople, type Person } from '../lib/peopleSource';
@@ -147,7 +148,7 @@ export const GlobalStudioModals: React.FC = () => {
   const { mode: lang } = useLanguage();
   const t = useT();
   const navigate = useNavigate();
-  const { profile: authProfile } = useAuth();
+  const { profile: authProfile, isDemoMode } = useAuth();
   const { success: toastSuccess } = useToast();
 
   const matchBreakdownModalOpen = useUIStore((s) => s.matchBreakdownModalOpen);
@@ -245,19 +246,20 @@ export const GlobalStudioModals: React.FC = () => {
 
   // Unified Startups pool: includes the user's live Venture synced with FounderTools, Workspace Canvas & Fundraising Round
   const startups = useMemo<StartupVenture[]>(() => {
+    // The sample venture only on the sample account; a real account sees its own (or a neutral placeholder).
     const ventureName =
       typeof localStartup.name === 'string' && localStartup.name.trim()
         ? localStartup.name.trim()
-        : 'EcoFlow Systems';
+        : isDemoMode ? DEMO_VENTURE.name : (lang === 'el' ? 'Το venture σου' : 'Your venture');
     const oneLiner =
       typeof localStartup.oneLiner === 'string' && localStartup.oneLiner.trim()
         ? localStartup.oneLiner.trim()
-        : 'AI-driven urban water & resource optimization platform';
+        : isDemoMode ? (lang === 'el' ? DEMO_VENTURE.oneLinerEl : DEMO_VENTURE.oneLiner) : '';
     const description =
       typeof localStartup.description === 'string' && localStartup.description.trim()
         ? localStartup.description.trim()
         : oneLiner;
-    const readiness = typeof localStartup.readinessScore === 'number' ? localStartup.readinessScore : 68;
+    const readiness = typeof localStartup.readinessScore === 'number' ? localStartup.readinessScore : isDemoMode ? DEMO_VENTURE.readinessScore : 0;
     const openNeedRoles = localNeeds
       .filter((n) => n.status === 'open')
       .map((n) => n.missing)
@@ -300,18 +302,18 @@ export const GlobalStudioModals: React.FC = () => {
       }
     }
     return merged;
-  }, [localStartup, localRound, localCanvas, localNeeds, authProfile, myProfile, customStartups]);
+  }, [localStartup, localRound, localCanvas, localNeeds, authProfile, myProfile, customStartups, isDemoMode, lang]);
 
   // Unified Need Cards: combines localLists Need Cards (from AI Chat / Network page) + Studio Need Cards
   const needCards = useMemo<NeedCardItem[]>(() => {
     const ventureName =
       typeof localStartup.name === 'string' && localStartup.name.trim()
         ? localStartup.name.trim()
-        : 'EcoFlow Systems';
+        : isDemoMode ? DEMO_VENTURE.name : (lang === 'el' ? 'Το venture σου' : 'Your venture');
     const convertedLocal = localNeeds.map((c) => localNeedToWallItem(c, ventureName));
     const localIds = new Set(convertedLocal.map((c) => c.id));
     return [...convertedLocal, ...NEED_CARD_ITEMS.filter((c) => !localIds.has(c.id))];
-  }, [localNeeds, localStartup]);
+  }, [localNeeds, localStartup, isDemoMode, lang]);
 
   const savedFounderIds = useMemo(() => {
     return Array.from(new Set(['fp-1', 'fp-2', ...savedProfiles.map((p) => p.id)]));

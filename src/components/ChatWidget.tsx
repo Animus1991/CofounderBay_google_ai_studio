@@ -30,8 +30,6 @@ type Bubble = AssistantTurn & {
   undoUntil?: number;
   /** How the reply was produced: the studio router, the model choosing an action, the model answering, or neither. */
   origin?: EngineOrigin;
-  /** The action the model chose, when it chose one. */
-  interpretedAs?: { en: string; el: string };
 };
 
 function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
@@ -109,8 +107,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
           proposal: extra.proposal,
           resolved: extra.resolved,
           undoUntil: extra.undoUntil,
-          origin: extra.origin,
-          interpretedAs: extra.interpretedAs,
+          origin: extra.origin ?? turn.origin,
+          interpretedAs: extra.interpretedAs ?? turn.interpretedAs,
           links: extra.links ?? turn.links,
           followUps: extra.followUps ?? turn.followUps,
         };
@@ -174,7 +172,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
 
   /** Appends a turn to the shared transcript *under the id the bubble uses*, so its proposal and undo stay attached. */
   const pushStudio = (bubble: Bubble) => {
-    appendAssistant({ id: bubble.id, at: bubble.at, role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool, sources: bubble.sources, links: bubble.links, followUps: bubble.followUps });
+    appendAssistant({ id: bubble.id, at: bubble.at, role: bubble.role, text: bubble.text, href: bubble.href, tool: bubble.tool, sources: bubble.sources, links: bubble.links, followUps: bubble.followUps, origin: bubble.origin, interpretedAs: bubble.interpretedAs });
     setTurns((prev) => [...prev, bubble].slice(-80));
   };
 
@@ -587,7 +585,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                     {msg.role === 'assistant' && (
                       <div className="flex flex-wrap items-center gap-2">
                         {originBadge(msg)}
-                        {(msg.tool || msg.href) && msg.origin !== 'model-answer' && msg.origin !== 'unmatched' && (
+                        {(msg.tool || msg.href) && msg.origin !== 'model-answer' && msg.origin !== 'unmatched' && !['answer', 'unmatched', 'clarify'].includes(msg.tool ?? '') && (
                           <span className="studio-label">
                             {msg.href ? bothText(pageContext(msg.href).en, pageContext(msg.href).el) : bothText(page.en, page.el)}
                             {msg.tool && !msg.interpretedAs ? ` · ${msg.tool}` : ''}
@@ -659,8 +657,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                       </div>
                     )}
                     {msg.proposal && !msg.resolved && (
-                      <div className="w-full bg-white border border-stone-200 rounded-xl p-3 space-y-2" role="group" aria-label={t('Proposed change', 'Προτεινόμενη αλλαγή')}>
-                        <p className="text-xs font-medium text-stone-900">{bothText(msg.proposal.summary.en, msg.proposal.summary.el)}</p>
+                      // The bubble above already states the change; the card adds only how reversible it is and the two choices.
+                      <div className="w-full bg-white border border-stone-200 rounded-xl p-3 space-y-2" role="group" aria-label={bothText(msg.proposal.summary.en, msg.proposal.summary.el)}>
                         <p className="text-xs text-stone-500">
                           {msg.proposal.reversal === 'full'
                             ? t('Reversible — Undo available', 'Αναστρέψιμο — διαθέσιμη Αναίρεση')

@@ -81,6 +81,7 @@ import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
 import { DEMO_EVENTS, datedKnowledge, demoEventsLine } from '../data/demoCatalog';
+import { DEMO_CANVAS, DEMO_VENTURE } from '../data/demoVenture';
 import { daysFromToday, shortDay } from '../data/demoClock';
 
 export type AssistantProfile = CompatibilityInput & {
@@ -2150,13 +2151,7 @@ const CANVAS_FIELDS: { key: string; en: string; el: string; aliases: string[] }[
   { key: 'advantage', en: 'Unfair Advantage', el: 'Αθέμιτο Πλεονέκτημα', aliases: ['unfair advantage', 'advantage', 'πλεονεκτημα', 'πλεονέκτημα'] },
 ];
 
-const DEMO_CANVAS_FALLBACK: Record<string, string> = {
-  problem: 'Existing solutions are too complex and expensive for early-stage startups.',
-  solution: 'A minimalist, AI-powered workspace designed specifically for founders.',
-  keyMetrics: 'Daily Active Users, Task Completion Rate, Retention.',
-  uvp: 'The only workspace that actively guides you through the startup lifecycle.',
-  advantage: 'Proprietary AI matching engine and exclusive mentor network.',
-};
+const DEMO_CANVAS_FALLBACK: Record<string, string> = { ...DEMO_CANVAS };
 
 const cleanText = (v: string) => v.trim().replace(/^[“"«']+|[”"»'.]+$/g, '').trim();
 
@@ -2293,9 +2288,9 @@ function builderResult(query: string, propose: boolean): AssistantResult {
 
 function readinessResult(query: string, propose: boolean): AssistantResult {
   const saved = readValue<Record<string, unknown>>('cfb.startup', {});
-  const name = typeof saved.name === 'string' && saved.name ? saved.name : (isDemoData() ? 'EcoFlow Systems' : 'Your Venture');
-  const oneLiner = typeof saved.oneLiner === 'string' && saved.oneLiner ? saved.oneLiner : (isDemoData() ? 'Next-gen water purification for urban environments.' : '');
-  const score = typeof saved.readinessScore === 'number' ? saved.readinessScore : (isDemoData() ? 68 : 0);
+  const name = typeof saved.name === 'string' && saved.name ? saved.name : (isDemoData() ? DEMO_VENTURE.name : 'Your Venture');
+  const oneLiner = typeof saved.oneLiner === 'string' && saved.oneLiner ? saved.oneLiner : (isDemoData() ? DEMO_VENTURE.oneLiner : '');
+  const score = typeof saved.readinessScore === 'number' ? saved.readinessScore : (isDemoData() ? DEMO_VENTURE.readinessScore : 0);
   const links: AssistantLink[] = [
     { href: '/founder-tools', en: 'Open Founder Tools & Readiness', el: 'Άνοιγμα Εργαλείων Ιδρυτή & Ετοιμότητας' },
     { href: '/insights', en: 'Open Insights', el: 'Άνοιγμα Στατιστικών' },
@@ -2952,8 +2947,8 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
     return `${m.title} (${st.filled}/${st.total})`;
   }).join(', ');
   const startup = readValue<Record<string, unknown>>('cfb.startup', {});
-  const ventureName = typeof startup.name === 'string' && startup.name ? startup.name : (isDemoData() ? 'EcoFlow Systems' : 'Unset');
-  const readinessScore = typeof startup.readinessScore === 'number' ? startup.readinessScore : (isDemoData() ? 68 : 0);
+  const ventureName = typeof startup.name === 'string' && startup.name ? startup.name : (isDemoData() ? DEMO_VENTURE.name : 'Unset');
+  const readinessScore = typeof startup.readinessScore === 'number' ? startup.readinessScore : (isDemoData() ? DEMO_VENTURE.readinessScore : 0);
   const needsCount = readNeeds().filter((n) => n.status === 'open').length;
   const uxPrefs = readUxPrefs();
   const visited = topPages(4).map((row) => `${row.path}(${row.count})`).join(', ') || 'nothing yet';
