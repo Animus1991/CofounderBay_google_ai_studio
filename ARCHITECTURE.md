@@ -65,6 +65,25 @@ theme). Durable preferences are persisted to `localStorage`.
 Framework-agnostic business logic: AI orchestration, matching/compatibility scoring, billing,
 scoring/gamification, automation, behavioral optimization.
 
+### `src/ai` — The AI operator layer
+The assistant is the product's centre. `ai/catalog.ts` declares every capability
+(kind, parameters, reversal, bilingual example, canonical command) and is what
+Gemini is offered as function declarations; `ai/engine.ts` runs one turn —
+deterministic router first, the model only for what the router cannot place, an
+honest "not matched" when neither can help. Writes are always proposals the
+founder confirms. See [`docs/AI_OPERATOR.md`](docs/AI_OPERATOR.md).
+
+### `src/lib/pageRegistry.ts` — One description per page
+Labels (EN/EL), document title, icon, sidebar section, help text and assistant
+keywords for every route. The sidebar, navigation map, ⌘K help, document titles,
+pins and the assistant derive from it; a test checks every route in `App.tsx`
+has an entry.
+
+### `src/data/demo*` — The sample account
+`demoVenture` (one venture story), `demoCatalog` (dated samples) and `demoClock`
+(dates relative to today) are shared by pages and the assistant, so a sample
+deadline is the same day everywhere and never in the past.
+
 ## Provider hierarchy
 
 ```tsx
@@ -115,7 +134,7 @@ Verdict per layer — is each choice optimal for the product's purpose and futur
 | Layer | Choice | Verdict | Notes |
 | --- | --- | --- | --- |
 | UI runtime | React 19 | ✅ State of the art | Latest major; concurrent features, modern JSX transform |
-| Build | Vite 6 + Rollup vendor chunking | ✅ State of the art | Fast HMR, optimal code-splitting; main chunk 54 kB gzip-friendly |
+| Build | Vite 6 + Rollup vendor chunking + route-level lazy pages | ✅ State of the art | Pages are their own chunks with reload-once recovery after deploys (`lib/lazyPage`); first-load JS 1.85 MB (was 3.04 MB) |
 | Language | TypeScript 5.8 | ✅ State of the art | Strict adoption is the tracked next step |
 | Styling | Tailwind CSS v4 | ✅ State of the art | CSS-first config, design tokens via `@theme` |
 | Server state | TanStack Query v5 | ✅ State of the art | Industry standard; adoption across pages in progress |
