@@ -67,6 +67,7 @@ function ThemePalettePicker({
       <button
         type="button"
         data-ui="button"
+        data-chrome="theme"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -78,7 +79,7 @@ function ThemePalettePicker({
           className={`w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-offset-1 ring-stone-900/25 ${activePalette.dot}`}
         />
         <ChevronDown
-          className={`w-3 h-3 text-stone-400 shrink-0 transition-transform duration-150 ${
+          className={`theme-chrome-chevron w-3 h-3 shrink-0 transition-transform duration-150 ${
             open ? 'rotate-180' : ''
           }`}
         />
@@ -220,6 +221,7 @@ export default function Layout() {
       <button
         type="button"
         data-ui="button"
+        data-chrome="ai"
         onClick={() => openAssistant()}
         className="inline-flex min-h-9 items-center rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
         title={t('Open Studio AI Co-Pilot (Reads & edits every module)', 'Άνοιγμα Studio AI Co-Pilot (Διαβάζει & ενημερώνει κάθε ενότητα)')}

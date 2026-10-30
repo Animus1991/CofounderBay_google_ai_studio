@@ -1504,8 +1504,16 @@ input.h-8 {
   border: 1px solid #fff !important;
   color: #fff !important;
 }
+/* Every outline is 3% narrower. The AI control keeps its full width. */
+.theme-chrome-frame button[data-ui="button"]:not([data-chrome="ai"]) {
+  scale: 0.97 1;
+}
 .theme-chrome-frame button[data-ui="button"] svg {
   color: #fff !important;
+}
+.theme-chrome-frame button[data-ui="button"][data-chrome="theme"] svg.theme-chrome-chevron {
+  color: #fff !important;
+  stroke: #fff !important;
 }
 .theme-chrome-frame button[data-ui="button"]:hover {
   background-color: rgba(255, 255, 255, 0.14) !important;
