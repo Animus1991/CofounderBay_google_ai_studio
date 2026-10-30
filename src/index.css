@@ -1491,8 +1491,8 @@ input.h-8 {
 
 /*
  * The header bar, edge to edge, uses the palette accent already used by
- * primary buttons. The edge is that same color. Only the bar's own controls
- * (data-ui="button") turn white; the theme menu stays as a normal panel.
+ * primary buttons. Each control on the bar keeps a white outline. The theme
+ * menu stays a normal panel.
  */
 .theme-chrome-frame {
   background-color: var(--cfb-accent) !important;
@@ -1501,7 +1501,7 @@ input.h-8 {
 }
 .theme-chrome-frame button[data-ui="button"] {
   background-color: transparent !important;
-  border-color: transparent !important;
+  border: 1px solid #fff !important;
   color: #fff !important;
 }
 .theme-chrome-frame button[data-ui="button"] svg {

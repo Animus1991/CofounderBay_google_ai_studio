@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Menu, Palette, Sparkles, Check, ChevronDown, Search } from 'lucide-react';
+import { Menu, Check, ChevronDown, Search } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { RouteErrorBoundary } from './ErrorBoundary';
 
@@ -74,7 +74,6 @@ function ThemePalettePicker({
         title={t(`Theme: ${activePalette.labelEn}`, `Θέμα: ${activePalette.labelEl}`)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2 sm:px-2.5 text-xs font-medium text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
       >
-        <Palette className="w-3.5 h-3.5 text-stone-500 shrink-0" />
         <span
           className={`w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-offset-1 ring-stone-900/25 ${activePalette.dot}`}
         />
@@ -222,10 +221,9 @@ export default function Layout() {
         type="button"
         data-ui="button"
         onClick={() => openAssistant()}
-        className="inline-flex min-h-9 items-center gap-1 sm:gap-1.5 rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
+        className="inline-flex min-h-9 items-center rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
         title={t('Open Studio AI Co-Pilot (Reads & edits every module)', 'Άνοιγμα Studio AI Co-Pilot (Διαβάζει & ενημερώνει κάθε ενότητα)')}
       >
-        <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         <span className="hidden min-[380px]:inline">AI</span>
         <span className="hidden sm:inline">Co-Pilot</span>
       </button>
