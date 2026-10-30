@@ -10,3 +10,4 @@ test-results/
 !.env.example
 .probes/
 .data/
+emulator-results.json

@@ -4,7 +4,7 @@
  * Status colours come from five hue families, one meaning each:
  * red = danger, amber = warning, emerald = success, blue = information,
  * violet = AI / special. The theme stylesheet tunes exactly these per theme
- * (src/index.css); a class from another family (rose, teal, sky, purple…)
+ * (src/styles/tokens.css); a class from another family (rose, teal, sky, purple…)
  * bypasses that tuning and drifts on dark and coloured themes. The only
  * exception is the theme picker's swatches, which show each theme's own colour.
  *

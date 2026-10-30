@@ -1,0 +1,390 @@
+/*
+ * Theme tokens — the one place a theme is defined.
+ *
+ * Components keep Tailwind's neutral and status classes (bg-white, bg-stone-50,
+ * text-stone-500, border-stone-200, text-red-600, bg-amber-50 …). Each of those
+ * classes reads a role token instead of a fixed colour:
+ *
+ *   bg-*       surfaces   --surface-white, --surface-50 … --surface-900, status tints
+ *   text-*     inks       --ink-200 … --ink-900, status inks
+ *   border-*   lines      --line-50 … --line-900, status lines (divide-* follows)
+ *
+ * A theme is only a set of token values (the blocks below). Every variant —
+ * hover:, group-hover:, focus:, md:, /opacity — follows on its own, which the
+ * old per-class !important overrides could not do (in Dark Obsidian a
+ * hover:text-stone-700 never changed colour, and divide-stone-100 stayed a
+ * light line on a dark card).
+ *
+ * Tokens resolve as  var(--on-role, var(--role, Tailwind's own colour)):
+ *   --role     set by the theme (unset = Tailwind's colour);
+ *   --on-role  set by the surface an element sits on: an inverse surface
+ *              (bg-stone-900 / 800 / black) makes muted and status text light,
+ *              a light surface inside it (bg-white, bg-stone-50/100) clears it.
+ *
+ * Status colours are the five families the palette test allows (red, amber,
+ * emerald, blue, violet; src/lib/palette.test.ts).
+ */
+
+@theme inline {
+  /* Surfaces */
+  --background-color-white: var(--surface-white, var(--color-white));
+  --background-color-stone-50: var(--surface-50, var(--color-stone-50));
+  --background-color-stone-100: var(--surface-100, var(--color-stone-100));
+  --background-color-stone-200: var(--surface-200, var(--color-stone-200));
+  --background-color-stone-300: var(--surface-300, var(--color-stone-300));
+  --background-color-stone-800: var(--surface-800, var(--color-stone-800));
+  --background-color-stone-900: var(--surface-900, var(--color-stone-900));
+  --background-color-primary: var(--primary-fill, hsl(var(--primary)));
+
+  /* Inks */
+  --text-color-stone-900: var(--ink-900, var(--color-stone-900));
+  --text-color-stone-800: var(--ink-800, var(--color-stone-800));
+  --text-color-stone-700: var(--ink-700, var(--color-stone-700));
+  --text-color-stone-600: var(--on-ink-600, var(--ink-600, var(--color-stone-600)));
+  --text-color-stone-500: var(--on-ink-500, var(--ink-500, var(--color-stone-500)));
+  --text-color-stone-400: var(--on-ink-400, var(--ink-400, var(--color-stone-400)));
+  --text-color-stone-300: var(--on-ink-300, var(--ink-300, var(--color-stone-300)));
+  --text-color-stone-200: var(--on-ink-200, var(--ink-200, var(--color-stone-200)));
+  --text-color-primary: var(--primary-ink, hsl(var(--primary)));
+  --fill-stone-900: var(--ink-900, var(--color-stone-900));
+
+  /* Lines */
+  --border-color-stone-50: var(--line-50, var(--color-stone-50));
+  --border-color-stone-100: var(--line-100, var(--color-stone-100));
+  --border-color-stone-200: var(--line-200, var(--color-stone-200));
+  --border-color-stone-300: var(--line-300, var(--color-stone-300));
+  --border-color-stone-400: var(--line-400, var(--color-stone-400));
+  --border-color-stone-900: var(--line-900, var(--color-stone-900));
+  --ring-color-stone-900: var(--ring-strong, var(--color-stone-900));
+
+  /* Status inks */
+  --text-color-destructive: var(--ink-danger, hsl(var(--destructive)));
+  --text-color-red-400: var(--ink-danger-soft, var(--color-red-400));
+  --text-color-red-500: var(--ink-danger, var(--color-red-500));
+  --text-color-red-600: var(--ink-danger, var(--color-red-600));
+  --text-color-red-700: var(--ink-danger-strong, var(--color-red-700));
+  --text-color-red-800: var(--ink-danger-strong, var(--color-red-800));
+  --text-color-red-900: var(--ink-danger-strong, var(--color-red-900));
+
+  --text-color-amber-300: var(--on-ink-warning, var(--color-amber-300));
+  --text-color-amber-400: var(--on-ink-warning, var(--ink-warning-soft, var(--color-amber-400)));
+  --text-color-amber-500: var(--on-ink-warning, var(--ink-warning, var(--color-amber-500)));
+  --text-color-amber-600: var(--ink-warning, var(--color-amber-600));
+  --text-color-amber-700: var(--ink-warning-strong, var(--color-amber-700));
+  --text-color-amber-800: var(--ink-warning-strong, var(--color-amber-800));
+  --text-color-amber-900: var(--ink-warning-deep, var(--ink-warning-strong, var(--color-amber-900)));
+
+  --text-color-emerald-300: var(--on-ink-success, var(--color-emerald-300));
+  --text-color-emerald-400: var(--on-ink-success, var(--ink-success-soft, var(--color-emerald-400)));
+  --text-color-emerald-500: var(--on-ink-success, var(--ink-success, var(--color-emerald-500)));
+  --text-color-emerald-600: var(--ink-success, var(--color-emerald-600));
+  --text-color-emerald-700: var(--ink-success-strong, var(--color-emerald-700));
+  --text-color-emerald-800: var(--ink-success-strong, var(--color-emerald-800));
+  --text-color-emerald-900: var(--ink-success-strong, var(--color-emerald-900));
+
+  --text-color-blue-400: var(--ink-info-soft, var(--color-blue-400));
+  --text-color-blue-500: var(--ink-info, var(--color-blue-500));
+  --text-color-blue-600: var(--ink-info, var(--color-blue-600));
+  --text-color-blue-700: var(--ink-info-strong, var(--color-blue-700));
+  --text-color-blue-800: var(--ink-info-strong, var(--color-blue-800));
+
+  --text-color-violet-400: var(--ink-violet-soft, var(--color-violet-400));
+  --text-color-violet-500: var(--ink-violet, var(--color-violet-500));
+  --text-color-violet-600: var(--ink-violet, var(--color-violet-600));
+  --text-color-violet-700: var(--ink-violet-strong, var(--color-violet-700));
+  --text-color-violet-800: var(--ink-violet-strong, var(--color-violet-800));
+
+  /* Status tints (pastel surfaces) */
+  --background-color-red-50: var(--tint-danger, var(--color-red-50));
+  --background-color-red-100: var(--tint-danger-2, var(--color-red-100));
+  --background-color-amber-50: var(--tint-warning, var(--color-amber-50));
+  --background-color-amber-100: var(--tint-warning-2, var(--color-amber-100));
+  --background-color-amber-200: var(--tint-warning-3, var(--color-amber-200));
+  --background-color-emerald-50: var(--tint-success, var(--color-emerald-50));
+  --background-color-emerald-100: var(--tint-success-2, var(--color-emerald-100));
+  --background-color-blue-50: var(--tint-info, var(--color-blue-50));
+  --background-color-blue-100: var(--tint-info-2, var(--color-blue-100));
+  --background-color-violet-50: var(--tint-violet, var(--color-violet-50));
+  --background-color-violet-100: var(--tint-violet-2, var(--color-violet-100));
+
+  /* Status lines */
+  --border-color-red-100: var(--line-danger, var(--color-red-100));
+  --border-color-red-200: var(--line-danger, var(--color-red-200));
+  --border-color-red-300: var(--line-danger-3, var(--color-red-300));
+  --border-color-amber-100: var(--line-warning, var(--color-amber-100));
+  --border-color-amber-200: var(--line-warning, var(--color-amber-200));
+  --border-color-amber-300: var(--line-warning-3, var(--color-amber-300));
+  --border-color-emerald-100: var(--line-success, var(--color-emerald-100));
+  --border-color-emerald-200: var(--line-success, var(--color-emerald-200));
+  --border-color-emerald-300: var(--line-success-3, var(--color-emerald-300));
+  --border-color-blue-100: var(--line-info, var(--color-blue-100));
+  --border-color-blue-200: var(--line-info, var(--color-blue-200));
+  --border-color-blue-300: var(--line-info-3, var(--color-blue-300));
+  --border-color-violet-100: var(--line-violet, var(--color-violet-100));
+  --border-color-violet-200: var(--line-violet, var(--color-violet-200));
+}
+
+/* ── Light themes (Stone and the five accents) ──────────────────────────── */
+/* Muted inks keep a readable ramp on every light surface the app uses (white,
+   stone-50/100, amber-50, emerald-50): 200–400 ≥ 4.6:1 on stone-100, 500 ≥ 5.5:1,
+   and 400 < 500 < 600 stays in order. Status inks are a step deeper than
+   Tailwind's so they pass AA on their own pastel tint. */
+:root:not([data-theme="dark"]) {
+  --ink-500: #66605b;
+  --ink-400: #736d68;
+  --ink-300: #736d68;
+  --ink-200: #736d68;
+
+  --ink-danger: oklch(0.50 0.14 25);
+  --ink-danger-strong: oklch(0.40 0.14 25);
+  --ink-warning-soft: #b45309;
+  --ink-warning: rgb(161 89 46); /* was 90% alpha: 4.3:1 on its tint, now 4.7:1 */
+  --ink-warning-strong: oklch(0.39 0.13 62);
+  --ink-success-soft: #047857;
+  --ink-success: oklch(0.47 0.12 155);
+  --ink-success-strong: oklch(0.38 0.12 155);
+  --ink-info: oklch(0.48 0.13 250);
+  --ink-info-strong: oklch(0.39 0.13 250);
+  --ink-violet: oklch(0.48 0.14 295);
+  --ink-violet-strong: oklch(0.39 0.14 295);
+
+  --tint-danger: oklch(0.965 0.018 25);
+  --tint-warning: oklch(0.965 0.025 75);
+  --tint-success: oklch(0.965 0.020 155);
+  --tint-info: oklch(0.965 0.018 250);
+  --tint-violet: oklch(0.965 0.020 295);
+
+  --line-danger: oklch(0.84 0.05 25);
+  --line-warning: oklch(0.84 0.06 68);
+  --line-success: oklch(0.84 0.05 155);
+  --line-info: oklch(0.84 0.05 250);
+  --line-violet: oklch(0.84 0.05 295);
+
+  /* Warm icons keep the softer terracotta while their text went a step deeper. */
+  --icon-warm: rgba(179, 99, 51, 0.9);
+}
+
+/* ── Accent themes: the inverse surface (primary buttons, banners, selected
+   chips) is the accent; a pale accent wash replaces the grey selected fill.
+   Accents are tuned so white text on them meets WCAG AA (>= 4.5:1); accent
+   used as text is ~20% deeper so it reads on white and on its own tint. ── */
+:root:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]) {
+  --surface-900: var(--cfb-accent);
+  --surface-200: var(--cfb-accent-soft);
+  --surface-200-line: var(--cfb-accent-border);
+  --inverse-hover: var(--cfb-accent-hover);
+  --line-900: var(--cfb-accent);
+  --ring-strong: var(--cfb-accent);
+  --primary-ink: color-mix(in srgb, var(--cfb-accent) 80%, #000);
+}
+
+/* ── Dark Obsidian ──────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --surface-white: #0d1526;
+  --surface-50: #060b16;
+  --surface-100: #162038;
+  --surface-200: #1e2d4d;
+  --surface-200-line: rgba(129, 140, 248, 0.42);
+  --surface-300: #334b7c;
+  --surface-800: #5f62ee; /* indigo-500 (#6366f1) carried white text at 4.47:1 */
+  --surface-900: #4f46e5;
+  --inverse-hover: #5f62ee;
+
+  --ink-900: #f8fafc;
+  --ink-800: #f8fafc;
+  --ink-700: #f8fafc;
+  --ink-600: #cbd5e1;
+  --ink-500: #cbd5e1;
+  --ink-400: #94a3b8;
+  --ink-300: #94a3b8;
+  --ink-200: #94a3b8;
+
+  --line-50: rgba(148, 163, 184, 0.18);
+  --line-100: rgba(148, 163, 184, 0.18);
+  --line-200: rgba(148, 163, 184, 0.18);
+  --line-300: rgba(148, 163, 184, 0.36);
+  --line-400: rgba(148, 163, 184, 0.36);
+  --line-900: rgba(129, 140, 248, 0.45);
+  --ring-strong: rgba(129, 140, 248, 0.65);
+
+  --primary-ink: #a5b4fc;
+  --primary-fill: #4f46e5;
+
+  /* Luminous status inks: warm statuses read salmon, their icons rose. */
+  --ink-danger-soft: rgba(251, 138, 114, 0.8);
+  --ink-danger: rgba(251, 138, 114, 0.8);
+  --ink-danger-strong: rgba(251, 138, 114, 0.8);
+  --ink-warning-soft: rgba(251, 138, 114, 0.8);
+  --ink-warning: rgba(251, 138, 114, 0.8);
+  --ink-warning-strong: #ffd4cc;
+  --ink-warning-deep: #fff1ee;
+  --ink-success-soft: #6ee7b7;
+  --ink-success: #6ee7b7;
+  --ink-success-strong: #6ee7b7;
+  --ink-info-soft: #93c5fd;
+  --ink-info: #93c5fd;
+  --ink-info-strong: #93c5fd;
+  --ink-violet-soft: #c4b5fd;
+  --ink-violet: #c4b5fd;
+  --ink-violet-strong: #c4b5fd;
+  --icon-warm: #fda4af;
+
+  --tint-danger: rgba(244, 63, 94, 0.20);
+  --tint-danger-2: rgba(244, 63, 94, 0.20);
+  --tint-warning: #361625;
+  --tint-warning-2: #361625;
+  --tint-warning-3: #452036;
+  --tint-success: rgba(16, 185, 129, 0.20);
+  --tint-success-2: rgba(16, 185, 129, 0.20);
+  --tint-info: rgba(59, 130, 246, 0.22);
+  --tint-info-2: rgba(59, 130, 246, 0.22);
+  --tint-violet: rgba(139, 92, 246, 0.22);
+  --tint-violet-2: rgba(139, 92, 246, 0.22);
+
+  --line-danger: rgba(251, 113, 133, 0.42);
+  --line-danger-3: rgba(251, 113, 133, 0.42);
+  --line-warning: rgba(244, 132, 122, 0.54);
+  --line-warning-3: rgba(244, 132, 122, 0.54);
+  --line-success: rgba(52, 211, 153, 0.42);
+  --line-success-3: rgba(52, 211, 153, 0.42);
+  --line-info: rgba(96, 165, 250, 0.42);
+  --line-info-3: rgba(96, 165, 250, 0.42);
+  --line-violet: rgba(167, 139, 250, 0.42);
+}
+
+/* ── Surfaces set the inks of what sits on them ─────────────────────────── */
+/* Inverse surfaces: muted and status text read light, in every theme. */
+:is(.bg-stone-900, .bg-stone-800, .bg-stone-950, .bg-black) {
+  --on-ink-600: rgb(255 255 255 / 0.92);
+  --on-ink-500: rgb(255 255 255 / 0.86);
+  --on-ink-400: rgb(255 255 255 / 0.86);
+  --on-ink-300: rgb(255 255 255 / 0.86);
+  --on-ink-200: rgb(255 255 255 / 0.86);
+  --on-ink-warning: #fdba74;
+  --on-ink-success: #6ee7b7;
+}
+/* On a mid-tone accent the margin is smaller: muted text goes to 96% white. */
+:root:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]) :is(.bg-stone-900, .bg-stone-800) {
+  --on-ink-500: rgb(255 255 255 / 0.96);
+  --on-ink-400: rgb(255 255 255 / 0.96);
+  --on-ink-300: rgb(255 255 255 / 0.96);
+  --on-ink-200: rgb(255 255 255 / 0.96);
+}
+/* A light card or button inside an inverse surface gets the theme's own inks back. */
+:is(.bg-white, .bg-stone-50, .bg-stone-100) {
+  --on-ink-600: initial;
+  --on-ink-500: initial;
+  --on-ink-400: initial;
+  --on-ink-300: initial;
+  --on-ink-200: initial;
+  --on-ink-warning: initial;
+  --on-ink-success: initial;
+}
+/* Dark Obsidian's warm (amber) cards carry warm muted text. */
+:root[data-theme="dark"] :is(.bg-amber-50, .bg-amber-50\/50, .bg-amber-50\/30, .bg-orange-50) {
+  --on-ink-500: rgba(255, 232, 226, 0.88);
+  --on-ink-300: rgba(255, 206, 196, 0.65);
+}
+
+/* ── What a token cannot say: states and combinations ───────────────────── */
+/* A fill that turns inverse on hover turns its text white with it. */
+:is(.hover\:bg-stone-900:hover, .group:hover .group-hover\:bg-stone-900, .group:focus-within .group-focus-within\:bg-stone-900) {
+  color: #ffffff;
+}
+/* Accent and dark inverse fills always carry white text. */
+:root[data-theme] .bg-stone-900 {
+  color: #ffffff;
+}
+:root[data-theme="dark"] :is(.bg-stone-900, .hover\:bg-stone-900:hover) {
+  border-color: rgba(129, 140, 248, 0.45);
+}
+/* Hovering a dark fill moves to the theme's hover inverse (plain bg-stone-800 keeps its own shade). */
+:root[data-theme] :is(.hover\:bg-stone-800:hover, .hover\:bg-stone-700:hover) {
+  background-color: var(--inverse-hover);
+}
+/* The selected (stone-200) fill carries its outline in accent and dark themes. */
+:root[data-theme] :is(.bg-stone-200, .hover\:bg-stone-200:hover) {
+  border-color: var(--surface-200-line);
+}
+
+/* Translucent text and chips on inverse surfaces. */
+:is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70) {
+  color: rgb(255 255 255 / 0.84);
+}
+:is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15, .bg-white\/20) {
+  color: #ffffff;
+}
+.bg-stone-900 input::placeholder {
+  color: rgb(255 255 255 / 0.72);
+}
+/* On an accent, white-tinted chips and translucent text lose too much: chips take a dark tint. */
+:root:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]) :is(.bg-stone-900, .bg-stone-800) {
+  & :is(.text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/80, .text-white\/85, .text-white\/90) {
+    color: rgb(255 255 255 / 0.96);
+  }
+  & :is(.bg-white\/5, .bg-white\/10, .bg-white\/15) {
+    background-color: rgb(0 0 0 / 0.16);
+  }
+  & :is(.bg-white\/20, .hover\:bg-white\/20:hover) {
+    background-color: rgb(0 0 0 / 0.26);
+  }
+  & input::placeholder {
+    color: rgb(255 255 255 / 0.9);
+  }
+}
+/* Light buttons inside an inverse banner stay crisp. */
+:root:not([data-theme="dark"]) .bg-stone-900 :is(button.bg-white, a.bg-white, a.bg-stone-100, button.bg-stone-100) {
+  background-color: #ffffff;
+  color: #1c1917;
+}
+:root[data-theme="dark"] .bg-stone-900 :is(button.bg-white, a.bg-white, a.bg-stone-100, button.bg-stone-100) {
+  background-color: #eef2ff;
+  color: #1e1b4b;
+  border-color: #c7d2fe;
+}
+
+/* Dark Obsidian details. */
+:root[data-theme="dark"] {
+  /* A low-alpha white is a tint (chips on a banner), not a surface: it stays white. */
+  & :is(.bg-white\/5, .bg-white\/10, .bg-white\/15, .bg-white\/20, .hover\:bg-white\/10:hover, .hover\:bg-white\/20:hover) {
+    --surface-white: #ffffff;
+  }
+  /* Large hero and feature cards stay in the deep obsidian-indigo family. */
+  & :is(div.bg-stone-900[class*="p-5"], div.bg-stone-900[class*="p-6"], div.bg-stone-900[class*="p-8"], section.bg-stone-900, .card-minimal.bg-stone-900) {
+    background: linear-gradient(135deg, #162447 0%, #1e1b4b 100%);
+    border: 1px solid rgba(129, 140, 248, 0.35);
+    color: #f8fafc;
+  }
+  /* Toggle knobs and status dots stay white. */
+  & :is(span.bg-white.rounded-full, div.bg-white.rounded-full:not([class*="p-"]):not([class*="px-"])) {
+    background-color: #ffffff;
+  }
+  & .bg-primary span {
+    color: #ffffff;
+  }
+  & .studio-label {
+    background: #162038;
+    border-color: rgba(148, 163, 184, 0.24);
+    color: #cbd5e1;
+  }
+  /* Warm cards: a deep maroon wash. */
+  & :is(.bg-amber-50, .bg-amber-50\/50, .bg-amber-50\/30, .bg-amber-50\/70, .bg-amber-100, .bg-amber-100\/50, .hover\:bg-amber-50:hover) {
+    background-image: linear-gradient(135deg, #2f1420 0%, #3c1a2c 52%, #452032 100%);
+  }
+  & :is(.bg-amber-200, .hover\:bg-amber-100:hover, .hover\:bg-amber-200:hover) {
+    background-image: linear-gradient(135deg, #3a1729 0%, #482140 52%, #512847 100%);
+    color: #fff5f2;
+  }
+  /* Stat-strip change labels read deep terracotta. */
+  & .stat-change-strip:is(.text-amber-500, .text-amber-600, .text-red-500, .text-red-600) {
+    color: rgba(187, 104, 53, 0.9);
+  }
+}
+
+/* Status icons: warm icons (amber; and red in Dark Obsidian) take the icon tone. */
+:root:not([data-theme="dark"]) :is(.text-amber-500, .text-amber-600, .hover\:text-amber-500:hover, .hover\:text-amber-600:hover) svg,
+:root:not([data-theme="dark"]) svg:is(.text-amber-500, .text-amber-600, .hover\:text-amber-500:hover, .hover\:text-amber-600:hover),
+:root[data-theme="dark"] :is(.text-red-400, .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900, .text-amber-400, .text-amber-500, .text-amber-600, .hover\:text-red-500:hover, .hover\:text-red-600:hover, .hover\:text-amber-500:hover, .hover\:text-amber-600:hover) svg,
+:root[data-theme="dark"] svg:is(.text-red-400, .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900, .text-amber-400, .text-amber-500, .text-amber-600, .hover\:text-red-500:hover, .hover\:text-red-600:hover, .hover\:text-amber-500:hover, .hover\:text-amber-600:hover) {
+  color: var(--icon-warm);
+}

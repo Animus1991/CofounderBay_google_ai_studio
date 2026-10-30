@@ -137,3 +137,9 @@ jobs:
       # store, against real emulators instead of mocks.
       - name: Rules and store tests
         run: npm run test:emulator
+
+      # The counts as an annotation on the run, readable without the logs.
+      - name: Report counts
+        if: always()
+        run: |
+          node -e "const r=require('./emulator-results.json'); console.log('::notice title=Emulator tests::' + r.numPassedTests + ' passed, ' + r.numPendingTests + ' skipped, ' + r.numFailedTests + ' failed')" || echo "::warning title=Emulator tests::no results file"
