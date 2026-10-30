@@ -197,15 +197,15 @@ export default function Layout() {
 
   /*
    * The top bar only carries what applies on every page: search, the assistant,
-   * preferences and session. Those four controls sit in one capsule filled with
-   * the palette accent already used by primary buttons. Page-specific tools sit on the
-   * pages they belong to (Matches, Fundraising, Network → Needs).
+   * preferences and session. The whole bar is filled with the palette accent
+   * already used by primary buttons. Page-specific tools sit on the pages they
+   * belong to (Matches, Fundraising, Network → Needs).
    */
   const studioChrome = (
     <div
       role="group"
       aria-label={t('Search, assistant and preferences', 'Αναζήτηση, βοηθός και προτιμήσεις')}
-      className="theme-chrome-frame flex items-center gap-1 sm:gap-1.5 shrink-0 rounded-xl px-1 py-1"
+      className="flex items-center gap-1 sm:gap-1.5 shrink-0"
     >
       <button
         type="button"
@@ -242,7 +242,7 @@ export default function Layout() {
       >
         {t('Skip to content', 'Μετάβαση στο περιεχόμενο')}
       </a>
-      <header className="z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b border-stone-200 bg-stone-50 px-2.5 sm:px-3 py-1.5 lg:hidden">
+      <header className="theme-chrome-frame z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b px-2.5 sm:px-3 py-1.5 lg:hidden">
         <button
           type="button"
           data-ui="button"
@@ -273,11 +273,11 @@ export default function Layout() {
           onMenuToggle={toggleMobileSidebar}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="hidden shrink-0 items-center justify-between gap-3 border-b border-stone-200/60 bg-stone-50 px-6 py-[0.485rem] lg:flex">
-            <div className="flex items-center gap-2 text-xs text-stone-500 min-w-0">
-              <span className="font-semibold text-stone-900 shrink-0">CoFounderBay Studio</span>
+          <div className="theme-chrome-frame hidden shrink-0 items-center justify-between gap-3 border-b px-6 py-[0.485rem] lg:flex">
+            <div className="flex items-center gap-2 text-xs min-w-0 text-white">
+              <span className="font-semibold shrink-0">CoFounderBay Studio</span>
               <span>·</span>
-              <span className="inline-flex items-center rounded-md bg-stone-200/70 px-2 py-0.5 text-[11px] font-medium text-stone-800 shrink-0">
+              <span className="theme-chrome-chip inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium shrink-0">
                 {t(currentPage.en, currentPage.el)}
               </span>
             </div>
@@ -285,7 +285,7 @@ export default function Layout() {
               {studioChrome}
               {exitButton && (
                 <>
-                  <span aria-hidden="true" className="h-5 w-px bg-stone-200" />
+                  <span aria-hidden="true" className="theme-chrome-rule h-5 w-px" />
                   {exitButton}
                 </>
               )}

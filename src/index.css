@@ -1490,13 +1490,14 @@ input.h-8 {
 }
 
 /*
- * The whole header cluster uses the palette accent already used by primary
- * buttons. Controls sit on that fill; the edge is the same color, not a
- * darker outline. Menu items inside the theme picker are left alone.
+ * The header bar, edge to edge, uses the palette accent already used by
+ * primary buttons. The edge is that same color. Only the bar's own controls
+ * (data-ui="button") turn white; the theme menu stays as a normal panel.
  */
 .theme-chrome-frame {
-  background-color: var(--cfb-accent);
-  border: 1px solid var(--cfb-accent);
+  background-color: var(--cfb-accent) !important;
+  border-bottom-color: var(--cfb-accent) !important;
+  color: #fff;
 }
 .theme-chrome-frame button[data-ui="button"] {
   background-color: transparent !important;
@@ -1508,6 +1509,13 @@ input.h-8 {
 }
 .theme-chrome-frame button[data-ui="button"]:hover {
   background-color: rgba(255, 255, 255, 0.14) !important;
+}
+.theme-chrome-chip {
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.theme-chrome-rule {
+  background-color: rgba(255, 255, 255, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
