@@ -1,0 +1,49 @@
+{
+  "summary": "Tested the full stack. Backend: 20 of 20 pytest cases pass. They cover the core data routes, matches being deterministic, conversations and messages, the AI proxy (tool calls, JSON mode, 400 on a missing body) and the action ledger (counts, 422 on bad input). Frontend in demo mode: all requested flows work. These are: the AI Studio status and studio check (/audit), Mark EIN done (Confirm, then Undo, then Cancel, with ledger counts Applied/Undone/Cancelled updating and still there after a reload, and the Legal Hub ticked), the pitch-slide proposal persisting to Founder Tools ?tab=pitch, the read answers for /pitch, the legal checklist, focus today and saved searches, a free-form Claude answer with the 'AI answer' badge, and the AI profile review (loading, summary, strengths and gaps, 3 actions, each opening the assistant with a proposal). The regression pages (Legal toggle with persistence, Workspace focus timer, Messages list, Matches, Fundraising, Milestones, Calendar, Settings plus 11 more) load with no crashes or page errors. The main problems are raw Markdown in chat bubbles and the pitch deck dropping from 6/8 to 0/8 after one slide is set.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/generate", "issue": "The rate limit can be bypassed. caller_key() uses the last 24 characters of any Bearer token without checking it, so a random token gets a fresh 30/min bucket. The _buckets dict also grows without limit. There is no auth, so anyone can spend the EMERGENT_LLM_KEY."},
+      {"endpoint": "POST /api/tenants/{id}/branding, /content", "issue": "No auth and no Pydantic validation. Any caller can merge an arbitrary dict into tenant branding or content."},
+      {"endpoint": "GET /api/ai/actions", "issue": "No auth. Anyone who knows or guesses a clientId can read that ledger. Acceptable for the demo, but it should be scoped to the user once auth exists."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ChatWidget message bubble", "issue": "Claude replies, including router answers the model rephrases (/pitch, legal checklist, EIN confirm reply, cold-email tips), show raw Markdown such as **bold** because msg.text is rendered as plain text with whitespace-pre-wrap. Either render Markdown or tell the model to answer in plain text only.", "selector": "ChatWidget.tsx line ~599 {msg.text}", "priority": "HIGH"},
+      {"component": "Pitch deck / studio check", "issue": "In demo mode effectivePitch() returns the drafted deck only when nothing is stored. Setting ONE slide (the Problem slide) throws away all the drafts: /audit goes from 'Pitch deck 6/8 slides' to '0/8' and Founder Tools shows the other slides empty. Fix: merge {...draftPitch(), ...stored} in demo mode.", "selector": "lib/pitch.ts effectivePitch()", "priority": "MEDIUM"},
+      {"component": "Founder Tools ?tab=pitch", "issue": "The deep link opens the Pitch tab but on slide 01 (Cover), not the slide the assistant just changed. The user has to click Problem to see the new text. Consider ?tab=pitch&slide=problem from the proposal link.", "selector": "/founder-tools?tab=pitch", "priority": "LOW"},
+      {"component": "Legal set proposal", "issue": "'Mark the incorporation documents done' proposes marking 'Incorporate the legal entity' done even though it is already ticked. It should reply that the item is already done instead of offering a no-op proposal.", "selector": "set_legal_item router", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Profile", "issues": ["The profile card shows 'Profile strength 92%' and Settings says 'Profile completion 90%', but the AI review says '68/100'. Three different scores for the same thing.", "The demo headline and Settings industry say 'FinTech' while the demo venture is EcoFlow (water recycling). The AI review suggests 'Fix headline to match venture'."]},
+      {"screen": "Dashboard", "issues": ["The Match Score card shows 'Sarah 77%' while the feed says 'Sarah just reached a Match score of 98'."]},
+      {"screen": "Messages", "issues": ["Sarah Chen is labelled 'Founder', but the seed data role is 'Co-Founder Candidate'."]},
+      {"screen": "AI Studio", "issues": ["Studio check source tag reads 'Network · audit' in one run and 'Founder Tools · audit' in another. The label is inconsistent.", "'How it decides' says studio actions are 'instant, offline', but router answers are often rephrased by Claude, which adds 1-3 s plus the Markdown issue above.", "The ChatWidget has no data-testid on the input, Send, Confirm, Cancel or Undo buttons. Tests have to rely on input[data-assistant-input] and role names."]},
+      {"screen": "Settings", "issues": ["The Stage and Commitment fields use the browser's native <select>, which is inconsistent with the rest of the UI kit."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_cofounderbay_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Render Markdown in ChatWidget bubbles (or force plain-text output in the system prompt).",
+    "Fix effectivePitch() in demo mode so it merges the drafts with stored slides instead of replacing them, keeping /audit and /pitch counts consistent.",
+    "Harden /api/ai/generate rate limiting so it is not keyed on unverified bearer tokens, and evict expired buckets.",
+    "Add validation and auth to the tenant branding/content POST routes.",
+    "Add data-testid to ChatWidget input, send, confirm, cancel and undo controls.",
+    "Optional: deep-link to the edited slide; have the legal router say 'already done'; unify the profile strength scores."
+  ],
+  "critical_code_review_comments": [
+    "assistantOps.ts is 3059 lines, catalog.ts 1086 and ChatWidget.tsx 989. Split them into focused modules (each over 700 lines).",
+    "server.py: tenant patch endpoints accept raw request.json() with no schema.",
+    "server.py: the AI proxy catches every exception and returns 502, which hides client errors. For example, bad image base64 should be a 400.",
+    "Seed data createdAt values are 2026-10-29 relative timestamps. That is fine, but the endorsement dates appear in the future relative to some UI copy."
+  ],
+  "updated_files": ["/app/backend/tests/test_cofounderbay_api.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "~90% (all requested flows pass; markdown rendering + pitch-draft regression found)"},
+  "seed_data_creation": "TEST_-prefixed conversations/messages and ai_actions with TEST_ clientIds created by pytest.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Never use networkidle; use domcontentloaded plus waits. Rapid full-page goto calls trigger a Cloudflare 'security verification' page, so navigate with history.pushState + popstate instead. The chat input is input[data-assistant-input]. Wait until its placeholder no longer contains 'answering'. To scrape the chat, climb from the input to the ancestor containing 'Specialists'; the main text also includes the 'What I can do' catalog, which pollutes rfind. The ledger counts are in [data-testid=ai-ledger-counts] and persist on the server.",
+  "rca of the issue": "Markdown: Claude returns Markdown, and ChatWidget renders {msg.text} in a whitespace-pre-wrap div with no parser. Pitch: lib/pitch.ts effectivePitch() returns `stored` whenever it has at least one key, so in demo mode the drafted slides from draftPitch() disappear once any slide is written."
+}

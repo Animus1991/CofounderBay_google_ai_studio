@@ -1,0 +1,565 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (matches request.auth.uid)
+    // Fields:
+    //   - id: string (required)
+    //   - fullName: string (required, 1-100 chars)
+    //   - email: string (required, email format)
+    //   - roles: list (required, enum: Founder, Co-Founder Candidate, Mentor, Advisor, Admin, Organization Manager, Super Admin)
+    //   - profileStatus: string (enum: Draft, Published, Archived)
+    //   - verificationStatus: string (enum: Unverified, Pending, Verified)
+    //   - profileCompletionScore: number (0-100)
+    //   - accountStatus: string (enum: Active, Suspended, Deactivated)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: profiles
+    // Document ID: userId
+    // Fields:
+    //   - userId: string (required)
+    //   - headline: string (1-200 chars)
+    //   - bio: string (1-2000 chars)
+    //   - location: string
+    //   - country: string
+    //   - languages: list
+    //   - startupStageInterest: list
+    //   - commitmentLevel: string (enum: Part-time, Full-time, Exploring)
+    //   - availability: string
+    //   - yearsOfExperience: number
+    //   - education: string
+    //   - linkedinUrl: string (url format)
+    //   - githubUrl: string (url format)
+    //   - portfolioUrl: string (url format)
+    //   - profileVisibility: string (enum: Public, Private, Connections Only)
+    //   - profilePhoto: string (url format)
+    //
+    // Collection: skills
+    // Document ID: skillId
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - category: string (required)
+    //   - description: string
+    //
+    // Collection: userSkills
+    // Document ID: userSkillId
+    // Fields:
+    //   - userId: string (required)
+    //   - skillId: string (required)
+    //   - proficiency: number (1-5)
+    //   - yearsOfExperience: number
+    //   - priorityLevel: number
+    //
+    // Collection: matchSuggestions
+    // Document ID: matchId
+    // Fields:
+    //   - id: string (required)
+    //   - userA: string (required)
+    //   - userB: string (required)
+    //   - score: number (required)
+    //   - scoreExplanation: string
+    //   - status: string (enum: Suggested, Ignored, Connected)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: connectionRequests
+    // Document ID: requestId
+    // Fields:
+    //   - id: string (required)
+    //   - senderId: string (required)
+    //   - receiverId: string (required)
+    //   - requestType: string
+    //   - note: string (0-500 chars)
+    //   - status: string (enum: Pending, Accepted, Rejected, Expired)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: conversations
+    // Document ID: conversationId
+    // Fields:
+    //   - id: string (required)
+    //   - participants: list (required, contains userIds)
+    //   - status: string (enum: Active, Archived)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: messages
+    // Document ID: messageId (subcollection of conversations)
+    // Fields:
+    //   - id: string (required)
+    //   - conversationId: string (required)
+    //   - senderId: string (required)
+    //   - body: string (required, 1-5000 chars)
+    //   - createdAt: timestamp (required)
+    //   - readStatus: bool (required)
+    //
+    // Collection: communities
+    // Document ID: communityId
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, 1-100 chars)
+    //   - description: string (1-1000 chars)
+    //   - category: string (required)
+    //   - tags: list
+    //   - isPublic: bool (required)
+    //   - ownerId: string (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: posts
+    // Document ID: postId (subcollection of communities)
+    // Fields:
+    //   - id: string (required)
+    //   - communityId: string (required)
+    //   - authorId: string (required)
+    //   - title: string (required, 1-200 chars)
+    //   - body: string (required, 1-10000 chars)
+    //   - tags: list
+    //   - createdAt: timestamp (required)
+    //   - reactionsCount: number
+    //   - commentsCount: number
+    //
+    // Collection: milestones
+    // Document ID: milestoneId
+    // Fields:
+    //   - id: string (required)
+    //   - ownerId: string (required)
+    //   - title: string (required, 1-100 chars)
+    //   - category: string
+    //   - targetDate: timestamp
+    //   - status: string (enum: Planned, In Progress, Completed, Delayed)
+    //   - notes: string
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: xpEvents
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required)
+    //   - eventType: string (required)
+    //   - xpAmount: number (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: streaks
+    // Document ID: userId
+    // Fields:
+    //   - userId: string (required)
+    //   - currentStreak: number
+    //   - longestStreak: number
+    //   - lastActiveAt: timestamp
+    //
+    // Collection: nudgeExposures
+    // Document ID: userId_actionId
+    // Fields:
+    //   - userId: string (required)
+    //   - actionId: string (required)
+    //   - exposedAt: timestamp
+    //   - converted: bool
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['Admin', 'Super Admin'])) ||
+          (request.auth.token.email == "anastasiskotsis91@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Validate URL format (must start with https:// or http://)
+    function isValidUrl(url) {
+       return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // Validate optional URL (allows empty string or valid URL)
+    function isValidOptionalUrl(data, field) {
+      return !(field in data) || data[field] == "" || isValidUrl(data[field]);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidOnboarding(data) {
+      return hasRequiredFields(['userId', 'updatedAt']) &&
+        data.userId == request.auth.uid &&
+        (!('step' in data) || (data.step is int)) &&
+        (!('data' in data) || (data.data is map)) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['id', 'fullName', 'email', 'roles', 'createdAt', 'updatedAt']) &&
+        data.id == request.auth.uid &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+        isValidEmail(data.email) &&
+        data.roles is list &&
+        (!('profileStatus' in data) || (data.profileStatus is string)) &&
+        (!('verificationStatus' in data) || (data.verificationStatus is string)) &&
+        (!('accountStatus' in data) || (data.accountStatus is string)) &&
+        (!('profileCompletionScore' in data) || (data.profileCompletionScore is number)) &&
+        (!('onboardingCompleted' in data) || (data.onboardingCompleted is bool)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProfile(data) {
+      return hasRequiredFields(['userId']) &&
+        data.userId == request.auth.uid &&
+        (!('headline' in data) || (data.headline is string && data.headline.size() <= 200)) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
+        (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
+        (!('stage' in data) || (data.stage is string)) &&
+        (!('commitment' in data) || (data.commitment is string)) &&
+        (!('profileCompletionScore' in data) || (data.profileCompletionScore is number)) &&
+        (!('profileVisibility' in data) || (data.profileVisibility is string)) &&
+        (!('updatedAt' in data) || (data.updatedAt is timestamp)) &&
+        (!('createdAt' in data) || (data.createdAt is timestamp)) &&
+        isValidOptionalUrl(data, 'linkedinUrl') &&
+        isValidOptionalUrl(data, 'githubUrl') &&
+        isValidOptionalUrl(data, 'portfolioUrl');
+    }
+
+    function isValidMessage(data) {
+      return hasRequiredFields(['id', 'conversationId', 'senderId', 'body', 'createdAt', 'readStatus']) &&
+        data.senderId == request.auth.uid &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 5000 &&
+        data.readStatus == false;
+    }
+
+    function isValidPost(data) {
+      return hasRequiredFields(['id', 'communityId', 'authorId', 'title', 'body', 'createdAt']) &&
+        data.authorId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 10000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /onboarding/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidOnboarding(request.resource.data);
+      allow update: if isOwner(userId) && isValidOnboarding(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) &&
+        (!request.resource.data.roles.hasAny(['Admin', 'Super Admin']) || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) &&
+        (request.resource.data.roles == resource.data.roles || isAdmin());
+      allow delete: if isOwner(userId) || isAdmin();
+
+      match /feed/{postId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
+      // The account's own lists (saved people, tasks, round, …) mirrored from the browser.
+      match /lists/{listKey} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Inbox: any signed-in member may leave a notification that names them as the sender;
+      // only the owner reads, marks read or deletes.
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAuthenticated() && request.resource.data.fromId == request.auth.uid &&
+          request.resource.data.title is string && request.resource.data.title.size() <= 200 &&
+          (!('body' in request.resource.data) || request.resource.data.body.size() <= 600);
+        allow update: if isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      // People this account has blocked. Private to the owner.
+      match /blocks/{blockedId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidProfile(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+
+      // Who looked at this profile: one document per viewer per day, readable by the owner only.
+      match /views/{viewId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isAuthenticated() && request.auth.uid != userId &&
+          request.resource.data.viewerId == request.auth.uid && viewId.matches('^' + request.auth.uid + '_.*');
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Moderation reports. Anyone signed in can file one about themselves as reporter; only admins read.
+    match /reports/{reportId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.reporterId == request.auth.uid &&
+        request.resource.data.reason is string && request.resource.data.reason.size() <= 60 &&
+        request.resource.data.status == 'open';
+    }
+
+    match /skills/{skillId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /userSkills/{userSkillId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /matchSuggestions/{matchId} {
+      allow read: if isAuthenticated() && (resource.data.userA == request.auth.uid || resource.data.userB == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /connectionRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
+      // Either side may remove an accepted connection.
+      allow delete: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdmin());
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin());
+        allow create: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants) && isValidMessage(request.resource.data);
+        // Any participant may mark read or react; only the sender may edit or delete the body.
+        allow update: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants) && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus', 'reactions']) ||
+          (resource.data.senderId == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'edited', 'editedAt', 'deleted', 'attachments']) &&
+            request.resource.data.body is string && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 5000) ||
+          isAdmin()
+        );
+      }
+    }
+
+    match /communities/{communityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      // Members may join/leave: the only allowed non-owner change is adding or
+      // removing exactly the caller from memberIds (memberCount may move with it).
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        isAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'memberCount']) &&
+          ((request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+              request.auth.uid in request.resource.data.memberIds &&
+              request.resource.data.memberIds.size() <= resource.data.memberIds.size() + 1) ||
+           (resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+              !(request.auth.uid in request.resource.data.memberIds))))
+      );
+      allow delete: if isAdmin();
+
+      match /posts/{postId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isValidPost(request.resource.data);
+        allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin()) && isValidPost(request.resource.data);
+        allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /milestones/{milestoneId} {
+      allow read: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /xpEvents/{eventId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Append-only AI usage events — the owner writes, only admins read aggregate.
+    match /aiUsage/{eventId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /streaks/{userId} {
+      allow read: if isAuthenticated() && (userId == request.auth.uid || isAdmin());
+      allow write: if isOwner(userId);
+    }
+
+    match /nudgeExposures/{nudgeId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /readinessScores/{workspaceId} {
+      allow read: if isAuthenticated() && (workspaceId == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated() && (workspaceId == request.auth.uid || isAdmin());
+    }
+
+    match /badges/{badgeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /userBadges/{userBadgeId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /endorsements/{endorsementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        request.resource.data.authorId == request.auth.uid ||
+        request.resource.data.endorserId == request.auth.uid
+      );
+      allow update: if isAdmin();
+      // The person who gave the endorsement may withdraw it.
+      allow delete: if isAuthenticated() && (resource.data.endorserId == request.auth.uid || resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Platform-published listings — members read, admins publish.
+    match /programs/{programId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /learningResources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /perks/{perkId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Jobs can be posted by any member and edited by their author.
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow write: if isAdmin();
+    }
+
+    // A member may file a billing change request for their own account; only admins can act on it.
+    match /billingRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /mentorFeedbackMetrics/{metricId} {
+      allow read: if isAuthenticated() && (resource.data.workspaceId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Written by the SSO backend (admin SDK bypasses rules); members can't forge audit entries.
+    // Admin-managed platform vocabulary; members read it for onboarding/matching.
+    match /taxonomies/{termId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /automationRules/{ruleId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /automationExecutions/{execId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /automationLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /emailTemplates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notificationTemplates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ssoAuditLog/{eventId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /tenantDomains/{domainId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /systemConfig/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /{path=**}/messages/{messageId} {
+      allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants || isAdmin());
+    }
+  }
+}

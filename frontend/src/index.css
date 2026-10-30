@@ -1,0 +1,1502 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ──────────────────────────────────────────────────────────────────────
+     Density-tuned type scale (rebalanced for comfortable reading at 100%
+     browser zoom). Follows the compact-professional convention used by
+     data-dense products (Linear ~13px body, GitHub 14px body).
+     ────────────────────────────────────────────────────────────────────── */
+  --text-xs: 0.6875rem;        /* 11px — metadata, labels  (was 12px) */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.8125rem;        /* 13px — secondary body    (was 14px) */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;       /* 14px — primary body      (was 16px) */
+  --text-base--line-height: 1.55;
+  --text-lg: 1rem;             /* 16px — emphasized body   (was 18px) */
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.125rem;         /* 18px — card titles       (was 20px) */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.25rem;         /* 20px — section headings  (was 24px) */
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.5rem;          /* 24px — page headings     (was 30px) */
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 1.875rem;        /* 30px — hero headings     (was 36px) */
+  --text-4xl--line-height: 1.15;
+  --text-5xl: 2.375rem;        /* 38px — display           (was 48px) */
+  --text-5xl--line-height: 1.1;
+  --text-6xl: 2.875rem;        /* 46px — large display     (was 60px) */
+  --text-6xl--line-height: 1.05;
+  --text-7xl: 3.5rem;          /* 56px — decorative only   (was 72px) */
+  --text-7xl--line-height: 1;
+
+  /* Control height = the Dashboard nav item (-3% height optimization: 35.48px at 16px root). */
+  --spacing-11: 2.2175488281rem;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 24 9.8% 10%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 26 6% 38%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 18 22% 58%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 20 14.3% 4.1%;
+    --radius: 0.5rem;
+
+    /* Primer *roles* mapped onto stone */
+    --studio-border-muted: 24 10% 96%;
+    --studio-border-default: 20 5.9% 90%;
+    --studio-border-emphasis: 24 9.8% 10%;
+    --studio-fg-muted: 25 5.3% 44.7%;
+    --studio-success: 0.52 0.04 155;
+    --studio-attention: 0.55 0.05 78;
+    --studio-danger: 0.52 0.05 25;
+
+    --studio-dash-h: 1.9363625rem;
+    --studio-chrome-max: 2.1510223633rem;
+
+    /* Extended 5-Palette & Card Anatomy variables */
+    --cfb-accent: #1c1917;
+    --cfb-accent-soft: rgba(28, 25, 23, 0.08);
+    --cfb-accent-border: rgba(28, 25, 23, 0.22);
+    --status-success: #10b981;
+    --status-success-bg: rgba(16, 185, 129, 0.12);
+    --status-success-border: rgba(16, 185, 129, 0.28);
+    --status-warning: #f59e0b;
+    --status-warning-bg: rgba(245, 158, 11, 0.12);
+    --status-warning-border: rgba(245, 158, 11, 0.28);
+    --status-danger: #ef4444;
+    --status-danger-bg: rgba(239, 68, 68, 0.12);
+    --status-danger-border: rgba(239, 68, 68, 0.28);
+    --type-caption: 12.61px;
+    --type-support: 12.7361px;
+    --type-ui: 13.50px;
+    --type-identity: 14.28px;
+    --type-page: 15.42px;
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 239 81% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 16%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 16%;
+    --input: 217 33% 16%;
+    --ring: 239 84% 67%;
+    --cfb-accent: #5f62ee;
+    --cfb-accent-soft: rgba(95, 98, 238, 0.16);
+    --cfb-accent-border: rgba(95, 98, 238, 0.38);
+    --cfb-accent-hover: #4f51d6;
+  }
+
+  /* Accents are tuned so white text on them meets WCAG AA (>= 4.5:1). */
+  [data-theme="cyan"] {
+    --primary: 192 91% 31%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 192 91% 31%;
+    --cfb-accent: #0e7490;
+    --cfb-accent-soft: rgba(14, 116, 144, 0.12);
+    --cfb-accent-border: rgba(14, 116, 144, 0.34);
+    --cfb-accent-hover: #0c647c;
+  }
+
+  [data-theme="mint"] {
+    --primary: 162 28% 38%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 162 28% 38%;
+    --cfb-accent: #3d7a68;
+    --cfb-accent-soft: rgba(61, 122, 104, 0.16);
+    --cfb-accent-border: rgba(61, 122, 104, 0.38);
+    --cfb-accent-hover: #346959;
+  }
+
+  [data-theme="apricot"] {
+    --primary: 17 88% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 17 88% 40%;
+    --cfb-accent: #c2410c;
+    --cfb-accent-soft: rgba(194, 65, 12, 0.12);
+    --cfb-accent-border: rgba(194, 65, 12, 0.34);
+    --cfb-accent-hover: #a7380a;
+  }
+
+  [data-theme="lilac"] {
+    --primary: 271 81% 56%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 271 81% 56%;
+    --cfb-accent: #9333ea;
+    --cfb-accent-soft: rgba(147, 51, 234, 0.16);
+    --cfb-accent-border: rgba(147, 51, 234, 0.38);
+    --cfb-accent-hover: #7e2cc9;
+  }
+
+  [data-theme="burgundy"] {
+    --primary: 350 45% 36%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 350 45% 36%;
+    --cfb-accent: #853341;
+    --cfb-accent-soft: rgba(133, 51, 65, 0.12);
+    --cfb-accent-border: rgba(133, 51, 65, 0.34);
+    --cfb-accent-hover: #6e2a37;
+  }
+}
+
+/* Accessible primary text utility across all 6 themes */
+.text-primary-accessible {
+  color: var(--cfb-accent);
+}
+[data-theme="dark"] .text-primary-accessible {
+  color: #a5b4fc !important;
+}
+
+/*
+ * Accent used as *text* (on white or on its own 10–16% tint) needs a deeper ink than
+ * the accent used as a *fill* behind white text. Light accent themes darken it ~18%;
+ * Dark Obsidian splits it: fills stay indigo-600 (white 6.3:1), ink is indigo-300.
+ */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]) :is(.text-primary, .text-primary-accessible) {
+  color: color-mix(in srgb, var(--cfb-accent) 80%, #000) !important;
+}
+[data-theme="dark"] .text-primary {
+  color: #a5b4fc !important;
+}
+[data-theme="dark"] :is(.bg-primary, .hover\:bg-primary:hover) {
+  background-color: #4f46e5 !important;
+}
+[data-theme="dark"] .bg-primary :is(.text-primary-foreground, span),
+[data-theme="dark"] .bg-primary.text-primary-foreground {
+  color: #ffffff !important;
+}
+
+/* Status inks: -400 shades are for dark surfaces; on light surfaces they fall under 2:1. */
+:root:not([data-theme="dark"]) .text-emerald-400:not(:is(.bg-stone-900, .bg-stone-800, .bg-black, .bg-stone-950) *) { color: #047857 !important; }
+:root:not([data-theme="dark"]) .text-amber-400:not(:is(.bg-stone-900, .bg-stone-800, .bg-black, .bg-stone-950) *) { color: #b45309 !important; }
+
+/* Palette harmonization across Comfort Design System surfaces */
+[data-theme="cyan"] .bg-stone-900,
+[data-theme="cyan"] .hover\:bg-stone-900:hover,
+[data-theme="cyan"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="cyan"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="mint"] .bg-stone-900,
+[data-theme="mint"] .hover\:bg-stone-900:hover,
+[data-theme="mint"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="mint"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="apricot"] .bg-stone-900,
+[data-theme="apricot"] .hover\:bg-stone-900:hover,
+[data-theme="apricot"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="apricot"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="lilac"] .bg-stone-900,
+[data-theme="lilac"] .hover\:bg-stone-900:hover,
+[data-theme="lilac"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="lilac"] .group:focus-within .group-focus-within\:bg-stone-900,
+[data-theme="burgundy"] .bg-stone-900,
+[data-theme="burgundy"] .hover\:bg-stone-900:hover,
+[data-theme="burgundy"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="burgundy"] .group:focus-within .group-focus-within\:bg-stone-900 {
+  background-color: var(--cfb-accent) !important;
+  color: #ffffff !important;
+}
+
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"], [data-theme="dark"]):root :is(.hover\:bg-stone-800:hover, .hover\:bg-stone-700:hover) {
+  background-color: var(--cfb-accent-hover) !important;
+}
+
+[data-theme="cyan"] .bg-stone-200,
+[data-theme="mint"] .bg-stone-200,
+[data-theme="apricot"] .bg-stone-200,
+[data-theme="lilac"] .bg-stone-200,
+[data-theme="burgundy"] .bg-stone-200 {
+  background-color: var(--cfb-accent-soft) !important;
+  border-color: var(--cfb-accent-border) !important;
+}
+
+/* Dark Obsidian base & surface hierarchy (dark background shades preserved) */
+[data-theme="dark"] body,
+[data-theme="dark"] .bg-stone-50 {
+  background-color: #060b16 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .bg-stone-50\/20,
+[data-theme="dark"] .bg-stone-50\/30,
+[data-theme="dark"] .bg-stone-50\/50,
+[data-theme="dark"] .bg-stone-50\/80,
+[data-theme="dark"] .hover\:bg-stone-50:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/30:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/50:hover,
+[data-theme="dark"] .hover\:bg-stone-50\/80:hover {
+  background-color: #0a1222 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: #0d1526 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Keep small circular toggle switch knobs & status indicator dots crisp white in Dark Obsidian */
+[data-theme="dark"] span.bg-white.rounded-full,
+[data-theme="dark"] div.bg-white.rounded-full:not([class*="p-"]):not([class*="px-"]) {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/70,
+[data-theme="dark"] .bg-white\/80,
+[data-theme="dark"] .bg-white\/90,
+[data-theme="dark"] .bg-white\/95,
+[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: #131f38 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .text-stone-900,
+[data-theme="dark"] .text-stone-800,
+[data-theme="dark"] .text-stone-700,
+[data-theme="dark"] .hover\:text-stone-900:hover,
+[data-theme="dark"] .group:hover .group-hover\:text-stone-900 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .fill-stone-900 {
+  fill: #f8fafc !important;
+}
+
+[data-theme="dark"] .text-stone-600,
+[data-theme="dark"] .text-stone-500 {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .text-stone-400,
+[data-theme="dark"] .text-stone-300,
+[data-theme="dark"] .text-stone-200 {
+  color: #94a3b8 !important;
+}
+
+/*
+ * Lighter themes: muted text keeps a readable ramp on every light surface the app uses
+ * (white, stone-50/100, amber-50, emerald-50): 200/300/400 = #736d68 (>= 4.6:1 on
+ * stone-100), 500 = #66605b (>= 5.5:1), 600 stays #57534e. Hierarchy 400 < 500 < 600
+ * is preserved instead of the previous inverted ramp (400 was darker than 500).
+ */
+:root:not([data-theme="dark"]) .text-stone-400,
+:root:not([data-theme="dark"]) .text-stone-300,
+:root:not([data-theme="dark"]) .text-stone-200,
+:root:not([data-theme="dark"]) .text-micro {
+  color: #736d68 !important;
+}
+:root:not([data-theme="dark"]) .text-stone-500 {
+  color: #66605b !important;
+}
+
+/*
+ * Inverse surfaces (dark / accent banners, filled buttons, bubbles).
+ * The light-theme muted-text override above is (0,3,0) + !important, which used to
+ * paint stone-500 grey onto these surfaces (e.g. the Mentors hero in Cyan). These
+ * selectors are (0,4,0)+ so muted text on an inverse surface always reads light,
+ * in every theme. Light cards nested inside an inverse surface get their muted
+ * text back (light themes only — in Dark Obsidian those cards are dark too).
+ */
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500) {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70) {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+:root:root :is(.bg-stone-900, .bg-stone-800, .bg-black) .text-stone-600 {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+:root:not([data-theme="dark"]):root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.bg-white, .bg-stone-50, .bg-stone-100) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500) {
+  color: #57534e !important;
+}
+:root:not([data-theme="dark"]):root :is(.bg-stone-900, .bg-stone-800, .bg-black) :is(.bg-white, .bg-stone-50, .bg-stone-100) .text-stone-600 {
+  color: #57534e !important;
+}
+/* A translucent white chip on an inverse surface keeps light text. */
+:root:root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15, .bg-white\/20) {
+  color: #ffffff;
+}
+
+/*
+ * Colour-accent themes: the inverse surface is a mid-tone accent (white ≈ 5–7:1), so
+ * translucent white text and white-tinted chips lose too much. Muted text goes to 95%
+ * white and chips use a dark tint instead of a white one — still visibly secondary,
+ * always >= 4.5:1.
+ */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500, .text-white\/40, .text-white\/50, .text-white\/60, .text-white\/70, .text-white\/80, .text-white\/85, .text-white\/90) {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.bg-white\/5, .bg-white\/10, .bg-white\/15) {
+  background-color: rgba(0, 0, 0, 0.16) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) :is(.hover\:bg-white\/20:hover, .bg-white\/20) {
+  background-color: rgba(0, 0, 0, 0.26) !important;
+}
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"]):root :is(.bg-stone-900, .bg-stone-800) input::placeholder {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-theme="dark"] .border-stone-400,
+[data-theme="dark"] .border-stone-300,
+[data-theme="dark"] .border-stone-300\/80 {
+  border-color: rgba(148, 163, 184, 0.36) !important;
+}
+
+[data-theme="dark"] .border-stone-200,
+[data-theme="dark"] .border-stone-200\/80,
+[data-theme="dark"] .border-stone-200\/60,
+[data-theme="dark"] .border-stone-200\/50,
+[data-theme="dark"] .border-stone-100,
+[data-theme="dark"] .border-stone-100\/50,
+[data-theme="dark"] .border-stone-50 {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+[data-theme="dark"] .bg-stone-100,
+[data-theme="dark"] .bg-stone-100\/50,
+[data-theme="dark"] .bg-stone-100\/80,
+[data-theme="dark"] .bg-stone-100\/90,
+[data-theme="dark"] .hover\:bg-stone-100:hover,
+[data-theme="dark"] .hover\:bg-stone-100\/50:hover {
+  background-color: #162038 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .bg-stone-200,
+[data-theme="dark"] .bg-stone-200\/60,
+[data-theme="dark"] .bg-stone-200\/70,
+[data-theme="dark"] .bg-stone-200\/80,
+[data-theme="dark"] .hover\:bg-stone-200:hover,
+[data-theme="dark"] .hover\:bg-stone-200\/70:hover,
+[data-theme="dark"] .hover\:bg-stone-200\/80:hover {
+  background-color: #1e2d4d !important;
+  color: #f8fafc !important;
+  border-color: rgba(129, 140, 248, 0.42) !important;
+}
+
+[data-theme="dark"] .bg-stone-300 {
+  background-color: #334b7c !important;
+}
+
+/* Harmonious Indigo-Obsidian primary buttons, badges, bars & hover states in Dark Obsidian (no dark stone-brown #1c1917) */
+[data-theme="dark"] .bg-stone-900,
+[data-theme="dark"] .hover\:bg-stone-900:hover,
+[data-theme="dark"] .group:hover .group-hover\:bg-stone-900,
+[data-theme="dark"] .group:focus-within .group-focus-within\:bg-stone-900 {
+  background-color: #4f46e5 !important;
+  border-color: rgba(129, 140, 248, 0.45) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .bg-stone-800,
+[data-theme="dark"] .hover\:bg-stone-800:hover,
+[data-theme="dark"] .hover\:bg-stone-700:hover {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Large dark hero/feature cards in Dark Obsidian stay in deep obsidian-indigo family */
+[data-theme="dark"] div.bg-stone-900[class*="p-5"],
+[data-theme="dark"] div.bg-stone-900[class*="p-6"],
+[data-theme="dark"] div.bg-stone-900[class*="p-8"],
+[data-theme="dark"] section.bg-stone-900,
+[data-theme="dark"] .card-minimal.bg-stone-900 {
+  background: linear-gradient(135deg, #162447 0%, #1e1b4b 100%) !important;
+  border: 1px solid rgba(129, 140, 248, 0.35) !important;
+  color: #f8fafc !important;
+}
+
+/* Ensure muted text & placeholders inside .bg-stone-900 banners/bubbles are crisp white across ALL 6 themes */
+.bg-stone-900 .text-stone-400,
+.bg-stone-900 .text-stone-500,
+.bg-stone-900 .text-stone-300,
+.bg-stone-900 .text-stone-200 {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+.bg-stone-900 input::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Keep light CTA/filter buttons inside .bg-stone-900 hero banners crisp and high-contrast */
+:root:not([data-theme="dark"]) .bg-stone-900 button.bg-white,
+:root:not([data-theme="dark"]) .bg-stone-900 a.bg-white,
+:root:not([data-theme="dark"]) .bg-stone-900 a.bg-stone-100,
+:root:not([data-theme="dark"]) .bg-stone-900 button.bg-stone-100 {
+  background-color: #ffffff !important;
+  color: #1c1917 !important;
+}
+[data-theme="dark"] .bg-stone-900 button.bg-white,
+[data-theme="dark"] .bg-stone-900 a.bg-white,
+[data-theme="dark"] .bg-stone-900 a.bg-stone-100,
+[data-theme="dark"] .bg-stone-900 button.bg-stone-100 {
+  background-color: #eef2ff !important;
+  color: #1e1b4b !important;
+  border-color: #c7d2fe !important;
+}
+
+/* Ensure hover:bg-stone-900 and group-hover:bg-stone-900 always turn foreground white in stone theme too */
+.hover\:bg-stone-900:hover,
+.group:hover .group-hover\:bg-stone-900,
+.group:focus-within .group-focus-within\:bg-stone-900 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .ring-stone-900,
+[data-theme="dark"] .ring-stone-900\/25 {
+  --tw-ring-color: rgba(129, 140, 248, 0.65) !important;
+}
+
+[data-theme="dark"] .studio-label {
+  background: #162038 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #cbd5e1 !important;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
+    text-rendering: optimizeLegibility;
+    text-shadow: none;
+  }
+
+  html {
+    text-shadow: none;
+  }
+
+  h1, h2 {
+    letter-spacing: -0.02em;
+  }
+  h3, h4 {
+    letter-spacing: -0.01em;
+  }
+
+  time, [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-[10px] font-medium text-stone-500 shadow-[0_1px_0_rgba(0,0,0,0.04)];
+    font-family: inherit;
+  }
+
+  ::selection {
+    background: rgb(28 25 23 / 0.9);
+    color: white;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  [id] {
+    scroll-margin-top: 5.5rem;
+  }
+
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: max(16px, 1em);
+    }
+  }
+}
+
+@layer components {
+  .card-minimal {
+    @apply bg-white border border-stone-200/60 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden;
+  }
+
+  .dark .card-minimal:not([class*="bg-"]) {
+    background-color: #0d1526;
+    border-color: rgba(148, 163, 184, 0.18);
+    box-shadow: none;
+  }
+
+  .text-micro {
+    @apply text-[10px] font-bold uppercase tracking-[0.1em] text-stone-400;
+  }
+
+  /* Facts on cards: the dot rides after each item so a wrap never starts on one. */
+  .facts-dotted > li:not(:last-child)::after {
+    content: "·";
+    margin-left: 0.5rem;
+    color: rgb(168 162 158);
+  }
+  .facts-dotted > li::first-letter {
+    text-transform: uppercase;
+  }
+  /* A bilingual pair inside one fact uses a slash; dots stay between facts. */
+  .bilingual-separator::before {
+    content: "/";
+    margin: 0 0.25rem;
+    color: rgb(168 162 158);
+  }
+
+  .section-header {
+    @apply text-sm font-bold text-stone-900 tracking-tight uppercase mb-4;
+  }
+
+  .dark .section-header {
+    @apply text-stone-100;
+  }
+
+  .input-minimal {
+    @apply w-full min-h-11 px-4 py-[0.606rem] leading-normal bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium transition-all duration-200 outline-none;
+    @apply placeholder:text-stone-400 focus:bg-white focus:border-stone-400 focus:ring-2 focus:ring-stone-900/10;
+  }
+
+  /* Primer Label: source chips, counters, tiny status. Ink + hairline, never a fill. */
+  .studio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid hsl(var(--studio-border-default));
+    border-radius: 999px;
+    background: #fff;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: hsl(var(--studio-fg-muted));
+  }
+
+  /* Status as ink (Primer open/closed/done) — not a colored pill. */
+  .studio-status-open { color: oklch(var(--studio-success)); }
+  .studio-status-attention { color: oklch(var(--studio-attention)); }
+  .studio-status-closed { color: oklch(var(--studio-danger)); }
+
+  .dark .input-minimal {
+    background-color: #0a1222;
+    border-color: rgba(148, 163, 184, 0.22);
+    color: #f1f5f9;
+  }
+
+  /* Tab strips stay one row. On a phone they scroll instead of widening the page. */
+  .scroll-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  @media (min-width: 1024px) {
+    .scroll-tabs {
+      width: fit-content;
+    }
+  }
+  .scroll-tabs > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    height: auto;
+    min-height: var(--studio-dash-h);
+    padding-block: 0.22rem;
+    line-height: 1.3;
+    box-sizing: border-box;
+  }
+  @media (max-width: 639px) {
+    .scroll-tabs {
+      flex-wrap: wrap;
+      overflow: visible;
+    }
+    .scroll-tabs > button {
+      flex: 1 1 auto;
+      justify-content: center;
+      min-width: max-content;
+      overflow: visible;
+    }
+  }
+
+  button.h-7:not([class*="min-h-"]) { min-height: 1.4877041563rem; height: auto; padding-block: 0.16rem; line-height: 1.25; box-sizing: border-box; }
+  button.h-8:not([class*="min-h-"]) { min-height: 1.94rem; height: auto; padding-block: 0.2rem; line-height: 1.3; box-sizing: border-box; }
+  button.h-9:not([class*="min-h-"]) { min-height: 1.9097511563rem; height: auto; padding-block: 0.2rem; line-height: 1.3; box-sizing: border-box; }
+  button.h-10:not([class*="min-h-"]) { height: auto; min-height: var(--studio-dash-h); padding-block: 0.22rem; line-height: 1.3; box-sizing: border-box; }
+
+  .studio-nudge {
+    padding-block: 0.9rem;
+    padding-inline: 1.125rem;
+  }
+  @media (min-width: 640px) {
+    .studio-nudge {
+      padding-block: 1.05rem;
+      padding-inline: 1.375rem;
+    }
+  }
+}
+
+/* ── Card Anatomy & Typography Ladder Classes ── */
+.card-title {
+  font-size: 13.582px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.card-subtitle {
+  font-size: 13.044px;
+  line-height: 1.4;
+}
+.card-body {
+  font-size: 12.663px;
+  line-height: 1.55;
+}
+.card-meta {
+  font-size: 12.663px;
+  line-height: 1.45;
+}
+@media (min-width: 1024px) {
+  .card-title { font-size: 15.36px; }
+  .card-subtitle { font-size: 14.00px; }
+  .card-body { font-size: 13.49px; }
+  .card-meta { font-size: 12.87px; }
+}
+
+.card-interactive {
+  border-radius: 1rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-interactive:hover {
+  border-color: var(--cfb-accent-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12);
+}
+
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-stone-500/80 ring-offset-1 ring-offset-white;
+  }
+  .dark :focus-visible {
+    @apply ring-stone-400 ring-offset-stone-950;
+  }
+}
+/* Keyboard focus carries the theme's accent, still clearly visible */
+:is([data-theme="cyan"], [data-theme="mint"], [data-theme="apricot"], [data-theme="lilac"], [data-theme="burgundy"], [data-theme="dark"]) :focus-visible {
+  outline: 2px solid var(--cfb-accent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+@layer base {
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-stone-400/80 ring-offset-0;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-stone-200 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-stone-300;
+}
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-stone-800;
+}
+
+@layer utilities {
+  /* Light themes: use exact token matching ([class~="..."]) so hover:text-* classes only trigger on hover, and -300/-400 icons inside dark banners stay luminous */
+  :root:not([data-theme="dark"]) .text-destructive,
+  :root:not([data-theme="dark"]) [class~="text-red-500"],
+  :root:not([data-theme="dark"]) [class~="text-red-600"],
+  :root:not([data-theme="dark"]) [class~="text-rose-500"],
+  :root:not([data-theme="dark"]) [class~="text-rose-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-red-500"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-red-600"]:hover {
+    color: oklch(0.50 0.14 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-orange-500"],
+  :root:not([data-theme="dark"]) [class~="text-orange-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-orange-600"]:hover {
+    color: oklch(0.52 0.14 52) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-amber-500"],
+  :root:not([data-theme="dark"]) [class~="text-amber-600"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-500"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-amber-500"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-amber-600"]:hover {
+    color: rgba(161, 89, 46, 0.9) !important;
+  }
+  /* Warm status text went a step darker in light themes; the icons keep the previous terracotta. */
+  :root:not([data-theme="dark"]) :is(
+    [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ) svg,
+  :root:not([data-theme="dark"]) svg:is(
+    [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ),
+  :root:not([data-theme="dark"]) :is(
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
+  ):hover svg,
+  :root:not([data-theme="dark"]) svg:is(
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"]
+  ):hover {
+    color: rgba(179, 99, 51, 0.9) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-blue-500"],
+  :root:not([data-theme="dark"]) [class~="text-blue-600"],
+  :root:not([data-theme="dark"]) [class~="text-sky-500"],
+  :root:not([data-theme="dark"]) [class~="text-sky-600"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-500"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-600"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-500"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-indigo-600"]:hover,
+  :root:not([data-theme="dark"]) [class~="hover:text-blue-600"]:hover {
+    color: oklch(0.48 0.13 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-violet-500"],
+  :root:not([data-theme="dark"]) [class~="text-violet-600"],
+  :root:not([data-theme="dark"]) [class~="text-purple-500"],
+  :root:not([data-theme="dark"]) [class~="text-purple-600"],
+  :root:not([data-theme="dark"]) [class~="text-fuchsia-500"],
+  :root:not([data-theme="dark"]) [class~="text-fuchsia-600"] {
+    color: oklch(0.48 0.14 295) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-emerald-500"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-600"],
+  :root:not([data-theme="dark"]) [class~="text-green-500"],
+  :root:not([data-theme="dark"]) [class~="text-green-600"],
+  :root:not([data-theme="dark"]) [class~="text-teal-500"],
+  :root:not([data-theme="dark"]) [class~="text-teal-600"],
+  :root:not([data-theme="dark"]) [class~="text-lime-600"],
+  :root:not([data-theme="dark"]) [class~="hover:text-emerald-600"]:hover {
+    color: oklch(0.47 0.12 155) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-pink-500"],
+  :root:not([data-theme="dark"]) [class~="text-pink-600"] {
+    color: oklch(0.50 0.13 350) !important;
+  }
+
+  /* Deeper contrast for -700/-800/-900 semantic text on light pastel badges/cards */
+  :root:not([data-theme="dark"]) [class~="text-red-700"],
+  :root:not([data-theme="dark"]) [class~="text-red-800"],
+  :root:not([data-theme="dark"]) [class~="text-red-900"],
+  :root:not([data-theme="dark"]) [class~="text-rose-700"],
+  :root:not([data-theme="dark"]) [class~="text-rose-800"] {
+    color: oklch(0.40 0.14 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-amber-700"],
+  :root:not([data-theme="dark"]) [class~="text-amber-800"],
+  :root:not([data-theme="dark"]) [class~="text-amber-900"],
+  :root:not([data-theme="dark"]) [class~="text-orange-700"],
+  :root:not([data-theme="dark"]) [class~="text-orange-800"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-700"],
+  :root:not([data-theme="dark"]) [class~="text-yellow-800"] {
+    color: oklch(0.39 0.13 62) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-blue-700"],
+  :root:not([data-theme="dark"]) [class~="text-blue-800"],
+  :root:not([data-theme="dark"]) [class~="text-blue-900"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-700"],
+  :root:not([data-theme="dark"]) [class~="text-indigo-800"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-700"],
+  :root:not([data-theme="dark"]) [class~="text-cyan-800"] {
+    color: oklch(0.39 0.13 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-violet-700"],
+  :root:not([data-theme="dark"]) [class~="text-violet-800"],
+  :root:not([data-theme="dark"]) [class~="text-purple-700"],
+  :root:not([data-theme="dark"]) [class~="text-purple-800"] {
+    color: oklch(0.39 0.14 295) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="text-emerald-700"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-800"],
+  :root:not([data-theme="dark"]) [class~="text-emerald-900"],
+  :root:not([data-theme="dark"]) [class~="text-green-700"],
+  :root:not([data-theme="dark"]) [class~="text-green-800"],
+  :root:not([data-theme="dark"]) [class~="text-teal-700"],
+  :root:not([data-theme="dark"]) [class~="text-teal-800"] {
+    color: oklch(0.38 0.12 155) !important;
+  }
+
+  /* Keep bright semantic icons legible inside dark/accent hero banners (.bg-stone-900) across all themes */
+  .bg-stone-900 [class~="text-amber-300"],
+  .bg-stone-900 [class~="text-amber-400"],
+  .bg-stone-900 [class~="text-amber-500"],
+  .bg-stone-900 [class~="text-orange-300"],
+  .bg-stone-900 [class~="text-orange-400"] {
+    color: #fdba74 !important;
+  }
+  .bg-stone-900 [class~="text-emerald-300"],
+  .bg-stone-900 [class~="text-emerald-400"],
+  .bg-stone-900 [class~="text-emerald-500"] {
+    color: #6ee7b7 !important;
+  }
+
+  /* Dark Obsidian: cheerful, luminous semantic text & icons (warm orange instead of muddy brown) */
+  [data-theme="dark"] .text-destructive,
+  [data-theme="dark"] [class~="text-red-400"],
+  [data-theme="dark"] [class~="text-red-500"],
+  [data-theme="dark"] [class~="text-red-600"],
+  [data-theme="dark"] [class~="text-red-700"],
+  [data-theme="dark"] [class~="text-red-800"],
+  [data-theme="dark"] [class~="text-red-900"],
+  [data-theme="dark"] [class~="text-rose-400"],
+  [data-theme="dark"] [class~="text-rose-500"],
+  [data-theme="dark"] [class~="text-rose-600"],
+  [data-theme="dark"] [class~="text-rose-700"],
+  [data-theme="dark"] [class~="hover:text-red-500"]:hover,
+  [data-theme="dark"] [class~="hover:text-red-600"]:hover {
+    color: rgba(251, 138, 114, 0.8) !important;
+  }
+  [data-theme="dark"] [class~="text-orange-400"],
+  [data-theme="dark"] [class~="text-orange-500"],
+  [data-theme="dark"] [class~="text-orange-600"],
+  [data-theme="dark"] [class~="text-amber-400"],
+  [data-theme="dark"] [class~="text-amber-500"],
+  [data-theme="dark"] [class~="text-amber-600"],
+  [data-theme="dark"] [class~="text-yellow-400"],
+  [data-theme="dark"] [class~="text-yellow-500"],
+  [data-theme="dark"] [class~="text-yellow-600"],
+  [data-theme="dark"] [class~="hover:text-amber-500"]:hover,
+  [data-theme="dark"] [class~="hover:text-amber-600"]:hover,
+  [data-theme="dark"] [class~="hover:text-orange-500"]:hover {
+    color: rgba(251, 138, 114, 0.8) !important;
+  }
+  /* Warm status icons read rose (#fda4af) in Dark Obsidian; the text itself stays salmon. */
+  [data-theme="dark"] :is(
+    [class~="text-red-400"], [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-red-900"],
+    [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
+    [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ) svg,
+  [data-theme="dark"] svg:is(
+    [class~="text-red-400"], [class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-red-900"],
+    [class~="text-rose-400"], [class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"],
+    [class~="text-orange-400"], [class~="text-orange-500"], [class~="text-orange-600"],
+    [class~="text-amber-400"], [class~="text-amber-500"], [class~="text-amber-600"],
+    [class~="text-yellow-400"], [class~="text-yellow-500"], [class~="text-yellow-600"]
+  ),
+  [data-theme="dark"] :is(
+    [class~="hover:text-red-500"], [class~="hover:text-red-600"],
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"], [class~="hover:text-orange-500"]
+  ):hover svg,
+  [data-theme="dark"] svg:is(
+    [class~="hover:text-red-500"], [class~="hover:text-red-600"],
+    [class~="hover:text-amber-500"], [class~="hover:text-amber-600"], [class~="hover:text-orange-500"]
+  ):hover {
+    color: #fda4af !important;
+  }
+  /* Stat-strip change labels (Ζωντανά / Σταθερό) read deep terracotta in Dark Obsidian; their icons stay rose. */
+  [data-theme="dark"] .stat-change-strip:is(
+    .text-amber-500, .text-amber-600, .text-yellow-500, .text-yellow-600,
+    .text-orange-500, .text-orange-600,
+    .text-red-500, .text-red-600, .text-rose-500, .text-rose-600
+  ) {
+    color: rgba(187, 104, 53, 0.9) !important;
+  }
+  [data-theme="dark"] [class~="text-amber-700"],
+  [data-theme="dark"] [class~="text-amber-800"],
+  [data-theme="dark"] [class~="text-orange-700"],
+  [data-theme="dark"] [class~="text-orange-800"],
+  [data-theme="dark"] [class~="text-yellow-700"],
+  [data-theme="dark"] [class~="text-yellow-800"] {
+    color: #ffd4cc !important;
+  }
+  [data-theme="dark"] [class~="text-amber-900"],
+  [data-theme="dark"] [class~="text-orange-900"],
+  [data-theme="dark"] [class~="text-yellow-900"] {
+    color: #fff1ee !important;
+  }
+  [data-theme="dark"] [class~="text-blue-400"],
+  [data-theme="dark"] [class~="text-blue-500"],
+  [data-theme="dark"] [class~="text-blue-600"],
+  [data-theme="dark"] [class~="text-blue-700"],
+  [data-theme="dark"] [class~="text-blue-800"],
+  [data-theme="dark"] [class~="text-sky-400"],
+  [data-theme="dark"] [class~="text-sky-500"],
+  [data-theme="dark"] [class~="text-sky-600"],
+  [data-theme="dark"] [class~="text-sky-700"],
+  [data-theme="dark"] [class~="text-cyan-400"],
+  [data-theme="dark"] [class~="text-cyan-500"],
+  [data-theme="dark"] [class~="text-cyan-600"],
+  [data-theme="dark"] [class~="text-cyan-700"],
+  [data-theme="dark"] [class~="text-indigo-400"],
+  [data-theme="dark"] [class~="text-indigo-500"],
+  [data-theme="dark"] [class~="text-indigo-600"],
+  [data-theme="dark"] [class~="text-indigo-700"],
+  [data-theme="dark"] [class~="text-indigo-800"],
+  [data-theme="dark"] [class~="hover:text-indigo-600"]:hover,
+  [data-theme="dark"] [class~="hover:text-blue-600"]:hover {
+    color: #93c5fd !important;
+  }
+  [data-theme="dark"] [class~="text-violet-400"],
+  [data-theme="dark"] [class~="text-violet-500"],
+  [data-theme="dark"] [class~="text-violet-600"],
+  [data-theme="dark"] [class~="text-violet-700"],
+  [data-theme="dark"] [class~="text-violet-800"],
+  [data-theme="dark"] [class~="text-purple-400"],
+  [data-theme="dark"] [class~="text-purple-500"],
+  [data-theme="dark"] [class~="text-purple-600"],
+  [data-theme="dark"] [class~="text-purple-700"],
+  [data-theme="dark"] [class~="text-purple-800"],
+  [data-theme="dark"] [class~="text-fuchsia-400"],
+  [data-theme="dark"] [class~="text-fuchsia-500"],
+  [data-theme="dark"] [class~="text-fuchsia-600"] {
+    color: #c4b5fd !important;
+  }
+  [data-theme="dark"] [class~="text-emerald-400"],
+  [data-theme="dark"] [class~="text-emerald-500"],
+  [data-theme="dark"] [class~="text-emerald-600"],
+  [data-theme="dark"] [class~="text-emerald-700"],
+  [data-theme="dark"] [class~="text-emerald-800"],
+  [data-theme="dark"] [class~="text-emerald-900"],
+  [data-theme="dark"] [class~="text-green-400"],
+  [data-theme="dark"] [class~="text-green-500"],
+  [data-theme="dark"] [class~="text-green-600"],
+  [data-theme="dark"] [class~="text-green-700"],
+  [data-theme="dark"] [class~="text-green-800"],
+  [data-theme="dark"] [class~="text-teal-400"],
+  [data-theme="dark"] [class~="text-teal-500"],
+  [data-theme="dark"] [class~="text-teal-600"],
+  [data-theme="dark"] [class~="text-teal-700"],
+  [data-theme="dark"] [class~="text-lime-500"],
+  [data-theme="dark"] [class~="text-lime-600"],
+  [data-theme="dark"] [class~="hover:text-emerald-600"]:hover {
+    color: #6ee7b7 !important;
+  }
+  [data-theme="dark"] [class~="text-pink-400"],
+  [data-theme="dark"] [class~="text-pink-500"],
+  [data-theme="dark"] [class~="text-pink-600"],
+  [data-theme="dark"] [class~="text-pink-700"] {
+    color: #f9a8d4 !important;
+  }
+
+  /* Light theme pastel surfaces (-50 and -100) with clear contrast */
+  :root:not([data-theme="dark"]) [class~="bg-red-50"],
+  :root:not([data-theme="dark"]) [class~="bg-rose-50"] {
+    background-color: oklch(0.965 0.018 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-orange-50"] {
+    background-color: oklch(0.965 0.022 55) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-amber-50"],
+  :root:not([data-theme="dark"]) [class~="bg-yellow-50"] {
+    background-color: oklch(0.965 0.025 75) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-blue-50"],
+  :root:not([data-theme="dark"]) [class~="bg-sky-50"],
+  :root:not([data-theme="dark"]) [class~="bg-cyan-50"],
+  :root:not([data-theme="dark"]) [class~="bg-indigo-50"] {
+    background-color: oklch(0.965 0.018 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-violet-50"],
+  :root:not([data-theme="dark"]) [class~="bg-purple-50"],
+  :root:not([data-theme="dark"]) [class~="bg-fuchsia-50"] {
+    background-color: oklch(0.965 0.020 295) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-emerald-50"],
+  :root:not([data-theme="dark"]) [class~="bg-green-50"],
+  :root:not([data-theme="dark"]) [class~="bg-teal-50"],
+  :root:not([data-theme="dark"]) [class~="bg-lime-50"] {
+    background-color: oklch(0.965 0.020 155) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="bg-pink-50"] {
+    background-color: oklch(0.965 0.018 350) !important;
+  }
+
+  /* Dark Obsidian harmonious, deep maroon surfaces for -50 / -100 / -200 classes */
+  [data-theme="dark"] [class~="bg-red-50"],
+  [data-theme="dark"] [class~="bg-red-50/50"],
+  [data-theme="dark"] [class~="bg-red-50/30"],
+  [data-theme="dark"] [class~="bg-red-100"],
+  [data-theme="dark"] [class~="bg-rose-50"],
+  [data-theme="dark"] [class~="bg-rose-100"],
+  [data-theme="dark"] [class~="hover:bg-red-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-red-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-rose-50"]:hover {
+    background-color: rgba(244, 63, 94, 0.20) !important;
+  }
+  [data-theme="dark"] [class~="bg-orange-50"],
+  [data-theme="dark"] [class~="bg-orange-50/50"],
+  [data-theme="dark"] [class~="bg-orange-50/30"],
+  [data-theme="dark"] [class~="bg-orange-100"],
+  [data-theme="dark"] [class~="bg-amber-50"],
+  [data-theme="dark"] [class~="bg-amber-50/50"],
+  [data-theme="dark"] [class~="bg-amber-50/30"],
+  [data-theme="dark"] [class~="bg-amber-50/70"],
+  [data-theme="dark"] [class~="bg-amber-100"],
+  [data-theme="dark"] [class~="bg-amber-100/50"],
+  [data-theme="dark"] [class~="bg-yellow-50"],
+  [data-theme="dark"] [class~="bg-yellow-100"],
+  [data-theme="dark"] [class~="hover:bg-orange-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-amber-50"]:hover {
+    background-color: #361625 !important;
+    background-image: linear-gradient(135deg, #2f1420 0%, #3c1a2c 52%, #452032 100%) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-50"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-amber-50/50"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-amber-50/30"] .text-stone-500,
+  [data-theme="dark"] [class~="bg-orange-50"] .text-stone-500 {
+    color: rgba(255, 232, 226, 0.88) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-50"] .text-stone-300,
+  [data-theme="dark"] [class~="bg-amber-50/50"] .text-stone-300,
+  [data-theme="dark"] [class~="bg-orange-50"] .text-stone-300 {
+    color: rgba(255, 206, 196, 0.65) !important;
+  }
+  [data-theme="dark"] [class~="bg-amber-200"],
+  [data-theme="dark"] [class~="bg-orange-200"],
+  [data-theme="dark"] [class~="hover:bg-amber-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-amber-200"]:hover {
+    background-color: #452036 !important;
+    background-image: linear-gradient(135deg, #3a1729 0%, #482140 52%, #512847 100%) !important;
+    color: #fff5f2 !important;
+  }
+  [data-theme="dark"] [class~="bg-blue-50"],
+  [data-theme="dark"] [class~="bg-blue-50/50"],
+  [data-theme="dark"] [class~="bg-blue-50/30"],
+  [data-theme="dark"] [class~="bg-blue-100"],
+  [data-theme="dark"] [class~="bg-sky-50"],
+  [data-theme="dark"] [class~="bg-sky-100"],
+  [data-theme="dark"] [class~="bg-cyan-50"],
+  [data-theme="dark"] [class~="bg-cyan-100"],
+  [data-theme="dark"] [class~="bg-indigo-50"],
+  [data-theme="dark"] [class~="bg-indigo-100"],
+  [data-theme="dark"] [class~="hover:bg-blue-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-blue-100"]:hover {
+    background-color: rgba(59, 130, 246, 0.22) !important;
+  }
+  [data-theme="dark"] [class~="bg-violet-50"],
+  [data-theme="dark"] [class~="bg-violet-100"],
+  [data-theme="dark"] [class~="bg-purple-50"],
+  [data-theme="dark"] [class~="bg-purple-100"],
+  [data-theme="dark"] [class~="bg-fuchsia-50"],
+  [data-theme="dark"] [class~="bg-fuchsia-100"],
+  [data-theme="dark"] [class~="hover:bg-violet-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-purple-50"]:hover {
+    background-color: rgba(139, 92, 246, 0.22) !important;
+  }
+  [data-theme="dark"] [class~="bg-emerald-50"],
+  [data-theme="dark"] [class~="bg-emerald-50/50"],
+  [data-theme="dark"] [class~="bg-emerald-50/30"],
+  [data-theme="dark"] [class~="bg-emerald-100"],
+  [data-theme="dark"] [class~="bg-green-50"],
+  [data-theme="dark"] [class~="bg-green-100"],
+  [data-theme="dark"] [class~="bg-teal-50"],
+  [data-theme="dark"] [class~="bg-teal-100"],
+  [data-theme="dark"] [class~="bg-lime-50"],
+  [data-theme="dark"] [class~="hover:bg-emerald-50"]:hover,
+  [data-theme="dark"] [class~="hover:bg-emerald-100"]:hover,
+  [data-theme="dark"] [class~="hover:bg-green-50"]:hover {
+    background-color: rgba(16, 185, 129, 0.20) !important;
+  }
+  [data-theme="dark"] [class~="bg-pink-50"],
+  [data-theme="dark"] [class~="bg-pink-100"] {
+    background-color: rgba(236, 72, 153, 0.20) !important;
+  }
+
+  /* Light theme pastel borders */
+  :root:not([data-theme="dark"]) [class~="border-red-100"],
+  :root:not([data-theme="dark"]) [class~="border-red-200"],
+  :root:not([data-theme="dark"]) [class~="hover:border-red-100"]:hover,
+  :root:not([data-theme="dark"]) [class~="border-rose-100"],
+  :root:not([data-theme="dark"]) [class~="border-rose-200"] {
+    border-color: oklch(0.84 0.05 25) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-amber-100"],
+  :root:not([data-theme="dark"]) [class~="border-amber-200"],
+  :root:not([data-theme="dark"]) [class~="border-yellow-100"],
+  :root:not([data-theme="dark"]) [class~="border-orange-100"],
+  :root:not([data-theme="dark"]) [class~="border-orange-200"] {
+    border-color: oklch(0.84 0.06 68) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-emerald-100"],
+  :root:not([data-theme="dark"]) [class~="border-emerald-200"],
+  :root:not([data-theme="dark"]) [class~="border-green-100"],
+  :root:not([data-theme="dark"]) [class~="border-green-200"],
+  :root:not([data-theme="dark"]) [class~="border-teal-100"] {
+    border-color: oklch(0.84 0.05 155) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-blue-100"],
+  :root:not([data-theme="dark"]) [class~="border-blue-200"],
+  :root:not([data-theme="dark"]) [class~="border-sky-100"],
+  :root:not([data-theme="dark"]) [class~="border-indigo-100"] {
+    border-color: oklch(0.84 0.05 250) !important;
+  }
+  :root:not([data-theme="dark"]) [class~="border-violet-100"],
+  :root:not([data-theme="dark"]) [class~="border-purple-100"] {
+    border-color: oklch(0.84 0.05 295) !important;
+  }
+
+  /* Dark Obsidian luminous semantic borders (warm rose-coral-orange border for amber/orange cards) */
+  [data-theme="dark"] [class~="border-red-100"],
+  [data-theme="dark"] [class~="border-red-200"],
+  [data-theme="dark"] [class~="border-red-300"],
+  [data-theme="dark"] [class~="hover:border-red-100"]:hover,
+  [data-theme="dark"] [class~="border-rose-100"],
+  [data-theme="dark"] [class~="border-rose-200"] {
+    border-color: rgba(251, 113, 133, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-amber-100"],
+  [data-theme="dark"] [class~="border-amber-200"],
+  [data-theme="dark"] [class~="border-amber-200/50"],
+  [data-theme="dark"] [class~="border-amber-200/60"],
+  [data-theme="dark"] [class~="border-amber-200/70"],
+  [data-theme="dark"] [class~="border-amber-200/80"],
+  [data-theme="dark"] [class~="border-amber-300"],
+  [data-theme="dark"] [class~="border-yellow-100"],
+  [data-theme="dark"] [class~="border-yellow-200"],
+  [data-theme="dark"] [class~="border-orange-100"],
+  [data-theme="dark"] [class~="border-orange-200"],
+  [data-theme="dark"] [class~="border-orange-200/60"],
+  [data-theme="dark"] [class~="border-orange-200/70"],
+  [data-theme="dark"] [class~="border-orange-300"] {
+    border-color: rgba(244, 132, 122, 0.54) !important;
+  }
+  [data-theme="dark"] [class~="border-emerald-100"],
+  [data-theme="dark"] [class~="border-emerald-200"],
+  [data-theme="dark"] [class~="border-emerald-300"],
+  [data-theme="dark"] [class~="border-green-100"],
+  [data-theme="dark"] [class~="border-green-200"],
+  [data-theme="dark"] [class~="border-teal-100"] {
+    border-color: rgba(52, 211, 153, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-blue-100"],
+  [data-theme="dark"] [class~="border-blue-200"],
+  [data-theme="dark"] [class~="border-blue-300"],
+  [data-theme="dark"] [class~="border-sky-100"],
+  [data-theme="dark"] [class~="border-indigo-100"] {
+    border-color: rgba(96, 165, 250, 0.42) !important;
+  }
+  [data-theme="dark"] [class~="border-violet-100"],
+  [data-theme="dark"] [class~="border-violet-200"],
+  [data-theme="dark"] [class~="border-purple-100"],
+  [data-theme="dark"] [class~="border-purple-200"] {
+    border-color: rgba(167, 139, 250, 0.42) !important;
+  }
+}
+
+button.min-h-11:not(.flex-col):not([class*="text-left"]),
+a.min-h-11:not(.flex-col):not([class*="text-left"]),
+button.h-11:not(.flex-col):not([class*="text-left"]),
+a.h-11:not(.flex-col):not([class*="text-left"]) {
+  min-height: var(--studio-dash-h);
+  height: auto;
+  padding-block: 0.22rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.h-12:not(.flex-col):not([class*="text-left"]),
+a.h-12:not(.flex-col):not([class*="text-left"]),
+button.h-14:not(.flex-col):not([class*="text-left"]),
+a.h-14:not(.flex-col):not([class*="text-left"]),
+button.h-16:not(.flex-col):not([class*="text-left"]),
+a.h-16:not(.flex-col):not([class*="text-left"]),
+button.min-h-12:not(.flex-col):not([class*="text-left"]),
+a.min-h-12:not(.flex-col):not([class*="text-left"]),
+button.min-h-14:not(.flex-col):not([class*="text-left"]),
+a.min-h-14:not(.flex-col):not([class*="text-left"]),
+button.min-h-16:not(.flex-col):not([class*="text-left"]),
+a.min-h-16:not(.flex-col):not([class*="text-left"]) {
+  height: auto;
+  min-height: var(--studio-dash-h);
+  padding-block: 0.22rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.w-14.h-14, a.w-14.h-14,
+button.w-12.h-12, a.w-12.h-12 {
+  width: var(--studio-dash-h);
+  height: var(--studio-dash-h);
+  min-height: var(--studio-dash-h);
+}
+button.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
+a.py-4:not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
+  padding-block: 0.24rem;
+  min-height: var(--studio-dash-h);
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]),
+a.py-3:not([class*="min-h-11"]):not([class*="h-7"]):not([class*="h-8"]):not(.flex-col):not([class*="text-left"]) {
+  padding-block: 0.22rem;
+  min-height: var(--studio-dash-h);
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]),
+a[class*="py-3.5"]:not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0.22rem;
+  min-height: var(--studio-dash-h);
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]),
+a[class*="py-2.5"]:not([class*="h-7"]):not([class*="h-8"]) {
+  padding-block: 0.22rem;
+  min-height: var(--studio-dash-h);
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
+a.p-3:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]),
+button.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+a.p-4:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+button.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)),
+a.p-5:not([class*="text-left"]):not(.flex-col):not([class*="w-full"]):not(.block):not([class*="rounded-2xl"]):not([class*="rounded-3xl"]):not(:has(> img)) {
+  padding-block: 0.22rem;
+  min-height: var(--studio-dash-h);
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+aside nav a {
+  min-height: var(--studio-dash-h);
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+aside nav a span { line-height: 1.25; }
+aside .grid.grid-cols-2 a,
+aside .grid.grid-cols-2 button {
+  min-height: var(--studio-dash-h);
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+.scroll-tabs > button {
+  height: auto;
+  min-height: var(--studio-dash-h);
+  padding-block: 0.22rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.h-8:not([class*="min-h-"]) { height: auto; min-height: 1.94rem; padding-block: 0.2rem; line-height: 1.3; }
+button.h-8[class*="min-h-"] { height: auto; min-height: var(--studio-dash-h); padding-block: 0.2rem; line-height: 1.3; }
+
+button[data-ui="button"],
+a[data-ui="button"] {
+  height: auto;
+  max-height: none;
+  min-height: var(--studio-dash-h);
+  padding-block: 0.2425rem;
+  line-height: 1.3;
+}
+button[data-ui="button"][data-size="sm"] {
+  min-height: 1.6975rem;
+  padding-block: 0.16rem;
+  line-height: 1.25;
+}
+button[data-ui="button"][data-size="lg"] {
+  min-height: 2.1825rem;
+  padding-block: 0.36375rem;
+  line-height: 1.35;
+}
+button[data-ui="button"][data-size="icon"] {
+  min-height: 1.94rem;
+  min-width: 1.94rem;
+}
+
+@media (max-width: 1279px), (any-pointer: coarse) {
+  button[data-ui="button"],
+  a[data-ui="button"],
+  button[data-ui="view-option"],
+  button.min-h-11:not(.flex-col):not([class*="text-left"]),
+  a.min-h-11:not(.flex-col):not([class*="text-left"]),
+  button.h-11:not(.flex-col):not([class*="text-left"]),
+  button.h-10:not(.flex-col):not([class*="text-left"]),
+  button.h-12:not(.flex-col):not([class*="text-left"]),
+  button.h-14:not(.flex-col):not([class*="text-left"]),
+  button.h-16:not(.flex-col):not([class*="text-left"]),
+  .scroll-tabs > button,
+  aside nav a,
+  aside .grid.grid-cols-2 a,
+  aside .grid.grid-cols-2 button {
+    height: auto;
+    min-height: 1.94rem;
+    max-height: none;
+    padding-block: 0.2425rem;
+    line-height: 1.3;
+  }
+
+  button[data-size="icon"],
+  button.w-12.h-12,
+  button.w-14.h-14 {
+    min-width: 1.94rem;
+    flex-shrink: 0;
+  }
+
+  aside nav a {
+    white-space: normal;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+  select {
+    min-height: 2.1825rem;
+    padding-block: 0.36375rem;
+    max-width: 100%;
+  }
+
+  .scroll-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .scroll-tabs > button {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+
+  [data-ui="view-option"] > svg,
+  [data-ui="view-option"] > span > svg {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  [data-ui="page-actions"] {
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  [data-ui="page-actions"] > button,
+  [data-ui="page-actions"] > a[data-ui="button"] {
+    flex: 0 1 auto;
+  }
+}
+
+/* ── Global 3% Height Reduction with Safe Text-Comfort Guard ── */
+button.min-h-10:not(.flex-col):not([class*="text-left"]),
+a.min-h-10:not(.flex-col):not([class*="text-left"]) {
+  min-height: var(--studio-dash-h);
+  height: auto;
+  padding-block: 0.22rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-9:not(.flex-col):not([class*="text-left"]),
+a.min-h-9:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.9097511563rem;
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-8:not(.flex-col):not([class*="text-left"]),
+a.min-h-8:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.94rem;
+  height: auto;
+  padding-block: 0.2rem;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+button.min-h-7:not(.flex-col):not([class*="text-left"]),
+a.min-h-7:not(.flex-col):not([class*="text-left"]) {
+  min-height: 1.6975rem;
+  height: auto;
+  padding-block: 0.16rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+button.py-2:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a.py-2:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.485rem;
+  height: auto;
+  line-height: 1.3;
+}
+button[class*="py-1.5"]:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a[class*="py-1.5"]:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.36375rem;
+  height: auto;
+  line-height: 1.3;
+}
+button.py-1:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col),
+a.py-1:not([class*="min-h-"]):not([class*="h-"]):not(.flex-col) {
+  padding-block: 0.2425rem;
+  height: auto;
+  line-height: 1.25;
+}
+select.h-8,
+input.h-8 {
+  min-height: 1.94rem;
+  height: auto;
+  padding-block: 0.16rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

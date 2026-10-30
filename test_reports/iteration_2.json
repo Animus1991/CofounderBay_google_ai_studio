@@ -1,0 +1,39 @@
+{
+  "summary": "Retest of the iteration_1 fixes. Backend: 26 of 26 pass in test_cofounderbay_api.py (20 regression + 6 new Fix 6 tests). test_zz_rate_limit.py: 1 pass, 1 fail (X-Forwarded-For spoof bypass). Frontend in demo mode: Fix 1 (no raw Markdown: cold-email answer and /pitch use '• ' with no ** or #, and no talk about formatting), Fix 2 (drafts kept: pitch went 6/8 -> 5/8, not 0/8, and Founder Tools still shows the other slides done), Fix 3 (the 'Open this slide' button goes to /founder-tools?tab=pitch&slide=problem and the Problem slide 02 is selected), Fix 4 (incorporation already done -> no Confirm card; EIN -> Confirm/Cancel/Undo testids work), Fix 5 ('AI Studio · audit' tag stable across 3 runs), the new assistant-input/assistant-send testids, the ledger (Applied 1 / Undone 1 / Cancelled 1) and the AI profile review (summary, strengths and gaps, 3 actions, no **) all PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/generate (caller_key)", "issue": "The rate limit can still be bypassed. caller_key takes the FIRST X-Forwarded-For entry, which the client controls. Even with the bucket exhausted (429), a request with a forged 'X-Forwarded-For: 10.9.x.7' got 400 (it passed the limiter). Use the right-most hop added by the trusted ingress (or X-Real-IP / the last XFF entry) instead of split(',')[0]."},
+      {"endpoint": "POST /api/ai/generate", "issue": "A body that is not an object ('[1]') or is not JSON returns 500 (body.get on a list / JSONDecodeError). It should return 400."},
+      {"endpoint": "POST /api/tenants/{id}/branding|content", "issue": "A body that is not JSON ('bad') returns 500 because request.json() raises. It should return 400 or 422. Nested values -> 422 and a flat dict -> 200 work correctly."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Pitch-set / studio check", "issue": "After setting the Problem slide to a one-line sentence, the pitch count drops 6/8 -> 5/8 because the new text is rated in-progress. This is working as designed (drafts are no longer wiped), but the request expected 'same or higher'.", "selector": "lib/pitch.ts slideStatus", "priority": "LOW"},
+      {"component": "FounderTools pitchSlide state", "issue": "pitchSlide comes from ?slide= only in the useState initializer. If the user is already on /founder-tools and a chat link changes ?slide=, the selected slide will not update (no effect on searchParams). This was not hit in the test because the link was clicked from the Dashboard.", "selector": "pages/FounderTools.tsx ~line 307", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Chat after Undo", "issues": ["After Undo, the earlier Claude-reworded bubble still says 'EIN is now marked as done... 3 of 5' above 'Undone.', which is misleading.", "Claude rewording of router answers adds unrequested content: the incorporation 'already done' reply drifts into milestones, and the pitch-set confirm warns about a Lean Canvas mismatch. That is helpful but long."]},
+      {"screen": "Profile", "issues": ["Still inconsistent: Profile strength 90% vs the AI review's gaps; the headline says 'FinTech' while the venture is EcoFlow water recycling (carried over from iteration_1)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_cofounderbay_api.py", "/app/backend/tests/test_zz_rate_limit.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "caller_key: do not trust the client-supplied first X-Forwarded-For entry; use the ingress-appended (right-most) hop",
+    "ai_generate / tenant patch: return 400 for a body that is not JSON or not an object instead of 500",
+    "Optional: sync FounderTools pitchSlide with searchParams in a useEffect",
+    "Optional: after Undo, mark or replace the stale 'now marked as done' bubble text"
+  ],
+  "critical_code_review_comments": [
+    "server.py plain_text only strips **/__, # headings, */- bullets and inline code. Single *italic*, numbered-list markdown and [link](url) pass through. This is acceptable given the system prompt also asks for plain text.",
+    "The rate limiter runs before body validation, so invalid calls still use up the bucket. That is fine, and useful for testing without spending on the LLM."
+  ],
+  "updated_files": ["/app/backend/tests/test_cofounderbay_api.py", "/app/backend/tests/test_zz_rate_limit.py"],
+  "success_rate": {"backend": "96% (27/28)", "frontend": "100% of the requested fixes"},
+  "seed_data_creation": "Tenant t1 branding.primaryColor set to #111111 by the test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "pytest.ini adds -n (xdist). Run with '-n 0'. Run test_zz_rate_limit.py ALONE and LAST: it exhausts this IP's 60 s AI bucket, so wait 60 s before other AI tests. The chat send button is replaced by Stop while 'Studio is answering…', so clicking assistant-send at that moment aborts the reply. Wait for the placeholder to drop 'answering' (confirm also triggers a Claude rewording of about 3 s). Use [data-turn-role=assistant] to read bubbles. 'Open this slide' is a <button>, not an <a>. The ledger is on /assistant at [data-testid=ai-ledger-counts]."
+}

@@ -1,0 +1,552 @@
+{
+ "users": [
+  {
+   "id": "1",
+   "fullName": "Alex Rivera",
+   "email": "alex@cofounderbay.com",
+   "roles": [
+    "Founder"
+   ],
+   "profileStatus": "Published",
+   "verificationStatus": "Verified",
+   "profileCompletionScore": 95,
+   "emailVerified": true,
+   "accountStatus": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "2",
+   "fullName": "Sarah Chen",
+   "email": "sarah@cofounderbay.com",
+   "roles": [
+    "Co-Founder Candidate"
+   ],
+   "profileStatus": "Published",
+   "verificationStatus": "Verified",
+   "profileCompletionScore": 88,
+   "emailVerified": true,
+   "accountStatus": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "3",
+   "fullName": "Marcus Thorne",
+   "email": "marcus@cofounderbay.com",
+   "roles": [
+    "Mentor"
+   ],
+   "profileStatus": "Published",
+   "verificationStatus": "Verified",
+   "profileCompletionScore": 100,
+   "emailVerified": true,
+   "accountStatus": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "4",
+   "fullName": "Elena Rodriguez",
+   "email": "elena@cofounderbay.com",
+   "roles": [
+    "Co-Founder Candidate"
+   ],
+   "profileStatus": "Published",
+   "verificationStatus": "Verified",
+   "profileCompletionScore": 94,
+   "emailVerified": false,
+   "accountStatus": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "5",
+   "fullName": "David Park",
+   "email": "david@cofounderbay.com",
+   "roles": [
+    "Founder"
+   ],
+   "profileStatus": "Published",
+   "verificationStatus": "Verified",
+   "profileCompletionScore": 89,
+   "emailVerified": true,
+   "accountStatus": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z"
+  }
+ ],
+ "profiles": [
+  {
+   "userId": "1",
+   "headline": "Serial Entrepreneur | Building Future of Fintech",
+   "bio": "Passionate about democratizing finance. Previously built and exited a SaaS platform in the logistics space.",
+   "location": "San Francisco, CA",
+   "country": "USA",
+   "languages": [
+    "English",
+    "Spanish"
+   ],
+   "startupStageInterest": [
+    "Idea",
+    "Seed"
+   ],
+   "commitmentLevel": "Full-time",
+   "availability": "Immediate",
+   "yearsOfExperience": 12,
+   "education": "Stanford MBA",
+   "linkedinUrl": "https://linkedin.com/in/alexrivera",
+   "profileVisibility": "Public",
+   "profilePhoto": "https://picsum.photos/seed/alex/200/200",
+   "interests": [
+    "FinTech",
+    "SaaS",
+    "Web3"
+   ]
+  },
+  {
+   "userId": "2",
+   "headline": "Full-Stack Engineer | AI Enthusiast",
+   "bio": "Former Senior Engineer at Google. Looking to join a mission-driven startup as a technical co-founder.",
+   "location": "Berlin, Germany",
+   "country": "Germany",
+   "languages": [
+    "English",
+    "German",
+    "Mandarin"
+   ],
+   "startupStageInterest": [
+    "Seed",
+    "Series A"
+   ],
+   "commitmentLevel": "Full-time",
+   "availability": "1 month notice",
+   "yearsOfExperience": 8,
+   "education": "MIT CS",
+   "githubUrl": "https://github.com/sarahchen",
+   "profileVisibility": "Public",
+   "profilePhoto": "https://picsum.photos/seed/sarah/200/200",
+   "interests": [
+    "AI",
+    "FinTech",
+    "SaaS"
+   ]
+  },
+  {
+   "userId": "3",
+   "headline": "Growth Expert | 3x Founder",
+   "bio": "Helping early-stage startups scale from 0 to 1. Expert in GTM strategy and product-market fit.",
+   "location": "London, UK",
+   "country": "UK",
+   "languages": [
+    "English"
+   ],
+   "startupStageInterest": [
+    "Pre-seed",
+    "Seed",
+    "Series A"
+   ],
+   "commitmentLevel": "Exploring",
+   "availability": "Flexible",
+   "yearsOfExperience": 20,
+   "education": "Oxford University",
+   "profileVisibility": "Public",
+   "profilePhoto": "https://picsum.photos/seed/marcus/200/200",
+   "interests": [
+    "SaaS",
+    "B2B",
+    "Marketplaces"
+   ]
+  },
+  {
+   "userId": "4",
+   "headline": "UX/UI Designer | Product Strategist",
+   "bio": "Specializing in creating intuitive experiences for complex HealthTech platforms. Looking for a visionary founder.",
+   "location": "Barcelona, Spain",
+   "country": "Spain",
+   "languages": [
+    "English",
+    "Spanish",
+    "Catalan"
+   ],
+   "startupStageInterest": [
+    "Idea",
+    "Seed"
+   ],
+   "commitmentLevel": "Part-time",
+   "availability": "Immediate",
+   "yearsOfExperience": 6,
+   "education": "Design Academy Eindhoven",
+   "profileVisibility": "Public",
+   "profilePhoto": "https://picsum.photos/seed/elena/200/200",
+   "interests": [
+    "HealthTech",
+    "SaaS",
+    "Social Impact"
+   ]
+  },
+  {
+   "userId": "5",
+   "headline": "Backend Architect | CleanTech Advocate",
+   "bio": "Expert in distributed systems and cloud infrastructure. Building tech to solve the climate crisis.",
+   "location": "Seoul, South Korea",
+   "country": "South Korea",
+   "languages": [
+    "English",
+    "Korean"
+   ],
+   "startupStageInterest": [
+    "Seed",
+    "Series A"
+   ],
+   "commitmentLevel": "Full-time",
+   "availability": "2 months notice",
+   "yearsOfExperience": 10,
+   "education": "Seoul National University",
+   "profileVisibility": "Public",
+   "profilePhoto": "https://picsum.photos/seed/david/200/200",
+   "interests": [
+    "CleanTech",
+    "AI",
+    "Infrastructure"
+   ]
+  }
+ ],
+ "skills": [
+  {
+   "id": "s1",
+   "name": "Product Management",
+   "category": "Business"
+  },
+  {
+   "id": "s2",
+   "name": "React",
+   "category": "Technical"
+  },
+  {
+   "id": "s3",
+   "name": "Node.js",
+   "category": "Technical"
+  },
+  {
+   "id": "s4",
+   "name": "Growth Hacking",
+   "category": "Marketing"
+  },
+  {
+   "id": "s5",
+   "name": "Fundraising",
+   "category": "Business"
+  },
+  {
+   "id": "s6",
+   "name": "AI/ML",
+   "category": "Technical"
+  },
+  {
+   "id": "s7",
+   "name": "UX/UI Design",
+   "category": "Design"
+  },
+  {
+   "id": "s8",
+   "name": "Python",
+   "category": "Technical"
+  },
+  {
+   "id": "s9",
+   "name": "Cloud Architecture",
+   "category": "Technical"
+  }
+ ],
+ "userSkills": [
+  {
+   "userId": "1",
+   "skillId": "s1",
+   "proficiency": 5,
+   "yearsOfExperience": 10,
+   "priorityLevel": 1
+  },
+  {
+   "userId": "1",
+   "skillId": "s5",
+   "proficiency": 4,
+   "yearsOfExperience": 8,
+   "priorityLevel": 2
+  },
+  {
+   "userId": "2",
+   "skillId": "s2",
+   "proficiency": 5,
+   "yearsOfExperience": 7,
+   "priorityLevel": 1
+  },
+  {
+   "userId": "2",
+   "skillId": "s3",
+   "proficiency": 5,
+   "yearsOfExperience": 6,
+   "priorityLevel": 2
+  },
+  {
+   "userId": "2",
+   "skillId": "s6",
+   "proficiency": 4,
+   "yearsOfExperience": 3,
+   "priorityLevel": 3
+  },
+  {
+   "userId": "4",
+   "skillId": "s7",
+   "proficiency": 5,
+   "yearsOfExperience": 6,
+   "priorityLevel": 1
+  },
+  {
+   "userId": "4",
+   "skillId": "s1",
+   "proficiency": 3,
+   "yearsOfExperience": 4,
+   "priorityLevel": 2
+  },
+  {
+   "userId": "5",
+   "skillId": "s8",
+   "proficiency": 5,
+   "yearsOfExperience": 10,
+   "priorityLevel": 1
+  },
+  {
+   "userId": "5",
+   "skillId": "s9",
+   "proficiency": 5,
+   "yearsOfExperience": 8,
+   "priorityLevel": 2
+  }
+ ],
+ "communities": [
+  {
+   "id": "c1",
+   "title": "Fintech Founders",
+   "description": "A space for founders building in the financial technology space.",
+   "category": "Industry",
+   "tags": [
+    "Fintech",
+    "Web3",
+    "Banking"
+   ],
+   "isPublic": true,
+   "ownerId": "1",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "c2",
+   "title": "AI Builders",
+   "description": "Connecting engineers and researchers building the next generation of AI products.",
+   "category": "Technology",
+   "tags": [
+    "AI",
+    "ML",
+    "LLM"
+   ],
+   "isPublic": true,
+   "ownerId": "2",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  }
+ ],
+ "posts": [
+  {
+   "id": "p1",
+   "communityId": "c1",
+   "authorId": "1",
+   "title": "The future of cross-border payments",
+   "body": "What are your thoughts on the impact of CBDCs on traditional banking infrastructure?",
+   "tags": [
+    "Payments",
+    "CBDC"
+   ],
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "reactionsCount": 12,
+   "commentsCount": 5
+  }
+ ],
+ "matchSuggestions": [
+  {
+   "id": "m1",
+   "userA": "1",
+   "userB": "2",
+   "score": 92,
+   "scoreExplanation": "High complementary skills (Business + Technical) and shared interest in Fintech.",
+   "compatibilityDimensions": {
+    "skills": 95,
+    "values": 88,
+    "goals": 90,
+    "availability": 95
+   },
+   "status": "Suggested",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  }
+ ],
+ "tenants": [
+  {
+   "id": "t1",
+   "slug": "default",
+   "name": "CoFounderBay Global",
+   "displayName": "CoFounderBay",
+   "shortDescription": "The global ecosystem for startup builders.",
+   "fullDescription": "CoFounderBay is the world's leading platform for finding co-founders and mentors.",
+   "supportEmail": "support@cofounderbay.com",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z",
+   "branding": {
+    "tenantId": "t1",
+    "logoUrl": "",
+    "primaryColor": "#1c1917",
+    "secondaryColor": "#78716c",
+    "accentColor": "#f5f5f4",
+    "backgroundStyle": "solid"
+   },
+   "content": {
+    "tenantId": "t1",
+    "heroTitle": "Build your startup team with precision.",
+    "heroSubtitle": "CoFounderBay reduces founder risk by connecting you with compatible partners.",
+    "ctaLabel": "Join Platform",
+    "onboardingIntroText": "Welcome to the global network of builders.",
+    "dashboardWelcomeText": "Your profile is {score}% complete. Let's find your partner.",
+    "communityNamingConvention": "Communities",
+    "emailSignature": "The CoFounderBay Team",
+    "isBrandingActive": true
+   }
+  },
+  {
+   "id": "t2",
+   "slug": "techstars",
+   "name": "Techstars Accelerator Network",
+   "displayName": "Techstars Hub",
+   "shortDescription": "Exclusive ecosystem for Techstars founders and alumni.",
+   "fullDescription": "Connect with fellow Techstars founders, mentors, and investors across the global network.",
+   "supportEmail": "help@techstars.com",
+   "websiteUrl": "https://techstars.com",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "updatedAt": "2026-10-29T12:34:13.566Z",
+   "branding": {
+    "tenantId": "t2",
+    "logoUrl": "https://www.techstars.com/assets/techstars-logo.svg",
+    "primaryColor": "#000000",
+    "secondaryColor": "#333333",
+    "accentColor": "#00FFCC",
+    "backgroundStyle": "mesh"
+   },
+   "content": {
+    "tenantId": "t2",
+    "heroTitle": "Accelerate your venture with the Techstars network.",
+    "heroSubtitle": "Exclusive access to the world's best mentors and co-founders for Techstars alumni.",
+    "ctaLabel": "Apply to Network",
+    "onboardingIntroText": "Welcome to the Techstars family. Let's build something great.",
+    "dashboardWelcomeText": "Welcome back, Techstars founder. Your network is waiting.",
+    "communityNamingConvention": "Accelerator Hubs",
+    "emailSignature": "Techstars Network Support",
+    "isBrandingActive": true
+   }
+  }
+ ],
+ "conversations": [
+  {
+   "id": "c1",
+   "participants": [
+    "1",
+    "2"
+   ],
+   "status": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "c2",
+   "participants": [
+    "1",
+    "3"
+   ],
+   "status": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "c3",
+   "participants": [
+    "1",
+    "4"
+   ],
+   "status": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z"
+  },
+  {
+   "id": "c4",
+   "participants": [
+    "1",
+    "a3"
+   ],
+   "status": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "isAI": true
+  },
+  {
+   "id": "c5",
+   "participants": [
+    "1",
+    "a2"
+   ],
+   "status": "Active",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "isAI": true
+  }
+ ],
+ "messages": [
+  {
+   "id": "m1",
+   "conversationId": "c1",
+   "senderId": "2",
+   "body": "Hi Alex! I saw your profile and I'm very interested in the fintech project you're building.",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": true
+  },
+  {
+   "id": "m2",
+   "conversationId": "c1",
+   "senderId": "1",
+   "body": "Thanks Sarah! I'd love to tell you more about it. Are you free for a quick call this week?",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": true
+  },
+  {
+   "id": "m3",
+   "conversationId": "c1",
+   "senderId": "2",
+   "body": "I've reviewed your pitch deck. Let's discuss the market size analysis.",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": true
+  },
+  {
+   "id": "m4",
+   "conversationId": "c1",
+   "senderId": "1",
+   "body": "That sounds great. I've updated the slides with the latest research data.",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": false
+  },
+  {
+   "id": "m5",
+   "conversationId": "c4",
+   "senderId": "a3",
+   "body": "Hello! I'm your AI Startup Advisor. How can I help you refine your startup idea today?",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": true
+  },
+  {
+   "id": "m6",
+   "conversationId": "c5",
+   "senderId": "a2",
+   "body": "Hi! I'm the Pitch Deck Reviewer. Upload your deck or share a slide, and I'll give you feedback on clarity and market appeal.",
+   "createdAt": "2026-10-29T12:34:13.566Z",
+   "readStatus": true
+  }
+ ]
+}

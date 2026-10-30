@@ -1,0 +1,20 @@
+{
+  "name": "CoFounderBay",
+  "short_name": "CoFounderBay",
+  "description": "Find compatible co-founders, mentors and investors to build your startup.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fafaf9",
+  "theme_color": "#1c1917",
+  "categories": ["business", "productivity", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

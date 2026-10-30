@@ -1,0 +1,45 @@
+{
+  "summary": "I tested all 4 features from this round end-to-end, backend and UI. Backend: 37/37 pytest pass, including 11 new due-diligence share tests. Confirm all was broken. The 'Confirm all' and 'Cancel all' buttons never showed up because the store-sync effect in ChatWidget dropped planIds. I fixed this with one line and retested: Confirm all (3), then (2) after confirming one step, applies the rest in order with an Undo on each step. The action history showed Applied 3, and Cancel all showed Cancelled 3. Everything else works as specified: the investor emails (EN, slash command, Greek, the CRM 'Draft email' button and the 'wait for a reply' chip), the overdue alert on the dashboard and in notifications (mark read, mark all read, and it clears when a16z moves to Passed), the due-diligence tracker UI and mini card, sharing with a public page in a fresh browser context (notes only when included, refresh, revoke shows the missing page), and the due-diligence assistant flows with Undo. 'Mark EIN done' still goes to the Legal Hub. I found 3 minor bugs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/dd/shares/{token}", "issue": "Revoking a share that is already revoked returns 200 {revoked:true} again instead of 404. This is harmless."},
+      {"endpoint": "GET /api/dd/shares?clientId=", "issue": "The clientId (deviceId) is the only thing that authorises listing, updating and revoking shares, and the share routes have no rate limit. This is acceptable for demo mode, but note it before real accounts use this."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ChatWidget plan bubble", "issue": "FIXED by the testing agent: the assistant-plan-confirm-all and assistant-plan-cancel-all buttons never rendered. The turns sync effect (around line 114) rebuilds turns from storedTurns and adds back only proposal, resolved, undoUntil, origin, interpretedAs, links and followUps. planIds is not persisted by appendAssistant, so msg.planIds was always undefined. I added `planIds: extra.planIds` to that overlay. The 570 unit tests still pass.", "selector": "[data-testid=assistant-plan-confirm-all]", "priority": "HIGH (fixed)"},
+      {"component": "InvestorPipelineBoard InvestorCard", "issue": "The next-step textarea is uncontrolled (defaultValue). When the assistant changes nextStep (for example the 'Set next step for X to: wait for a reply' chip), the card keeps showing the old text until the page is reloaded. The value is stored correctly. Fix: add key={item.nextStep ?? ''} to the textarea, or make it controlled.", "selector": "[data-testid=investor-card-next-inv_3]", "priority": "MEDIUM"},
+      {"component": "DueDiligenceSharePage", "issue": "One open of the public page adds 2 to the view count. This happens because React StrictMode runs the fetch effect twice under the vite dev server that preview uses (yarn start = vite). It would not happen in a production build, but the preview shows inflated views. Guard the effect with a ref, or count views once per session.", "selector": "[data-testid=dd-public-page]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Overdue alert after drafting the email", "issue": "The 'wait for a reply' follow-up chip changes only nextStep and keeps the past nextDate (2026-10-28). The dashboard and notification alert then still says 'wait for a reply — due 2026-10-28' as overdue. Consider having the chip also set a future date (for example today + 5 days) or clear it.", "affected_selectors": ["[data-testid=daily-nudge-investor-alert]"]}
+    ],
+    "design_issues": [
+      {"screen": "Fundraising tabs", "issues": ["fundraising-open-dd and the tab buttons call setActiveTab without updating ?tab=, so a reload returns to the Tracker tab. Minor."]},
+      {"screen": "Investor email", "issues": ["The round facts string formats the target as '$1500k' (assistantOps.ts:2257) and Claude sometimes copies it ('raising $1500k'). Use '$1.5M'.", "The first a16z draft from the dashboard asked to 'find a time before October 28', a date that had already passed. Do not give the model the overdue nextDate as a future deadline.", "The Greek request produced an English email. That may be intended because the recipient is English-speaking, but confirm it is the intended behaviour."]},
+      {"screen": "Notifications", "issues": ["The Notifications page rows and the mark-read and mark-all buttons have no data-testid attributes."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_dd_shares.py", "/app/backend/tests/test_cofounderbay_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Make the CRM card next-step textarea reflect changes made outside the card (key or controlled value).",
+    "Have the 'wait for a reply' follow-up also move nextDate into the future (or clear it), so the overdue alert clears after the follow-up is set.",
+    "Guard against double-counting views on DueDiligenceSharePage (StrictMode double effect).",
+    "Format the round target as $1.5M in the email facts. Do not present an overdue date as an upcoming deadline in the email.",
+    "Optional: sync the Fundraising activeTab to ?tab=. Add data-testids to the Notifications rows and actions."
+  ],
+  "critical_code_review_comments": [
+    "ChatWidget.tsx: any new Bubble field that is not persisted (like planIds) must be added to the overlay merge in the storedTurns sync effect, or it is lost on the next render. This was the root cause of the Confirm all bug.",
+    "confirmAll awaits each confirmProposal in turn and skips steps that are already resolved, so the order is correct. If one step fails, the loop continues to the next step. That is reasonable, but consider stopping and telling the user.",
+    "investorOps.overdueInvestors compares a UTC ISO date (toISOString) while the cards use today(). Near midnight in non-UTC timezones these can disagree.",
+    "ChatWidget.tsx (1075 lines) and Fundraising.tsx (1544 lines) are well over the 700-line guideline."
+  ],
+  "updated_files": ["/app/frontend/src/components/ChatWidget.tsx (added planIds to the turns overlay merge)", "/app/backend/tests/test_dd_shares.py (new)"],
+  "success_rate": {"backend": "100% (37/37)", "frontend": "about 93% (Confirm all failed before the fix and passes after it; 3 minor bugs remain)"},
+  "seed_data_creation": "Created a few TEST_ dd_shares documents (backend tests revoke them) and some real shares from UI runs, which were revoked. No other seed data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation run starts with fresh demo localStorage and a new cfb.deviceId, so the share list starts empty. The DD mini card (fundraising-dd-mini-count) is inside the collapsed 'Round tools' section on the Tracker tab, so click 'Round tools' first. The a16z investorId is inv_3. Plan prompt: 'Set the solution slide to ...; mark EIN done; move Naval to Term Sheet'. Wait until the assistant-input placeholder no longer contains 'answer'. The browser clock is 2026-10-29. The Notifications page has no testids: use the button aria-label 'Mark as read' and the role button 'Mark all as read'."
+}

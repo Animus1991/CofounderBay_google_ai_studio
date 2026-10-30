@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only retest of the 4 fixes from iteration_3, plus a quick regression. Demo mode, 1920x1080, Playwright, cfb.* localStorage cleared between attempts. All 4 fixes PASS. Fix 1: in the 3-step plan, confirming step 1 replaced its bubble with the plain result 'Saved the Solution slide (in-progress). Founder Tools → Pitch shows the same text.' Confirming step 2 gave 'Obtain Employer Identification Number (EIN) is now done. Checklist 3/5'. No AI rewording happened, there was no 'I don't see Naval', and step 3 stayed pending as its own bubble. Fix 2: 'Write my problem and market slides for EcoFlow' gave 'Plan: 2 changes' (Problem + Market Size set_pitch_slide) 3 out of 3 times. 'Draft the problem slide and the market slide of my pitch deck for EcoFlow' did the same 3 out of 3 times. Overall 6/6 = 100%. The slide text is EcoFlow-specific and has no invented numbers beyond the 40% from the context. Confirming both steps put the text on Founder Tools Pitch: slide 2 Problem and slide 4 Market Size. Fix 3: /profile shows 'Co-founder & CTO · EcoFlow Systems' and no TechFlow anywhere. Recent activity shows 'Updated venture \"EcoFlow Systems\"'. Endorsements are IoT and Hardware Prototyping, with no ML or Growth Hacking. The facts line shows 'Athens, Greece · CleanTech · Pre-seed · Full-time'. The insight card header shows 'Studio check 49%', which matches profile-insight-summary 49% and the 'Audit my studio' result of 49%, and the 'Profile strength' label is gone. The Insights feed says 'You reached 68% Readiness Score'. The demo Problem slide is now one sentence with no repeats. Fix 4: at 1920px the CRM board scrollWidth equals clientWidth (1576), so all 7 columns are visible, and Passed (Bessemer) sits at x 1670-1888. The summary reads '5 tracked · 4 active · 1 overdue next step'. Regression PASS: Daily nudge is visible on /dashboard ('picked by AI' plus a why sentence). Adding Lowercarbon at Contacted and moving Naval to Term Sheet through the assistant both show on the CRM board, along with the history line 'Meeting → Term Sheet'. A single 'Mark EIN done' gives 1 proposal; after Confirm and then Undo, /legal EIN has no line-through. Action history on /assistant shows Applied 3 / Undone 1 / Cancelled 0 / Failed 0, which is correct.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ChatWidget run() while polishReply is running", "issue": "After a single (non-plan) proposal is confirmed, polishReply sets isTyping=true for about 5-15 s. During that time, any prompt sent through askAssistant/OPEN_ASSISTANT (for example a CRM card's 'Ask AI', a Daily nudge 'Do', or a page button) is silently dropped, because run() does `if (!text || isTyping) return`. There is no user bubble and no feedback. Reproduced once: 'Move Naval to Term Sheet' was sent right after a Lowercarbon confirm and was lost. Suggestion: queue the request, or let a new request cancel the polish.", "selector": "[data-testid=assistant-input]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fundraising CRM board", "issues": ["Next-step inputs on the cards cut off longer text ('Send the per-building cost mo…', 'Share the data room with the p…'). Consider a textarea or a title tooltip.", "The add form uses the browser's native date input (mm/dd/yyyy) instead of a styled date picker (minor)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Low) Do not silently drop assistant requests sent while polishReply is running. Queue them or cancel the polish.",
+    "(Low/optional) Make long CRM next-step text readable on the cards."
+  ],
+  "critical_code_review_comments": [
+    "ChatWidget.tsx:327 now skips polish for ids that start with 'a-step'. This is correct, because the newId prefix is 'a-step{n}-'.",
+    "engine.ts isDraftRequest excludes 'slide to/as' and ':' patterns, so explicit set commands still go through the router. Drafting goes straight to the model, and the offline fallback still returns the router status. This looks correct.",
+    "ChatWidget.tsx is about 1019 lines, which is over the 700-line guideline. Consider splitting the proposal/plan handling into a hook."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested checks (4/4 fixes + 5/5 regression items)"},
+  "seed_data_creation": "None (demo defaults; localStorage only)",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation call starts with fresh demo localStorage. Open the assistant and send a prompt with window.dispatchEvent(new CustomEvent('OPEN_ASSISTANT',{detail:{prompt}})). Wait until the assistant-input placeholder no longer contains 'answering', and wait again after each Confirm, because polish keeps isTyping set and new prompts are dropped. /audit is not a route (404); the audit is the 'Audit my studio' assistant command, or the AI Studio (/assistant) button. Action history lives on /assistant ([data-testid=ai-ledger-counts]). CRM is at /fundraising?tab=crm. Pitch deep link: /founder-tools?tab=pitch&slide=problem|market. The browser clock is 2026-10-29."
+}

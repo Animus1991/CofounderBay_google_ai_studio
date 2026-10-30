@@ -1,0 +1,329 @@
+{
+  "entities": {
+    "Onboarding": {
+      "title": "Onboarding",
+      "description": "Temporary storage for onboarding progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "step": { "type": "integer" },
+        "data": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "updatedAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Core user account information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "roles": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "profileStatus": { "type": "string", "enum": ["Draft", "Published", "Archived"] },
+        "verificationStatus": { "type": "string", "enum": ["Unverified", "Pending", "Verified"] },
+        "profileCompletionScore": { "type": "integer", "default": 0 },
+        "accountStatus": { "type": "string", "enum": ["Active", "Suspended", "Deactivated"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fullName", "email", "roles"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "Detailed user profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "headline": { "type": "string" },
+        "bio": { "type": "string" },
+        "location": { "type": "string" },
+        "country": { "type": "string" },
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "startupStageInterest": { "type": "array", "items": { "type": "string" } },
+        "commitmentLevel": { "type": "string", "enum": ["Part-time", "Full-time", "Exploring"] },
+        "availability": { "type": "string" },
+        "yearsOfExperience": { "type": "integer" },
+        "education": { "type": "string" },
+        "linkedinUrl": { "type": "string", "format": "uri" },
+        "githubUrl": { "type": "string", "format": "uri" },
+        "portfolioUrl": { "type": "string", "format": "uri" },
+        "profileVisibility": { "type": "string", "enum": ["Public", "Private", "Connections Only"], "default": "Public" },
+        "profilePhoto": { "type": "string", "format": "uri" }
+      },
+      "required": ["userId"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "description": "A skill that can be associated with a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name", "category"]
+    },
+    "UserSkill": {
+      "title": "UserSkill",
+      "description": "Association between a user and a skill",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "skillId": { "type": "string" },
+        "proficiency": { "type": "integer" },
+        "yearsOfExperience": { "type": "integer" },
+        "priorityLevel": { "type": "integer" }
+      },
+      "required": ["userId", "skillId"]
+    },
+    "MatchSuggestion": {
+      "title": "MatchSuggestion",
+      "description": "A suggested match between two users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userA": { "type": "string" },
+        "userB": { "type": "string" },
+        "score": { "type": "integer" },
+        "scoreExplanation": { "type": "string" },
+        "status": { "type": "string", "enum": ["Suggested", "Ignored", "Connected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userA", "userB", "score"]
+    },
+    "ConnectionRequest": {
+      "title": "ConnectionRequest",
+      "description": "A request to connect between two users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "requestType": { "type": "string" },
+        "note": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Accepted", "Rejected", "Expired"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "senderId", "receiverId", "status"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A private conversation between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "participants"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message within a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "body": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "readStatus": { "type": "boolean" }
+      },
+      "required": ["id", "conversationId", "senderId", "body"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "A thematic community for startup ecosystem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isPublic": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "ownerId"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A post within a community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "communityId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reactionsCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" }
+      },
+      "required": ["id", "communityId", "authorId", "title", "body"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "A milestone for tracking progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "targetDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Planned", "In Progress", "Completed", "Delayed"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "title", "status"]
+    },
+    "XPEvent": {
+      "title": "XPEvent",
+      "description": "An event that awards XP to a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "xpAmount": { "type": "integer" },
+        "weightMultiplier": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "userId", "eventType", "xpAmount", "createdAt"]
+    },
+    "Badge": {
+      "title": "Badge",
+      "description": "A badge that can be awarded to a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "criteria": { "type": "object" },
+        "icon": { "type": "string" },
+        "rarity": { "type": "string", "enum": ["Common", "Uncommon", "Rare", "Epic", "Legendary"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "criteria"]
+    },
+    "UserBadge": {
+      "title": "UserBadge",
+      "description": "Association between a user and a badge",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "badgeId": { "type": "string" },
+        "awardedAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "userId", "badgeId", "awardedAt"]
+    },
+    "ReadinessScore": {
+      "title": "ReadinessScore",
+      "description": "Startup readiness score for a workspace/team",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "score": { "type": "integer" },
+        "dimensionScores": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "score", "updatedAt"]
+    },
+    "Streak": {
+      "title": "Streak",
+      "description": "User activity streak tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "currentStreak": { "type": "integer" },
+        "longestStreak": { "type": "integer" },
+        "lastActiveAt": { "type": "string", "format": "date-time" },
+        "streakType": { "type": "string" }
+      },
+      "required": ["id", "userId", "currentStreak", "lastActiveAt"]
+    },
+    "ContributionScore": {
+      "title": "ContributionScore",
+      "description": "Individual contribution score within a workspace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "score": { "type": "integer" },
+        "breakdown": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "workspaceId", "score", "updatedAt"]
+    },
+    "TeamMomentum": {
+      "title": "TeamMomentum",
+      "description": "Team velocity and momentum metrics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "score": { "type": "integer" },
+        "velocity": { "type": "number" },
+        "recentActivityScore": { "type": "integer" },
+        "collaborationDensity": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "score", "updatedAt"]
+    },
+    "MentorFeedbackMetric": {
+      "title": "MentorFeedbackMetric",
+      "description": "Metrics for mentor feedback loops",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "feedbackCount": { "type": "integer" },
+        "appliedFeedbackRate": { "type": "number" },
+        "avgResponseTime": { "type": "number" },
+        "improvementScore": { "type": "number" },
+        "lastFeedbackAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workspaceId", "feedbackCount", "appliedFeedbackRate"]
+    }
+  },
+  "firestore": {
+    "/onboarding/{userId}": { "schema": "Onboarding", "description": "Temporary storage for onboarding progress" },
+    "/users/{userId}": { "schema": "User", "description": "User account documents" },
+    "/profiles/{userId}": { "schema": "Profile", "description": "User profile documents" },
+    "/skills/{skillId}": { "schema": "Skill", "description": "Global skills taxonomy" },
+    "/userSkills/{userSkillId}": { "schema": "UserSkill", "description": "User-skill associations" },
+    "/matchSuggestions/{matchId}": { "schema": "MatchSuggestion", "description": "Match suggestions" },
+    "/connectionRequests/{requestId}": { "schema": "ConnectionRequest", "description": "Connection requests" },
+    "/conversations/{conversationId}": { "schema": "Conversation", "description": "Conversations" },
+    "/conversations/{conversationId}/messages/{messageId}": { "schema": "Message", "description": "Messages in a conversation" },
+    "/communities/{communityId}": { "schema": "Community", "description": "Communities" },
+    "/communities/{communityId}/posts/{postId}": { "schema": "Post", "description": "Community posts" },
+    "/milestones/{milestoneId}": { "schema": "Milestone", "description": "Milestones" },
+    "/xpEvents/{eventId}": { "schema": "XPEvent", "description": "XP events" },
+    "/badges/{badgeId}": { "schema": "Badge", "description": "Global badges" },
+    "/userBadges/{userBadgeId}": { "schema": "UserBadge", "description": "User-badge associations" },
+    "/readinessScores/{scoreId}": { "schema": "ReadinessScore", "description": "Workspace readiness scores" },
+    "/streaks/{streakId}": { "schema": "Streak", "description": "User streaks" },
+    "/contributionScores/{scoreId}": { "schema": "ContributionScore", "description": "User contribution scores" },
+    "/teamMomentum/{momentumId}": { "schema": "TeamMomentum", "description": "Team momentum metrics" },
+    "/mentorFeedbackMetrics/{metricId}": { "schema": "MentorFeedbackMetric", "description": "Mentor feedback metrics" }
+  }
+}

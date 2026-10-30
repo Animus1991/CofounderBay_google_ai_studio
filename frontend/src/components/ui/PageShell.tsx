@@ -1,0 +1,121 @@
+import React from 'react';
+import { cn } from '../../lib/utils';
+import { Both } from '../../lib/both';
+import PinToggle from './PinToggle';
+
+interface PageShellProps {
+ title?: string;
+ description?: string;
+ actions?: React.ReactNode;
+ children: React.ReactNode;
+ maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl' | 'full';
+ noPadding?: boolean;
+ className?: string;
+ sample?: boolean;
+}
+
+/** The shared demo pill — identical markup the Dashboard header used. */
+export function SamplePill() {
+ return (
+  <span title="Sample data — nothing is saved to a server" className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-[0.3638rem] leading-snug">
+   <Both en="Demo" el="Demo" />
+  </span>
+ );
+}
+
+const maxWidthClass = {
+ sm: 'max-w-sm',
+ md: 'max-w-md',
+ lg: 'max-w-lg',
+ xl: 'max-w-xl',
+ '2xl': 'max-w-2xl',
+ '7xl': 'max-w-7xl',
+ full: 'max-w-full',
+};
+
+export default function PageShell({
+ title,
+ description,
+ actions,
+ children,
+ maxWidth = 'full',
+ noPadding = false,
+ className,
+ sample = false,
+}: PageShellProps) {
+ return (
+  <div className={cn(
+   'min-h-full w-full min-w-0',
+   !noPadding && 'px-3.5 sm:px-6 lg:px-8 py-[1.2125rem] sm:py-[1.455rem]',
+   className
+  )}>
+   <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
+    {(title || actions || sample) && (
+     <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-[1.2125rem]">
+      <div className="min-w-0 flex-1 basis-64">
+       {title && (
+        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight break-words leading-snug">{title}</h1>
+       )}
+       {description && (
+        <p className="text-sm text-stone-500 mt-1 max-w-2xl leading-relaxed">{description}</p>
+       )}
+      </div>
+      {(actions || sample) && (
+       <div data-ui="page-actions" className="flex max-w-full flex-wrap items-center gap-2 min-w-0">
+        {sample && <SamplePill />}
+        <PinToggle />
+        {actions}
+       </div>
+      )}
+     </header>
+    )}
+    {children}
+   </div>
+  </div>
+ );
+}
+
+// Section heading used within pages
+export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+ return (
+  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+   <h2 className="text-sm font-semibold text-stone-500">{children}</h2>
+   {action && <div>{action}</div>}
+  </div>
+ );
+}
+
+// Stat card used in dashboards
+interface StatCardProps {
+ label: string;
+ value: string | number;
+ sub?: string;
+ icon?: React.ElementType;
+ trend?: 'up' | 'down' | 'neutral';
+ trendValue?: string;
+}
+
+export function StatCard({ label, value, sub, icon: Icon, trend, trendValue }: StatCardProps) {
+ return (
+  <div className="bg-white rounded-2xl border border-stone-100 px-5 py-[1.2125rem]">
+   <div className="flex items-start justify-between">
+    <p className="text-xs font-medium text-stone-400 tracking-wider">{label}</p>
+    {Icon && <Icon className="w-4 h-4 text-stone-300" />}
+   </div>
+   <p className="text-lg font-semibold text-stone-900 mt-2 tracking-tight tabular-nums">{value}</p>
+   <div className="flex items-center gap-2 mt-1">
+    {sub && <p className="text-xs text-stone-400">{sub}</p>}
+    {trendValue && (
+     <span className={cn(
+      'text-xs font-medium',
+      trend === 'up' && 'text-emerald-600',
+      trend === 'down' && 'text-red-500',
+      trend === 'neutral' && 'text-stone-400',
+     )}>
+      {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
+     </span>
+    )}
+   </div>
+  </div>
+ );
+}

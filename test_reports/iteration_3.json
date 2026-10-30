@@ -1,0 +1,45 @@
+{
+  "summary": "Frontend-only test (demo mode, 1920x1080, Playwright, a fresh localStorage each run) of Investor CRM, CRM via the assistant, multi-step plans, the Daily Nudge, demo coherence and regressions. What passed: CRM (7 columns, the demo EcoFlow investors in the right stages, a red Overdue date on a16z, summary '5 tracked · 4 active · 1 overdue next steps', add/empty/duplicate/forward/back/history line/next-step blur persists after reload/remove, View Full CRM -> ?tab=crm, the Tracker table matches). Assistant CRM: /pipeline grouped by stage; adding Lowercarbon at Contacted, then Confirm, then Undo works; moving Naval to Term Sheet works; /investor next Sequoia sets the step and the date; the Greek move works. Multi-step plan: 'Plan: 3 changes' plus 3 'Step i/3 ·' bubbles with their own Confirm/Cancel. Confirming only step 2 changed only EIN (line-through in /legal); cancelling step 3 left Naval in Meeting; undoing step 1 reverted only the Solution slide and EIN stayed done; the ledger counted each step on its own. Daily nudge: 'Today's step · Need cards', 'picked by AI', a why sentence; Do opens the assistant with 'Draft a need card for a co-founder' and gives a proposal; Done shows 'Done for today' and stays after reload. Coherence: the headline and bio say EcoFlow; the insight card shows Profile 100% / Venture 73% / Fundraising 48%; 'Studio check: 49%' equals the /audit 49%; readiness is 68 on Profile, Founder Tools and the Insights KPI. Regressions: /audit, the single 'Mark EIN done' proposal, the AI profile review (EcoFlow-specific, no **) and the pitch deep link slide=problem all pass. Problems found: (1) the Claude wording after a confirmed plan step talks about the whole multi-change message and gives false statements; (2) the free-form multi-change request gives a plan only some of the time; (3) some demo story parts still contradict EcoFlow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ChatWidget confirmProposal -> polishReply (plan steps)", "issue": "After you confirm one plan step, the Claude rewording uses the ORIGINAL multi-change message as 'The founder said'. It then comments on the other steps with false statements. Seen: 'Moving Naval to Term Sheet: not done yet. I don't see Naval in the information I have, so please check that this investor is in your pipeline' (Naval IS in the pipeline). Another time: 'I don't have results yet for the other two requests: Setting the solution slide…' when step 1 had already been confirmed. RCA: ChatWidget.tsx line 327 takes userSaid = the last user turn before the bubble, which is the whole plan message.", "selector": "[data-turn-role=assistant]", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Free-form multi-change via Claude", "issue": "Flaky. 'Write my problem and market slides for EcoFlow' in a fresh session was sent to the read-only 'Startup Builder progress' tool, with no plan and no proposal. A second try in another session gave 'Plan: 2 changes' with 2 good EcoFlow steps (roughly 50% success over 2 tries). 'Draft the problem slide and the market slide of my pitch deck for EcoFlow' gave only the read-only pitch status (6/8) and no proposal.", "affected_selectors": ["[data-testid=assistant-proposal-confirm]"]}
+    ],
+    "design_issues": [
+      {"screen": "Demo coherence", "issues": [
+        "Profile Experience still says 'Founder & CEO, TechFlow AI — Building the future of automated logistics using computer vision' (ProfilePage.tsx:892). Recent activity says 'Updated venture \"TechFlow AI\"' (ProfilePage.tsx:147). Both contradict the EcoFlow story.",
+        "The Insights activity feed says 'You reached 85% Readiness Score' (Insights.tsx:185), but readiness is 68 everywhere else.",
+        "Industry 'CleanTech' is in demoProfile but is not shown anywhere on /profile own.",
+        "The AI Profile Insight card shows 'Profile strength 90%' right next to 'Profile 100%': two different numbers for the same idea.",
+        "Endorsements are for Machine Learning and Growth Hacking, which do not fit a water-tech IoT founder (minor).",
+        "The demo Problem slide text repeats itself ('40% of it could be reused… grey water they could reuse… Up to 40%… could be reused').",
+        "Founder Tools Readiness Index shows the label 'Prototype' next to '68 / 100', which is unclear."
+      ]},
+      {"screen": "Fundraising CRM board", "issues": ["At 1920px only 6 of the 7 columns fit: Passed (with Bessemer) is off-screen and needs a horizontal scroll that is not obvious. Consider narrower columns or a scroll hint.", "Summary grammar: '1 overdue next steps' (singular/plural)."]},
+      {"screen": "Assistant (Greek command)", "issues": ["'Μετακίνησε Naval Ravikant σε Term Sheet' works, but the proposal and the reply are in English. That is fine while the UI language is EN; check this is intended."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In ChatWidget.confirmProposal, for plan step bubbles, pass the step's proposal summary (not the original multi-change message) to polishReply, or skip polishing for plan steps, so Claude does not comment on other steps or deny data that exists.",
+    "Make the free-form multi-change routing reliable: 'Write my problem and market slides…' and 'Draft the problem slide and the market slide…' should give a plan (pitch-set steps), not the read-only builder or pitch status.",
+    "Finish the EcoFlow demo story: replace the TechFlow AI experience and activity entries, change the Insights '85% Readiness' feed item to 68, show Industry CleanTech on the profile, and line up 'Profile strength 90%' with the 'Profile 100%' area.",
+    "Optional: make the CRM board fit 7 columns or add a scroll hint; fix the '1 overdue next steps' plural."
+  ],
+  "critical_code_review_comments": [
+    "ChatWidget.tsx is about 1017 lines. Split it into modules (proposal handling, plan rendering, polish).",
+    "DailyNudge and InvestorPipelineBoard use the UTC date (toISOString) for 'today', so overdue and nudge-per-day flip at UTC midnight, not local midnight.",
+    "DailyNudge: if the stored area is no longer a gap (it was fixed), row falls back to studioPick and still shows the old 'why' text for a different area.",
+    "InvestorCard next-step input uses defaultValue. After an assistant update (e.g. /investor next) the input value refreshes only because the component re-renders with a new key, so check it does not show stale text without a remount."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "about 90% (all listed feature checks pass except the plan-step wording bug, the flaky free-form plan and the demo coherence leftovers)"},
+  "seed_data_creation": "None. A test card TEST_Fund Alpha was added and then removed. Each browser run starts with fresh localStorage.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Each browser_automation call is a new context with empty localStorage (demo defaults), so do confirm-then-verify in ONE script. Navigate with history.pushState + popstate. Wait until the assistant-input placeholder no longer contains 'answering'. The round lives in localStorage only after a first write (there is no key on a fresh load). Check EIN done in /legal through the 'line-through' class on the 'Obtain Employer Identification Number (EIN)' text. Plan step Confirm buttons are indexed in order; once one is resolved, its Confirm button is removed, so the indexes shift. Undo buttons hide 60 s after a confirm. The browser clock reads 2026-10-29.",
+  "rca of the issue": "Plan-step wording: confirmProposal (ChatWidget.tsx ~l.326-328) finds the last user turn before the step bubble, which is the full 'A; B; C' plan message, and passes it to polishReply. Claude then restates the result as if it answers the whole request, says the other steps are not done and makes up missing data. Repro: in /assistant send 'Set the solution slide to An IoT bio-filter that reuses grey water; mark EIN done; move Naval to Term Sheet', then confirm Step 2 only; the reworded bubble says Naval is not in the pipeline. Fix: polish with the step summary, or do not polish plan steps."
+}
