@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Sparkles, Undo2 } from 'lucide-react';
+import { ArrowRight, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Undo2 } from 'lucide-react';
 import PageShell from '../components/ui/PageShell';
 import ChatWidget from '../components/ChatWidget';
 import { AiActionLedger } from '../components/AiActionLedger';
@@ -111,9 +111,8 @@ export default function AssistantPage() {
               type="button"
               data-testid="assistant-run-studio-check"
               onClick={() => askAssistant('/audit')}
-              className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
+              className="inline-flex min-h-9 w-full items-center justify-center rounded-xl bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
             >
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               {t('Run a studio check', 'Έλεγχος studio')}
             </button>
             <p className="text-xs text-stone-500">
@@ -126,7 +125,6 @@ export default function AssistantPage() {
           <section id="capabilities" className="rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-stone-900">{t('What I can do', 'Τι μπορώ να κάνω')}</h2>
-              <Sparkles className="h-4 w-4 text-stone-300" aria-hidden="true" />
             </div>
             <label className="flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3">
               <Search className="h-3.5 w-3.5 text-stone-400 shrink-0" aria-hidden="true" />

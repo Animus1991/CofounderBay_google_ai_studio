@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bot, Check, ChevronRight, Copy, Maximize2, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { Bot, Check, ChevronRight, Copy, Maximize2, MessageSquare, Minimize2, Send, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { SendEmailModal } from './SendEmailModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -544,9 +544,6 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       <SendEmailModal open={emailDraft !== null} onClose={() => setEmailDraft(null)} draft={emailDraft ?? ''} />
       <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-2xl')}>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4" />
-          </div>
           <div className="min-w-0">
             <h3 className="text-xs font-medium truncate">
               {agent ? bothText(agent.name, agent.nameEl ?? agent.name) : <Both en="Assistant" el="Βοηθός" />}
@@ -979,9 +976,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                       key={control.id}
                       type="button"
                       onClick={() => control.run()}
-                      className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center gap-1"
+                      className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center"
                     >
-                      <Sparkles className="w-3 h-3 text-stone-400" />
                       {bothText(control.en, control.el)}
                     </button>
                   ))}
@@ -1055,9 +1051,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             onClick={() => setIsMinimized(false)}
-            className="h-12 px-4 bg-white border border-stone-200 rounded-2xl shadow-sm flex items-center gap-3 hover:bg-stone-50"
+            className="h-12 px-4 bg-white border border-stone-200 rounded-2xl shadow-sm flex items-center hover:bg-stone-50"
           >
-            <Sparkles className="w-4 h-4 text-stone-900" />
             <span className="text-xs font-medium text-stone-900"><Both en="Assistant" el="Βοηθός" /></span>
           </motion.button>
         )}
