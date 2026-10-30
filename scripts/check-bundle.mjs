@@ -4,14 +4,16 @@
  * grows past the budget. Run after `vite build` (CI does).
  *
  * - entry: the main chunk (index-*.js) — 1,531 KB before route splitting,
- *   ~683 KB with the round-2 assistant tools; the budget leaves room for normal growth, not for
- *   re-importing a page statically.
+ *   683 KB after round 2, 747 KB once the other agent's tools were merged, and
+ *   ~488 KB since the assistant panel, the operator and the daily step load as
+ *   their own chunks. The budget leaves room for normal growth, not for
+ *   importing the assistant (or a page) statically into the app frame again.
  * - any single chunk: no lazy page or vendor chunk over the chunk budget.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
-const BUDGET = { entryKb: 760, chunkKb: 1100 };
+const BUDGET = { entryKb: 560, chunkKb: 1100 };
 const dir = path.resolve('dist/assets');
 if (!fs.existsSync(dir)) {
   console.error('check-bundle: dist/assets not found — run `npm run build` first.');

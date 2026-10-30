@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetAllLists } from '../lib/localLists';
-import { localSpecialistReply } from './MessagingContext';
+import { localSpecialistReply } from '../lib/specialistReply';
 
 const demo = {
   fullName: 'Demo User',

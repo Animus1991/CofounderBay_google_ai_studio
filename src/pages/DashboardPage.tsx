@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -41,7 +41,9 @@ import { useNotificationFeed } from '../lib/notificationFeed';
 import { useLanguage, useT } from '../lib/language';
 import { useUIStore } from '../stores/useUIStore';
 import NextMove from '../components/ui/NextMove';
-import { DailyNudge } from '../components/DailyNudge';
+
+// Today's step reads the studio check (services/assistantOps): its own chunk, below the fold.
+const DailyNudge = lazy(() => import('../components/DailyNudge').then((module) => ({ default: module.DailyNudge })));
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import RelTime from '../components/ui/RelTime';
@@ -666,7 +668,9 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* One area a day from the studio check, picked by the AI model when it is reachable. */}
-        <DailyNudge />
+        <Suspense fallback={null}>
+          <DailyNudge />
+        </Suspense>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">

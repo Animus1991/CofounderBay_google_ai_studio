@@ -74,7 +74,7 @@ import { readAssistantPrefs, writeAssistantPrefs, type AssistantPrefs } from '..
 import { topPages, unvisited } from '../lib/usage';
 import { readUxPrefs, writeUxPrefs, pinFavorite } from '../lib/personalization';
 import { navLabel, NAV_PATHS } from '../lib/navMap';
-import { assistantPages } from '../lib/pageRegistry';
+import { assistantPages, pageContext } from '../lib/pageRegistry';
 import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notificationFeed';
 import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
@@ -299,14 +299,8 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/help', en: 'What this assistant can change', el: 'Τι μπορεί να αλλάξει αυτός ο βοηθός' },
 ];
 
-export function pageContext(pathname: string): { href: string; en: string; el: string } {
-  const path = (pathname.split('?')[0] || '/dashboard').replace(/\/+$/, '') || '/dashboard';
-  const exact = ASSISTANT_PAGES.find((page) => page.href === path);
-  if (exact) return { href: exact.href, en: exact.en, el: exact.el };
-  const nested = ASSISTANT_PAGES.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
-  if (nested) return { href: nested.href, en: nested.en, el: nested.el };
-  return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
-}
+/** Re-exported from the page registry so existing imports keep working. */
+export { pageContext };
 
 type KnowledgeCard = { keys: string[]; href: string; en: string; el: string; /** True when the card describes demo-only sample content. */ demo?: boolean };
 

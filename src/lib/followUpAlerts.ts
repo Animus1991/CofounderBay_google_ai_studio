@@ -1,7 +1,9 @@
 /**
  * The overdue alert: when an investor follow-up slips past its day, the
- * founder is told once — a toast on the next visit and an entry in
- * Notifications — not on every page load.
+ * founder is told once — a toast on the next visit — not on every page load.
+ * Notifications lists it too, as a live entry (lib/notificationFeed → derived)
+ * that clears itself once the follow-up is done or re-dated, so it is not also
+ * written to the activity log.
  *
  * "Once" is per investor and due day: moving the date and missing it again
  * alerts again. Remembered per account in the same synced store as the
@@ -9,7 +11,7 @@
  */
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { followUps, keys, logActivity, readRound, readValue, writeValue, type FollowUp } from './localLists';
+import { followUps, keys, readRound, readValue, writeValue, type FollowUp } from './localLists';
 import { useToast } from '../context/ToastContext';
 import { useT } from './language';
 
@@ -27,14 +29,6 @@ export function takeNewOverdue(now: Date = new Date()): FollowUp[] {
   // Keep only ids that are still overdue, so the list does not grow forever.
   const stillOverdue = new Set(overdue.map(alertId));
   writeValue(ALERTED_KEY, [...[...alerted].filter((id) => stillOverdue.has(id)), ...fresh.map(alertId)]);
-  for (const item of fresh) {
-    logActivity({
-      kind: 'round',
-      title: `Overdue: ${item.nextStep} — ${item.name}`,
-      titleEl: `Εκπρόθεσμο: ${item.nextStep} — ${item.name}`,
-      href: '/fundraising?tab=tracker',
-    });
-  }
   return fresh;
 }
 
@@ -56,7 +50,7 @@ export function useFollowUpAlerts(enabled: boolean) {
           : t(`${fresh.length} investor follow-ups are overdue`, `${fresh.length} follow-ups με επενδυτές είναι εκπρόθεσμα`),
         description: fresh.length === 1 ? first.nextStep : fresh.map((item) => item.name).join(', '),
         duration: 10_000,
-        action: { label: t('Open pipeline', 'Άνοιγμα ροής'), run: () => navigate('/fundraising?tab=tracker') },
+        action: { label: t('Open CRM', 'Άνοιγμα CRM'), run: () => navigate('/fundraising?tab=crm') },
       });
     }, 1500);
     return () => window.clearTimeout(timer);

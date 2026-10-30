@@ -134,3 +134,18 @@ export function assistantPages(): { keys: string[]; href: string; en: string; el
       return { keys: entry.assistantKeys!, href: entry.path, en: name.en, el: name.el };
     });
 }
+
+/**
+ * The page a path belongs to, for the assistant's "you are on …" context and the
+ * header chip. Lives here (not in services/assistantOps) so the app frame can
+ * show it without loading the assistant.
+ */
+export function pageContext(pathname: string): { href: string; en: string; el: string } {
+  const pages = assistantPages();
+  const path = (pathname.split('?')[0] || '/dashboard').replace(/\/+$/, '') || '/dashboard';
+  const exact = pages.find((page) => page.href === path);
+  if (exact) return { href: exact.href, en: exact.en, el: exact.el };
+  const nested = pages.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
+  if (nested) return { href: nested.href, en: nested.en, el: nested.el };
+  return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
+}

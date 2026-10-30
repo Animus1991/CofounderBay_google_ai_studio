@@ -1,10 +1,14 @@
 /**
- * The AI action ledger: every proposal the assistant makes and what the founder
- * did with it (applied / cancelled / undone / failed), kept server-side so the
- * AI Studio can show an auditable history across sessions.
+ * The AI action ledger: every change the assistant proposed and what the
+ * founder did with it (applied / cancelled / undone / failed).
+ *
+ * It is an account list like any other (keys.aiLedger), so it is scoped to the
+ * account, synced to the cloud for signed-in members (lib/cloudSync, under the
+ * same Firestore rules as everything else) and kept per device for the sample
+ * account. The other agent kept it on its server under an unauthenticated
+ * client id, which let anyone who knew the id read someone's history.
  */
-import { appEnv } from '../config/env';
-import { dataScope } from './localLists';
+import { keys, readValue, writeValue } from './localLists';
 
 export type LedgerStatus = 'applied' | 'undone' | 'cancelled' | 'failed';
 export type LedgerEntry = {
@@ -19,35 +23,27 @@ export type LedgerEntry = {
 };
 export type LedgerPage = { items: LedgerEntry[]; counts: Partial<Record<LedgerStatus, number>> };
 
-export const LEDGER_EVENT = 'cfb:ai-ledger';
-const DEVICE_KEY = 'cfb.deviceId';
+const MAX_ENTRIES = 200;
 
-function deviceId(): string {
-  try {
-    const existing = localStorage.getItem(DEVICE_KEY);
-    if (existing) return existing;
-    const created = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(DEVICE_KEY, created);
-    return created;
-  } catch {
-    return 'dev-ephemeral';
-  }
+export function readAiActions(): LedgerEntry[] {
+  const stored = readValue<LedgerEntry[]>(keys.aiLedger, []);
+  return Array.isArray(stored) ? stored : [];
 }
 
-/** Signed-in accounts use their id (same history on every device); the sample account is per device. */
-export function ledgerClientId(): string {
-  return dataScope() || `${deviceId()}@demo`;
+export function recordAiAction(entry: Omit<LedgerEntry, 'id' | 'at'>): LedgerEntry {
+  const record: LedgerEntry = {
+    ...entry,
+    summary: entry.summary.slice(0, 600),
+    id: `act-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    at: new Date().toISOString(),
+  };
+  writeValue(keys.aiLedger, [record, ...readAiActions()].slice(0, MAX_ENTRIES));
+  return record;
 }
 
-export function recordAiAction(entry: Omit<LedgerEntry, 'id' | 'at'>): void {
-  const body = JSON.stringify({ ...entry, clientId: ledgerClientId(), summary: entry.summary.slice(0, 600) });
-  void fetch(`${appEnv.apiBaseUrl}/api/ai/actions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
-    .then(() => window.dispatchEvent(new Event(LEDGER_EVENT)))
-    .catch(() => undefined);
-}
-
-export async function fetchAiActions(limit = 12): Promise<LedgerPage> {
-  const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/actions?clientId=${encodeURIComponent(ledgerClientId())}&limit=${limit}`);
-  if (!response.ok) throw new Error(`ledger ${response.status}`);
-  return (await response.json()) as LedgerPage;
+/** The newest entries and how many there are of each outcome. */
+export function aiActionsPage(limit = 12, entries = readAiActions()): LedgerPage {
+  const counts: Partial<Record<LedgerStatus, number>> = {};
+  for (const entry of entries) counts[entry.status] = (counts[entry.status] ?? 0) + 1;
+  return { items: entries.slice(0, limit), counts };
 }

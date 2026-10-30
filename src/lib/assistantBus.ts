@@ -26,8 +26,14 @@ export const ASSISTANT_EVENT = 'OPEN_ASSISTANT';
 /** Older name some pages and tests still dispatch; handled the same way. */
 export const LEGACY_ASSISTANT_EVENT = 'OPEN_AI_CHAT';
 
+/** How many handlers are subscribed — the chat panel loads as its own chunk, so there may be none yet. */
+let listeners = 0;
+/** The latest request sent while nobody was listening; handed to the first subscriber. */
+let pending: AssistantRequest | null = null;
+
 function dispatch(request: AssistantRequest) {
   if (typeof window === 'undefined') return;
+  if (listeners === 0) pending = request;
   window.dispatchEvent(new CustomEvent<AssistantRequest>(ASSISTANT_EVENT, { detail: request }));
 }
 
@@ -46,7 +52,15 @@ export function onAssistantRequest(handler: (request: AssistantRequest) => void)
   const listener = (event: Event) => handler(((event as CustomEvent<AssistantRequest>).detail ?? {}) as AssistantRequest);
   window.addEventListener(ASSISTANT_EVENT, listener);
   window.addEventListener(LEGACY_ASSISTANT_EVENT, listener);
+  listeners += 1;
+  if (pending) {
+    const waiting = pending;
+    pending = null;
+    // After the subscriber's own setup has finished.
+    window.setTimeout(() => handler(waiting), 0);
+  }
   return () => {
+    listeners = Math.max(0, listeners - 1);
     window.removeEventListener(ASSISTANT_EVENT, listener);
     window.removeEventListener(LEGACY_ASSISTANT_EVENT, listener);
   };

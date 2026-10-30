@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
 import { CheckCircle2, CircleSlash, History, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useT } from '../lib/language';
-import { fetchAiActions, LEDGER_EVENT, type LedgerPage, type LedgerStatus } from '../lib/aiLedger';
+import { aiActionsPage, readAiActions, type LedgerStatus } from '../lib/aiLedger';
+import { keys } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
 
 const STATUS_META: Record<LedgerStatus, { icon: typeof History; en: string; el: string; tone: string }> = {
   applied: { icon: CheckCircle2, en: 'Applied', el: 'Εφαρμόστηκε', tone: 'text-emerald-700' },
@@ -12,21 +13,13 @@ const STATUS_META: Record<LedgerStatus, { icon: typeof History; en: string; el: 
 
 const when = (iso: string) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-/** What the assistant changed for you, and what you turned down — read from the server ledger. */
+/** What the assistant changed for you, and what you turned down — the account's own list (lib/aiLedger). */
 export function AiActionLedger() {
   const t = useT();
-  const [page, setPage] = useState<LedgerPage | null>(null);
-  const [error, setError] = useState(false);
+  // The same account list the chat writes to (lib/aiLedger), synced like every other list.
+  const page = aiActionsPage(12, useStored(readAiActions, [keys.aiLedger]));
 
-  useEffect(() => {
-    let alive = true;
-    const load = () => fetchAiActions().then((next) => { if (alive) { setPage(next); setError(false); } }).catch(() => { if (alive) setError(true); });
-    void load();
-    window.addEventListener(LEDGER_EVENT, load);
-    return () => { alive = false; window.removeEventListener(LEDGER_EVENT, load); };
-  }, []);
-
-  const counts = page?.counts ?? {};
+  const counts = page.counts;
   return (
     <section data-testid="ai-action-ledger" className="rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -43,11 +36,10 @@ export function AiActionLedger() {
           </span>
         ))}
       </div>
-      {error && <p className="text-xs text-stone-500" data-testid="ai-ledger-error">{t('History is unavailable right now — your changes are still saved on each page.', 'Το ιστορικό δεν είναι διαθέσιμο τώρα — οι αλλαγές σου είναι αποθηκευμένες σε κάθε σελίδα.')}</p>}
-      {page && page.items.length === 0 && (
+      {page.items.length === 0 && (
         <p className="text-xs text-stone-500" data-testid="ai-ledger-empty">{t('Nothing yet. Ask for a change — e.g. “Mark EIN done” — and confirm it.', 'Τίποτα ακόμα. Ζήτα μια αλλαγή — π.χ. «Σημείωσε το EIN ως ολοκληρωμένο» — και επιβεβαίωσέ τη.')}</p>
       )}
-      {page && page.items.length > 0 && (
+      {page.items.length > 0 && (
         <ul className="divide-y divide-stone-100 rounded-xl border border-stone-100" data-testid="ai-ledger-list">
           {page.items.map((item) => {
             const meta = STATUS_META[item.status];

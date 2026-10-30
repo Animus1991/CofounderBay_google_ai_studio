@@ -27,6 +27,7 @@ import {
   type DDStatus,
 } from '../lib/dueDiligence';
 import { cn } from '../lib/utils';
+import { apiErrorText, needsSignIn } from '../lib/studioApi';
 
 const NEXT: Record<DDStatus, DDStatus> = { todo: 'in_progress', in_progress: 'done', done: 'todo' };
 const TONE: Record<DDStatus, string> = {
@@ -144,7 +145,8 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
   const toast = useToast();
   const investors = useStored(() => (readRound().pipeline ?? []).filter((p) => p.stage !== 'Passed').map((p) => p.name), [keys.round]);
   const [shares, setShares] = useState<DDShare[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'' | 'sign-in' | 'down'>('');
+  const [confirming, setConfirming] = useState('');
   const [who, setWho] = useState('');
   const [notes, setNotes] = useState(false);
   const roomFiles = useStored(readRoomFiles, [keys.room]);
@@ -153,7 +155,7 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
   const [copied, setCopied] = useState('');
 
   const load = useCallback(() => {
-    listDDShares().then((list) => { setShares(list); setFailed(false); }).catch(() => setFailed(true));
+    listDDShares().then((list) => { setShares(list); setFailed(''); }).catch((err) => setFailed(needsSignIn(err) ? 'sign-in' : 'down'));
   }, []);
   useEffect(() => {
     load();
@@ -175,17 +177,23 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
       copy(share.token);
       setWho('');
       toast.success(t('Share link created and copied', 'Ο σύνδεσμος δημιουργήθηκε και αντιγράφηκε'), t('Paste it into your email to the investor.', 'Επικόλλησέ τον στο email προς τον επενδυτή.'));
-    } catch {
-      toast.error(t('Could not create the link', 'Δεν δημιουργήθηκε ο σύνδεσμος'), t('Try again in a moment.', 'Δοκίμασε ξανά σε λίγο.'));
+    } catch (err) {
+      toast.error(t('Could not create the link', 'Δεν δημιουργήθηκε ο σύνδεσμος'), apiErrorText(err, t));
     } finally { setBusy(''); }
   };
   const act = async (token: string, kind: 'refresh' | 'revoke') => {
     setBusy(token);
+    setConfirming('');
     try {
-      if (kind === 'refresh') await refreshDDShare(token, ventureName, notes);
-      else await revokeDDShare(token);
-    } catch {
-      toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), t('Nothing changed.', 'Τίποτα δεν άλλαξε.'));
+      if (kind === 'refresh') {
+        await refreshDDShare(token, ventureName, notes);
+        toast.success(t('Link updated', 'Ο σύνδεσμος ενημερώθηκε'), t('The investor now sees your current checklist.', 'Ο επενδυτής βλέπει πλέον την τρέχουσα λίστα σου.'));
+      } else {
+        await revokeDDShare(token);
+        toast.success(t('Link revoked', 'Ο σύνδεσμος ανακλήθηκε'), t('Anyone opening it now sees that it is no longer available.', 'Όποιος τον ανοίξει βλέπει πλέον ότι δεν είναι διαθέσιμος.'));
+      }
+    } catch (err) {
+      toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), apiErrorText(err, t));
     } finally { setBusy(''); }
   };
 
@@ -195,7 +203,7 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
         <Link2 className="h-4 w-4 text-stone-500" aria-hidden="true" />
         <h3 className="text-sm font-semibold text-stone-900">{t('Share with investors', 'Κοινοποίηση σε επενδυτές')}</h3>
       </div>
-      <p className="text-xs text-stone-500">{t('A read-only page with your checklist status — no account needed. Files are not shared; update or revoke any time.', 'Σελίδα μόνο για ανάγνωση με την κατάσταση της λίστας — χωρίς λογαριασμό. Τα αρχεία δεν κοινοποιούνται· ενημέρωσε ή ανακάλεσε όποτε θες.')}</p>
+      <p className="text-xs text-stone-500">{t('A read-only page with your checklist status — the investor needs no account. Files go only if you attach them; update or revoke the link any time, and see when it is opened.', 'Σελίδα μόνο για ανάγνωση με την κατάσταση της λίστας — ο επενδυτής δεν χρειάζεται λογαριασμό. Αρχεία πάνε μόνο αν τα επισυνάψεις· ενημέρωσε ή ανακάλεσε τον σύνδεσμο όποτε θες και δες πότε ανοίγει.')}</p>
       <input data-testid="dd-share-investor" list="dd-share-investors" className={cn(field, 'w-full')} placeholder={t('Investor (optional)', 'Επενδυτής (προαιρετικά)')} value={who} onChange={(e) => setWho(e.target.value)} />
       <datalist id="dd-share-investors">{investors.map((name) => <option key={name} value={name} />)}</datalist>
       <label className="flex items-center gap-2 text-xs text-stone-600">
@@ -224,7 +232,8 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
       </button>
 
       <div className="space-y-2 border-t border-stone-100 pt-3" data-testid="dd-share-list">
-        {failed && <p className="text-xs text-red-600">{t('Share links are unavailable right now.', 'Οι σύνδεσμοι δεν είναι διαθέσιμοι τώρα.')}</p>}
+        {failed === 'sign-in' && <p className="text-xs text-stone-500" data-testid="dd-share-sign-in">{t('Sign in to create share links — they belong to your account.', 'Συνδέσου για να δημιουργείς συνδέσμους — ανήκουν στον λογαριασμό σου.')}</p>}
+        {failed === 'down' && <p className="text-xs text-red-600">{t('Share links are unavailable right now — your checklist is saved.', 'Οι σύνδεσμοι δεν είναι διαθέσιμοι τώρα — η λίστα σου είναι αποθηκευμένη.')}</p>}
         {shares?.length === 0 && <p className="text-xs text-stone-400">{t('No active links yet.', 'Κανένας ενεργός σύνδεσμος ακόμα.')}</p>}
         {shares?.map((share) => (
           <div key={share.token} className="space-y-1 rounded-lg border border-stone-100 p-2.5" data-testid={`dd-share-${share.token}`}>
@@ -247,9 +256,15 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
               <a href={`/dd/${share.token}`} target="_blank" rel="noreferrer" data-testid={`dd-share-open-${share.token}`} className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-600 hover:text-stone-900">
                 <Eye className="h-3 w-3" />{t('Preview', 'Προβολή')}
               </a>
-              <button type="button" data-testid={`dd-share-revoke-${share.token}`} disabled={busy === share.token} onClick={() => { void act(share.token, 'revoke'); }} className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-400 hover:text-red-600">
-                {t('Revoke', 'Ανάκληση')}
-              </button>
+              {confirming === share.token ? (
+                <button type="button" data-testid={`dd-share-revoke-confirm-${share.token}`} disabled={busy === share.token} onClick={() => { void act(share.token, 'revoke'); }} onBlur={() => setConfirming('')} className="ml-auto inline-flex items-center gap-1 rounded-md bg-red-50 px-1.5 py-1 text-[11px] font-semibold text-red-700">
+                  {t('Revoke for good?', 'Οριστική ανάκληση;')}
+                </button>
+              ) : (
+                <button type="button" data-testid={`dd-share-revoke-${share.token}`} disabled={busy === share.token} onClick={() => setConfirming(share.token)} className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-400 hover:text-red-600">
+                  {t('Revoke', 'Ανάκληση')}
+                </button>
+              )}
             </div>
           </div>
         ))}

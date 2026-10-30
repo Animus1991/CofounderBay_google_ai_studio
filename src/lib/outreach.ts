@@ -1,35 +1,25 @@
 /** Client for the provider-agnostic email API, the weekly digest and share-open alerts. */
-import { appEnv } from '../config/env';
-import { ledgerClientId } from './aiLedger';
+import { studioApi } from './studioApi';
 import { keys, logActivity, readRound, readValue, writeValue, isDemoData } from './localLists';
 import { ddProgress, listDDShares, readDD } from './dueDiligence';
 import { DEMO_VENTURE } from '../data/demoVenture';
 
-export type EmailStatus = { provider: string | null; configured: boolean; available: string[] };
+export type EmailStatus = { provider: string | null; configured: boolean };
 export type EmailLogEntry = {
   id: string; to: string; subject: string; kind: 'investor' | 'digest'; status: 'sent' | 'queued' | 'failed';
   detail?: string; at: string; investorId?: string | null; investorName?: string | null;
 };
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${appEnv.apiBaseUrl}/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...init });
-  if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    throw new Error(typeof detail?.detail === 'string' ? detail.detail : `request failed (${response.status})`);
-  }
-  return (await response.json()) as T;
-}
-
 export const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,190}\.[A-Za-z]{2,24}$/;
 
-export const emailStatus = () => call<EmailStatus>('/email/status');
+export const emailStatus = () => studioApi<EmailStatus>('/email/status');
 
 export function sendEmail(input: { to: string; subject: string; body: string; investorId?: string; investorName?: string }) {
-  return call<EmailLogEntry>('/email/send', { method: 'POST', body: JSON.stringify({ clientId: ledgerClientId(), ...input }) });
+  return studioApi<EmailLogEntry>('/email/send', { method: 'POST', body: input });
 }
 
 export const emailLog = (investorId?: string) =>
-  call<EmailLogEntry[]>(`/email/log?clientId=${encodeURIComponent(ledgerClientId())}${investorId ? `&investorId=${encodeURIComponent(investorId)}` : ''}`);
+  studioApi<EmailLogEntry[]>(`/email/log${investorId ? `?investorId=${encodeURIComponent(investorId)}` : ''}`);
 
 /** "Subject: …\n\nBody" (the assistant's draft format) → parts. */
 export function splitDraft(text: string): { subject: string; body: string } {
@@ -46,10 +36,10 @@ export const DEFAULT_DIGEST: DigestSettings = {
   enabled: false, day: 1, hour: 8, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Athens', email: null, lang: 'en',
 };
 
-export const getDigestSettings = () => call<DigestSettings>(`/digest/settings?clientId=${encodeURIComponent(ledgerClientId())}`);
+export const getDigestSettings = () => studioApi<DigestSettings>('/digest/settings');
 
 export async function saveDigestSettings(settings: DigestSettings): Promise<DigestSettings> {
-  const saved = await call<DigestSettings>('/digest/settings', { method: 'PUT', body: JSON.stringify({ clientId: ledgerClientId(), ...settings }) });
+  const saved = await studioApi<DigestSettings>('/digest/settings', { method: 'PUT', body: settings });
   writeValue(keys.digest, { enabled: saved.enabled });
   if (saved.enabled) await syncDigestSnapshot();
   return saved;
@@ -62,10 +52,9 @@ export async function syncDigestSnapshot(): Promise<void> {
   const dd = ddProgress(items);
   const local = readValue<{ company?: string }>(keys.profileLocal, {});
   const target = round.targetAmount;
-  await call('/digest/snapshot', {
+  await studioApi('/digest/snapshot', {
     method: 'PUT',
-    body: JSON.stringify({
-      clientId: ledgerClientId(),
+    body: {
       venture: local.company || (isDemoData() ? DEMO_VENTURE.name : ''),
       pipeline: (round.pipeline ?? []).map((p) => ({
         name: p.name, stage: p.stage, checkSize: p.checkSize, nextStep: p.nextStep, nextDate: p.nextDate,
@@ -73,21 +62,21 @@ export async function syncDigestSnapshot(): Promise<void> {
       })),
       dd: { ...dd, open: items.filter((i) => i.status !== 'done').map((i) => i.en) },
       round: { target, committed: round.committedAmount, instrument: round.instrument, targetLabel: target >= 1e6 ? `$${(target / 1e6).toFixed(1).replace(/\.0$/, '')}M` : `$${Math.round(target / 1000)}k` },
-    }),
+    },
   });
 }
 
 export async function previewDigest(): Promise<DigestPreview> {
   await syncDigestSnapshot();
-  return call<DigestPreview>(`/digest/preview?clientId=${encodeURIComponent(ledgerClientId())}`);
+  return studioApi<DigestPreview>('/digest/preview');
 }
 
 export async function sendDigestNow(): Promise<DigestPreview> {
   await syncDigestSnapshot();
-  return call<DigestPreview>('/digest/send-now', { method: 'POST', body: JSON.stringify({ clientId: ledgerClientId() }) });
+  return studioApi<DigestPreview>('/digest/send-now', { method: 'POST', body: {} });
 }
 
-export const digestHistory = () => call<DigestRun[]>(`/digest/history?clientId=${encodeURIComponent(ledgerClientId())}`);
+export const digestHistory = () => studioApi<DigestRun[]>('/digest/history');
 
 export const digestEnabledLocally = () => readValue<{ enabled?: boolean }>(keys.digest, {}).enabled === true;
 

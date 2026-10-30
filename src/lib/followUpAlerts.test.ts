@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readActivity, resetAllLists, setDataScope, setPipelineFollowUp } from './localLists';
+import { overdueInvestors } from '../services/investorOps';
 import { takeNewOverdue } from './followUpAlerts';
 
 beforeEach(() => {
@@ -9,10 +10,11 @@ beforeEach(() => {
 });
 
 describe('overdue follow-up alert', () => {
-  it('alerts each overdue follow-up once, and logs it to Notifications', () => {
+  it('alerts each overdue follow-up once; Notifications shows it live instead of as a logged entry', () => {
     const first = takeNewOverdue();
     expect(first.map((item) => item.name)).toEqual(['Andreessen Horowitz']);
-    expect(readActivity()[0]?.title).toMatch(/Overdue: Follow up on the intro — Andreessen Horowitz/);
+    expect(readActivity().some((entry) => /Overdue/.test(entry.title))).toBe(false);
+    expect(overdueInvestors().map((item) => item.name)).toEqual(['Andreessen Horowitz']);
     expect(takeNewOverdue()).toEqual([]);
   });
 

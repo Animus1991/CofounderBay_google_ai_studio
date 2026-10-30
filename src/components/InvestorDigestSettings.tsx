@@ -3,6 +3,7 @@ import { CalendarClock, Eye, Loader2, Send } from 'lucide-react';
 import Card from './ui/Card';
 import { useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
+import { apiErrorText, needsSignIn } from '../lib/studioApi';
 import {
   DEFAULT_DIGEST, EMAIL_RE, digestHistory, emailStatus, getDigestSettings, previewDigest, saveDigestSettings, sendDigestNow,
   type DigestPreview, type DigestRun, type DigestSettings,
@@ -22,10 +23,14 @@ export function InvestorDigestSettings() {
   const [preview, setPreview] = useState<DigestPreview | null>(null);
   const [history, setHistory] = useState<DigestRun[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [signIn, setSignIn] = useState(false);
 
   const reload = useCallback(() => { digestHistory().then(setHistory).catch(() => undefined); }, []);
   useEffect(() => {
-    getDigestSettings().then((s) => setSettings({ ...DEFAULT_DIGEST, ...s, email: s.email ?? '' })).catch(() => undefined).finally(() => setLoaded(true));
+    getDigestSettings()
+      .then((s) => setSettings({ ...DEFAULT_DIGEST, ...s, email: s.email ?? '' }))
+      .catch((err) => setSignIn(needsSignIn(err)))
+      .finally(() => setLoaded(true));
     emailStatus().then((s) => setConfigured(s.configured)).catch(() => setConfigured(false));
     reload();
   }, [reload]);
@@ -35,10 +40,12 @@ export function InvestorDigestSettings() {
     if (next.enabled && !EMAIL_RE.test(next.email ?? '')) { setError(t('Add a valid email address first.', 'Πρόσθεσε πρώτα έγκυρο email.')); return; }
     setBusy('save');
     try {
-      const saved = await saveDigestSettings({ ...next, email: next.email || null });
+      // The digest goes out at the chosen hour in this browser's own time zone.
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || next.timezone;
+      const saved = await saveDigestSettings({ ...next, timezone, email: next.email || null });
       setSettings({ ...DEFAULT_DIGEST, ...saved, email: saved.email ?? '' });
       toast.success(t('Digest schedule saved', 'Το πρόγραμμα αποθηκεύτηκε'));
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error'); } finally { setBusy(''); }
+    } catch (err) { setError(apiErrorText(err, t)); } finally { setBusy(''); }
   };
   const run = async (kind: 'preview' | 'send') => {
     setBusy(kind); setError('');
@@ -49,7 +56,7 @@ export function InvestorDigestSettings() {
         toast[out.status === 'sent' ? 'success' : 'info'](out.status === 'sent' ? t('Digest sent', 'Η σύνοψη στάλθηκε') : t('Digest logged — not sent', 'Καταγράφηκε — δεν στάλθηκε'));
         reload();
       }
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error'); } finally { setBusy(''); }
+    } catch (err) { setError(apiErrorText(err, t)); } finally { setBusy(''); }
   };
 
   return (
@@ -92,6 +99,7 @@ export function InvestorDigestSettings() {
           </button>
         </div>
       </div>
+      {signIn && <p className="text-xs text-stone-500" data-testid="digest-sign-in">{t('Sign in to schedule a digest — it is emailed to your account.', 'Συνδέσου για να προγραμματίσεις σύνοψη — στέλνεται στον λογαριασμό σου.')}</p>}
       {configured === false && <p className="text-xs text-amber-700" data-testid="digest-no-provider">{t('No email provider yet — digests are logged here, not emailed.', 'Δεν υπάρχει πάροχος email — οι συνόψεις καταγράφονται εδώ, δεν στέλνονται.')}</p>}
       {error && <p className="text-xs text-red-600" data-testid="digest-error">{error}</p>}
       {preview && (

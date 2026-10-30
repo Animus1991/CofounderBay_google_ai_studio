@@ -46,7 +46,7 @@ describe('due diligence through the assistant', () => {
     const calls: { url: string; method: string }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, method: init?.method ?? 'GET' });
-      return new Response(JSON.stringify({ token: 'tok123', investorName: 'Sequoia Capital', done: 4, total: 12 }), { status: 200 });
+      return new Response(JSON.stringify({ token: 'tok123', investorName: 'Sequoia Capital', done: 4, total: 12 }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }));
     const result = runAssistant('Share due diligence with Sequoia Capital', demo, { propose: true });
     expect(result.tool).toBe('dd-share');

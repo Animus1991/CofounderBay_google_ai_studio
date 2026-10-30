@@ -9,6 +9,10 @@ import { readFileSync } from "node:fs";
 import { corsMiddleware, originPolicy } from "./server/cors";
 import { cachedCerts, googleCertFetcher, verifyFirebaseIdToken } from "./server/firebaseAuth";
 import { geminiModel, readAiEnv, registerAiRoutes } from "./server/aiProxy";
+import { makeIdentify } from "./server/identity";
+import { registerOutreachRoutes } from "./server/outreach";
+import { fileStore } from "./server/store";
+import { emailService, smtpProvider } from "./server/email";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,7 +37,9 @@ async function startServer() {
   // Default 100 kB JSON bodies everywhere except the AI proxy, which parses its
   // own larger body (slide images) — a global parser would reject it first.
   const defaultJson = express.json();
-  app.use((req, res, next) => (req.path.startsWith("/api/ai/") ? next() : defaultJson(req, res, next)));
+  // The AI proxy and the outreach routes parse their own bodies (larger limits for slides and share files).
+  const ownBodyParser = /^\/api\/(ai|dd|email|digest|cron)\//;
+  app.use((req, res, next) => (ownBodyParser.test(req.path) ? next() : defaultJson(req, res, next)));
 
   app.use(corsMiddleware(allowOrigin));
 
@@ -574,13 +580,29 @@ async function startServer() {
   const certs = cachedCerts(googleCertFetcher());
   const geminiApiKey = () => process.env.GEMINI_API_KEY;
   const gemini = geminiModel(geminiApiKey);
+  const aiEnv = readAiEnv(process.env);
+  const verifyToken = (token: string) => verifyFirebaseIdToken(token, { projectId: firebaseProjectId, certs });
   registerAiRoutes(app, {
-    ...readAiEnv(process.env),
+    ...aiEnv,
     apiKey: geminiApiKey,
-    verifyToken: (token) => verifyFirebaseIdToken(token, { projectId: firebaseProjectId, certs }),
+    verifyToken,
     generate: gemini.generate,
     generateStream: gemini.generateStream,
   });
+
+  // ── Outreach: due-diligence links, email, the weekly digest ───────────────
+  // Same sign-in rule as the AI proxy (server/identity); records live in the
+  // server store (server/store, OUTREACH_DATA_DIR). See server/outreach.ts.
+  const outreach = registerOutreachRoutes(app, {
+    identify: makeIdentify({ requireAuth: aiEnv.requireAuth, verifyToken, signInMessage: 'Sign in to share links and send email from the studio.' }),
+    store: fileStore(process.env.OUTREACH_DATA_DIR || path.join(process.cwd(), ".data")),
+    email: emailService(smtpProvider(process.env)),
+    cronSecret: process.env.DIGEST_CRON_SECRET || process.env.WEBHOOK_CRON_SECRET,
+  });
+  // Optional in-process schedule for long-running servers; serverless hosts call POST /api/cron/digest instead.
+  if (process.env.DIGEST_SCHEDULER === "on") {
+    setInterval(() => { void outreach.runDigests("scheduler"); }, 10 * 60_000).unref();
+  }
 
   // WebSocket logic
   io.on("connection", (socket) => {

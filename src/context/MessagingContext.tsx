@@ -8,7 +8,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
-import { assistantContextBlock, runAssistant, type AssistantProfile } from '../services/assistantOps';
+import type { AssistantProfile } from '../services/assistantOps';
 import { avatarFor, findCast } from '../data/cast';
 import { keys, readValue, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
@@ -229,14 +229,6 @@ type Me = {
   /** Same viewer the studio assistant scores, so a specialist can answer without Gemini. */
   assistant?: AssistantProfile | null;
 };
-
-/** On-device answer when Gemini is not configured. Same operator as the studio panel. */
-export function localSpecialistReply(text: string, profile: AssistantProfile | null, lang: 'en' | 'el' = getLang()): string {
-  const result = runAssistant(text, profile);
-  const primary = (lang === 'el' ? result.el : result.en).trim();
-  const secondary = (lang === 'el' ? result.en : result.el).trim();
-  return primary || secondary;
-}
 
 const PAGE = 40;
 
@@ -506,6 +498,8 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
     setAiTyping(true);
     const assistantProfile = selfRef.current.assistant ?? null;
     const isDirectCommand = text.trim().startsWith('/') || /^(?:set|update|change|write|fill|open|show|ορισε|όρισε|αλλαξε|άλλαξε|γραψε|γράψε|συμπληρωσε|συμπλήρωσε|ανοιξε|άνοιξε)\b/i.test(text.trim());
+    // The operator loads on demand (its own chunk), the first time a specialist is asked something.
+    const { assistantContextBlock, runAssistant, localSpecialistReply } = await import('../lib/specialistReply');
     const studioOp = isDirectCommand ? runAssistant(text, assistantProfile, { propose: false }) : null;
     try {
       const history = readAi().messages

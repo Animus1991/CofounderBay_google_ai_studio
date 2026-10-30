@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { keys, logActivity, readRound, updatePipelineInvestor } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { EMAIL_RE, emailStatus, sendEmail, splitDraft, type EmailStatus } from '../lib/outreach';
+import { apiErrorText } from '../lib/studioApi';
 
 const field = 'w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200';
 
@@ -31,7 +32,7 @@ export function SendEmailModal({ open, onClose, draft, investorId }: { open: boo
     const match = investorId ?? pipeline.find((p) => draft.includes(p.name) || draft.includes(`Hi ${p.name.split(/\s+/)[0]}`))?.investorId ?? '';
     setWho(match);
     setTo(pipeline.find((p) => p.investorId === match)?.email ?? '');
-    emailStatus().then(setStatus).catch(() => setStatus({ provider: null, configured: false, available: [] }));
+    emailStatus().then(setStatus).catch(() => setStatus({ provider: null, configured: false }));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const investor = pipeline.find((p) => p.investorId === who);
@@ -51,7 +52,7 @@ export function SendEmailModal({ open, onClose, draft, investorId }: { open: boo
       else toast.error(t('The provider rejected it', 'Ο πάροχος το απέρριψε'), entry.detail ?? '');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('Could not send.', 'Δεν στάλθηκε.'));
+      setError(apiErrorText(err, t));
     } finally {
       setBusy(false);
     }

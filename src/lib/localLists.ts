@@ -263,6 +263,8 @@ export const keys = {
   derivedRead: 'cfb.derivedNotesRead',
   digest: 'cfb.investorDigest',
   ddSeen: 'cfb.ddShareViewsSeen',
+  /** What the assistant changed, and what the founder decided (lib/aiLedger). */
+  aiLedger: 'cfb.aiLedger',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */

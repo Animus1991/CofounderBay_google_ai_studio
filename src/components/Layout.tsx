@@ -1,18 +1,22 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Menu, Palette, Sparkles, Check, ChevronDown, Search } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { RouteErrorBoundary } from './ErrorBoundary';
+
+// The assistant panel (and the operator behind it) is its own chunk: the frame
+// paints without it, and it loads straight after. Requests sent before it is
+// ready wait in lib/assistantBus.
+const ChatWidget = lazy(() => import('./ChatWidget'));
 import { Both } from '../lib/both';
 import { LanguageToggle, useLanguage, useT } from '../lib/language';
 import Sidebar from './layout/Sidebar';
-import ChatWidget from './ChatWidget';
 import Tooltip from './ui/Tooltip';
 import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore, PaletteTheme } from '../stores/useUIStore';
 import SaveSafetyGuard from './SaveSafetyGuard';
 import { OutreachWatcher } from './OutreachWatcher';
-import { pageContext } from '../services/assistantOps';
+import { pageContext } from '../lib/pageRegistry';
 import { openAssistant } from '../lib/assistantBus';
 import { useFollowUpAlerts } from '../lib/followUpAlerts';
 
@@ -252,7 +256,8 @@ export default function Layout() {
       </header>
       <div className="flex min-h-0 min-w-0 flex-1">
         <SaveSafetyGuard />
-        <OutreachWatcher />
+        {/* Share-link opens and the digest snapshot — only for someone with a studio (member or sample). */}
+        {!isGuest && <OutreachWatcher />}
         <Sidebar
           user={sidebarUser}
           guest={isGuest}
@@ -308,7 +313,11 @@ export default function Layout() {
         </div>
       </div>
       {/* The full-page AI Studio hosts the same conversation inline. */}
-      {!onAssistantPage && <ChatWidget />}
+      {!onAssistantPage && (
+        <Suspense fallback={null}>
+          <ChatWidget />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useStored } from '../lib/useStored';
 import { keys, readRound } from '../lib/localLists';
 import { readDD } from '../lib/dueDiligence';
 import { checkShareOpens, digestEnabledLocally, syncDigestSnapshot } from '../lib/outreach';
+import { needsSignIn } from '../lib/studioApi';
 
 const POLL_MS = 60_000;
 
@@ -17,14 +18,17 @@ export function OutreachWatcher() {
 
   useEffect(() => {
     let stopped = false;
+    let failures = 0;
     const check = () => {
-      if (document.visibilityState !== 'visible') return;
+      // Hidden tab, or a server that said "sign in first" / kept failing: stay quiet.
+      if (stopped || document.visibilityState !== 'visible' || failures >= 3) return;
       checkShareOpens()
         .then((fresh) => {
+          failures = 0;
           if (stopped) return;
           fresh.forEach((open) => toastRef.current.info(t(`${open.name} opened your due-diligence link`, `${open.name}: άνοιξε τον σύνδεσμο δέουσας επιμέλειας`)));
         })
-        .catch(() => undefined);
+        .catch((error) => { failures = needsSignIn(error) ? 3 : failures + 1; });
     };
     check();
     const timer = window.setInterval(check, POLL_MS);

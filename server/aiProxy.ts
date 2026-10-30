@@ -20,7 +20,8 @@
  * which is what lets `aiProxy.test.ts` cover the policy offline.
  */
 import express, { type Express, type Request, type Response } from 'express';
-import { TokenError, type VerifiedToken } from './firebaseAuth';
+import type { VerifiedToken } from './firebaseAuth';
+import { makeIdentify } from './identity';
 
 export type ModelCall = { model: string; contents: unknown; config: Record<string, unknown> };
 export type ModelFunctionCall = { name: string; args: Record<string, unknown> };
@@ -74,35 +75,15 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
   const log = opts.log ?? ((message: string, detail?: unknown) => console.error(message, detail ?? ''));
   const buckets = new Map<string, { count: number; resetAt: number }>();
 
-  /** Who is calling, or null when the response has already been sent. */
+  const identifyCaller = makeIdentify({ requireAuth: opts.requireAuth, verifyToken: opts.verifyToken, log, signInMessage: 'Sign in to use the AI assistant.' });
+
+  /** Who is calling (server/identity), with the budget that applies to them; null when already answered. */
   async function identify(req: Request, res: Response): Promise<Caller | null> {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    if (token) {
-      try {
-        const verified = await opts.verifyToken(token);
-        return { key: `uid:${verified.uid}`, limit: opts.memberLimitPerMinute, uid: verified.uid };
-      } catch (error) {
-        const reason = error instanceof TokenError ? error.reason : 'verification failed';
-        if (/certificates unavailable|project id not configured/.test(reason)) {
-          // Google's certificates could not be fetched: not the member's fault.
-          if (opts.requireAuth) {
-            res.status(503).json({ error: 'Sign-in could not be checked right now. Try again shortly.', code: 'auth-unavailable' });
-            return null;
-          }
-          log('AI proxy: token check unavailable, serving under the anonymous budget', reason);
-          return { key: `ip:${ip}`, limit: opts.anonymousLimitPerMinute };
-        }
-        res.status(401).json({ error: 'Your sign-in has expired. Sign in again to use the assistant.', code: 'invalid-token' });
-        return null;
-      }
-    }
-    if (opts.requireAuth) {
-      res.status(401).json({ error: 'Sign in to use the AI assistant.', code: 'sign-in-required' });
-      return null;
-    }
-    return { key: `ip:${ip}`, limit: opts.anonymousLimitPerMinute };
+    const caller = await identifyCaller(req, res);
+    if (!caller) return null;
+    // Anonymous callers share one budget per address, whatever device id they send.
+    const key = caller.member ? caller.key : `ip:${req.ip || req.socket.remoteAddress || 'unknown'}`;
+    return { key, limit: caller.member ? opts.memberLimitPerMinute : opts.anonymousLimitPerMinute, uid: caller.uid };
   }
 
   /** True when the caller is within budget; otherwise answers 429. */

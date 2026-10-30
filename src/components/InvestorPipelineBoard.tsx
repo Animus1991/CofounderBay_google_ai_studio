@@ -1,23 +1,26 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CalendarClock, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { useT, getLang } from '../lib/language';
 import { useStored } from '../lib/useStored';
 import { askAssistant } from '../lib/assistantBus';
 import {
   PIPELINE_STAGES,
+  followUps,
   keys,
   readRound,
   removePipelineInvestor,
+  restorePipelineEntry,
   setPipelineStage,
   updatePipelineInvestor,
   upsertPipelineInvestor,
   type RoundInvestor,
 } from '../lib/localLists';
 import { stageLabel } from '../services/investorOps';
+import { useToast } from '../context/ToastContext';
+import { FollowUpEditor } from './fundraising/FollowUp';
 import { cn } from '../lib/utils';
 
 const field = 'min-h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200';
-const today = () => new Date().toISOString().slice(0, 10);
 
 /** The investor CRM: one column per stage, the same round.pipeline the assistant reads and writes. */
 export function InvestorPipelineBoard() {
@@ -39,7 +42,8 @@ export function InvestorPipelineBoard() {
   };
 
   const active = pipeline.filter((item) => item.stage !== 'Passed' && item.stage !== 'Closed');
-  const overdue = active.filter((item) => item.nextDate && item.nextDate < today()).length;
+  // The same count as the tracker strip, the dashboard and the assistant (lib/localLists → followUps, local day).
+  const overdue = followUps({ ...readRound(), pipeline }).overdue.length;
 
   return (
     <div className="space-y-4" data-testid="investor-crm">
@@ -104,8 +108,18 @@ export function InvestorPipelineBoard() {
 
 function InvestorCard({ item, lang }: { item: RoundInvestor; lang: 'en' | 'el' }) {
   const t = useT();
+  const toast = useToast();
   const index = PIPELINE_STAGES.indexOf(item.stage as (typeof PIPELINE_STAGES)[number]);
-  const late = item.nextDate && item.nextDate < today() && item.stage !== 'Passed' && item.stage !== 'Closed';
+  const remove = () => {
+    const before = { ...item, history: item.history?.map((step) => ({ ...step })) };
+    removePipelineInvestor(item.investorId);
+    toast.toast({
+      type: 'success',
+      title: t(`Removed ${item.name}`, `Αφαιρέθηκε: ${item.name}`),
+      duration: 8000,
+      action: { label: t('Undo', 'Αναίρεση'), run: () => { restorePipelineEntry(item.investorId, before); } },
+    });
+  };
   const move = (delta: number) => {
     const next = PIPELINE_STAGES[index + delta];
     if (next) setPipelineStage(item.investorId, next);
@@ -118,22 +132,8 @@ function InvestorCard({ item, lang }: { item: RoundInvestor; lang: 'en' | 'el' }
         {item.checkSize && <span className="shrink-0 text-[11px] text-stone-500">{item.checkSize}</span>}
       </div>
       {item.notes && <p className="text-[11px] leading-snug text-stone-500">{item.notes}</p>}
-      <textarea
-        key={item.nextStep ?? ''}
-        rows={2}
-        data-testid={`investor-card-next-${testId}`}
-        title={item.nextStep ?? ''}
-        className="w-full resize-none rounded-md border border-transparent bg-stone-50 px-2 py-1 text-[11px] leading-snug text-stone-800 hover:border-stone-200 focus:border-stone-300 focus:outline-none"
-        defaultValue={item.nextStep ?? ''}
-        placeholder={t('Next step…', 'Επόμενο βήμα…')}
-        onBlur={(e) => { if (e.target.value.trim() !== (item.nextStep ?? '')) updatePipelineInvestor(item.investorId, { nextStep: e.target.value.trim() }); }}
-      />
-      {item.nextDate && (
-        <p className={cn('inline-flex items-center gap-1 text-[11px]', late ? 'font-semibold text-red-600' : 'text-stone-500')} data-testid={`investor-card-date-${testId}`}>
-          <CalendarClock className="h-3 w-3" aria-hidden="true" />
-          {late ? t(`Overdue · ${item.nextDate}`, `Εκπρόθεσμο · ${item.nextDate}`) : item.nextDate}
-        </p>
-      )}
+      {/* Next step and its day: the same editor and due-chip as the tracker table. */}
+      <FollowUpEditor investor={item} />
       {item.lastEmail && (
         <p className={cn('text-[11px]', item.lastEmail.status === 'failed' ? 'text-red-600' : 'text-stone-500')} data-testid={`investor-card-last-email-${testId}`}>
           {t('Email', 'Email')} {item.lastEmail.status === 'sent' ? t('sent', 'στάλθηκε') : item.lastEmail.status === 'queued' ? t('logged', 'καταγράφηκε') : t('failed', 'απέτυχε')} · {item.lastEmail.at.slice(0, 10)}
@@ -152,7 +152,7 @@ function InvestorCard({ item, lang }: { item: RoundInvestor; lang: 'en' | 'el' }
           <button type="button" data-testid={`investor-card-ask-${testId}`} onClick={() => askAssistant(`Draft a follow-up email to ${item.name}`)} className="rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-900">
             {t('Draft email', 'Email')}
           </button>
-          <button type="button" aria-label={t('Remove', 'Αφαίρεση')} data-testid={`investor-card-remove-${testId}`} onClick={() => removePipelineInvestor(item.investorId)} className="rounded-md p-1 text-stone-400 transition-colors hover:text-red-600">
+          <button type="button" aria-label={t('Remove', 'Αφαίρεση')} data-testid={`investor-card-remove-${testId}`} onClick={remove} className="rounded-md p-1 text-stone-400 transition-colors hover:text-red-600">
             <Trash2 className="h-3 w-3" />
           </button>
         </div>

@@ -40,7 +40,7 @@ export function corsMiddleware(allow: OriginPolicy) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Id');
     }
     if (req.method === 'OPTIONS') {
       // A preflight from an origin that is not allowed gets no allow headers, so the browser blocks it.

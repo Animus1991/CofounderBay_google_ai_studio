@@ -3,9 +3,8 @@
  * Fundraising → Due diligence, the Tracker mini-card, the assistant and the
  * read-only investor share links.
  */
-import { appEnv } from '../config/env';
 import { isDemoData, keys, readValue, writeValue } from './localLists';
-import { ledgerClientId } from './aiLedger';
+import { studioApi } from './studioApi';
 
 export type DDStatus = 'todo' | 'in_progress' | 'done';
 export type DDCategory = 'corporate' | 'legal' | 'financial' | 'product' | 'team';
@@ -143,39 +142,33 @@ function snapshot(includeNotes: boolean) {
   return readDD().map((item) => ({ category: item.category, title: item.en, status: item.status, ...(includeNotes && item.note ? { note: item.note } : {}) }));
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${appEnv.apiBaseUrl}/api${path}`, { headers: { 'Content-Type': 'application/json' }, ...init });
-  if (!response.ok) throw new Error(`dd ${response.status}`);
-  return (await response.json()) as T;
-}
-
 export async function createDDShare(investorName: string, ventureName: string, includeNotes = false, files: DDShareFile[] = []): Promise<DDShare> {
-  const share = await call<DDShare>('/dd/shares', {
+  const share = await studioApi<DDShare>('/dd/shares', {
     method: 'POST',
-    body: JSON.stringify({ clientId: ledgerClientId(), investorName: investorName.slice(0, 120), ventureName: ventureName.slice(0, 120), items: snapshot(includeNotes), files }),
+    body: { investorName: investorName.slice(0, 120), ventureName: ventureName.slice(0, 120), items: snapshot(includeNotes), files },
   });
   window.dispatchEvent(new Event(DD_SHARES_EVENT));
   return share;
 }
 
 export async function refreshDDShare(token: string, ventureName: string, includeNotes = false): Promise<DDShare> {
-  const share = await call<DDShare>(`/dd/shares/${token}`, {
+  const share = await studioApi<DDShare>(`/dd/shares/${encodeURIComponent(token)}`, {
     method: 'PUT',
-    body: JSON.stringify({ clientId: ledgerClientId(), ventureName, items: snapshot(includeNotes) }),
+    body: { ventureName, items: snapshot(includeNotes) },
   });
   window.dispatchEvent(new Event(DD_SHARES_EVENT));
   return share;
 }
 
 export async function listDDShares(): Promise<DDShare[]> {
-  return call<DDShare[]>(`/dd/shares?clientId=${encodeURIComponent(ledgerClientId())}`);
+  return studioApi<DDShare[]>('/dd/shares');
 }
 
 export async function revokeDDShare(token: string): Promise<void> {
-  await call(`/dd/shares/${token}?clientId=${encodeURIComponent(ledgerClientId())}`, { method: 'DELETE' });
+  await studioApi(`/dd/shares/${encodeURIComponent(token)}`, { method: 'DELETE' });
   window.dispatchEvent(new Event(DD_SHARES_EVENT));
 }
 
 export async function fetchPublicDD(token: string): Promise<DDPublic> {
-  return call<DDPublic>(`/dd/public/${encodeURIComponent(token)}`);
+  return studioApi<DDPublic>(`/dd/public/${encodeURIComponent(token)}`);
 }

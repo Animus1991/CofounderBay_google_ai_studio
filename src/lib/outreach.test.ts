@@ -12,7 +12,7 @@ describe('outreach helpers', () => {
 
   it('turns new share-link opens into activity, but not the first sighting', async () => {
     let views = 2;
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{ token: 't1', investorName: 'Sequoia Capital', views }]), { status: 200 })));
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([{ token: 't1', investorName: 'Sequoia Capital', views }]), { status: 200, headers: { 'Content-Type': 'application/json' } })));
     expect(await checkShareOpens()).toEqual([]);
     views = 3;
     expect(await checkShareOpens()).toEqual([{ name: 'Sequoia Capital', views: 1 }]);
