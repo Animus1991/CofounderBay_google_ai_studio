@@ -16,7 +16,7 @@
  */
 import {
   Activity, Award, Bell, BookOpen, Briefcase, Calendar, Compass, CreditCard, DollarSign, Gem, Gift, Globe,
-  GraduationCap, LayoutDashboard, MessageSquare, Rocket, Scale, Settings, Share2, Sparkles, Ticket, Trophy,
+  GraduationCap, LayoutDashboard, MessageSquare, Rocket, Scale, Settings, Share2, Ticket, Trophy, Zap,
   User as UserIcon, Users, type LucideIcon,
 } from 'lucide-react';
 
@@ -49,7 +49,7 @@ export const PAGE_REGISTRY: readonly PageEntry[] = [
   // Primary
   { path: '/dashboard', section: 'primary', icon: LayoutDashboard, label: { en: 'Dashboard', el: 'Πίνακας ελέγχου' }, help: { en: 'Your next step, matches and what changed', el: 'Το επόμενο βήμα σου, αντιστοιχίσεις και τι άλλαξε' }, assistantKeys: ['dashboard', 'home', 'πινακ', 'αρχικ'], assistantOrder: 1 },
   { path: '/messages', section: 'primary', icon: MessageSquare, label: { en: 'Messages', el: 'Μηνύματα' }, help: { en: 'Private conversations', el: 'Ιδιωτικές συνομιλίες' }, assistantKeys: ['message', 'chat', 'inbox', 'μηνυμ', 'συνομιλ'], assistantOrder: 5 },
-  { path: '/assistant', section: 'primary', icon: Sparkles, label: { en: 'AI Studio', el: 'AI Studio' }, help: { en: 'The assistant full-page, with everything it can read and change', el: 'Ο βοηθός σε πλήρη σελίδα, με όλα όσα διαβάζει και αλλάζει' }, assistantKeys: ['ai studio', 'assistant page', 'full-page assistant'], assistantOrder: 23 },
+  { path: '/assistant', section: 'primary', icon: Zap, label: { en: 'AI Studio', el: 'AI Studio' }, help: { en: 'The assistant full-page, with everything it can read and change', el: 'Ο βοηθός σε πλήρη σελίδα, με όλα όσα διαβάζει και αλλάζει' }, assistantKeys: ['ai studio', 'assistant page', 'full-page assistant'], assistantOrder: 23 },
 
   // Find
   { path: '/matches', section: 'find', icon: Users, label: { en: 'Matches', el: 'Αντιστοιχίσεις' }, help: { en: 'People ranked by how well you fit', el: 'Άτομα ταξινομημένα κατά συμβατότητα' }, assistantKeys: ['match', 'cofounder', 'co-founder', 'συνιδρυτ', 'αντιστοιχ'], assistantOrder: 2 },

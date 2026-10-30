@@ -20,7 +20,6 @@ import {
  Tags,
  Palette,
  Search,
- Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -112,7 +111,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
  const topItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: MessageSquare, label: "Messages", path: "/messages" },
-  { icon: Sparkles, label: "AI Studio", path: "/assistant" },
+  { icon: Zap, label: "AI Studio", path: "/assistant" },
  ];
 
  /* Pinned pages ("/pin …" in the assistant). Personal shortcuts — they sit
