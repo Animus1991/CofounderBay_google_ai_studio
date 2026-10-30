@@ -965,15 +965,22 @@ export default function Fundraising({ user }: FundraisingProps) {
            ))}
           </div>
 
-          {/* Hot take */}
-          {isDemoMode && (
-          <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2">
-           <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-           <p className="text-sm text-stone-600 leading-relaxed">
-            {t("Your", "Το στάδιο")} <span className="font-semibold text-stone-900">{t("Due Diligence", "δέουσα επιμέλεια")}</span> {t("stage moves 20% faster than the industry average for Seed rounds.", "κινείται 20% πιο γρήγορα από τον μέσο όρο του κλάδου για γύρους Seed.")}
-           </p>
-          </div>
-          )}
+          {/* The one follow-up that matters most, from the pipeline itself (it used to be an
+              unsourced "20% faster than the industry average" line). */}
+          {(() => {
+           const first = due.overdue[0] ?? due.soon[0];
+           if (!first) return null;
+           const late = first.inDays < 0;
+           return (
+            <div className={cn("p-3 rounded-xl border flex gap-2", late ? "bg-red-50 border-red-100" : "bg-amber-50 border-amber-100")}>
+             <Zap className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", late ? "text-red-500" : "text-amber-500")} />
+             <p className="text-sm text-stone-600 leading-relaxed">
+              <span className="font-semibold text-stone-900">{first.name}</span>{' — '}{first.nextStep}{' · '}
+              {late ? t(`overdue by ${-first.inDays} day${first.inDays === -1 ? '' : 's'}`, `εκπρόθεσμο ${-first.inDays} ${first.inDays === -1 ? 'μέρα' : 'μέρες'}`) : first.inDays === 0 ? t('due today', 'για σήμερα') : t(`due in ${first.inDays} day${first.inDays === 1 ? '' : 's'}`, `σε ${first.inDays} ${first.inDays === 1 ? 'μέρα' : 'μέρες'}`)}
+             </p>
+            </div>
+           );
+          })()}
          </div>
          )}
         </Card>

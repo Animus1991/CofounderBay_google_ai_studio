@@ -272,7 +272,7 @@ const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['first round'], href: '/fundraising', demo: true, en: 'First Round Capital is Identified on the Fundraising pipeline. Seed specialist, $250k–$3M.', el: 'Η First Round Capital είναι Identified στον αγωγό Χρηματοδότησης. Seed, $250k–$3M.' },
   { keys: ['global startup summit'], href: '/events', demo: true, en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
   { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate is the flagship public founder program listed on Perks — apply on the provider site from that card. Open Perks to see every published perk.', el: 'Το AWS Activate είναι δημόσιο πρόγραμμα στις Παροχές — κάνε αίτηση στον πάροχο από την κάρτα. Άνοιξε Παροχές για όλες.' },
-  { keys: ['readiness score'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
+  { keys: ['readiness score', 'δεικτη ετοιμοτητας', 'δεικτης ετοιμοτητας'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
   { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda', 'το safe', 'safe note', 'καταστατικ', 'συμφωνια εμπιστευτικοτητας'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download the starter draft there, or book office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασε το αρχικό draft από εκεί ή κλείσε συνεδρία.' },
   { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15-minute sessions you book on Legal Hub — the Book a Session button adds it straight to your Calendar.', el: 'Οι νομικές συνεδρίες είναι 15λεπτες συναντήσεις που κλείνεις στο Legal Hub — το κουμπί τις βάζει στο Ημερολόγιό σου.' },
   { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video', 'φωνητικη κλησ', 'βιντεοκλησ'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
@@ -2847,7 +2847,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(startup\s*builder|builder\s*module|set\s+builder|fill\s+builder)\b/.test(folded) || (/builder/.test(folded) && /\b(problem|solution|market|model|gtm|module|status)\b/.test(folded))) {
     return builderResult(query, propose);
   }
-  if (!/^(tell me about|πες μου για)\b/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded) || /ονομα.{0,10}(startup|venture|εταιρει)/.test(folded))) {
+  if (!/^(tell me about|πες μου για)(?=\s|$)/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded) || /ονομα.{0,10}(startup|venture|εταιρει)/.test(folded))) {
     return readinessResult(query, propose);
   }
 
@@ -2927,7 +2927,8 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return routePipeline('show my pipeline', propose)!;
   if (/\b(rounds?|raise|runway|valuation)\b/.test(folded) || hasStem(folded, 'γυρο', 'χρηματοδ', 'επενδυτ')) return roundResult();
   if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν', 'σημεριν', 'κατασταση', 'συνοψη')) return briefingResult(profile);
-  if (/\b(help|what can you)\b/.test(folded) || hasStem(folded, 'τι μπορεις')) return helpResult();
+  // "Help me design a plan" is a request for the model, not for the capability list.
+  if (/^(?:help|help me|what can you(?: do| change)?)\??$|\bwhat can you (?:do|change)\b/.test(folded) || hasStem(folded, 'τι μπορεις')) return helpResult();
 
   return { ...briefingResult(profile), fallback: true };
 }

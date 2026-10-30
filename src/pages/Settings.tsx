@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import SaveStatus from "../components/ui/SaveStatus";
 import AssistantReplyCard from "../components/AssistantReplyCard";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
@@ -578,6 +579,8 @@ export default function Settings() {
 
       {activeTab === "notifications" && (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {/* Each switch saves on its own; this says where it went. */}
+          <div className="xl:col-span-3 -mb-2"><SaveStatus listKey={keys.notificationPrefs} /></div>
           <Card className="xl:col-span-2" title={t("Email", "Email")} subtitle={t("Choose what reaches your inbox.", "Διάλεξε τι φτάνει στα εισερχόμενα.")}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {emailNotes.map((item) => (

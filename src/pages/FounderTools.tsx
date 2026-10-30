@@ -1490,16 +1490,22 @@ export default function FounderTools({ user }: FounderToolsProps) {
        </div>
        <div className="flex flex-wrap gap-2">
         {pinnedTools.map((toolId) => {
+         // Pins hold library tools and saved templates (by template id); both show here.
          const tool = findTool(toolId);
-         if (!tool) return null;
+         const template = tool ? undefined : templates.find((item) => String(item.id) === toolId);
+         if (!tool && !template) return null;
+         const Icon = tool ? tool.icon : template!.icon;
          return (
           <button
            key={toolId}
-           onClick={() => markToolUsed(toolId)}
+           type="button"
+           onClick={() => (tool ? markToolUsed(toolId) : downloadTemplate(template!))}
+           title={template ? t(`Download ${template.name}`, `Λήψη: ${template.name}`) : undefined}
            className="flex items-center gap-2 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-lg text-xs font-medium text-stone-700 transition-colors"
           >
-           <tool.icon className="w-3 h-3" />
-           {tool.name}
+           <Icon className="w-3 h-3" />
+           {tool ? tool.name : template!.name}
+           {template && <Download className="w-3 h-3 text-stone-400" aria-hidden="true" />}
           </button>
          );
         })}

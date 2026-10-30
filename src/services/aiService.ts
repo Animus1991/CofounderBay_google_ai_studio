@@ -550,6 +550,31 @@ Rules:
     }
   }
 
+  /**
+   * Structured reading: the model returns JSON matching `schema`. Callers
+   * validate every field themselves (see lib/profileFromText.ts).
+   */
+  static async extractJson(prompt: string, schema: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+    this.checkCircuitBreaker();
+    try {
+      const result = await generateContent({
+        model: DEFAULT_AI_MODEL,
+        contents: prompt,
+        config: {
+          systemInstruction: 'Extract only what the text states. Leave a field out when the text does not say it. Never invent names, numbers or places.',
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          temperature: 0.1,
+          maxOutputTokens: 600,
+        },
+      }, signal);
+      return JSON.parse(result.text || '{}');
+    } catch (error) {
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
+      throw error;
+    }
+  }
+
   private static statusCache: { at: number; value: AIStatus } | null = null;
 
   /** Whether a model is reachable at all — cached for a minute. */

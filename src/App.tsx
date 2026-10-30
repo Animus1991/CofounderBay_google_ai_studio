@@ -41,6 +41,7 @@ import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFound';
 
 const FitCheck = lazyPage('FitCheck', () => import('./pages/FitCheck'));
+const TenantLanding = lazyPage('TenantLanding', () => import('./pages/TenantLanding'));
 const OnboardingWizard = lazyPage('OnboardingWizard', () => import('./pages/OnboardingWizard'));
 const ProfilePage = lazyPage('ProfilePage', () => import('./pages/ProfilePage'));
 const MatchDiscovery = lazyPage('MatchDiscovery', () => import('./pages/MatchDiscovery'));
@@ -204,8 +205,18 @@ function WithUser({ render }: { render: (user: User) => React.ReactNode }) {
 /** "/" shows the landing page to guests; a member who set a home page lands there instead. */
 function HomeGate() {
   const { user, isDemoMode } = useAuth();
+  const { isWhiteLabel } = useTenant();
   const prefs = useStored(readUxPrefs, [UX_PREFS_KEY]);
   if ((user || isDemoMode) && prefs.homePath) return <Navigate to={prefs.homePath} replace />;
+  // A white-label organisation (its own domain, or ?tenant_preview=<slug> for its admins)
+  // greets visitors with its own branded landing page instead of the platform's.
+  if (isWhiteLabel && !user) {
+    return (
+      <Suspense fallback={null}>
+        <TenantLanding />
+      </Suspense>
+    );
+  }
   return <LandingPage />;
 }
 

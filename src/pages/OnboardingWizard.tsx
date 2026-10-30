@@ -24,6 +24,8 @@ import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
+import DescribeYourself from '../components/onboarding/DescribeYourself';
+import type { ProfileDraft } from '../lib/profileFromText';
 import { UserRole, FounderStage, CommitmentLevel, ProfileStatus, VerificationStatus, AccountStatus } from '../types';
 
 enum OperationType {
@@ -149,6 +151,35 @@ export default function OnboardingWizard() {
 
  const updateFormData = (data: Partial<typeof formData>) => {
   setFormData(prev => ({ ...prev, ...data }));
+ };
+
+ // "Describe yourself": fills only empty boxes, keeps a copy for Undo.
+ const [beforeFill, setBeforeFill] = useState<typeof formData | null>(null);
+ const fillFromDescription = (draft: ProfileDraft): number => {
+  const next = { ...formData };
+  let count = 0;
+  const fill = <K extends keyof typeof formData>(key: K, value: (typeof formData)[K] | undefined) => {
+   if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) return;
+   const current = next[key];
+   const empty = typeof current === 'string' ? !current.trim() : Array.isArray(current) ? current.length === 0 : false;
+   if (!empty) return;
+   next[key] = value;
+   count += 1;
+  };
+  fill('headline', draft.headline);
+  fill('skillsRaw', draft.skills.join(', '));
+  fill('experience', draft.experience);
+  fill('industry', draft.industry);
+  fill('location', draft.location);
+  fill('bio', draft.bio);
+  // Stage and commitment are choices with a default; a stated one replaces the default.
+  if (draft.stage) { next.stage = draft.stage === 'Revenue' ? FounderStage.EARLY_TRACTION : draft.stage === 'MVP' ? FounderStage.MVP : FounderStage.IDEA; count += 1; }
+  if (draft.commitment) { next.commitment = draft.commitment === 'Full-time' ? CommitmentLevel.FULL_TIME : CommitmentLevel.PART_TIME; count += 1; }
+  if (count > 0) {
+   setBeforeFill(formData);
+   setFormData(next);
+  }
+  return count;
  };
 
  const validateStep = () => {
@@ -394,6 +425,11 @@ export default function OnboardingWizard() {
        <h1 className="text-xl sm:text-2xl font-semibold text-stone-900">{t('Tell us about your expertise', 'Πες μας για την εξειδίκευσή σου')}</h1>
        <p className="text-stone-500">{t('This helps us match you with the right opportunities.', 'Έτσι σε αντιστοιχίζουμε με τις σωστές ευκαιρίες.')}</p>
       </div>
+      <DescribeYourself
+       onApply={fillFromDescription}
+       onUndo={() => { if (beforeFill) setFormData(beforeFill); setBeforeFill(null); }}
+       industryLabel={(industry) => t(industry, INDUSTRY_EL[industry] || industry)}
+      />
       <div className="space-y-4">
        <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">{t('Full name', 'Ονοματεπώνυμο')}</label>

@@ -10,6 +10,9 @@
  * typed entry point.
  */
 
+import { getLang } from './language';
+import { localizePrompt } from './promptLanguage';
+
 export type AssistantRequest = {
   /** Sent as if the person typed it. */
   prompt?: string;
@@ -28,9 +31,9 @@ function dispatch(request: AssistantRequest) {
   window.dispatchEvent(new CustomEvent<AssistantRequest>(ASSISTANT_EVENT, { detail: request }));
 }
 
-/** Opens the assistant and sends `prompt` as the person's next message. */
+/** Opens the assistant and sends `prompt` as the person's next message, in their language. */
 export function askAssistant(prompt: string, options: Omit<AssistantRequest, 'prompt'> = {}) {
-  dispatch({ ...options, prompt });
+  dispatch({ ...options, prompt: localizePrompt(prompt, getLang() === 'el' ? 'el' : 'en') });
 }
 
 /** Opens the assistant without sending anything. */
