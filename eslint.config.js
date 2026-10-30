@@ -38,10 +38,13 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-      // Pragmatic production rules: surface issues as warnings so the codebase
-      // can be hardened incrementally without blocking CI on legacy `any` usage.
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Providers export their hook next to them (useAuth beside AuthContext…); that is intended.
+      'react-refresh/only-export-components': ['warn', {
+        allowConstantExport: true,
+        allowExportNames: ['useAuth', 'useMessaging', 'useOptionalMessaging', 'useTenant', 'useToast', 'useLanguage', 'useT', 'getLang', 'setGlobalLang', 'titleForPath', 'localSpecialistReply'],
+      }],
+      // `any` was cleared to zero (round 2 of the upgrade); keep it there.
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/ban-ts-comment': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],

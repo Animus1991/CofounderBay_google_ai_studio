@@ -61,7 +61,7 @@ export default function BillingOversight() {
   getDocs(collection(db, 'users')).then((snap) => {
    if (!mounted) return;
    const names: Record<string, string> = {};
-   snap.docs.forEach((d) => { const u = d.data() as any; names[d.id] = u.fullName || u.email || d.id; });
+   snap.docs.forEach((d) => { const u = d.data() as { fullName?: string; email?: string }; names[d.id] = u.fullName || u.email || d.id; });
    setUserNames(names);
   }).catch(() => {});
   return () => { mounted = false; unSub(); unInv(); };
@@ -157,7 +157,7 @@ export default function BillingOversight() {
     ].map((tab) => (
      <button
       key={tab.id}
-      onClick={() => setActiveTab(tab.id as any)}
+      onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
        activeTab === tab.id
         ? "bg-white text-stone-900 shadow-sm"

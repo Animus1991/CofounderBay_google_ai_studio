@@ -33,7 +33,7 @@ test('profile views show the same number on dashboard, profile and insights', as
 
   await page.goto('/dashboard');
   await page.waitForTimeout(1200);
-  const dashViews = await page.locator('div:has(> :text-is("Προβολές προφίλ"))').last().innerText();
+  const dashViews = await page.locator(':is(div, button):has(> :text-is("Προβολές προφίλ"))').last().innerText();
 
   await page.goto('/profile');
   await page.waitForTimeout(1200);
@@ -41,7 +41,7 @@ test('profile views show the same number on dashboard, profile and insights', as
 
   await page.goto('/insights');
   await page.waitForTimeout(1200);
-  const insightViews = await page.locator('div:has(> :text-is("Προβολές προφίλ"))').last().innerText();
+  const insightViews = await page.locator(':is(div, button):has(> :text-is("Προβολές προφίλ"))').last().innerText();
 
   for (const text of [dashViews, profileViews, insightViews]) {
     expect(text).toContain('174');
@@ -81,7 +81,7 @@ test('workspace builder tab lists modules and deep-links into founder tools', as
   await demoEl(page);
   await page.goto('/workspace');
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: 'Δημιουργός' }).click();
+  await page.getByRole('tab', { name: 'Δημιουργός' }).click();
   await expect(page.getByText('2 από 5 ενότητες ολοκληρωμένες')).toBeVisible();
   await expect(page.getByText('3/3').first()).toBeVisible();
   const cont = page.getByRole('link', { name: 'Συνέχεια' }).first();
@@ -99,7 +99,7 @@ test('module 1 status agrees between founder tools and workspace builder', async
 
   await page.goto('/workspace');
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: 'Δημιουργός' }).click();
+  await page.getByRole('tab', { name: 'Δημιουργός' }).click();
   const wsStatus = await page.locator('div:has(> a[href="/founder-tools?step=1"]) > span.rounded-full').innerText();
   expect(wsStatus).toBe(toolStatus);
   expect(toolStatus).toBe('Ολοκληρώθηκε');

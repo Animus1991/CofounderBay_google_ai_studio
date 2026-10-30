@@ -23,7 +23,14 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Where Playwright's own browser download is blocked, point at any Chromium:
+        // PW_CHROMIUM_PATH=/path/to/chromium PW_CHROMIUM_ARGS="--no-sandbox" npm run test:e2e
+        launchOptions: process.env.PW_CHROMIUM_PATH
+          ? { executablePath: process.env.PW_CHROMIUM_PATH, args: (process.env.PW_CHROMIUM_ARGS || '').split(' ').filter(Boolean) }
+          : undefined,
+      },
     },
   ],
   webServer: {

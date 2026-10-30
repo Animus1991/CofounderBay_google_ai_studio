@@ -12,7 +12,24 @@ import {
 import { db } from '../firebase';
 import { XPEvent, Streak, UserBadge } from '../types';
 
-export const getAdminAnalytics = async () => {
+export type AdminAnalytics = {
+  totalUsers: number;
+  totalXP: number;
+  totalBadgesAwarded: number;
+  eventTypeDistribution: Record<string, number>;
+  xpEventsCount: number;
+  aiUsageCount: number;
+};
+
+export type AbuseFlag = {
+  userId: string;
+  type: 'XP_FARMING';
+  severity: number;
+  metadata: { eventType: string; count: number };
+  createdAt: string;
+};
+
+export const getAdminAnalytics = async (): Promise<AdminAnalytics | null> => {
   try {
     const xpEventsRef = collection(db, 'xpEvents');
     const xpEventsSnap = await getDocs(xpEventsRef);
@@ -82,7 +99,7 @@ export const inspectUserScore = async (userId: string) => {
   }
 };
 
-export const detectAbuse = async () => {
+export const detectAbuse = async (): Promise<AbuseFlag[]> => {
   try {
     const xpEventsRef = collection(db, 'xpEvents');
     const recentEventsQuery = query(xpEventsRef, orderBy('createdAt', 'desc'), limit(1000));
@@ -91,7 +108,7 @@ export const detectAbuse = async () => {
 
     // Group events by user and type within a short window
     const userActivity: Record<string, Record<string, number>> = {};
-    const flags: any[] = [];
+    const flags: AbuseFlag[] = [];
 
     events.forEach(event => {
       const activity = userActivity[event.userId] ?? (userActivity[event.userId] = {});
@@ -120,7 +137,7 @@ export const detectAbuse = async () => {
   }
 };
 
-export const updateSystemConfig = async (key: string, value: any) => {
+export const updateSystemConfig = async (key: string, value: unknown) => {
   try {
     const configRef = doc(db, 'systemConfig', key);
     await setDoc(configRef, { value, updatedAt: new Date().toISOString() });

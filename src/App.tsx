@@ -388,8 +388,8 @@ export default function App() {
       if (firebaseUser) {
         setLoading(true);
 
-        let userData: any = null;
-        let profileData: any = null;
+        let userData: Record<string, unknown> | null = null;
+        let profileData: Record<string, unknown> | null = null;
         let userChecked = false;
         let profileChecked = false;
 
@@ -412,7 +412,8 @@ export default function App() {
         unsubscribeUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (doc) => {
           if (doc.exists()) {
             userData = doc.data();
-            if (userData.roles?.includes(UserRole.ADMIN) || userData.roles?.includes(UserRole.SUPER_ADMIN)) {
+            const roles = Array.isArray(userData.roles) ? (userData.roles as string[]) : [];
+            if (roles.includes(UserRole.ADMIN) || roles.includes(UserRole.SUPER_ADMIN)) {
               setIsAdmin(true);
             } else {
               setIsAdmin(false);

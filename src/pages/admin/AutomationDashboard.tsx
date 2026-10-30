@@ -276,7 +276,7 @@ const logMessage = (message: string) => {
     ].map((tab) => (
      <button
       key={tab.id}
-      onClick={() => setActiveTab(tab.id as any)}
+      onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={cn(
        "flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all",
        activeTab === tab.id 
@@ -316,7 +316,7 @@ const logMessage = (message: string) => {
          <div className="flex gap-2">
           <select 
            value={filterStatus}
-           onChange={(e) => setFilterStatus(e.target.value as any)}
+           onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
            className="px-3 py-2 bg-stone-50/50 border border-stone-200 rounded-lg focus:ring-2 ring-stone-900/5 focus:border-stone-400 outline-none transition-all font-medium text-xs"
           >
            <option value="All">{t('All Status', 'Όλες οι καταστάσεις')}</option>
@@ -595,11 +595,11 @@ const logMessage = (message: string) => {
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
                <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">{t('Conditions Met', 'Συνθήκες που πληρούνται')}</p>
                <div className="space-y-1">
-                {log.metadata.conditionsMet.map((c: any, i: number) => (
+                {log.metadata.conditionsMet.map((c, i) => (
                  <div key={i} className="flex items-center gap-2 text-xs">
                   <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                  <span className="text-stone-600">{c.field} {c.operator} {c.value}</span>
-                  <span className="text-stone-400">({t('Actual:', 'Πραγματική:')} {c.actual})</span>
+                  <span className="text-stone-600">{c.field} {c.operator} {String(c.value)}</span>
+                  <span className="text-stone-400">({t("Actual:", "Πραγματική:")} {String(c.actual)})</span>
                  </div>
                 ))}
                </div>
@@ -610,7 +610,7 @@ const logMessage = (message: string) => {
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
                <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">{t('Actions Performed', 'Ενέργειες που έγιναν')}</p>
                <div className="space-y-2">
-                {log.metadata.actionsTaken.map((a: any, i: number) => (
+                {log.metadata.actionsTaken.map((a, i) => (
                  <div key={i} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                    <ArrowRight className="w-3 h-3 text-stone-400" />

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { errorCode } from '../lib/errors';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
@@ -47,8 +48,8 @@ export default function LoginPage() {
    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
    await signInWithEmailAndPassword(auth, email, password);
    navigate(from, { replace: true });
-  } catch (err: any) {
-   setError(friendlyError(err.code));
+  } catch (err: unknown) {
+   setError(friendlyError(errorCode(err)));
   } finally {
    setLoading(false);
   }
@@ -66,17 +67,18 @@ export default function LoginPage() {
    const result = await signInWithPopup(auth, provider);
    await bootstrapAccount(result.user, result.user.displayName || undefined);
    navigate(from, { replace: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
    console.error('Google Auth Error:', err);
+   const code = errorCode(err);
    // Better error handling for Google Auth issues
-   if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
+   if (code === 'auth/unauthorized-domain' || code === 'auth/operation-not-allowed') {
     setError(t('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
-   } else if (err.code === 'auth/popup-closed-by-user') {
+   } else if (code === 'auth/popup-closed-by-user') {
     setError(t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'));
-   } else if (err.code === 'auth/popup-blocked') {
+   } else if (code === 'auth/popup-blocked') {
     setError(t('Popup was blocked. Please allow popups for this site.', 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επίτρεψε τα αναδυόμενα για αυτό τον ιστότοπο.'));
    } else {
-    setError(friendlyError(err.code));
+    setError(friendlyError(code));
    }
   } finally {
    setLoading(false);
@@ -202,8 +204,8 @@ export default function LoginPage() {
           try {
            await sendPasswordResetEmail(auth, email);
            toastInfo(t('Reset email sent.', 'Στάλθηκε email επαναφοράς.'), t('Check that inbox, then sign in.', 'Έλεγξε τα εισερχόμενα και μετά κάνε είσοδο.'));
-          } catch (err: any) {
-           setError(friendlyError(err.code));
+          } catch (err: unknown) {
+           setError(friendlyError(errorCode(err)));
           }
          }}
         >

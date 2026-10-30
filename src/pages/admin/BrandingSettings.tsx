@@ -194,7 +194,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
           {['solid', 'gradient', 'mesh'].map(style => (
            <button
             key={style}
-            onClick={() => setBrandingForm({ ...brandingForm, backgroundStyle: style as any })}
+            onClick={() => setBrandingForm({ ...brandingForm, backgroundStyle: style as typeof brandingForm.backgroundStyle })}
             className={`flex-1 py-2 rounded-md border text-xs font-medium transition-all capitalize ${
              brandingForm.backgroundStyle === style 
               ? 'border-stone-900 bg-stone-900 text-white shadow-sm' 

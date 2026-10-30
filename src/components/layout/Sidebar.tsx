@@ -39,7 +39,8 @@ import { useOptionalMessaging } from "../../context/MessagingContext";
 import { useDialogFocus } from '../../lib/useDialogFocus';
 
 interface SidebarProps {
- user: User & { avatarUrl?: string };
+ /** Only what the sidebar shows: name, roles and photo. */
+ user: Pick<User, 'id' | 'fullName' | 'email' | 'roles'> & { avatarUrl?: string };
  guest?: boolean;
  collapsed: boolean;
  setCollapsed: (collapsed: boolean) => void;

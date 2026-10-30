@@ -31,6 +31,9 @@ interface SsoConfig {
  updatedAt?: string;
 }
 
+/** One row of the SSO audit trail (collection `ssoAuditLogs`). */
+type SsoAuditLog = { id: string; event?: string; user?: string; provider?: string; status?: string; reason?: string; createdAt?: string };
+
 export default function SSOSettings({ user }: SSOSettingsProps) {
  const t = useT();
  const { tenant } = useTenant();
@@ -49,7 +52,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
  const [mappingRules, setMappingRules] = useState<SsoConfig['mappingRules']>([]);
  const [jitProvisioning, setJitProvisioning] = useState(true);
  const [jitDefaultRole, setJitDefaultRole] = useState('Co-Founder Candidate');
- const [auditLogs, setAuditLogs] = useState<any[]>([]);
+ const [auditLogs, setAuditLogs] = useState<SsoAuditLog[]>([]);
  const [loaded, setLoaded] = useState(false);
  const [loading, setLoading] = useState(false);
  const [success, setSuccess] = useState(false);
@@ -79,7 +82,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
   if (isDemoMode) return;
   const q = query(collection(db, 'ssoAuditLog'), orderBy('createdAt', 'desc'), qLimit(50));
   const unsub = onSnapshot(q, (snap) => {
-   setAuditLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+   setAuditLogs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SsoAuditLog, 'id'>) })));
   }, () => {});
   return () => unsub();
  }, [isDemoMode]);
@@ -153,7 +156,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
     ].map((tab) => (
      <button
       key={tab.id}
-      onClick={() => setActiveTab(tab.id as any)}
+      onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
        activeTab === tab.id
         ? "bg-white text-stone-900 shadow-sm"
@@ -254,7 +257,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              <label htmlFor="ssosettings-field-1" className="text-micro">{t('Provider Type', 'Τύπος παρόχου')}</label>
              <select id="ssosettings-field-1"
               value={providerType}
-              onChange={(e) => setProviderType(e.target.value as any)}
+              onChange={(e) => setProviderType(e.target.value as typeof providerType)}
               className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
              >
               <option value="SAML">SAML 2.0</option>
@@ -366,7 +369,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                </div>
 
                <div className="space-y-1.5">
-                <label htmlFor="sso-endpoint-url" className="text-micro">{t('SSO Endpoint URL', 'SSO Endpoint URL')}</label>
+                <label htmlFor="sso-endpoint-url" className="text-micro">{t('SSO Endpoint URL', 'URL τελικού σημείου SSO')}</label>
                 <div className="relative">
                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
                  <input

@@ -153,7 +153,7 @@ export default function Layout() {
     email: user?.email || (isGuest ? '' : 'demo@cofounderbay.com'),
     roles: profile?.roles || [UserRole.FOUNDER],
     avatarUrl:
-      (profile as any)?.avatarUrl ||
+      profile?.avatarUrl ||
       profile?.profile?.profilePhoto ||
       user?.photoURL ||
       '',
@@ -250,7 +250,7 @@ export default function Layout() {
       <div className="flex min-h-0 min-w-0 flex-1">
         <SaveSafetyGuard />
         <Sidebar
-          user={sidebarUser as any}
+          user={sidebarUser}
           guest={isGuest}
           collapsed={sidebarCollapsed}
           setCollapsed={setSidebarCollapsed}

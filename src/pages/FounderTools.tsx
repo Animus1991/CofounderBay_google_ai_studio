@@ -221,7 +221,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
    updatedAt: savedStartup.updatedAt ?? new Date().toISOString(),
    dimensions: savedStartup.dimensions,
   };
- }, [savedStartup, profile, isDemoMode, user.id]);
+ }, [savedStartup, profile, isDemoMode, user.id, t]);
  const setMockStartup = (updater: (prev: StartupDraft) => StartupDraft) => {
   writeValue('cfb.startup', updater(mockStartup));
  };

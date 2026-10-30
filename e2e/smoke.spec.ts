@@ -35,6 +35,8 @@ test.describe('404 handling', () => {
   });
 
   test('404 page recovers to home', async ({ page }) => {
+    // A first visit opens the sample account (whose 404 offers its Dashboard); this checks a signed-out guest.
+    await page.addInitScript(() => localStorage.setItem('demo_mode', 'false'));
     await page.goto('/this-route-does-not-exist');
     await page.getByRole('link', { name: /Home/i }).click();
     await expect(page).toHaveURL('/');

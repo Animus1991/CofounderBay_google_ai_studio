@@ -283,7 +283,7 @@ export interface XPEvent {
   xpAmount: number;
   weightMultiplier: number;
   createdAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Badge {
@@ -291,7 +291,7 @@ export interface Badge {
   name: string;
   description: string;
   category: 'Progress' | 'Consistency' | 'Collaboration' | 'Quality' | 'Learning' | 'Execution';
-  criteria: Record<string, any>;
+  criteria: Record<string, unknown>;
   icon: string;
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
   createdAt: string;
@@ -302,7 +302,7 @@ export interface UserBadge {
   userId: string;
   badgeId: string;
   awardedAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ReadinessScore {
@@ -447,7 +447,7 @@ export interface TenantConfig {
   content?: {
     heroTitle?: string;
     heroSubtitle?: string;
-    features?: any[];
+    features?: unknown[];
     footerText?: string;
     communityNamingConvention?: string;
     ctaLabel?: string;
@@ -459,7 +459,7 @@ export interface TenantConfig {
   termsUrl?: string;
   supportEmail?: string;
   features?: string[];
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
 export interface BillingPlan {
@@ -472,7 +472,8 @@ export interface BillingPlan {
   currency: string;
   interval: 'month' | 'year';
   features: string[];
-  limits?: Record<string, any>;
+  /** Numeric caps per feature (seats, communities…); -1 means unlimited. */
+  limits?: Record<string, number>;
   customerType?: 'Individual' | 'Organization' | 'Tenant' | 'Enterprise';
   isActive?: boolean;
   createdAt?: string;
@@ -524,7 +525,7 @@ export interface FundraisingTracker {
   stage: string;
   investors: string[];
   status?: string;
-  investorPipeline?: any[];
+  investorPipeline?: unknown[];
 }
 
 export interface TenantSSOConfig {
@@ -561,7 +562,7 @@ export enum ActionType {
 export interface AutomationCondition {
   field: string;
   operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty';
-  value: any;
+  value: string | number | boolean | string[];
 }
 
 export interface AutomationRule {
@@ -572,7 +573,7 @@ export interface AutomationRule {
   conditions: AutomationCondition[];
   actions: {
     type: ActionType;
-    params: Record<string, any>;
+    params: Record<string, unknown>;
   }[];
   status: 'Active' | 'Inactive' | 'Scheduled' | 'Executed';
   isActive?: boolean;
@@ -600,6 +601,16 @@ export interface AutomationExecution {
   error?: string;
 }
 
+/** What an automation run records: why it fired, which conditions held, what it did, and any failure. */
+export type AutomationLogMetadata = {
+  trigger?: { type: string; entityId: string };
+  conditionsMet?: { field: string; operator: string; value: unknown; actual: unknown }[];
+  actionsTaken?: { type: string; templateId?: string; status?: string; [key: string]: unknown }[];
+  error?: string;
+  stackTrace?: string;
+  [key: string]: unknown;
+};
+
 export interface AutomationLog {
   id: string;
   ruleId: string;
@@ -608,7 +619,7 @@ export interface AutomationLog {
   message: string;
   timestamp: string;
   createdAt?: string;
-  metadata?: Record<string, any>;
+  metadata?: AutomationLogMetadata;
 }
 
 export interface EmailTemplate {
@@ -658,7 +669,7 @@ export interface IdentityProvider {
   id: string;
   name: string;
   type: 'OIDC' | 'SAML';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export interface Invoice {

@@ -219,7 +219,7 @@ class AutomationService {
   /**
    * Processes an event and triggers matching automation rules.
    */
-  async processEvent(triggerType: TriggerType, entityId: string, context: any = {}): Promise<void> {
+  async processEvent(triggerType: TriggerType, entityId: string, context: Record<string, unknown> = {}): Promise<void> {
     const rules = await this.getRules();
     const matchingRules = rules.filter(rule => rule.isActive && rule.triggerType === triggerType);
 
@@ -234,7 +234,7 @@ class AutomationService {
     }
   }
 
-  private evaluateConditions(conditions: AutomationCondition[], context: any): boolean {
+  private evaluateConditions(conditions: AutomationCondition[], context: Record<string, unknown>): boolean {
     if (conditions.length === 0) return true;
 
     return conditions.every(condition => {
@@ -244,8 +244,8 @@ class AutomationService {
       switch (condition.operator) {
         case 'equals': return actualValue === condition.value;
         case 'not_equals': return actualValue !== condition.value;
-        case 'greater_than': return actualValue > condition.value;
-        case 'less_than': return actualValue < condition.value;
+        case 'greater_than': return Number(actualValue) > Number(condition.value);
+        case 'less_than': return Number(actualValue) < Number(condition.value);
         case 'contains': return Array.isArray(actualValue) && actualValue.includes(condition.value);
         case 'not_contains': return Array.isArray(actualValue) && !actualValue.includes(condition.value);
         case 'is_empty': return !actualValue || (Array.isArray(actualValue) && actualValue.length === 0);
@@ -303,7 +303,7 @@ class AutomationService {
     }
   }
 
-  private async executeRule(rule: AutomationRule, entityId: string, context: any) {
+  private async executeRule(rule: AutomationRule, entityId: string, context: Record<string, unknown>) {
     const execRef = await addDoc(collection(db, 'automationExecutions'), {
       ruleId: rule.id,
       triggerEntityId: entityId,
@@ -316,7 +316,7 @@ class AutomationService {
     try {
       const actionsTaken = rule.actions.map(action => ({
         type: action.type,
-        templateId: action.params?.templateId,
+        templateId: typeof action.params?.templateId === 'string' ? action.params.templateId : undefined,
         status: "success"
       }));
 
@@ -334,10 +334,10 @@ class AutomationService {
         metadata: { actionsTaken, context },
         timestamp: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (execRef) {
         await updateDoc(doc(db, 'automationExecutions', executionId), {
-          status: 'Failure', error: error?.message, endTime: new Date().toISOString()
+          status: 'Failure', error: error instanceof Error ? error.message : String(error), endTime: new Date().toISOString()
         }).catch(() => {});
       }
       await updateDoc(doc(db, 'automationRules', rule.id), { failureCount: (rule.failureCount || 0) + 1 }).catch(() => {});
@@ -347,7 +347,7 @@ class AutomationService {
         ruleId: rule.id,
         level: "Error",
         message: `Workflow '${rule.name}' failed for ${entityId}`,
-        metadata: { error: error?.message },
+        metadata: { error: error instanceof Error ? error.message : String(error) },
         timestamp: new Date().toISOString()
       });
     }

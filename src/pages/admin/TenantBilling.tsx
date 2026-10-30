@@ -116,7 +116,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
     ].map((tab) => (
      <button
       key={tab.id}
-      onClick={() => setActiveTab(tab.id as any)}
+      onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
        activeTab === tab.id 
         ? "bg-white text-stone-900 shadow-sm" 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { errorCode } from '../lib/errors';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
 import { bootstrapAccount } from '../lib/account';
@@ -51,8 +52,8 @@ export default function SignUpPage() {
    // Verification mail is best effort: the account works right away, the badge appears once confirmed.
    void sendEmailVerification(created.user, { url: `${window.location.origin}/dashboard` }).catch(() => undefined);
    navigate('/onboarding');
-  } catch (err: any) {
-   setError(friendlyError(err.code));
+  } catch (err: unknown) {
+   setError(friendlyError(errorCode(err)));
   } finally {
    setLoading(false);
   }
@@ -69,16 +70,17 @@ export default function SignUpPage() {
    const result = await signInWithPopup(auth, provider);
    await bootstrapAccount(result.user, result.user.displayName || fullName);
    navigate('/onboarding');
-  } catch (err: any) {
+  } catch (err: unknown) {
    console.error('Google Auth Error:', err);
-   if (err.code === 'auth/unauthorized-domain' || err.code === 'auth/operation-not-allowed') {
+   const code = errorCode(err);
+   if (code === 'auth/unauthorized-domain' || code === 'auth/operation-not-allowed') {
     setError(t('Google sign-in is not available here.', 'Η σύνδεση με Google δεν είναι διαθέσιμη εδώ.'));
-   } else if (err.code === 'auth/popup-closed-by-user') {
+   } else if (code === 'auth/popup-closed-by-user') {
     setError(t('Sign-in popup was closed. Please try again.', 'Το παράθυρο εισόδου έκλεισε. Δοκίμασε ξανά.'));
-   } else if (err.code === 'auth/popup-blocked') {
+   } else if (code === 'auth/popup-blocked') {
     setError(t('Popup was blocked. Please allow popups for this site.', 'Το αναδυόμενο παράθυρο αποκλείστηκε. Επίτρεψε τα αναδυόμενα για αυτό τον ιστότοπο.'));
    } else {
-    setError(friendlyError(err.code));
+    setError(friendlyError(code));
    }
   } finally {
    setLoading(false);

@@ -521,7 +521,7 @@ export default function ProfilePage() {
    setSelectedSkillForEndorsement('');
    setEndorsementComment('');
    toast.success(t('Endorsement sent', 'Η σύσταση στάλθηκε'), t(`${profile?.fullName || 'They'} will be notified.`, `Θα σταλεί ειδοποίηση σε ${profile?.fullName || 'το μέλος'}.`));
-  } catch (err: any) {
+  } catch (err: unknown) {
    if (err instanceof Error && err.message === 'self') {
     toast.info(t('You cannot endorse yourself', 'Δεν μπορείς να συστήσεις τον εαυτό σου'));
    } else {
@@ -559,7 +559,7 @@ export default function ProfilePage() {
    await persistProfilePatch(profileId, clean);
    setProfile(prev => prev ? { ...prev, ...clean } : null);
    setIsEditing(false);
-  } catch (err: any) {
+  } catch (err: unknown) {
    handleFirestoreError(err, OperationType.UPDATE, `profiles/${profileId}`);
   }
  };
@@ -946,8 +946,8 @@ export default function ProfilePage() {
         <p className="text-sm text-stone-500">{t('No skills yet.', 'Δεν υπάρχουν ακόμη δεξιότητες.')}</p>
        )}
        {(profile.skills || ['Product Strategy', 'Machine Learning', 'React', 'Node.js', 'Venture Capital', 'Growth Hacking']).map(skill => {
-        const skillName = typeof skill === 'string' ? skill : (skill as any).name;
-        const skillProficiency = typeof skill === 'object' && (skill as any).proficiency ? (skill as any).proficiency : 0;
+        const skillName = typeof skill === 'string' ? skill : (skill as { name?: string }).name ?? '';
+        const skillProficiency = typeof skill === 'object' && skill !== null ? Number((skill as { proficiency?: number }).proficiency ?? 0) : 0;
         const skillEndorsements = displayEndorsements.filter(e => e.skillId === skillName);
         const hasEndorsed = skillEndorsements.some(e => e.endorserId === currentUser?.uid);
 

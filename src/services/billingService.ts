@@ -242,7 +242,7 @@ export const billingService = {
   },
 
   /** Persists a billing change request for the platform to process — no charge is made client-side. */
-  requestChange: async (kind: 'upgrade' | 'cancel' | 'seats', payload: Record<string, any>): Promise<void> => {
+  requestChange: async (kind: 'upgrade' | 'cancel' | 'seats', payload: Record<string, unknown>): Promise<void> => {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('Sign in required');
     await addDoc(collection(db, 'billingRequests'), {

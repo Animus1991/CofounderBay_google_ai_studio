@@ -49,7 +49,8 @@ test('dashboard and mentors render the Greek demo copy in EL mode', async ({ pag
   await page.goto('/dashboard');
   await expect(page.getByText('έφτασε σκορ αντιστοίχισης 98').first()).toBeVisible();
   await expect(page.getByText('Αυτή την εβδομάδα · σχέδιο δράσης').first()).toBeVisible();
-  await expect(page.getByText('Γιατί ταιριάζετε;').first()).toBeVisible();
+  // The match explainer link now names the person: «Γιατί Sarah; Δες την ανάλυση σκορ».
+  await expect(page.getByText(/Γιατί .+; Δες την ανάλυση σκορ/).first()).toBeVisible();
 
   await page.goto('/mentors');
   await expect(page.getByText('Πρώην VP Product στην Uber').first()).toBeVisible();

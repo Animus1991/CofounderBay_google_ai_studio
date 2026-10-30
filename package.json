@@ -15,7 +15,7 @@
     "clean": "rimraf dist coverage",
     "typecheck": "tsc --noEmit",
     "typecheck:strict": "tsc --noEmit -p tsconfig.strict.json",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -28,7 +28,8 @@
     "deploy:rules": "firebase deploy --only firestore:rules,storage",
     "validate": "npm run typecheck && npm run lint && npm run test && npm run check:links && npm run check:buttons",
     "check:links": "node scripts/internal-links.cjs",
-    "check:buttons": "node scripts/dead-buttons.cjs"
+    "check:buttons": "node scripts/dead-buttons.cjs",
+    "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

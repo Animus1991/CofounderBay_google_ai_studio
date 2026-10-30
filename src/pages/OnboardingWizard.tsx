@@ -229,7 +229,7 @@ export default function OnboardingWizard() {
   loadProgress();
  }, [user]);
 
- const saveProgress = async (step: number, data: any) => {
+ const saveProgress = async (step: number, data: typeof formData) => {
   if (!user) return;
 
   try {
@@ -291,7 +291,7 @@ export default function OnboardingWizard() {
    const userSnap = await getDocFromServer(userRef);
    const exists = userSnap.exists();
 
-   const userUpdateData: any = {
+   const userUpdateData: Record<string, unknown> = {
     id: user.uid,
     email: user.email,
     fullName: formData.fullName.trim() || user.displayName || (user.email?.split('@')[0]) || 'Founder',
@@ -316,7 +316,7 @@ export default function OnboardingWizard() {
     return;
    }
 
-   const profileUpdateData: any = {
+   const profileUpdateData: Record<string, unknown> = {
     userId: user.uid,
     fullName: formData.fullName.trim() || user.displayName || (user.email?.split('@')[0]) || 'Founder',
     role: formData.role,

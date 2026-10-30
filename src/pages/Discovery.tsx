@@ -59,8 +59,10 @@ export default function Discovery({ user }: DiscoveryProps) {
  const t = useT();
  const { profile: authProfile, isDemoMode, user: authUser } = useAuth();
  useConnections(); // re-render cards when a request arrives or is answered
- const viewerSkills = (user as any)?.skills ?? authProfile?.skills;
- const viewerIndustry = (user as any)?.profile?.industry ?? (user as any)?.industry ?? authProfile?.industry;
+ // The route passes the account record; skills and industry may sit on it or on its profile.
+ const viewer = user as (User & { skills?: (string | { name: string })[]; industry?: string; profile?: { industry?: string | string[] } }) | undefined;
+ const viewerSkills = viewer?.skills ?? authProfile?.skills;
+ const viewerIndustry = viewer?.profile?.industry ?? viewer?.industry ?? authProfile?.industry;
  const [activeCategory, setActiveCategory] = useState<CategoryType>("All");
  const remembered = readDiscoveryFilters();
  const [searchQuery, setSearchQuery] = useState(remembered.q);
@@ -177,8 +179,9 @@ export default function Discovery({ user }: DiscoveryProps) {
 
  const filteredUsers = useMemo(() => {
   const parsed = parseQualifiers(searchQuery);
-  const skillList = (person: any) => (person.skills || []).map((s: any) => s?.name || s).filter(Boolean);
-  const industryOf = (person: any) => Array.isArray(person.profile?.industry) ? person.profile.industry.join(' ') : (person.profile?.industry || '');
+  type Card = (typeof users)[number];
+  const skillList = (person: Card) => person.skills.map((s) => s.name).filter(Boolean);
+  const industryOf = (person: Card) => person.profile.industry.join(' ');
   return users.filter(u => {
    const qualifierOk = (!parsed.filters.role || String(u.role || '').toLowerCase().includes(parsed.filters.role.toLowerCase()))
     && (!parsed.filters.location || String(u.profile?.location || '').toLowerCase().includes(parsed.filters.location.toLowerCase()))
@@ -188,7 +191,7 @@ export default function Discovery({ user }: DiscoveryProps) {
    if (!qualifierOk) return false;
    if (!parsed.text && !searchQuery) {
     const matchesSkills = selectedSkills.length === 0 || 
-               selectedSkills.some(s => u.skills?.some((us: any) => us.name === s));
+               selectedSkills.some(s => u.skills.some((us) => us.name === s));
     const matchesIndustries = selectedIndustries.length === 0 ||
                  selectedIndustries.some(i => u.profile?.industry?.includes(i));
     const matchesStages = selectedStages.length === 0 ||
@@ -202,11 +205,11 @@ export default function Discovery({ user }: DiscoveryProps) {
    const matchesSearch = !q || u.name.toLowerCase().includes(q) || 
               (u.profile?.headline || '').toLowerCase().includes(q) ||
               (u.profile?.bio || '').toLowerCase().includes(q) ||
-              (u.skills || []).some((s: any) => s.name.toLowerCase().includes(q)) ||
+              u.skills.some((s) => s.name.toLowerCase().includes(q)) ||
               (u.profile?.industry || []).some((i: string) => i.toLowerCase().includes(q));
 
    const matchesSkills = selectedSkills.length === 0 || 
-              selectedSkills.some(s => u.skills?.some((us: any) => us.name === s));
+              selectedSkills.some(s => u.skills.some((us) => us.name === s));
 
    const matchesIndustries = selectedIndustries.length === 0 ||
                 selectedIndustries.some(i => u.profile?.industry?.includes(i));
@@ -224,16 +227,16 @@ export default function Discovery({ user }: DiscoveryProps) {
 
    // Prioritize based on current user's skills and industries
    if (user) {
-    const mySkills = (user as any).skills?.map((s: any) => s.name || s) || [];
-    const myIndustries = (user as any).profile?.industry || [];
+    const mySkills = (viewer?.skills ?? []).map((s) => (typeof s === 'string' ? s : s.name));
+    const myIndustries = ([] as string[]).concat(viewer?.profile?.industry ?? []);
 
-    const aSkills = a.skills?.map((s: any) => s.name) || [];
+    const aSkills = a.skills.map((s) => s.name);
     const aIndustries = a.profile?.industry || [];
 
     scoreA += aSkills.filter((s: string) => mySkills.includes(s)).length;
     scoreA += aIndustries.filter((i: string) => myIndustries.includes(i)).length;
 
-    const bSkills = b.skills?.map((s: any) => s.name) || [];
+    const bSkills = b.skills.map((s) => s.name);
     const bIndustries = b.profile?.industry || [];
 
     scoreB += bSkills.filter((s: string) => mySkills.includes(s)).length;
@@ -243,16 +246,16 @@ export default function Discovery({ user }: DiscoveryProps) {
    // Optional: Boost if they match the exact search term in skills or industry
    if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    if (a.skills?.some((s: any) => s.name.toLowerCase() === q)) scoreA += 5;
+    if (a.skills.some((s) => s.name.toLowerCase() === q)) scoreA += 5;
     if (a.profile?.industry?.some((i: string) => i.toLowerCase() === q)) scoreA += 5;
 
-    if (b.skills?.some((s: any) => s.name.toLowerCase() === q)) scoreB += 5;
+    if (b.skills.some((s) => s.name.toLowerCase() === q)) scoreB += 5;
     if (b.profile?.industry?.some((i: string) => i.toLowerCase() === q)) scoreB += 5;
    }
 
    return scoreB - scoreA;
   });
- }, [users, searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations, user]);
+ }, [users, searchQuery, selectedSkills, selectedIndustries, selectedStages, selectedLocations, user, viewer]);
 
  const demoOpportunities = useMemo(() => {
   // Demo deadlines stay in the future relative to today.

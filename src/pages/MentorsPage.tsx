@@ -114,7 +114,7 @@ export default function MentorsPage() {
  const [searchQuery, setSearchQuery] = useState('');
  const [availabilityFilter, setAvailabilityFilter] = useState('All');
  const [expertiseFilter, setExpertiseFilter] = useState('All');
- const [selectedMentor, setSelectedMentor] = useState<any>(null);
+ const [selectedMentor, setSelectedMentor] = useState<MentorCard | null>(null);
  const [isMentorshipModalOpen, setIsMentorshipModalOpen] = useState(false);
  const [focusAreas, setFocusAreas] = useState('');
  const [yourAvailability, setYourAvailability] = useState('');

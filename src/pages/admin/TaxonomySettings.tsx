@@ -105,7 +105,7 @@ export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps)
   getDocs(collection(db, 'profiles')).then((snap) => {
    const counts: Record<string, number> = {};
    snap.docs.forEach((d) => {
-    const p = d.data() as any;
+    const p = d.data() as Record<string, unknown>;
     const text = [p.headline, p.bio, p.industry, p.role, p.skillsRaw, ...(Array.isArray(p.skills) ? p.skills : [])]
      .filter(Boolean).join(' ').toLowerCase();
     items.forEach((item) => {

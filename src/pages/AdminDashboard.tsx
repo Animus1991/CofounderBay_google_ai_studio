@@ -21,7 +21,7 @@ import {
 } from 'recharts';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { getAdminAnalytics, detectAbuse, updateSystemConfig } from '../services/adminService';
+import { getAdminAnalytics, detectAbuse, updateSystemConfig, type AdminAnalytics, type AbuseFlag } from '../services/adminService';
 import { useAuth } from '../App';
 import { useT } from '../lib/language';
 import { askAssistant } from '../lib/assistantBus';
@@ -29,8 +29,8 @@ import { askAssistant } from '../lib/assistantBus';
 export default function AdminDashboard() {
  const { user, isDemoMode } = useAuth();
  const t = useT();
- const [analytics, setAnalytics] = useState<any>(null);
- const [abuseFlags, setAbuseFlags] = useState<any[]>([]);
+ const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+ const [abuseFlags, setAbuseFlags] = useState<AbuseFlag[]>([]);
  const [dismissedFlags, setDismissedFlags] = useState<Set<number>>(new Set());
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState<'overview' | 'abuse' | 'config'>('overview');

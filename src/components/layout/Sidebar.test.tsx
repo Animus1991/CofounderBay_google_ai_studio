@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { AccountStatus, ProfileStatus, UserRole, VerificationStatus } from '../../types';
+import { UserRole } from '../../types';
 import Sidebar from './Sidebar';
 
 vi.mock('../../lib/notificationFeed', () => ({
@@ -30,13 +30,6 @@ const user: SidebarProps['user'] = {
   fullName: 'Test Founder',
   email: 'founder@example.test',
   roles: [UserRole.FOUNDER],
-  profileStatus: ProfileStatus.PUBLISHED,
-  verificationStatus: VerificationStatus.UNVERIFIED,
-  profileCompletionScore: 100,
-  accountStatus: AccountStatus.ACTIVE,
-  onboardingCompleted: true,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 let mobile = false;

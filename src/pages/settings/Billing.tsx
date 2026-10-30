@@ -132,7 +132,7 @@ export default function Billing({ user }: BillingProps) {
     ].map((tab) => (
      <button
       key={tab.id}
-      onClick={() => setActiveTab(tab.id as any)}
+      onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
        activeTab === tab.id 
         ? "bg-white text-stone-900 shadow-sm" 
@@ -357,7 +357,7 @@ export default function Billing({ user }: BillingProps) {
        <Button
         className="mt-8"
         onClick={() => {
-         const stored = readValue<Record<string, any>>(keys.accountForm, {});
+         const stored = readValue<Record<string, unknown>>(keys.accountForm, {});
          const next = { ...stored, billingName: billingInfo.name, billingCountry: billingInfo.country };
          writeValue(keys.accountForm, next);
          setRequestNote(t('Billing info saved.', 'Τα στοιχεία χρέωσης αποθηκεύτηκαν.'));
