@@ -161,8 +161,19 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
- const [searchParams] = useSearchParams();
- const [activeTab, setActiveTab] = useState<'dashboard' | 'builder' | 'pitch' | 'applications' | 'tools' | 'templates'>(() => (searchParams.get('step') ? 'builder' : 'dashboard'));
+ // The tab lives in the URL (?tab=pitch); ?step=… still opens the builder at that step.
+ const [searchParams, setSearchParams] = useSearchParams();
+ const TOOL_TABS = ['dashboard', 'builder', 'pitch', 'applications', 'tools', 'templates'] as const;
+ type ToolTab = (typeof TOOL_TABS)[number];
+ const rawToolTab = searchParams.get('tab');
+ const activeTab: ToolTab = TOOL_TABS.includes(rawToolTab as ToolTab) ? (rawToolTab as ToolTab) : searchParams.get('step') ? 'builder' : 'dashboard';
+ const setActiveTab = (tab: ToolTab) => {
+  const next = new URLSearchParams(searchParams);
+  if (tab === 'dashboard') next.delete('tab');
+  else next.set('tab', tab);
+  if (tab !== 'builder') next.delete('step');
+  setSearchParams(next, { replace: true });
+ };
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
  const pinnedTools = useStored(() => readValue<string[]>('cfb.pinnedTools', []), ['cfb.pinnedTools']);
  const setPinnedTools = (next: string[]) => writeValue('cfb.pinnedTools', next);

@@ -5,7 +5,7 @@
 import { cofounderPool } from './peopleSource';
 import { readFitCheck } from './fitCheck';
 import { fromProfile, listWords, rankPeople, type CompatibilityInput } from './compatibility';
-import { effectiveStatus, readMilestones, readNeeds, readSessions, readTasks } from './localLists';
+import { effectiveStatus, followUps, readMilestones, readNeeds, readRound, readSessions, readTasks } from './localLists';
 
 type Words = { en: string; el: string };
 
@@ -117,6 +117,23 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
       title: { en: `${soon.session.title} starts in ${minutes} min`, el: `Το «${soon.session.title}» ξεκινά σε ${minutes} λεπτά` },
       why: soon.session.location ? { en: soon.session.location, el: soon.session.location } : undefined,
       action: { en: 'Calendar', el: 'Ημερολόγιο' },
+    };
+  }
+  // An investor follow-up that has slipped outranks today's tasks: the investor is waiting.
+  const late = followUps(readRound(), new Date(now)).overdue;
+  if (late[0]) {
+    const first = late[0];
+    return {
+      id: `followup-${first.investorId}`,
+      en: `${first.name}: ${first.nextStep} is overdue.`,
+      el: `${first.name}: «${first.nextStep}» είναι εκπρόθεσμο.`,
+      href: '/fundraising?tab=tracker',
+      title: { en: `${first.name} is waiting: ${first.nextStep}`, el: `Η/Ο ${first.name} περιμένει: ${first.nextStep}` },
+      why: late.length > 1
+        ? { en: `+${late.length - 1} more investor follow-up overdue`, el: `+${late.length - 1} ακόμη εκπρόθεσμα follow-ups` }
+        : { en: `Was due ${first.nextDate}`, el: `Έληγε ${first.nextDate}` },
+      action: { en: 'Open pipeline', el: 'Άνοιγμα ροής' },
+      prompt: 'What follow-ups are due?',
     };
   }
   const due = readTasks().filter((task) => task.status !== 'Done' && /^today$/i.test(task.deadline.trim()));

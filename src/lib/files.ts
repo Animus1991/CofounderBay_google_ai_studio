@@ -13,6 +13,18 @@ const log = createLogger('files');
 
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 export const MAX_INLINE_BYTES = 700 * 1024;
+/** A cloud upload that has not finished by then is abandoned for the inline fallback (or a clear error). */
+export const CLOUD_UPLOAD_TIMEOUT_MS = 20_000;
+
+function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('upload-timeout')), ms);
+    work.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
 
 export type UploadedFile = { name: string; type: string; size: number; url: string; storage: 'cloud' | 'inline'; path?: string };
 
@@ -37,20 +49,28 @@ export class UploadError extends Error {
   }
 }
 
-export async function uploadFile(file: File | Blob, opts: { folder: UploadFolder; uid: string; name?: string }): Promise<UploadedFile> {
+export async function uploadFile(
+  file: File | Blob,
+  opts: { folder: UploadFolder; uid: string; name?: string; timeoutMs?: number; cloud?: boolean },
+): Promise<UploadedFile> {
   const name = opts.name || (file instanceof File ? file.name : 'file');
   const type = file.type || 'application/octet-stream';
   if (file.size > MAX_UPLOAD_BYTES) throw new UploadError('too-large');
   try {
-    const storage = await getStorageInstance();
-    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-    const path = `${opts.folder}/${opts.uid}/${Date.now().toString(36)}-${safeName(name)}`;
-    const target = ref(storage, path);
-    await uploadBytes(target, file, { contentType: type, customMetadata: { originalName: name.slice(0, 200) } });
-    const url = await getDownloadURL(target);
-    return { name, type, size: file.size, url, storage: 'cloud', path };
+    // The sample account has no cloud bucket of its own: keep its files inline.
+    if (opts.cloud === false) throw new Error('cloud-disabled');
+    const upload = (async () => {
+      const storage = await getStorageInstance();
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const path = `${opts.folder}/${opts.uid}/${Date.now().toString(36)}-${safeName(name)}`;
+      const target = ref(storage, path);
+      await uploadBytes(target, file, { contentType: type, customMetadata: { originalName: name.slice(0, 200) } });
+      const url = await getDownloadURL(target);
+      return { name, type, size: file.size, url, storage: 'cloud' as const, path };
+    })();
+    return await withDeadline(upload, opts.timeoutMs ?? CLOUD_UPLOAD_TIMEOUT_MS);
   } catch (error) {
-    log.warn('cloud upload failed, trying inline', { error: String(error) });
+    if (!(error instanceof Error && error.message === 'cloud-disabled')) log.warn('cloud upload failed, trying inline', { error: String(error) });
     if (file.size <= MAX_INLINE_BYTES) {
       const url = await readAsDataUrl(file);
       return { name, type, size: file.size, url, storage: 'inline' };

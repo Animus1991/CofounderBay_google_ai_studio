@@ -113,7 +113,21 @@ if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined' && !appEnv
 }
 
 /** Cloud Storage is loaded only when someone uploads a file. */
+/**
+ * Cloud Storage, with retries capped.
+ *
+ * The SDK retries a failed upload for up to ten minutes by default. When
+ * Storage is not enabled on the project (or the bucket has no CORS rule), every
+ * attempt fails the preflight, so an upload sat on "Uploading…" for minutes and
+ * never reached the inline fallback in lib/files.ts. Fifteen seconds is enough
+ * for a real transient error and short enough to fall back.
+ */
+export const STORAGE_RETRY_MS = 15_000;
+
 export async function getStorageInstance() {
   const { getStorage } = await import('firebase/storage');
-  return getStorage(app);
+  const storage = getStorage(app);
+  storage.maxUploadRetryTime = STORAGE_RETRY_MS;
+  storage.maxOperationRetryTime = STORAGE_RETRY_MS;
+  return storage;
 }

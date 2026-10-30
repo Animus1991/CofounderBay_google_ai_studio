@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readMilestones, resetAllLists } from '../lib/localLists';
-import { respond, type Planner } from './engine';
+import { readMilestones, readTasks, resetAllLists } from '../lib/localLists';
+import { AIProxyError } from '../services/aiService';
+import { respond, splitCommands, type Planner } from './engine';
 
 const viewer = {
   fullName: 'Demo User',
@@ -101,5 +102,77 @@ describe('assistant engine', () => {
       ],
     });
     expect(planner.mock.calls[0]![0].prompt).toMatch(/Sarah Chen is listed as Founder[\s\S]*and what about her\?/);
+  });
+
+  it('turns several changes in one message into separate proposals with nothing written yet', async () => {
+    const planner = vi.fn<Planner>();
+    const milestonesBefore = readMilestones().length;
+    const tasksBefore = readTasks().length;
+    const result = await respond('add milestone Private beta live and add task Call the bank', viewer, { lang: 'en', page, planner });
+    expect(planner).not.toHaveBeenCalled();
+    expect(result.tool).toBe('batch');
+    expect(result.batch?.map((item) => item.tool)).toEqual(['milestone-add', 'task-add']);
+    expect(result.batch?.every((item) => item.proposal)).toBe(true);
+    expect(readMilestones().length).toBe(milestonesBefore);
+    expect(readTasks().length).toBe(tasksBefore);
+    for (const item of result.batch ?? []) await item.proposal!.apply();
+    expect(readMilestones().some((item) => item.title === 'Private beta live')).toBe(true);
+    expect(readTasks().some((item) => item.title === 'Call the bank')).toBe(true);
+  });
+
+  it('splits on new lines and Greek "και" too', () => {
+    expect(splitCommands('add task A\nadd task B')).toEqual(['add task A', 'add task B']);
+    expect(splitCommands('Πρόσθεσε ορόσημο Beta και πρόσθεσε εργασία Τράπεζα')).toEqual(['Πρόσθεσε ορόσημο Beta', 'πρόσθεσε εργασία Τράπεζα']);
+    expect(splitCommands('one thing only')).toEqual([]);
+  });
+
+  it('keeps "and" inside a title when the parts are not each a command', async () => {
+    const result = await respond('add milestone Ship design and launch', viewer, { lang: 'en', page, planner: vi.fn<Planner>() });
+    expect(result.tool).toBe('milestone-add');
+    expect(result.batch).toBeUndefined();
+    expect(result.proposal?.summary.en).toMatch(/Ship design and launch/);
+  });
+
+  it('lets the model read studio data first, then answers from it and lists what it read', async () => {
+    const planner = vi.fn<Planner>()
+      .mockResolvedValueOnce({ text: '', functionCalls: [{ name: 'list_milestones', args: {} }] })
+      .mockResolvedValueOnce({ text: 'Focus on the overdue milestone first.', functionCalls: [] });
+    const result = await respond('Given everything on my plate, where should my energy go this week?', viewer, { lang: 'en', page, planner });
+    expect(planner).toHaveBeenCalledTimes(2);
+    const second = planner.mock.calls[1]![0];
+    const lastTurn = second.contents.at(-1) as { parts: { functionResponse?: { name: string; response: { result: string } } }[] };
+    expect(lastTurn.parts[0]?.functionResponse?.name).toBe('list_milestones');
+    expect(lastTurn.parts[0]?.functionResponse?.response.result.length).toBeGreaterThan(10);
+    expect(result.origin).toBe('model-answer');
+    expect(result.en).toBe('Focus on the overdue milestone first.');
+    expect(result.sources?.some((source) => /milestone/i.test(source.en))).toBe(true);
+  });
+
+  it('stops reading after the limit and shows what it read', async () => {
+    const planner = vi.fn<Planner>().mockResolvedValue({ text: '', functionCalls: [{ name: 'list_milestones', args: {} }] });
+    const result = await respond('Tell me everything that matters about my progress lately', viewer, { lang: 'en', page, planner });
+    expect(planner).toHaveBeenCalledTimes(4);
+    expect(result.origin).toBe('model-tool');
+    expect(result.tool).toMatch(/milestone/);
+  });
+
+  it('says that sign-in is needed when the proxy refuses an anonymous call', async () => {
+    const planner: Planner = async () => { throw new AIProxyError(401, 'sign-in-required', 'Sign in to use the AI assistant.'); };
+    const result = await respond('How should I price my SaaS product?', viewer, { lang: 'en', page, planner, suggestions });
+    expect(result.origin).toBe('unmatched');
+    expect(result.en).toMatch(/signed in/);
+    expect(result.links[0]?.href).toBe('/login');
+  });
+
+  it('streams the answer to the caller as it is written', async () => {
+    const seen: string[] = [];
+    const planner: Planner = async (input) => {
+      input.onText?.('Start');
+      input.onText?.('Start with value');
+      return { text: 'Start with value', functionCalls: [] };
+    };
+    const result = await respond('How should I price my SaaS product?', viewer, { lang: 'en', page, planner, onText: (soFar) => seen.push(soFar) });
+    expect(seen).toEqual(['Start', 'Start with value']);
+    expect(result.en).toBe('Start with value');
   });
 });

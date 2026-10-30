@@ -3,6 +3,9 @@
  * page, list and score the assistant mentions is the same data the rest of
  * the app already shows. Gemini only rewrites the wording.
  */
+import { fold, hasStem } from './assistantText';
+import { routePipeline } from './assistantPipeline';
+import { whereIsResult } from '../ai/whereIs';
 import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
 import {
@@ -49,6 +52,7 @@ import {
   writeMatchFilters,
   writeNeeds,
   writeRound,
+  followUps,
   readNotificationPrefs,
   writeNotificationPrefs,
   writeProfileLocal,
@@ -293,19 +297,6 @@ function knowledgeCards(): KnowledgeCard[] {
   return [...KNOWLEDGE, ...dated];
 }
 
-function fold(text: string): string {
-  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-/** `\b` does not treat Greek as a word. Stems match anywhere; Latin needs a non-letter on each side. */
-function hasStem(hay: string, ...stems: string[]): boolean {
-  return stems.some((stem) => {
-    if (/[a-z0-9]/.test(stem) && !/[α-ω]/.test(stem)) {
-      return new RegExp(`(?:^|[^a-z0-9])${stem}(?:$|[^a-z0-9])`).test(hay);
-    }
-    return hay.includes(stem);
-  });
-}
 
 function namedPerson(text: string): Person | undefined {
   const folded = fold(text);
@@ -361,10 +352,16 @@ function briefingResult(profile: AssistantProfile | null): AssistantResult {
     linesEn.push(`${round.name} round: ${pct}% of $${(round.targetAmount / 1_000_000).toFixed(1)}M committed.`);
     linesEl.push(`Γύρος ${round.name}: ${pct}% από $${(round.targetAmount / 1_000_000).toFixed(1)}M δεσμευμένα.`);
   }
+  const investorDue = followUps(round);
+  if (investorDue.overdue.length) {
+    linesEn.push(`Investor follow-up overdue: ${investorDue.overdue.map((item) => `${item.name} (${item.nextStep})`).join(', ')}.`);
+    linesEl.push(`Εκπρόθεσμο follow-up με επενδυτή: ${investorDue.overdue.map((item) => `${item.name} (${item.nextStep})`).join(', ')}.`);
+  }
   const links: AssistantLink[] = [
     ...(top ? [linkFor(top.person)] : []),
     { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' },
     { href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' },
+    ...(investorDue.overdue.length ? [{ href: '/fundraising?tab=tracker', en: 'Open follow-ups', el: 'Άνοιγμα follow-ups' }] : []),
   ];
   return { tool: 'briefing', en: linesEn.join(' '), el: linesEl.join(' '), href: '/dashboard', links };
 }
@@ -1539,7 +1536,7 @@ function bookMentor(person: Person, propose: boolean): AssistantResult {
 }
 
 function sessionAddResult(query: string, propose: boolean): AssistantResult {
-  const meeting = /\bmeeting\b/.test(fold(query));
+  const meeting = /\bmeeting\b/.test(fold(query)) || hasStem(fold(query), 'συναντησ');
   const title = meeting ? 'Investor meeting' : 'Studio event';
   const sessionId = `ses-studio-${Date.now()}`;
   let logged: LoggedWrite | null = null;
@@ -1593,16 +1590,6 @@ function becomeMentorResult(): AssistantResult {
       { href: '/profile', en: 'Open profile', el: 'Άνοιγμα προφίλ' },
       { href: '/mentors', en: 'Open mentors', el: 'Άνοιγμα μεντόρων' },
     ],
-  };
-}
-
-function pipelineResult(): AssistantResult {
-  return {
-    tool: 'pipeline',
-    en: 'Same pipeline as Fundraising: Identified, Contacted, Meeting, Due Diligence, Term Sheet, Closed, Passed. Open Fundraising to move a name between stages.',
-    el: 'Ο ίδιος αγωγός με τη Χρηματοδότηση: Identified, Contacted, Meeting, Due Diligence, Term Sheet, Closed, Passed. Άνοιξε τη Χρηματοδότηση για να μετακινήσεις ένα όνομα.',
-    href: '/fundraising',
-    links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }],
   };
 }
 
@@ -1770,7 +1757,9 @@ function recordInvestmentResult(query: string, propose: boolean): AssistantResul
 }
 
 function addTaskResult(query: string, propose: boolean): AssistantResult {
-  const title = query.replace(/^(please\s+)?(add|create|new)\s+(a\s+)?(task|todo)\s*(called|named|:)?\s*/i, '').trim() || 'New task';
+  // Matched on the folded text (same length as the original) so «Πρόσθεσε εργασία …» strips like "add task …".
+  const lead = fold(query).match(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε|νεα)\s+(a\s+|μια\s+)?(task|todo|εργασια|καθηκον)\s*(called|named|με τιτλο|:)?\s*/i)?.[0] ?? '';
+  const title = query.slice(lead.length).trim() || 'New task';
   let created: StudioTask | null = null;
   let logged: LoggedWrite | null = null;
   const apply = (): AssistantResult => {
@@ -2834,6 +2823,10 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'help') return helpResult();
   }
 
+  // "Where do I export the pitch?" — the exact page, tab and control (ai/whereIs).
+  const where = whereIsResult(query);
+  if (where) return where;
+
   if (/\b(6-axis|6 axis|six axis|radar match)\b/.test(folded) || /6\s*αξον/.test(folded)) return studioModalResult('6axis', query, profile);
   if (/\b(open|show|launch)\b.{0,20}\b(deal\s*room)\b/.test(folded) || /ανοιξ.{0,20}deal\s*room/.test(folded)) return studioModalResult('dealroom', query, profile);
   if (/\b(open|show)\b.{0,20}\b(need\s*wall|need\s*cards?\s*wall)\b/.test(folded) || /πινακ.{0,15}αναγκ/.test(folded)) return studioModalResult('needwall', query, profile);
@@ -2869,6 +2862,11 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
 
   if (parseNotificationsRead(query)) return notificationsReadResult(propose);
 
+  // Investor pipeline and follow-ups (services/assistantPipeline): before "next step"
+  // and the people routes, because investors are named like people.
+  const pipelineHit = routePipeline(query, propose);
+  if (pipelineHit) return pipelineHit;
+
   const person = namedPerson(query);
   if (person && hasStem(folded, 'why', 'γιατι') && hasStem(folded, 'match', 'ταιριαζ')) return matchDetailResult(profile, person);
   if (person && hasStem(folded, 'save', 'watch', 'αποθηκ')) return saveOrConnect('save', person, propose);
@@ -2888,12 +2886,12 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(meet this week|who should i meet)\b/.test(folded) || /ποιον.{0,20}εβδομαδ|αυτη την εβδομαδα/.test(folded)) return weekMeetResult(profile);
   if (/\b(fit check|archetype|quiz)\b/.test(folded) || hasStem(folded, 'τι ειδους')) return fitCheckResult();
 
-  if (/\b(apply to|apply now|applying to)\b/.test(folded) && !/\b(what|which|how)\b/.test(folded)) return applyResult(query, propose);
-  if (/\bclaim\b/.test(folded) && hasStem(folded, 'perk', 'aws', 'stripe', 'hubspot', 'notion', 'google cloud', 'gcp', 'intercom', 'slack', 'mercury', 'amazon web', 'παροχ') && !/\b(what|which|how)\b/.test(folded)) {
+  if ((/\b(apply to|apply now|applying to)\b/.test(folded) || /^κανε αιτηση (?:στο|στη|στην|για)(?=\s|$)/.test(folded)) && !/\b(what|which|how)\b/.test(folded) && !hasStem(folded, 'ποια', 'ποιο')) return applyResult(query, propose);
+  if ((/\bclaim\b/.test(folded) || /^(?:διεκδικησε|ζητα|παρε|ενεργοποιησε)(?=\s|$)/.test(folded)) && hasStem(folded, 'perk', 'aws', 'stripe', 'hubspot', 'notion', 'google cloud', 'gcp', 'intercom', 'slack', 'mercury', 'amazon web', 'παροχ') && !/\b(what|which|how)\b/.test(folded) && !hasStem(folded, 'ποια', 'ποιες')) {
     return claimPerkResult(query, propose);
   }
-  if (/\brecord\b/.test(folded) && /\binvest/.test(folded)) return recordInvestmentResult(query, propose);
-  if (/\b(add|create|new)\b/.test(folded) && /\b(task|todo)\b/.test(folded)) return addTaskResult(query, propose);
+  if ((/\brecord\b/.test(folded) && /\binvest/.test(folded)) || (hasStem(folded, 'καταγραψ') && hasStem(folded, 'επενδυσ'))) return recordInvestmentResult(query, propose);
+  if ((/\b(add|create|new)\b/.test(folded) && /\b(task|todo)\b/.test(folded)) || (hasStem(folded, 'προσθεσ', 'δημιουργ', 'νεα') && hasStem(folded, 'εργασια', 'καθηκον'))) return addTaskResult(query, propose);
 
   // A join names the community, which is also a knowledge card ("Fintech
   // Founders is on the Communities page…"). The verb wins: the card tells the
@@ -2918,7 +2916,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if ((/\b(become|how do i)\b/.test(folded) || hasStem(folded, 'πως γιν', 'γινω')) && /\bmentor\b|μεντορ/.test(folded)) return becomeMentorResult();
   if (/\bmentor\b/.test(folded) || hasStem(folded, 'μεντορ')) return mentorsResult(query);
   if (/\b(activity|history|notifications?|requests?|watchlist)\b/.test(folded) || hasStem(folded, 'τι εγινε', 'τι αλλαξε', 'τι νεο', 'ειδοποι', 'αιτημ')) return activityResult();
-  if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded)) return sessionAddResult(query, propose);
+  if (/\b(new event|schedule a meeting|schedule a new event|add (a )?session)\b/.test(folded) || /^(?:κλεισε|προγραμματισε|βαλε)\s+(?:μια\s+)?(?:συναντηση|εκδηλωση|συνεδρια)(?=\s|$)/.test(folded)) return sessionAddResult(query, propose);
   if (/\b(events?|meetups?|sessions?)\b/.test(folded) || hasStem(folded, 'εκδηλ', 'διοργανωσ', 'συνεδρ')) return eventsResult(query, propose);
   if (/\b(communities|community)\b/.test(folded) || hasStem(folded, 'κοινοτ')) return communitiesResult(query, propose);
   if (/\b(programs?|accelerator|bootcamp)\b/.test(folded) || hasStem(folded, 'προγραμ')) return programsResult();
@@ -2926,7 +2924,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(legal|template|nda)\b/.test(folded) || hasStem(folded, 'νομικ')) return legalResult();
   if (/\b(courses?|learning|resources?)\b/.test(folded) || hasStem(folded, 'μαθημ', 'πορο')) return resourcesResult();
   if (/\b(milestones?|overdue|due)\b/.test(folded) || hasStem(folded, 'οροσημ', 'εκπροθεσμ')) return milestonesResult(query, propose);
-  if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return pipelineResult();
+  if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return routePipeline('show my pipeline', propose)!;
   if (/\b(rounds?|raise|runway|valuation)\b/.test(folded) || hasStem(folded, 'γυρο', 'χρηματοδ', 'επενδυτ')) return roundResult();
   if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν', 'σημεριν', 'κατασταση', 'συνοψη')) return briefingResult(profile);
   if (/\b(help|what can you)\b/.test(folded) || hasStem(folded, 'τι μπορεις')) return helpResult();

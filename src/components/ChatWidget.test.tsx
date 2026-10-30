@@ -10,7 +10,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readAssistant, readMilestones, readProfileLocal, resetAllLists } from '../lib/localLists';
+import { readAssistant, readMilestones, readProfileLocal, readTasks, resetAllLists } from '../lib/localLists';
 import ChatWidget from './ChatWidget';
 
 const toasts = vi.hoisted(() => ({ last: undefined as undefined | { action?: { run: () => void } } }));
@@ -110,5 +110,20 @@ describe('studio chat proposals', () => {
     expect(await screen.findByText(/not reachable right now/)).toBeInTheDocument();
     expect(screen.queryByText(/Best match:/)).not.toBeInTheDocument();
     expect(screen.getByText('Not matched')).toBeInTheDocument();
+  });
+
+  it('offers Confirm all for several changes in one message, applies them in order, and undoes all', async () => {
+    renderChat();
+    await send('add milestone Private beta live and add task Call the bank');
+    const confirmAll = await screen.findByRole('button', { name: 'Confirm all (2)' });
+    expect(screen.getAllByRole('button', { name: 'Confirm' })).toHaveLength(2);
+    expect(readMilestones().some((item) => item.title === 'Private beta live')).toBe(false);
+    await userEvent.click(confirmAll);
+    await waitFor(() => expect(readMilestones().some((item) => item.title === 'Private beta live')).toBe(true));
+    expect(readTasks().some((item) => item.title === 'Call the bank')).toBe(true);
+    expect(screen.queryByRole('button', { name: /Confirm all/ })).not.toBeInTheDocument();
+    await act(async () => { toasts.last?.action?.run(); });
+    await waitFor(() => expect(readMilestones().some((item) => item.title === 'Private beta live')).toBe(false));
+    expect(readTasks().some((item) => item.title === 'Call the bank')).toBe(false);
   });
 });

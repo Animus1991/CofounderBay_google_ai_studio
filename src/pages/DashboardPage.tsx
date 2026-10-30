@@ -21,7 +21,7 @@ import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
-import { keys, readActivity, readRequests, saveRequest } from '../lib/localLists';
+import { followUps, keys, readActivity, readRequests, readRound, saveRequest } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
@@ -298,6 +298,7 @@ export default function DashboardPage() {
   const { people } = usePeople(user?.uid);
   const messaging = useOptionalMessaging();
   const localRequests = useStored(readRequests, [keys.requests]);
+  const round = useStored(readRound, [keys.round]);
   const connections = useConnections();
   const noteFeed = useNotificationFeed();
   const [viewCount, setViewCount] = useState<number | null>(null);
@@ -474,11 +475,14 @@ export default function DashboardPage() {
   const pendingRequests = isDemoMode
     ? localRequests.filter((item) => item.status === 'pending').length
     : connections.incoming.length;
+  // Investor follow-ups that are overdue or due this week (the same list Fundraising and the assistant read).
+  const investorDue = (() => { const due = followUps(round); return due.overdue.length + due.soon.length; })();
   const nowChips = [
     { count: pendingRequests, en: 'Requests', el: 'Αιτήματα', askEn: 'What needs me in my requests?', askEl: 'Τι χρειάζεται προσοχή στα αιτήματα;' },
     { count: unread ?? 0, en: 'Messages', el: 'Μηνύματα', askEn: 'Which messages are unread?', askEl: 'Ποια μηνύματα είναι αδιάβαστα;' },
     { count: noteFeed.unread, en: 'Notifications', el: 'Ειδοποιήσεις', askEn: 'What is new in my notifications?', askEl: 'Τι νέο στις ειδοποιήσεις;' },
-  ].filter((chip) => chip.count > 0).slice(0, 3);
+    { count: investorDue, en: 'Follow-ups due', el: 'Follow-ups', askEn: 'What follow-ups are due?', askEl: 'Ποια follow-ups λήγουν;' },
+  ].filter((chip) => chip.count > 0).slice(0, 4);
 
   const slashItems: { en: string; el: string; kind: 'ask' | 'control' }[] = [
     ...dashStarters.map((item) => ({ ...item, kind: 'ask' as const })),

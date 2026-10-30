@@ -32,43 +32,124 @@ export const DEFAULT_AI_MODEL = appEnv.geminiModel || "gemini-flash-latest";
  * Both paths return the text *and* any function calls, so the assistant can
  * offer the model its action catalogue and run what it picks.
  */
+/** A refusal or failure from the AI proxy, with the server's reason code. */
+export class AIProxyError extends Error {
+  constructor(public status: number, public code: string, message: string) {
+    super(message);
+  }
+  /** The member must sign in (again) before the model can answer. */
+  get needsSignIn(): boolean {
+    return this.code === 'sign-in-required' || this.code === 'invalid-token';
+  }
+}
+
+async function proxyHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const token = await auth.currentUser?.getIdToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  } catch {
+    /* anonymous requests get the smaller anonymous budget, or a 401 in production */
+  }
+  return headers;
+}
+
+async function proxyFailure(response: Response): Promise<AIProxyError> {
+  const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
+  return new AIProxyError(response.status, body.code ?? `http-${response.status}`, `AI proxy error (${response.status}): ${body.error ?? "unknown"}`);
+}
+
+const viaProxy = () => appEnv.aiUseProxy || !appEnv.geminiApiKey;
+
+function normaliseCalls(raw: { name?: string; args?: unknown }[] | undefined): ModelFunctionCall[] {
+  return (raw ?? [])
+    .filter((call) => call.name)
+    .map((call) => ({ name: String(call.name), args: (call.args ?? {}) as Record<string, unknown> }));
+}
+
+function safeText(response: { text?: string }): string {
+  try {
+    return response.text ?? "";
+  } catch {
+    return "";
+  }
+}
+
 async function generateContent(params: GenerateParams, signal?: AbortSignal): Promise<GenerateResult> {
-  if (appEnv.aiUseProxy || !appEnv.geminiApiKey) {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
-    } catch {
-      /* anonymous requests are rate-limited harder by the server */
-    }
+  if (viaProxy()) {
     const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/generate`, {
       method: "POST",
-      headers,
+      headers: await proxyHeaders(),
       body: JSON.stringify(params),
       signal,
     });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(`AI proxy error (${response.status}): ${body?.error ?? "unknown"}`);
-    }
+    if (!response.ok) throw await proxyFailure(response);
     const body = (await response.json()) as { text?: string; functionCalls?: ModelFunctionCall[] };
     return { text: body.text ?? "", functionCalls: Array.isArray(body.functionCalls) ? body.functionCalls : [] };
   }
   const { GoogleGenAI } = await import("@google/genai");
   const client = new GoogleGenAI({ apiKey: appEnv.geminiApiKey });
   const response = await client.models.generateContent(params as never);
-  const calls = (response.functionCalls ?? []).map((call) => ({ name: call.name ?? "", args: (call.args ?? {}) as Record<string, unknown> }));
+  return { text: safeText(response), functionCalls: normaliseCalls(response.functionCalls) };
+}
+
+/**
+ * The same call, streamed: `onText` receives the answer as it is written, and
+ * the promise resolves with the whole text and any function calls at the end.
+ * Proxy path: Server-Sent Events from `POST /api/ai/stream`.
+ */
+async function generateContentStream(params: GenerateParams, onText: (soFar: string) => void, signal?: AbortSignal): Promise<GenerateResult> {
   let text = "";
-  try {
-    text = response.text ?? "";
-  } catch {
-    text = "";
+  const functionCalls: ModelFunctionCall[] = [];
+  if (viaProxy()) {
+    const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/stream`, {
+      method: "POST",
+      headers: await proxyHeaders(),
+      body: JSON.stringify(params),
+      signal,
+    });
+    if (!response.ok) throw await proxyFailure(response);
+    if (!response.body) return generateContent(params, signal);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        const event = buffer.slice(0, boundary).replace(/^data: /, "");
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+        if (!event.trim()) continue;
+        const data = JSON.parse(event) as { text?: string; functionCalls?: ModelFunctionCall[]; error?: string };
+        if (data.error) throw new AIProxyError(502, "upstream", data.error);
+        if (data.text) {
+          text += data.text;
+          onText(text);
+        }
+        if (data.functionCalls?.length) functionCalls.push(...data.functionCalls);
+      }
+    }
+    return { text, functionCalls };
   }
-  return { text, functionCalls: calls.filter((call) => call.name) };
+  const { GoogleGenAI } = await import("@google/genai");
+  const client = new GoogleGenAI({ apiKey: appEnv.geminiApiKey });
+  const stream = await client.models.generateContentStream(params as never);
+  for await (const chunk of stream) {
+    const piece = safeText(chunk);
+    if (piece) {
+      text += piece;
+      onText(text);
+    }
+    functionCalls.push(...normaliseCalls(chunk.functionCalls));
+  }
+  return { text, functionCalls };
 }
 
 /** What the server says about its AI configuration (never the key). */
-export type AIStatus = { configured: boolean; model: string | null; source: "proxy" | "direct" | "none" };
+export type AIStatus = { configured: boolean; model: string | null; source: "proxy" | "direct" | "none"; requiresSignIn?: boolean };
 
 export interface ChatMessage {
   role: 'user' | 'model' | 'system';
@@ -430,32 +511,41 @@ If a pitch deck or slide image is provided, review it for clarity, completeness 
    */
   static async plan(input: {
     prompt: string;
+    /** Multi-turn contents (the read loop); when absent the prompt is sent alone. */
+    contents?: unknown[];
     context: string;
     functionDeclarations: unknown[];
     signal?: AbortSignal;
+    /** Receives the answer as it is written (streaming). */
+    onText?: (soFar: string) => void;
   }): Promise<GenerateResult> {
     this.checkCircuitBreaker();
     const language = getLang() === 'el' ? 'Greek' : 'English';
-    try {
-      return await generateContent({
-        model: DEFAULT_AI_MODEL,
-        contents: input.prompt,
-        config: {
-          systemInstruction: `You are the operator of CoFounderBay, a studio where founders find co-founders, mentors and investors and build their venture.
+    const params: GenerateParams = {
+      model: DEFAULT_AI_MODEL,
+      contents: input.contents ?? input.prompt,
+      config: {
+        systemInstruction: `You are the operator of CoFounderBay, a studio where founders find co-founders, mentors and investors and build their venture.
 ${input.context}
 Rules:
-- If the person's request maps to one of the declared tools, call exactly one tool with arguments taken from the request. Use the person's own words for free-text arguments. Never invent names of members or programs; if a required argument is missing, answer with one short question instead of calling a tool.
+- If the person's request maps to one of the declared write, navigate or preference tools, call exactly one tool with arguments taken from the request. Use the person's own words for free-text arguments. Never invent names of members or programs; if a required argument is missing, answer with one short question instead of calling a tool.
+- To answer a question about the founder's own data (milestones, round, pipeline, follow-ups, matches, messages, tasks, canvas…), first call the matching read tool; you may read up to three times. Then answer from what you read, and say which of it you used.
 - If the person wants advice, an explanation or a draft that no tool provides, answer directly in ${language}: concrete, practical, specific to an early-stage founder, grounded in the context above. ${assistantStyleInstruction()}
 - Never claim you changed something: only a confirmed tool call changes data.
 - Never invent people, companies, numbers, deadlines or partnerships. If unsure about a fact, say so and say how to check it.`,
-          tools: [{ functionDeclarations: input.functionDeclarations }],
-          toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-          maxOutputTokens: 900,
-          temperature: 0.3,
-        },
-      }, input.signal);
+        tools: [{ functionDeclarations: input.functionDeclarations }],
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+        maxOutputTokens: 900,
+        temperature: 0.3,
+      },
+    };
+    try {
+      return input.onText
+        ? await generateContentStream(params, input.onText, input.signal)
+        : await generateContent(params, input.signal);
     } catch (error) {
-      this.recordFailure();
+      // A sign-in refusal is not an outage: keep the model available for the next turn.
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
       throw error;
     }
   }
@@ -471,8 +561,8 @@ Rules:
     } else {
       try {
         const response = await fetch(`${appEnv.apiBaseUrl}/api/ai/status`);
-        const body = response.ok ? ((await response.json()) as { configured?: boolean; model?: string }) : {};
-        value = { configured: Boolean(body.configured), model: body.model ?? null, source: body.configured ? 'proxy' : 'none' };
+        const body = response.ok ? ((await response.json()) as { configured?: boolean; model?: string; requiresSignIn?: boolean }) : {};
+        value = { configured: Boolean(body.configured), model: body.model ?? null, source: body.configured ? 'proxy' : 'none', requiresSignIn: Boolean(body.requiresSignIn) };
       } catch {
         value = { configured: false, model: null, source: 'none' };
       }

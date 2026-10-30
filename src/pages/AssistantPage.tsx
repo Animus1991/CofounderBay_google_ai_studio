@@ -98,15 +98,15 @@ export default function AssistantPage() {
             <h2 className="text-sm font-semibold text-stone-900">{t('How it decides', 'Πώς αποφασίζει')}</h2>
             <ol className="space-y-2 text-sm text-stone-600">
               <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">1</span>{t('Studio actions first — instant, offline, the same data the pages show.', 'Πρώτα οι ενέργειες του studio — άμεσα, χωρίς δίκτυο, με τα ίδια δεδομένα των σελίδων.')}</li>
-              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">2</span>{t('Anything else goes to the AI model, which can pick one of the actions below or answer in words.', 'Ό,τι άλλο πάει στο μοντέλο AI, που μπορεί να διαλέξει μία από τις παρακάτω ενέργειες ή να απαντήσει με λόγια.')}</li>
-              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">3</span>{t('Every change waits for your Confirm. If neither can help, it says so instead of guessing.', 'Κάθε αλλαγή περιμένει το δικό σου «Επιβεβαίωση». Αν δεν μπορεί να βοηθήσει, το λέει αντί να μαντέψει.')}</li>
+              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">2</span>{t('Anything else goes to the AI model. It can read your data first (up to three times, listed under “Read from”), then pick one of the actions below or answer in words, as it writes.', 'Ό,τι άλλο πάει στο μοντέλο AI. Μπορεί πρώτα να διαβάσει τα δεδομένα σου (έως τρεις φορές, φαίνονται στο «Ανάγνωση από»), μετά να διαλέξει μία από τις παρακάτω ενέργειες ή να απαντήσει με λόγια, καθώς γράφει.')}</li>
+              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">3</span>{t('Every change waits for your Confirm — several changes in one message get “Confirm all”. If neither can help, it says so instead of guessing.', 'Κάθε αλλαγή περιμένει το δικό σου «Επιβεβαίωση» — πολλές αλλαγές σε ένα μήνυμα παίρνουν «Επιβεβαίωση όλων». Αν δεν μπορεί να βοηθήσει, το λέει αντί να μαντέψει.')}</li>
             </ol>
             <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-3 text-xs text-stone-500">
               <ShieldCheck className="h-3.5 w-3.5 text-stone-400" aria-hidden="true" />
               {status === null
                 ? t('Checking the AI model…', 'Έλεγχος μοντέλου AI…')
                 : status.configured
-                  ? t(`AI model connected${status.model ? ` (${status.model})` : ''}`, `Μοντέλο AI συνδεδεμένο${status.model ? ` (${status.model})` : ''}`)
+                  ? `${t(`AI model connected${status.model ? ` (${status.model})` : ''}`, `Μοντέλο AI συνδεδεμένο${status.model ? ` (${status.model})` : ''}`)}${status.requiresSignIn ? t(' · open questions need you to be signed in', ' · οι ανοιχτές ερωτήσεις χρειάζονται σύνδεση') : ''}`
                   : t('AI model not configured — studio actions still work; free-form questions are answered honestly as “not matched”.', 'Το μοντέλο AI δεν έχει ρυθμιστεί — οι ενέργειες του studio λειτουργούν· οι ελεύθερες ερωτήσεις σημειώνονται τίμια ως «χωρίς αντιστοίχιση».')}
             </div>
             <p className="text-xs text-stone-500">

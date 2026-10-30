@@ -5,6 +5,10 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { Server } from "socket.io";
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
+import { corsMiddleware, originPolicy } from "./server/cors";
+import { cachedCerts, googleCertFetcher, verifyFirebaseIdToken } from "./server/firebaseAuth";
+import { geminiModel, readAiEnv, registerAiRoutes } from "./server/aiProxy";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,9 +21,11 @@ const VITE_PORT = parseInt(process.env.VITE_PORT || "5180"); // Different from 5
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
+  // Only the app's own origins may call the API or open a socket (server/cors.ts).
+  const allowOrigin = originPolicy(process.env);
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: (origin, callback) => callback(null, !origin || allowOrigin(origin)),
     },
   });
   const PORT = API_PORT;
@@ -27,16 +33,9 @@ async function startServer() {
   // Default 100 kB JSON bodies everywhere except the AI proxy, which parses its
   // own larger body (slide images) — a global parser would reject it first.
   const defaultJson = express.json();
-  app.use((req, res, next) => (req.path === "/api/ai/generate" ? next() : defaultJson(req, res, next)));
+  app.use((req, res, next) => (req.path.startsWith("/api/ai/") ? next() : defaultJson(req, res, next)));
 
-  // Allow cross-origin access (needed when served from same port via Vite middleware)
-  app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    if (req.method === "OPTIONS") return res.sendStatus(200);
-    return next();
-  });
+  app.use(corsMiddleware(allowOrigin));
 
   // Mock Database (In-memory for MVP)
   const db = {
@@ -560,101 +559,27 @@ async function startServer() {
   });
 
   // ── AI Proxy ─────────────────────────────────────────────────────────────
-  // Keeps the Gemini API key server-side (process.env.GEMINI_API_KEY) so it is
-  // never shipped in the client bundle. Includes a simple per-caller limiter.
-  //
-  // Hardening:
-  // - Its own JSON body limit (8 MB): the Pitch Deck Reviewer sends a slide
-  //   image as base64, which the app-wide 100 kB default silently rejected.
-  // - A model allow-list: the client names a model, but only the configured
-  //   model (and AI_MODEL_ALLOWLIST additions) are forwarded, so a caller cannot
-  //   pick an arbitrarily expensive one.
-  // - An output-token ceiling and a forwarded-config allow-list.
-  // - Function calls are returned next to the text, so the assistant can offer
-  //   its action catalogue (tool use) through the proxy as well.
-  const aiRateBuckets = new Map<string, { count: number; resetAt: number }>();
-  const AI_RATE_LIMIT_PER_MINUTE = parseInt(process.env.AI_RATE_LIMIT_PER_MINUTE || "30");
-  const AI_DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
-  const AI_ALLOWED_MODELS = new Set(
-    [AI_DEFAULT_MODEL, ...(process.env.AI_MODEL_ALLOWLIST || "").split(",")].map((m) => m.trim()).filter(Boolean),
-  );
-  const AI_MAX_OUTPUT_TOKENS = parseInt(process.env.AI_MAX_OUTPUT_TOKENS || "2048");
-  const FORWARDED_CONFIG_KEYS = new Set([
-    "systemInstruction",
-    "responseMimeType",
-    "responseSchema",
-    "temperature",
-    "topP",
-    "tools",
-    "toolConfig",
-    "maxOutputTokens",
-  ]);
-
-  /** Rate-limit key: the bearer token's tail when present (per member), else the IP. */
-  const callerKey = (req: express.Request): string => {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (token.length > 24) return `t:${token.slice(-24)}`;
-    return `ip:${req.ip || req.socket.remoteAddress || "unknown"}`;
-  };
-
-  app.get("/api/ai/status", (_req, res) => {
-    const configured = Boolean(process.env.GEMINI_API_KEY);
-    res.json({ configured, model: configured ? AI_DEFAULT_MODEL : null });
-  });
-
-  app.post("/api/ai/generate", express.json({ limit: "8mb" }), async (req, res) => {
-    const key = callerKey(req);
-    const now = Date.now();
-    const bucket = aiRateBuckets.get(key);
-    if (!bucket || bucket.resetAt < now) {
-      aiRateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
-    } else if (++bucket.count > AI_RATE_LIMIT_PER_MINUTE) {
-      return res.status(429).json({
-        error: "Rate limit exceeded",
-        retryAfterMs: bucket.resetAt - now,
-      });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(503).json({
-        error: "AI proxy not configured — set GEMINI_API_KEY on the server environment",
-      });
-    }
-
-    const { model: requestedModel, contents, config } = req.body ?? {};
-    if (contents === undefined) {
-      return res.status(400).json({ error: "`contents` is required" });
-    }
-    const model = typeof requestedModel === "string" && AI_ALLOWED_MODELS.has(requestedModel) ? requestedModel : AI_DEFAULT_MODEL;
-    const safeConfig: Record<string, unknown> = {};
-    if (config && typeof config === "object") {
-      for (const [k, v] of Object.entries(config as Record<string, unknown>)) {
-        if (FORWARDED_CONFIG_KEYS.has(k)) safeConfig[k] = v;
-      }
-    }
-    const askedTokens = Number(safeConfig.maxOutputTokens);
-    safeConfig.maxOutputTokens = Number.isFinite(askedTokens) && askedTokens > 0 ? Math.min(askedTokens, AI_MAX_OUTPUT_TOKENS) : AI_MAX_OUTPUT_TOKENS;
-
+  // Gemini stays behind the server (GEMINI_API_KEY never ships to browsers).
+  // Callers are identified by a verified Firebase ID token; production refuses
+  // anonymous calls. Policy, limits and streaming live in server/aiProxy.ts.
+  const firebaseProjectId = (() => {
+    const fromEnv = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    if (fromEnv) return fromEnv;
     try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({ model, contents, config: safeConfig });
-      const functionCalls = (response.functionCalls ?? [])
-        .filter((call) => call.name)
-        .map((call) => ({ name: call.name, args: call.args ?? {} }));
-      let text = "";
-      try {
-        text = response.text ?? "";
-      } catch {
-        text = "";
-      }
-      return res.json({ text, functionCalls, model });
-    } catch (err) {
-      console.error("AI proxy upstream error:", err);
-      return res.status(502).json({ error: "Upstream AI provider error" });
+      return JSON.parse(readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")).projectId as string;
+    } catch {
+      return "";
     }
+  })();
+  const certs = cachedCerts(googleCertFetcher());
+  const geminiApiKey = () => process.env.GEMINI_API_KEY;
+  const gemini = geminiModel(geminiApiKey);
+  registerAiRoutes(app, {
+    ...readAiEnv(process.env),
+    apiKey: geminiApiKey,
+    verifyToken: (token) => verifyFirebaseIdToken(token, { projectId: firebaseProjectId, certs }),
+    generate: gemini.generate,
+    generateStream: gemini.generateStream,
   });
 
   // WebSocket logic

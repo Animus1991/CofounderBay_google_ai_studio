@@ -10,6 +10,7 @@ import type { Milestone, UserProfile } from '../types';
 import { findCast } from '../data/cast';
 import { seedMilestones } from '../data/seeds';
 import { recordLocalSave } from './saveFeedback';
+import { demoPipeline } from '../data/demoCatalog';
 
 const CHANGE_EVENT = 'cfb:data';
 const ALL = '*';
@@ -214,6 +215,7 @@ export const keys = {
   activity: 'cfb.activity',
   chat: 'cfb.chat',
   assistant: 'cfb.assistant',
+  followUpAlerts: 'cfb.followUpAlerts',
   assistantFeedback: 'cfb.assistantFeedback',
   tasks: 'cfb.workspaceTasks',
   invites: 'cfb.founderInvites',
@@ -750,6 +752,10 @@ export type RoundInvestor = {
   stage: string;
   notes: string;
   updatedAt: string;
+  /** What the founder has to do next with this investor ("Send the cost model"). */
+  nextStep?: string;
+  /** When that next step is due, YYYY-MM-DD (local day). */
+  nextDate?: string;
 };
 
 export const PIPELINE_STAGES = ['Identified', 'Contacted', 'Meeting', 'Due Diligence', 'Term Sheet', 'Closed', 'Passed'] as const;
@@ -769,6 +775,9 @@ export function defaultRound(): Round {
     monthlyBurn: demo ? 22_000 : 0,
     closeDate: close.toISOString().slice(0, 10),
     updatedAt: new Date().toISOString(),
+    // The sample round comes with its pipeline (and follow-ups), so the assistant and
+    // every page see it before Fundraising is ever opened. Real accounts start empty.
+    ...(demo ? { pipeline: demoPipeline() } : {}),
   };
 }
 
@@ -807,6 +816,49 @@ export function setPipelineStage(investorId: string, stage: string, notes?: stri
     item.investorId === investorId ? { ...item, stage, notes: notes ?? item.notes, updatedAt: new Date().toISOString() } : item,
   );
   return writeRound({ pipeline: next });
+}
+
+/** Sets (or clears, with empty values) the next step and its due day for one investor. */
+export function setPipelineFollowUp(investorId: string, followUp: { nextStep?: string; nextDate?: string }): Round {
+  const round = readRound();
+  const next = (round.pipeline ?? []).map((item) => {
+    if (item.investorId !== investorId) return item;
+    const updated: RoundInvestor = { ...item, updatedAt: new Date().toISOString() };
+    if (followUp.nextStep !== undefined) updated.nextStep = followUp.nextStep.trim() || undefined;
+    if (followUp.nextDate !== undefined) updated.nextDate = /^\d{4}-\d{2}-\d{2}$/.test(followUp.nextDate) ? followUp.nextDate : undefined;
+    return updated;
+  });
+  return writeRound({ pipeline: next });
+}
+
+/** Today as the local YYYY-MM-DD the follow-up dates use. */
+export function localDay(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/** Whole days from today to a YYYY-MM-DD (negative when it has passed). */
+export function daysUntil(day: string, now: Date = new Date()): number {
+  const [y, m, d] = day.split('-').map(Number);
+  const target = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+export type FollowUp = RoundInvestor & { nextDate: string; inDays: number };
+
+/** Follow-ups on investors still in play, split by when they are due. Closed and passed investors are left out. */
+export function followUps(round: Round = readRound(), now: Date = new Date()): { overdue: FollowUp[]; soon: FollowUp[]; later: FollowUp[]; undated: RoundInvestor[] } {
+  const active = (round.pipeline ?? []).filter((item) => item.stage !== 'Passed' && item.stage !== 'Closed' && item.nextStep);
+  const dated = active
+    .filter((item): item is RoundInvestor & { nextDate: string } => Boolean(item.nextDate))
+    .map((item) => ({ ...item, inDays: daysUntil(item.nextDate, now) }))
+    .sort((a, b) => a.inDays - b.inDays);
+  return {
+    overdue: dated.filter((item) => item.inDays < 0),
+    soon: dated.filter((item) => item.inDays >= 0 && item.inDays <= 7),
+    later: dated.filter((item) => item.inDays > 7),
+    undated: active.filter((item) => !item.nextDate),
+  };
 }
 
 export function removePipelineInvestor(investorId: string): Round {

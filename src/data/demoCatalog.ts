@@ -126,3 +126,42 @@ export function datedKnowledge(lang: Lang): { keys: string[]; href: string; text
 export function demoEventsLine(lang: Lang): string {
   return DEMO_EVENTS.map((item) => `${item.title} (${item.place[lang]}, ${shortDay(daysFromToday(item.inDays), lang)})`).join(', ');
 }
+
+/**
+ * The sample round's investor pipeline, with each investor's next step and
+ * when it is due. One follow-up is overdue on purpose, so the overdue alert,
+ * the dashboard brief and the assistant's "what is overdue?" have something
+ * true to show.
+ */
+export const DEMO_PIPELINE = [
+  { investorId: 'inv_1', name: 'Sequoia Capital', stage: 'Due Diligence', notes: 'Requested financial projections for 2027.', nextStep: 'Share the data room with the pilot report', nextStepEl: 'Μοιράσου το data room με την αναφορά του πιλότου', dueInDays: 2 },
+  { investorId: 'inv_2', name: 'Naval Ravikant', stage: 'Meeting', notes: 'Second meeting scheduled for next Tuesday.', nextStep: 'Send the per-building cost model', nextStepEl: 'Στείλε το μοντέλο κόστους ανά κτίριο', dueInDays: 5 },
+  { investorId: 'inv_3', name: 'Andreessen Horowitz', stage: 'Contacted', notes: 'Intro sent via Alex.', nextStep: 'Follow up on the intro', nextStepEl: 'Κάνε follow-up στη γνωριμία', dueInDays: -1 },
+  { investorId: 'inv_4', name: 'First Round Capital', stage: 'Identified', notes: 'Fits our thesis perfectly.', nextStep: 'Ask Alex for a warm intro', nextStepEl: 'Ζήτα από τον Alex μια γνωριμία', dueInDays: 9 },
+  { investorId: 'inv_5', name: 'Bessemer Venture', stage: 'Passed', notes: 'Too early for their current fund.', nextStep: '', nextStepEl: '', dueInDays: null },
+] as const;
+
+/** The sample pipeline as stored rows, dated from today. */
+export function demoPipeline(lang: Lang = 'en', now: Date = new Date()) {
+  const at = now.toISOString();
+  return DEMO_PIPELINE.map((item) => ({
+    investorId: item.investorId,
+    name: item.name,
+    stage: item.stage,
+    notes: item.notes,
+    updatedAt: at,
+    ...(item.dueInDays === null
+      ? {}
+      : { nextStep: lang === 'el' ? item.nextStepEl : item.nextStep, nextDate: daysFromToday(item.dueInDays, now) }),
+  }));
+}
+
+/** The sample investor directory (Fundraising → Investors), by id — the assistant uses it to add one to the pipeline. */
+export const DEMO_INVESTOR_NAMES = [
+  { id: 'inv_1', name: 'Sequoia Capital' },
+  { id: 'inv_2', name: 'Naval Ravikant' },
+  { id: 'inv_3', name: 'Andreessen Horowitz' },
+  { id: 'inv_4', name: 'First Round Capital' },
+  { id: 'inv_5', name: 'Bessemer Venture' },
+  { id: 'inv_6', name: 'Index Ventures' },
+] as const;

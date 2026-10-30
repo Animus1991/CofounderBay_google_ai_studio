@@ -30,6 +30,8 @@ type Bubble = AssistantTurn & {
   undoUntil?: number;
   /** How the reply was produced: the studio router, the model choosing an action, the model answering, or neither. */
   origin?: EngineOrigin;
+  /** Proposals that came from one message share this id, so they can be confirmed together. */
+  batchId?: string;
 };
 
 function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
@@ -75,6 +77,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const [agentId, setAgentId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  /** The model's answer while it is being written (streaming); null otherwise. */
+  const [streamingText, setStreamingText] = useState<string | null>(null);
   const [stopped, setStopped] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pageOpen, setPageOpen] = useState(false);
@@ -111,6 +115,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
           interpretedAs: extra.interpretedAs ?? turn.interpretedAs,
           links: extra.links ?? turn.links,
           followUps: extra.followUps ?? turn.followUps,
+          batchId: extra.batchId,
         };
       });
     });
@@ -166,7 +171,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [visibleTurns, isTyping, isOpen]);
+  }, [visibleTurns, isTyping, isOpen, streamingText]);
 
   const speak = (result: AssistantResult): string => (mode === 'el' ? result.el : result.en);
 
@@ -264,9 +269,9 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
     pushStudio({ id: newId('a-undone'), role: 'assistant', text: t('Undone.', 'Αναιρέθηκε.'), at: new Date().toISOString() });
   };
 
-  const confirmProposal = async (msg: Bubble) => {
+  const confirmProposal = async (msg: Bubble, options: { quiet?: boolean } = {}): Promise<boolean> => {
     const proposal = msg.proposal;
-    if (!proposal || msg.resolved) return;
+    if (!proposal || msg.resolved) return false;
     setIsTyping(true);
     let final: AssistantResult;
     try {
@@ -277,7 +282,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       updateAssistantTurn(msg.id, { text });
       toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), t('Nothing changed.', 'Τίποτα δεν άλλαξε.'));
       setIsTyping(false);
-      return;
+      return false;
     }
     setIsTyping(false);
     const text = speak(final);
@@ -294,6 +299,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
         }
       : item)));
     updateAssistantTurn(msg.id, { text, href: final.href, links: final.links, followUps: final.followUps, sources: final.sources, tool: final.tool });
+    if (options.quiet) return true;
     if (proposal.undo) {
       toast.toast({
         type: 'success',
@@ -304,9 +310,41 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       });
       window.setTimeout(() => setTurns((prev) => prev.map((item) => (item.id === msg.id ? { ...item, undoUntil: 0 } : item))), 60_000);
     }
+    if (msg.batchId) return true;
     const index = turnsRef.current.findIndex((item) => item.id === msg.id);
     const userSaid = turnsRef.current.slice(0, index).reverse().find((item) => item.role === 'user')?.text ?? '';
     void polishReply(msg.id, userSaid, final);
+    return true;
+  };
+
+  /** The pending proposals of one message, in the order they were proposed. */
+  const pendingInBatch = (batchId: string) => turnsRef.current.filter((item) => item.batchId === batchId && item.proposal && !item.resolved);
+
+  /** Applies every pending proposal of one message, in order, with one toast and one Undo for all. */
+  const confirmAll = async (batchId: string) => {
+    const pending = pendingInBatch(batchId);
+    const applied: Bubble[] = [];
+    for (const item of pending) {
+      const fresh = turnsRef.current.find((turn) => turn.id === item.id) ?? item;
+      if (await confirmProposal(fresh, { quiet: true })) applied.push(fresh);
+      else break;
+    }
+    if (applied.length === 0) return;
+    const reversible = applied.filter((item) => item.proposal?.undo);
+    toast.toast({
+      type: applied.length === pending.length ? 'success' : 'warning',
+      title: applied.length === pending.length
+        ? t(`${applied.length} changes made`, `${applied.length} αλλαγές έγιναν`)
+        : t(`${applied.length} of ${pending.length} changes made — the rest did not go through`, `${applied.length} από ${pending.length} αλλαγές έγιναν — οι υπόλοιπες όχι`),
+      duration: 8000,
+      action: reversible.length
+        ? { label: t('Undo all', 'Αναίρεση όλων'), run: () => { void (async () => { for (const item of [...reversible].reverse()) await undoProposal(item.id); })(); } }
+        : undefined,
+    });
+  };
+
+  const cancelAll = (batchId: string) => {
+    for (const item of pendingInBatch(batchId)) cancelProposal(item);
   };
 
   const run = async (raw: string) => {
@@ -403,12 +441,37 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
         history,
         suggestions: pageStarters,
         signal: controller.signal,
+        // The model's answer appears as it is written.
+        onText: (soFar) => { if (!stopRef.current) setStreamingText(soFar); },
       });
     } finally {
       setIsTyping(false);
+      setStreamingText(null);
       if (abortRef.current === controller) abortRef.current = null;
     }
     if (stopRef.current) return;
+    if (result.batch?.length) {
+      // Several changes from one message: one card each, plus Confirm all.
+      const batchId = newId('batch');
+      const at = new Date().toISOString();
+      pushStudio({ id: newId('a'), role: 'assistant', text: speak(result), tool: 'batch', origin: 'router', batchId, at });
+      for (const item of result.batch) {
+        pushStudio({
+          id: newId('a'),
+          role: 'assistant',
+          text: speak(item),
+          href: item.href,
+          links: item.links,
+          tool: item.tool,
+          sources: item.sources,
+          proposal: item.proposal,
+          origin: 'router',
+          batchId,
+          at,
+        });
+      }
+      return;
+    }
     const replyId = newId('a');
     pushStudio({
       id: replyId,
@@ -694,6 +757,21 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                         {t('Undo', 'Αναίρεση')}
                       </button>
                     ) : null}
+                    {msg.batchId && visibleTurns.slice(index + 1).every((item) => item.batchId !== msg.batchId) && (() => {
+                      const pending = visibleTurns.filter((item) => item.batchId === msg.batchId && item.proposal && !item.resolved).length;
+                      if (pending < 2) return null;
+                      const batchId = msg.batchId;
+                      return (
+                        <div className="flex gap-2" role="group" aria-label={t('All changes from this message', 'Όλες οι αλλαγές από αυτό το μήνυμα')}>
+                          <button type="button" data-testid="confirm-all" onClick={() => { void confirmAll(batchId); }} className="min-h-8 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800">
+                            {t(`Confirm all (${pending})`, `Επιβεβαίωση όλων (${pending})`)}
+                          </button>
+                          <button type="button" onClick={() => cancelAll(batchId)} className="min-h-8 px-3 bg-white border border-stone-200 text-stone-700 rounded-lg text-xs font-medium hover:border-stone-400">
+                            {t('Cancel all', 'Ακύρωση όλων')}
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {lastAssistant && msg.followUps && msg.followUps.length > 0 && (
                       <div className="flex flex-col items-start gap-1" aria-label={bothText('Ask next', 'Ρώτα μετά')}>
                         {msg.followUps.map((prompt) => (
@@ -711,7 +789,15 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                   </div>
                 );
               })}
-              {isTyping && (
+              {isTyping && streamingText && (
+                <div data-testid="streaming-answer" className={cn('flex flex-col gap-1.5 mr-auto items-start', isPage ? 'max-w-[min(90%,44rem)]' : 'max-w-[90%]')}>
+                  <div className={cn('p-3 rounded-2xl leading-relaxed whitespace-pre-wrap break-words bg-white border border-stone-100 text-stone-800 rounded-tl-none', isPage ? 'text-sm' : 'text-xs')}>
+                    {streamingText}
+                    <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-stone-300 align-middle" aria-hidden="true" />
+                  </div>
+                </div>
+              )}
+              {isTyping && !streamingText && (
                 <div className="flex items-center gap-2 text-stone-400" role="status">
                   <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center">
                     <Bot className="w-3 h-3" />

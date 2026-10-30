@@ -94,10 +94,12 @@ describe('runAssistant', () => {
     expect(result.en).toMatch(/Networking Night/);
   });
 
-  it('opens the fundraising pipeline the Fundraising page uses', () => {
+  it('reads the same pipeline the Fundraising page shows, with next steps, and links to its tracker', () => {
     const result = runAssistant('show my pipeline', demo);
     expect(result.tool).toBe('pipeline');
-    expect(result.href).toBe('/fundraising');
+    expect(result.href).toBe('/fundraising?tab=tracker');
+    expect(result.en).toMatch(/Sequoia Capital · Due Diligence · next: Share the data room/);
+    expect(result.en).toMatch(/1 follow-up overdue/);
   });
 
   it('lists the same programs the Programs page shows', () => {

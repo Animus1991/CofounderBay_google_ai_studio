@@ -4,7 +4,8 @@ import {
  useRef,
  useMemo,
  useEffect } from "react";
-import { useNavigate } from 'react-router-dom';
+import { FollowUpEditor } from '../components/fundraising/FollowUp';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion,
  AnimatePresence } from "motion/react";
 import {
@@ -55,7 +56,7 @@ import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { formatDate } from "../lib/dates";
-import { addRoomFile, addSession, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
+import { addRoomFile, addSession, followUps, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
@@ -145,7 +146,8 @@ export default function Fundraising({ user }: FundraisingProps) {
  const uploadRoomFile = async (file: File) => {
   setRoomUploading(true);
   try {
-   const uploaded = await uploadFile(file, { folder: 'dataroom', uid: user.id });
+   // The sample account has no bucket of its own; its files stay inline (small files only).
+   const uploaded = await uploadFile(file, { folder: 'dataroom', uid: user.id, cloud: !isDemoMode });
    addRoomFile({ name: file.name, size: formatBytes(file.size), views: 0, updated: new Date().toISOString().slice(0, 10), folder: selectedFolder ?? undefined, url: uploaded.url, storage: uploaded.storage, path: uploaded.path });
    showToast(t(`${file.name} uploaded`, `Ανέβηκε: ${file.name}`));
   } catch (error) {
@@ -163,7 +165,18 @@ export default function Fundraising({ user }: FundraisingProps) {
   const names = new Set(extraRoom.map((file) => file.name));
   return [...extraRoom, ...seedRoomFiles().filter((file) => !names.has(file.name))];
  }, [extraRoom, isDemoMode]);
- const [activeTab, setActiveTab] = useState<"tracker" | "investors" | "programs" | "opportunities">("tracker");
+ // The tab lives in the URL (?tab=investors), so the assistant, the help and a shared link open the right one.
+ const [tabParams, setTabParams] = useSearchParams();
+ const FUNDRAISING_TABS = ["tracker", "investors", "programs", "opportunities"] as const;
+ type FundraisingTab = (typeof FUNDRAISING_TABS)[number];
+ const rawTab = tabParams.get("tab");
+ const activeTab: FundraisingTab = FUNDRAISING_TABS.includes(rawTab as FundraisingTab) ? (rawTab as FundraisingTab) : "tracker";
+ const setActiveTab = (tab: FundraisingTab) => {
+  const next = new URLSearchParams(tabParams);
+  if (tab === "tracker") next.delete("tab");
+  else next.set("tab", tab);
+  setTabParams(next, { replace: true });
+ };
  const [roundEditing, setRoundEditing] = useState(false);
  const roundForm = useProtectedDraft<Round>('fundraising-round', user.id, { ...round });
  const roundDraft = roundForm.value;
@@ -199,24 +212,11 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [showDocumentRoom, setShowDocumentRoom] = useState(false);
  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
- // The pipeline lives on the account's round — one source for the table, the funnel and the CRM.
- // The demo account seeds it once below; a real account starts empty and fills it from the Investors tab.
- useEffect(() => {
-  if (!isDemoMode) return;
-  const current = readRound();
-  if (current.pipeline && current.pipeline.length > 0) return;
-  writeRound({
-   pipeline: [
-    { investorId: "inv_1", name: "Sequoia Capital",       stage: "Due Diligence", notes: "Requested financial projections for 2027.",   updatedAt: new Date().toISOString() },
-    { investorId: "inv_2", name: "Naval Ravikant",         stage: "Meeting",       notes: "Second meeting scheduled for next Tuesday.",  updatedAt: new Date().toISOString() },
-    { investorId: "inv_3", name: "Andreessen Horowitz",    stage: "Contacted",     notes: "Intro sent via Alex.",                        updatedAt: new Date().toISOString() },
-    { investorId: "inv_4", name: "First Round Capital",    stage: "Identified",    notes: "Fits our thesis perfectly.",                  updatedAt: new Date().toISOString() },
-    { investorId: "inv_5", name: "Bessemer Venture",       stage: "Passed",        notes: "Too early for their current fund.",           updatedAt: new Date().toISOString() },
-   ],
-  });
- }, [isDemoMode]);
-
+ // The pipeline lives on the account's round — one source for the table, the funnel, the CRM,
+ // the follow-ups and the assistant. The sample round brings its own (data/demoCatalog);
+ // a real account starts empty and fills it from the Investors tab or the assistant.
  const pipeline: RoundInvestor[] = round.pipeline ?? [];
+ const due = useMemo(() => followUps(round), [round]);
  const stageIndex = (stage: string) => Math.max(0, PIPELINE_STAGES.indexOf(stage as (typeof PIPELINE_STAGES)[number]));
 
  // One source for every round number — the KPI grid, the progress bar and the
@@ -776,7 +776,19 @@ export default function Fundraising({ user }: FundraisingProps) {
       <div className="lg:col-span-2 space-y-4">
 
        {/* Investor Pipeline Table */}
-       <Card title={t("Investor Pipeline", "Ροή επενδυτών")} subtitle={t("Manage your investor relationships and deal stages", "Διαχείριση σχέσεων με επενδυτές και σταδίων συμφωνίας")}>
+       <Card title={t("Investor Pipeline", "Ροή επενδυτών")} subtitle={t("Stages, next steps and when they are due", "Στάδια, επόμενα βήματα και πότε λήγουν")}>
+        {(due.overdue.length > 0 || due.soon.length > 0) && (
+         <div data-testid="followup-summary" className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 px-3 py-2">
+          <p className="text-sm text-stone-700">
+           {due.overdue.length > 0 && <span className="font-semibold text-red-700">{t(`${due.overdue.length} overdue`, `${due.overdue.length} εκπρόθεσμ${due.overdue.length === 1 ? 'ο' : 'α'}`)}</span>}
+           {due.overdue.length > 0 && due.soon.length > 0 && <span className="text-stone-400"> · </span>}
+           {due.soon.length > 0 && <span>{t(`${due.soon.length} due this week`, `${due.soon.length} μέσα στην εβδομάδα`)}</span>}
+          </p>
+          <button type="button" className="min-h-9 text-xs font-medium text-stone-900 hover:underline" onClick={() => askAssistant(t('What follow-ups are due?', 'Ποια follow-ups λήγουν;'))}>
+           {t('Plan them with the assistant', 'Σχεδίασέ τα με τον βοηθό')}
+          </button>
+         </div>
+        )}
         <ul className="divide-y divide-stone-100 sm:hidden">
          {(pipeline ?? []).map((item, i) => {
           const meta = STAGE_META[item.stage] ?? { color: "text-stone-500", dot: "bg-stone-400" };
@@ -789,7 +801,8 @@ export default function Fundraising({ user }: FundraisingProps) {
              <p className="text-sm font-semibold text-stone-900">{pipelineName(item, i)}</p>
              <p className="text-xs text-stone-400">{investorDirectory.find((v) => v.id === item.investorId) ? typeLabel(investorDirectory.find((v) => v.id === item.investorId)!.type) : t("Tracked", "Σε παρακολούθηση")}</p>
              <p className={cn("mt-1 text-sm font-semibold", meta.color)}>{stageLabel(item.stage)}</p>
-             <p className="mt-1 text-sm text-stone-600">{item.notes}</p>
+             <FollowUpEditor investor={item} onSaved={showToast} />
+             {item.notes && <p className="mt-1 text-xs text-stone-500">{item.notes}</p>}
             </div>
             <div className="flex flex-col gap-1 shrink-0">
              {item.stage !== 'Closed' && item.stage !== 'Passed' && (
@@ -825,7 +838,7 @@ export default function Fundraising({ user }: FundraisingProps) {
            <tr className="bg-stone-50 border-b border-stone-100">
             <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Investor", "Επενδυτής")}</th>
             <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Stage", "Στάδιο")}</th>
-            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Latest Note", "Τελευταία σημείωση")}</th>
+            <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide">{t("Next step · note", "Επόμενο βήμα · σημείωση")}</th>
             <th className="px-3 py-2 text-xs font-semibold text-stone-400 tracking-wide"></th>
            </tr>
           </thead>
@@ -850,8 +863,9 @@ export default function Fundraising({ user }: FundraisingProps) {
                 {stageLabel(item.stage)}
                </span>
               </td>
-              <td className="px-3 py-2.5">
-               <p className="text-sm text-stone-500 max-w-[180px] truncate">{item.notes}</p>
+              <td className="px-3 py-2.5 min-w-[220px]">
+               <FollowUpEditor investor={item} onSaved={showToast} />
+               {item.notes && <p className="mt-0.5 text-xs text-stone-400 max-w-[260px] truncate" title={item.notes}>{item.notes}</p>}
               </td>
               <td className="px-3 py-2.5">
                <div className="flex items-center justify-end gap-1">
@@ -1474,7 +1488,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          <Button size="sm" className="min-h-11 text-xs px-2 bg-stone-900 text-white" disabled={roomUploading} onClick={() => roomFileRef.current?.click()}>
           <Plus className="w-3 h-3 mr-1" /> {roomUploading ? t("Uploading…", "Μεταφόρτωση…") : t("Upload", "Μεταφόρτωση")}
          </Button>
-         <input ref={roomFileRef} type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadRoomFile(file); }} />
+         <input ref={roomFileRef} type="file" data-testid="dataroom-upload-input" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadRoomFile(file); }} />
         </div>
         <div className="space-y-1">
          {visibleRoomFiles.map(file => (

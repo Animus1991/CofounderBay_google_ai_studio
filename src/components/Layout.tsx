@@ -13,6 +13,7 @@ import { useUIStore, PaletteTheme } from '../stores/useUIStore';
 import SaveSafetyGuard from './SaveSafetyGuard';
 import { pageContext } from '../services/assistantOps';
 import { openAssistant } from '../lib/assistantBus';
+import { useFollowUpAlerts } from '../lib/followUpAlerts';
 
 const PALETTES: { id: PaletteTheme; labelEn: string; labelEl: string; dot: string }[] = [
   { id: 'stone', labelEn: 'Comfort Stone', labelEl: 'Πέτρα', dot: 'bg-stone-800' },
@@ -141,6 +142,8 @@ export default function Layout() {
   const onAssistantPage = location.pathname.replace(/\/+$/, '') === '/assistant';
 
   const isGuest = !user && !isDemoMode;
+  // An investor follow-up that slipped is announced once (toast + Notifications).
+  useFollowUpAlerts(!isGuest);
   const sidebarUser = {
     id: user?.uid || profile?.uid || (isGuest ? 'guest' : 'demo-user'),
     fullName:
