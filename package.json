@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:emulator": "firebase emulators:exec --only firestore,storage --project demo-cofounderbay \"vitest run --config vitest.emulator.config.ts\"",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "seed:catalog": "node scripts/seed-catalog.mjs",
@@ -32,6 +33,7 @@
     "check:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.7.1",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-query": "^5.62.0",
@@ -39,7 +41,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "express": "^4.21.2",
+    "express": "^4.22.3",
     "firebase": "^12.11.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -59,6 +61,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "^9.17.0",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.60.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

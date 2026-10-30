@@ -170,8 +170,14 @@ export async function persistPrivacy(uid: string, fields: PrivacyFields) {
   await setDoc(doc(db, 'profiles', uid), patch, { merge: true });
 }
 
-/** Once Firebase confirms the e-mail address, the profile carries the Verified badge other members see. */
+/**
+ * Once Firebase confirms the e-mail address, the profile carries the Verified
+ * badge other members see. The rules accept it only from a token that says
+ * email_verified, so the token is refreshed first — the one in hand may predate
+ * the confirmation by up to an hour.
+ */
 export async function markEmailVerified(uid: string) {
+  if (auth.currentUser?.uid === uid) await auth.currentUser.getIdToken(true);
   const patch = { verificationStatus: VerificationStatus.VERIFIED, updatedAt: serverTimestamp() };
   await Promise.all([
     setDoc(doc(db, 'users', uid), patch, { merge: true }),

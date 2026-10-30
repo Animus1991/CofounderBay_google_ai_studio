@@ -202,6 +202,25 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(fields);
     }
 
+    // "Verified" is the badge other members see. It is earned by a confirmed
+    // e-mail address (Firebase puts email_verified on the token) or granted by
+    // an admin — never set by a client on its own say-so.
+    function verificationEarned() {
+      return request.resource.data.get('verificationStatus', '') != 'Verified' ||
+        (resource != null && resource.data.get('verificationStatus', '') == 'Verified') ||
+        request.auth.token.get('email_verified', false) == true ||
+        isAdmin();
+    }
+
+    // A member may deactivate and reactivate their own account; only an admin
+    // suspends, lifts a suspension, or sets anything else.
+    function accountStatusKept() {
+      let before = resource == null ? 'Active' : resource.data.get('accountStatus', 'Active');
+      let after = request.resource.data.get('accountStatus', 'Active');
+      return after == before || isAdmin() ||
+        (before != 'Suspended' && after in ['Active', 'Deactivated']);
+    }
+
     // ===============================================================
     // Domain Validators
     // ===============================================================
@@ -214,9 +233,11 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidUser(data) {
+    // `userId` is the document's id: the owner writes it, and an admin editing
+    // someone else's account (suspend, roles) writes the same id back.
+    function isValidUser(data, userId) {
       return hasRequiredFields(['id', 'fullName', 'email', 'roles', 'createdAt', 'updatedAt']) &&
-        data.id == request.auth.uid &&
+        data.id == userId &&
         data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
         isValidEmail(data.email) &&
         data.roles is list &&
@@ -229,9 +250,9 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
-    function isValidProfile(data) {
+    function isValidProfile(data, userId) {
       return hasRequiredFields(['userId']) &&
-        data.userId == request.auth.uid &&
+        data.userId == userId &&
         (!('headline' in data) || (data.headline is string && data.headline.size() <= 200)) &&
         (!('bio' in data) || (data.bio is string && data.bio.size() <= 2000)) &&
         (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
@@ -273,10 +294,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) &&
-        (!request.resource.data.roles.hasAny(['Admin', 'Super Admin']) || isAdmin());
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) &&
-        (request.resource.data.roles == resource.data.roles || isAdmin());
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId) &&
+        (!request.resource.data.roles.hasAny(['Admin', 'Super Admin']) || isAdmin()) &&
+        verificationEarned() && accountStatusKept();
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data, userId) &&
+        (request.resource.data.roles == resource.data.roles || isAdmin()) &&
+        verificationEarned() && accountStatusKept();
       allow delete: if isOwner(userId) || isAdmin();
 
       match /feed/{postId} {
@@ -308,8 +331,8 @@ service cloud.firestore {
 
     match /profiles/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if (isOwner(userId) || isAdmin()) && isValidProfile(request.resource.data);
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data, userId) && verificationEarned();
+      allow update: if (isOwner(userId) || isAdmin()) && isValidProfile(request.resource.data, userId) && verificationEarned();
       allow delete: if isOwner(userId) || isAdmin();
 
       // Who looked at this profile: one document per viewer per day, readable by the owner only.
@@ -346,10 +369,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // One request per pair, id "<sender>_<receiver>". It starts Pending; only the
+    // person asked accepts or declines it; the person asking may withdraw it and,
+    // after withdrawing, ask again. Neither side can rewrite who is involved.
     match /connectionRequests/{requestId} {
+      function samePair() {
+        return request.resource.data.get('senderId', null) == resource.data.get('senderId', null) &&
+          request.resource.data.get('receiverId', null) == resource.data.get('receiverId', null) &&
+          request.resource.data.get('participants', null) == resource.data.get('participants', null);
+      }
       allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid &&
+        request.resource.data.receiverId is string && request.resource.data.receiverId != request.auth.uid &&
+        requestId == request.auth.uid + '_' + request.resource.data.receiverId &&
+        request.resource.data.participants == [request.auth.uid, request.resource.data.receiverId] &&
+        request.resource.data.status == 'Pending';
+      allow update: if isAuthenticated() && (isAdmin() || (samePair() && (
+        (request.auth.uid == resource.data.receiverId && resource.data.status != 'Withdrawn' &&
+          request.resource.data.status in ['Accepted', 'Rejected']) ||
+        (request.auth.uid == resource.data.senderId && (request.resource.data.status == 'Withdrawn' ||
+          (request.resource.data.status == 'Pending' && resource.data.status == 'Withdrawn')))
+      )));
       // Either side may remove an accepted connection.
       allow delete: if isAuthenticated() && (resource.data.receiverId == request.auth.uid || resource.data.senderId == request.auth.uid || isAdmin());
     }
@@ -378,16 +418,31 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
       // Members may join/leave: the only allowed non-owner change is adding or
-      // removing exactly the caller from memberIds (memberCount may move with it).
+      // removing exactly the caller from memberIds, with memberCount moving by
+      // the same one (or left alone) — no one removes others or inflates the count.
+      function countMovesBy(delta) {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberCount']) ||
+          request.resource.data.get('memberCount', 0) == resource.data.get('memberCount', 0) + delta;
+      }
+      function joinsAlone() {
+        return !(request.auth.uid in resource.data.memberIds) &&
+          request.auth.uid in request.resource.data.memberIds &&
+          request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          countMovesBy(1);
+      }
+      function leavesAlone() {
+        return request.auth.uid in resource.data.memberIds &&
+          !(request.auth.uid in request.resource.data.memberIds) &&
+          resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1 &&
+          countMovesBy(-1);
+      }
       allow update: if isAuthenticated() && (
         resource.data.ownerId == request.auth.uid ||
         isAdmin() ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'memberCount']) &&
-          ((request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
-              request.auth.uid in request.resource.data.memberIds &&
-              request.resource.data.memberIds.size() <= resource.data.memberIds.size() + 1) ||
-           (resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
-              !(request.auth.uid in request.resource.data.memberIds))))
+          (joinsAlone() || leavesAlone()))
       );
       allow delete: if isAdmin();
 
@@ -446,10 +501,12 @@ service cloud.firestore {
 
     match /endorsements/{endorsementId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && (
-        request.resource.data.authorId == request.auth.uid ||
-        request.resource.data.endorserId == request.auth.uid
-      );
+      // Only in your own name, and never for yourself.
+      allow create: if isAuthenticated() &&
+        request.resource.data.endorserId == request.auth.uid &&
+        request.resource.data.get('authorId', request.auth.uid) == request.auth.uid &&
+        request.resource.data.recipientId is string &&
+        request.resource.data.recipientId != request.auth.uid;
       allow update: if isAdmin();
       // The person who gave the endorsement may withdraw it.
       allow delete: if isAuthenticated() && (resource.data.endorserId == request.auth.uid || resource.data.authorId == request.auth.uid || isAdmin());
@@ -557,6 +614,16 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
+
+    // Server-only records (server/outreach.ts through the service account, which
+    // rules do not govern): due-diligence links and their files, the email log,
+    // the weekly digest. No client reads or writes them, admins included.
+    match /outreach_ddShares/{id} { allow read, write: if false; }
+    match /outreach_ddShareFiles/{id} { allow read, write: if false; }
+    match /outreach_emailLog/{id} { allow read, write: if false; }
+    match /outreach_digestSettings/{id} { allow read, write: if false; }
+    match /outreach_digestSnapshots/{id} { allow read, write: if false; }
+    match /outreach_digests/{id} { allow read, write: if false; }
 
     match /{path=**}/messages/{messageId} {
       allow read: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants || isAdmin());

@@ -16,6 +16,11 @@
  * server. Differences on purpose: the owner of a record is the verified caller
  * (server/identity) instead of a client id in the body; sign-in is required in
  * production; public links and sends are rate-limited; share files are capped.
+ *
+ * Records live in the server store (server/store — Firestore in production,
+ * a JSON file per collection on a single server). Share files are kept apart
+ * from the link, in chunks under Firestore's 1 MiB document limit, and are
+ * deleted when the link is revoked.
  */
 import express, { type Express, type Request, type Response } from 'express';
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -37,8 +42,11 @@ export type OutreachOptions = {
 
 type ShareItem = { category: string; title: string; status: 'todo' | 'in_progress' | 'done'; note?: string };
 type ShareFile = { name: string; size: string; url: string };
+/** A file's name and size travel with the link; its content is kept in FILES. (`url` only on links from the first version.) */
+type FileMeta = { name: string; size: string; url?: string };
+type FileChunk = { token: string; index: number; part: number; data: string };
 type Share = {
-  token: string; owner: string; investorName: string; ventureName: string; items: ShareItem[]; files: ShareFile[];
+  token: string; owner: string; investorName: string; ventureName: string; items: ShareItem[]; files: FileMeta[];
   views: number; lastViewedAt: string | null; createdAt: string; updatedAt: string; revoked: boolean;
 };
 type EmailEntry = {
@@ -52,6 +60,18 @@ type DigestRun = { owner: string; at: string; subject: string; stats: Record<str
 const MAX_FILE_URL = 1_500_000;
 const MAX_FILES = 10;
 const MAX_ITEMS = 80;
+/** Characters per stored file chunk — well under Firestore's 1 MiB per document. */
+const CHUNK = 700_000;
+
+const SHARES = 'ddShares';
+const FILES = 'ddShareFiles';
+const EMAILS = 'emailLog';
+const SETTINGS = 'digestSettings';
+const SNAPSHOTS = 'digestSnapshots';
+const RUNS = 'digests';
+/** Per owner, the newest kept: a year and a half of weekly digests, a thousand emails. */
+const KEEP_EMAILS = { by: 'owner', order: 'at', max: 1000 };
+const KEEP_RUNS = { by: 'owner', order: 'at', max: 80 };
 
 class Invalid extends Error {}
 
@@ -94,10 +114,12 @@ const ownerView = (share: Share) => ({
   total: share.items.length, files: share.files.map((file) => file.name),
 });
 
-const publicView = (share: Share) => ({
+const publicView = (share: Share, files: ShareFile[]) => ({
   token: share.token, investorName: share.investorName, ventureName: share.ventureName, views: share.views, lastViewedAt: share.lastViewedAt,
-  createdAt: share.createdAt, updatedAt: share.updatedAt, items: share.items, files: share.files,
+  createdAt: share.createdAt, updatedAt: share.updatedAt, items: share.items, files,
 });
+
+const fileMeta = (files: ShareFile[]): FileMeta[] => files.map(({ name, size }) => ({ name, size }));
 
 function sameSecret(given: string, expected: string): boolean {
   const a = Buffer.from(given);
@@ -114,44 +136,80 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
   const large = express.json({ limit: '16mb' });
   const { store } = opts;
 
-  /** Runs a handler for the identified caller; validation errors become 400/422. */
+  const failed = (res: Response, error: unknown) => {
+    if (error instanceof Invalid) res.status(422).json({ error: error.message, code: 'invalid' });
+    else {
+      log('outreach route failed', error);
+      if (!res.headersSent) res.status(500).json({ error: 'Something went wrong — nothing was changed.', code: 'server-error' });
+    }
+  };
+
+  /** Runs a handler for the identified caller; validation errors become 422, anything else 500. */
   const owned = (handler: (caller: Caller, req: Request, res: Response) => unknown) => async (req: Request, res: Response) => {
     const caller = await opts.identify(req, res);
     if (!caller) return;
     try {
       await handler(caller, req, res);
     } catch (error) {
-      if (error instanceof Invalid) res.status(422).json({ error: error.message, code: 'invalid' });
-      else {
-        log('outreach route failed', error);
-        res.status(500).json({ error: 'Something went wrong — nothing was changed.', code: 'server-error' });
-      }
+      failed(res, error);
     }
   };
 
   // ── Due-diligence share links ───────────────────────────────────────────
-  app.post('/api/dd/shares', large, owned((caller, req, res) => {
+  const saveFiles = async (token: string, files: ShareFile[]) => {
+    await store.remove(FILES, { token });
+    for (const [index, file] of files.entries()) {
+      for (let part = 0; part * CHUNK < file.url.length; part += 1) {
+        await store.insert<FileChunk>(FILES, { token, index, part, data: file.url.slice(part * CHUNK, (part + 1) * CHUNK) });
+      }
+    }
+  };
+  const loadFiles = async (share: Share): Promise<ShareFile[]> => {
+    if (share.files.length === 0) return [];
+    const chunks = await store.find<FileChunk>(FILES, { token: share.token });
+    return share.files.map((meta, index) => ({
+      name: meta.name,
+      size: meta.size,
+      url: meta.url ?? chunks.filter((chunk) => chunk.index === index).sort((a, b) => a.part - b.part).map((chunk) => chunk.data).join(''),
+    }));
+  };
+  const mineOpen = (token: string, caller: Caller) => ({ token, owner: caller.key, revoked: false });
+
+  app.post('/api/dd/shares', large, owned(async (caller, req, res) => {
     if (!budget(`share:${caller.key}`, 30, 3_600_000, res)) return;
     const at = iso();
+    const files = shareFiles(req.body?.files);
     const share: Share = {
       token: randomBytes(16).toString('base64url'),
       owner: caller.key,
       investorName: str(req.body?.investorName, 120, 'investorName'),
       ventureName: str(req.body?.ventureName, 120, 'ventureName'),
       items: shareItems(req.body?.items),
-      files: shareFiles(req.body?.files),
+      files: fileMeta(files),
       views: 0, lastViewedAt: null, createdAt: at, updatedAt: at, revoked: false,
     };
-    store.insert('ddShares', share);
+    await saveFiles(share.token, files);
+    try {
+      await store.insert(SHARES, share, { id: share.token });
+    } catch (error) {
+      await store.remove(FILES, { token: share.token }).catch(() => 0);
+      throw error;
+    }
     res.status(201).json(ownerView(share));
   }));
 
-  app.put('/api/dd/shares/:token', large, owned((caller, req, res) => {
+  app.put('/api/dd/shares/:token', large, owned(async (caller, req, res) => {
+    const token = String(req.params.token);
     const items = shareItems(req.body?.items);
     const files = req.body?.files === undefined ? undefined : shareFiles(req.body.files);
     const ventureName = str(req.body?.ventureName, 120, 'ventureName');
-    const [updated] = store.update<Share>('ddShares', (share) => share.token === req.params.token && share.owner === caller.key && !share.revoked,
-      () => ({ items, ventureName, updatedAt: iso(), ...(files ? { files } : {}) }));
+    if (!(await store.find<Share>(SHARES, mineOpen(token, caller))).length) {
+      res.status(404).json({ error: 'Share not found', code: 'not-found' });
+      return;
+    }
+    if (files) await saveFiles(token, files);
+    const [updated] = await store.update<Share>(SHARES, mineOpen(token, caller),
+      () => ({ items, ventureName, updatedAt: iso(), ...(files ? { files: fileMeta(files) } : {}) }));
     if (!updated) {
       res.status(404).json({ error: 'Share not found', code: 'not-found' });
       return;
@@ -159,39 +217,45 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
     res.json(ownerView(updated));
   }));
 
-  app.get('/api/dd/shares', owned((caller, _req, res) => {
-    const mine = store.all<Share>('ddShares').filter((share) => share.owner === caller.key && !share.revoked);
+  app.get('/api/dd/shares', owned(async (caller, _req, res) => {
+    const mine = await store.find<Share>(SHARES, { owner: caller.key, revoked: false });
     res.json(mine.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50).map(ownerView));
   }));
 
-  app.delete('/api/dd/shares/:token', owned((caller, req, res) => {
-    const [revoked] = store.update<Share>('ddShares', (share) => share.token === req.params.token && share.owner === caller.key && !share.revoked,
-      () => ({ revoked: true, updatedAt: iso() }));
+  app.delete('/api/dd/shares/:token', owned(async (caller, req, res) => {
+    const token = String(req.params.token);
+    const [revoked] = await store.update<Share>(SHARES, mineOpen(token, caller), () => ({ revoked: true, updatedAt: iso(), files: [] }));
     if (!revoked) {
       res.status(404).json({ error: 'Share not found', code: 'not-found' });
       return;
     }
+    // A revoked link keeps its count for the founder's records, not the files.
+    await store.remove(FILES, { token });
     res.json({ revoked: true });
   }));
 
-  app.get('/api/dd/public/:token', (req, res) => {
+  app.get('/api/dd/public/:token', async (req, res) => {
     if (!budget(`view:${req.ip || 'unknown'}`, 120, 60_000, res)) return;
-    const [viewed] = store.update<Share>('ddShares', (share) => share.token === req.params.token && !share.revoked,
-      (share) => ({ views: share.views + 1, lastViewedAt: iso() }));
-    if (!viewed) {
-      res.status(404).json({ error: 'This link is no longer available.', code: 'not-found' });
-      return;
+    try {
+      const [viewed] = await store.update<Share>(SHARES, { token: String(req.params.token), revoked: false },
+        (share) => ({ views: share.views + 1, lastViewedAt: iso() }));
+      if (!viewed) {
+        res.status(404).json({ error: 'This link is no longer available.', code: 'not-found' });
+        return;
+      }
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Robots-Tag', 'noindex');
+      res.json(publicView(viewed, await loadFiles(viewed)));
+    } catch (error) {
+      failed(res, error);
     }
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Robots-Tag', 'noindex');
-    res.json(publicView(viewed));
   });
 
   // ── Email ───────────────────────────────────────────────────────────────
   const deliver = async (owner: string, message: { to: string; subject: string; text: string; replyTo?: string }, meta: Partial<EmailEntry> & { kind: EmailEntry['kind'] }) => {
     const outcome = await opts.email.deliver(message);
     const entry: EmailEntry = { id: randomUUID(), owner, to: message.to, subject: message.subject, at: iso(), status: outcome.status, provider: outcome.provider, ...(outcome.detail ? { detail: outcome.detail } : {}), ...meta };
-    store.insert('emailLog', entry, { cap: 5000 });
+    await store.insert(EMAILS, entry, { keep: KEEP_EMAILS });
     return entry;
   };
   const strip = ({ owner: _owner, ...entry }: EmailEntry) => entry;
@@ -213,35 +277,35 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
     res.json(strip(entry));
   }));
 
-  app.get('/api/email/log', owned((caller, req, res) => {
-    const investorId = typeof req.query.investorId === 'string' ? req.query.investorId : '';
-    const mine = store.all<EmailEntry>('emailLog').filter((entry) => entry.owner === caller.key && (!investorId || entry.investorId === investorId));
+  app.get('/api/email/log', owned(async (caller, req, res) => {
+    const investorId = typeof req.query.investorId === 'string' ? req.query.investorId.slice(0, 80) : '';
+    const mine = await store.find<EmailEntry>(EMAILS, { owner: caller.key, ...(investorId ? { investorId } : {}) });
     res.json(mine.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 100).map(strip));
   }));
 
   // ── Weekly digest ───────────────────────────────────────────────────────
-  const settingsOf = (owner: string): DigestSettings => {
-    const found = store.all<SettingsDoc>('digestSettings').find((doc) => doc.owner === owner);
+  const settingsOf = async (owner: string): Promise<DigestSettings> => {
+    const found = await store.get<SettingsDoc>(SETTINGS, owner);
     if (!found) return { ...DEFAULT_DIGEST_SETTINGS };
     const { owner: _owner, updatedAt: _at, ...settings } = found;
     return settings;
   };
-  const snapshotOf = (owner: string) => store.all<SnapshotDoc>('digestSnapshots').find((doc) => doc.owner === owner);
+  const snapshotOf = (owner: string) => store.get<SnapshotDoc>(SNAPSHOTS, owner);
 
   const sendDigest = async (owner: string, trigger: string) => {
-    const settings = settingsOf(owner);
+    const settings = await settingsOf(owner);
     if (!settings.email) throw new Invalid('Add an email address in Settings first');
-    const snapshot = snapshotOf(owner);
+    const snapshot = await snapshotOf(owner);
     if (!snapshot) throw new Invalid('No digest data yet — open Fundraising once so the app can send it');
     const digest = buildDigest(snapshot, settings.lang, now());
     const entry = await deliver(owner, { to: settings.email, subject: digest.subject, text: digest.text }, { kind: 'digest', trigger });
-    store.insert('digests', { owner, at: entry.at, subject: digest.subject, stats: digest.stats, status: entry.status, trigger } satisfies DigestRun, { cap: 5000 });
+    await store.insert(RUNS, { owner, at: entry.at, subject: digest.subject, stats: digest.stats, status: entry.status, trigger } satisfies DigestRun, { keep: KEEP_RUNS });
     return { ...digest, status: entry.status, at: entry.at };
   };
 
-  app.get('/api/digest/settings', owned((caller, _req, res) => res.json(settingsOf(caller.key))));
+  app.get('/api/digest/settings', owned(async (caller, _req, res) => res.json(await settingsOf(caller.key))));
 
-  app.put('/api/digest/settings', small, owned((caller, req, res) => {
+  app.put('/api/digest/settings', small, owned(async (caller, req, res) => {
     const body = req.body ?? {};
     const day = Number(body.day);
     const hour = Number(body.hour);
@@ -254,14 +318,14 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
     const enabled = body.enabled === true;
     if (enabled && !email) throw new Invalid('An email address is required to turn the digest on');
     const lang = body.lang === 'el' ? 'el' : 'en';
-    const previous = settingsOf(caller.key);
+    const previous = await settingsOf(caller.key);
     const doc: SettingsDoc = { owner: caller.key, enabled, day, hour, timezone, email, lang, updatedAt: iso(), ...(previous.lastSentWeek ? { lastSentWeek: previous.lastSentWeek } : {}) };
-    if (!store.update<SettingsDoc>('digestSettings', (item) => item.owner === caller.key, () => doc).length) store.insert('digestSettings', doc);
+    await store.put(SETTINGS, caller.key, doc);
     const { owner: _owner, updatedAt: _at, ...settings } = doc;
     res.json(settings);
   }));
 
-  app.put('/api/digest/snapshot', large, owned((caller, req, res) => {
+  app.put('/api/digest/snapshot', large, owned(async (caller, req, res) => {
     const body = req.body ?? {};
     const pipeline = Array.isArray(body.pipeline) ? body.pipeline.slice(0, 200).map((raw: Record<string, unknown>) => ({
       name: str(raw?.name, 120, 'name', { required: true }),
@@ -269,7 +333,7 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
       checkSize: str(raw.checkSize, 40, 'checkSize') || undefined,
       nextStep: str(raw.nextStep, 200, 'nextStep') || undefined,
       nextDate: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.nextDate ?? '')) ? String(raw.nextDate) : undefined,
-      history: Array.isArray(raw.history) ? raw.history.slice(-50).map((step: Record<string, unknown>) => ({ at: str(step?.at, 40, 'at'), stage: str(step?.stage, 40, 'stage') })) : [],
+      history: Array.isArray(raw.history) ? raw.history.slice(-20).map((step: Record<string, unknown>) => ({ at: str(step?.at, 40, 'at'), stage: str(step?.stage, 40, 'stage') })) : [],
     })) : [];
     const dd = body.dd && typeof body.dd === 'object' ? {
       done: Number(body.dd.done) || 0, total: Number(body.dd.total) || 0, inProgress: Number(body.dd.inProgress) || 0,
@@ -280,14 +344,14 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
       instrument: str(body.round.instrument, 40, 'instrument'), targetLabel: str(body.round.targetLabel, 40, 'targetLabel'),
     } : {};
     const doc: SnapshotDoc = { owner: caller.key, venture: str(body.venture, 120, 'venture'), pipeline, dd, round, updatedAt: iso() };
-    if (!store.update<SnapshotDoc>('digestSnapshots', (item) => item.owner === caller.key, () => doc).length) store.insert('digestSnapshots', doc);
+    await store.put(SNAPSHOTS, caller.key, doc);
     res.json({ saved: true });
   }));
 
-  app.get('/api/digest/preview', owned((caller, _req, res) => {
-    const snapshot = snapshotOf(caller.key);
+  app.get('/api/digest/preview', owned(async (caller, _req, res) => {
+    const snapshot = await snapshotOf(caller.key);
     if (!snapshot) throw new Invalid('No digest data yet — open Fundraising once so the app can send it');
-    res.json(buildDigest(snapshot, settingsOf(caller.key).lang, now()));
+    res.json(buildDigest(snapshot, (await settingsOf(caller.key)).lang, now()));
   }));
 
   app.post('/api/digest/send-now', small, owned(async (caller, _req, res) => {
@@ -295,39 +359,58 @@ export function registerOutreachRoutes(app: Express, opts: OutreachOptions) {
     res.json(await sendDigest(caller.key, 'manual'));
   }));
 
-  app.get('/api/digest/history', owned((caller, _req, res) => {
-    const mine = store.all<DigestRun>('digests').filter((run) => run.owner === caller.key);
+  app.get('/api/digest/history', owned(async (caller, _req, res) => {
+    const mine = await store.find<DigestRun>(RUNS, { owner: caller.key });
     res.json(mine.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12).map(({ owner: _owner, ...run }) => run));
   }));
 
-  /** Sends every digest due this hour, at most once per ISO week each. */
+  /**
+   * Sends every digest due this hour, at most once per ISO week each. The week
+   * is claimed in the store before sending, so two instances (or the cron and
+   * the in-process scheduler) never send the same digest twice; a failed send
+   * gives the claim back so a later run this hour can try again.
+   */
   const runDigests = async (trigger: string) => {
     const at = now();
     let sent = 0;
-    for (const settings of store.all<SettingsDoc>('digestSettings').filter((doc) => doc.enabled && doc.email)) {
+    for (const settings of (await store.find<SettingsDoc>(SETTINGS, { enabled: true })).filter((doc) => doc.email)) {
       const week = dueNow(settings, at);
       if (!week || settings.lastSentWeek === week) continue;
+      let claimed = false as boolean;
+      let before: string | undefined;
       try {
+        await store.update<SettingsDoc>(SETTINGS, { owner: settings.owner }, (doc) => {
+          claimed = doc.lastSentWeek !== week;
+          before = doc.lastSentWeek;
+          return claimed ? { lastSentWeek: week } : {};
+        });
+        if (!claimed) continue;
         await sendDigest(settings.owner, trigger);
-        store.update<SettingsDoc>('digestSettings', (doc) => doc.owner === settings.owner, () => ({ lastSentWeek: week }));
         sent += 1;
       } catch (error) {
         log('digest skipped', error instanceof Error ? error.message : error);
+        if (claimed) {
+          await store.update<SettingsDoc>(SETTINGS, { owner: settings.owner }, (doc) => (doc.lastSentWeek === week ? { lastSentWeek: before } : {})).catch(() => []);
+        }
       }
     }
     return sent;
   };
 
-  app.post('/api/cron/digest', (req, res) => {
+  app.post('/api/cron/digest', async (req, res) => {
     const header = req.headers.authorization || '';
     const given = header.startsWith('Bearer ') ? header.slice(7) : '';
     if (!opts.cronSecret || !given || !sameSecret(given, opts.cronSecret)) {
       res.status(401).json({ error: 'unauthorized' });
       return;
     }
-    // Acknowledge at once; the sends run after the response.
-    res.status(202).json({ accepted: true });
-    void runDigests(`cron:${randomUUID().slice(0, 8)}`);
+    // The sends finish before the answer: Cloud Run may pause the CPU of an
+    // instance once it has responded, so work left for later might never run.
+    try {
+      res.json({ sent: await runDigests(`cron:${randomUUID().slice(0, 8)}`) });
+    } catch (error) {
+      failed(res, error);
+    }
   });
 
   return { runDigests };

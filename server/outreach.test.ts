@@ -15,6 +15,7 @@ let server: Server | null = null;
 async function start({ requireAuth = true, provider = null as null | ((message: EmailMessage) => Promise<string>), now = () => new Date('2026-11-02T06:30:00Z') } = {}) {
   const app = express();
   const sent: EmailMessage[] = [];
+  const store = memoryStore();
   const routes = registerOutreachRoutes(app, {
     identify: makeIdentify({
       requireAuth,
@@ -25,7 +26,7 @@ async function start({ requireAuth = true, provider = null as null | ((message: 
       },
       log: () => {},
     }),
-    store: memoryStore(),
+    store,
     email: emailService(provider ? { name: 'test', send: async (message) => { sent.push(message); return provider(message); } } : null),
     cronSecret: 'cron-secret',
     now,
@@ -40,7 +41,7 @@ async function start({ requireAuth = true, provider = null as null | ((message: 
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  return { call, sent, routes };
+  return { call, sent, routes, store };
 }
 
 afterEach(async () => {
@@ -89,6 +90,45 @@ describe('due-diligence share links', () => {
     expect((await call('POST', '/api/dd/shares', { token: 'alice', body: { items: [{ category: 'x', title: 'y', status: 'maybe' }] } })).status).toBe(422);
     const files = [{ name: 'deck.pdf', url: 'javascript:alert(1)' }];
     expect((await call('POST', '/api/dd/shares', { token: 'alice', body: { items, files } })).status).toBe(422);
+  });
+
+  it('keeps a file larger than one stored chunk whole, and deletes it when the link is revoked', async () => {
+    const { call, store } = await start();
+    const url = `data:application/pdf;base64,${'QUJD'.repeat(300_000)}`; // 1.2 MB of text: two stored chunks
+    const response = await call('POST', '/api/dd/shares', { token: 'alice', body: { items, files: [{ name: 'deck.pdf', size: '1.2 MB', url }, { name: 'one.txt', url: 'data:text/plain;base64,QQ==' }] } });
+    expect(response.status).toBe(201);
+    const created = await response.json();
+    expect(created.files).toEqual(['deck.pdf', 'one.txt']);
+    expect((await store.find('ddShareFiles', { token: created.token })).length).toBe(3);
+    const [share] = await store.find<Record<string, unknown>>('ddShares', { token: created.token });
+    expect(JSON.stringify(share).length).toBeLessThan(5_000);
+
+    const opened = await (await call('GET', `/api/dd/public/${created.token}`)).json();
+    expect(opened.files[0]).toMatchObject({ name: 'deck.pdf', size: '1.2 MB' });
+    expect(opened.files[0].url).toBe(url);
+    expect(opened.files[1].url).toBe('data:text/plain;base64,QQ==');
+
+    await call('DELETE', `/api/dd/shares/${created.token}`, { token: 'alice' });
+    expect(await store.find('ddShareFiles', { token: created.token })).toEqual([]);
+  });
+
+  it('replaces the files only when a refresh sends them', async () => {
+    const { call, store } = await start();
+    const files = [{ name: 'a.txt', url: 'data:text/plain;base64,QQ==' }];
+    const created = await (await call('POST', '/api/dd/shares', { token: 'alice', body: { items, files } })).json();
+    await call('PUT', `/api/dd/shares/${created.token}`, { token: 'alice', body: { items } });
+    expect((await (await call('GET', `/api/dd/public/${created.token}`)).json()).files).toHaveLength(1);
+    await call('PUT', `/api/dd/shares/${created.token}`, { token: 'alice', body: { items, files: [] } });
+    expect((await (await call('GET', `/api/dd/public/${created.token}`)).json()).files).toEqual([]);
+    expect(await store.find('ddShareFiles', { token: created.token })).toEqual([]);
+  });
+
+  it('opens links saved by the first version, whose files were kept inline', async () => {
+    const { call, store } = await start();
+    const at = '2026-10-01T00:00:00Z';
+    await store.insert('ddShares', { token: 'legacy-token-123456789', owner: 'uid:alice', investorName: 'Sequoia', ventureName: 'EcoFlow', items, files: [{ name: 'a.txt', size: '1 KB', url: 'https://example.com/a.txt' }], views: 0, lastViewedAt: null, createdAt: at, updatedAt: at, revoked: false });
+    const opened = await (await call('GET', '/api/dd/public/legacy-token-123456789')).json();
+    expect(opened.files).toEqual([{ name: 'a.txt', size: '1 KB', url: 'https://example.com/a.txt' }]);
   });
 
   it('lets a local device keep its own links when sign-in is not required', async () => {
@@ -176,11 +216,26 @@ describe('weekly digest', () => {
     await call('PUT', '/api/digest/settings', { token: 'alice', body: { enabled: true, day: 1, hour: 8, timezone: 'Europe/Athens', email: 'me@x.com' } });
     await call('PUT', '/api/digest/snapshot', { token: 'alice', body: snapshot });
     expect((await call('POST', '/api/cron/digest', { headers: { Authorization: 'Bearer wrong' }, body: {} })).status).toBe(401);
-    expect((await call('POST', '/api/cron/digest', { headers: { Authorization: 'Bearer cron-secret' }, body: {} })).status).toBe(202);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const cron = await call('POST', '/api/cron/digest', { headers: { Authorization: 'Bearer cron-secret' }, body: {} });
+    expect(cron.status).toBe(200);
+    expect(await cron.json()).toEqual({ sent: 1 });
     expect(await routes.runDigests('again')).toBe(0);
     const history = await (await call('GET', '/api/digest/history', { token: 'alice' })).json();
     expect(history).toHaveLength(1);
     expect(history[0].status).toBe('sent');
+  });
+
+  it('sends a due digest once when two runs overlap, and gives the week back when a send cannot happen', async () => {
+    const { call, routes, store, sent } = await start({ provider: async () => 'id' });
+    await call('PUT', '/api/digest/settings', { token: 'alice', body: { enabled: true, day: 1, hour: 8, timezone: 'Europe/Athens', email: 'me@x.com' } });
+    // No snapshot yet: the send is refused, so the week is not used up.
+    expect(await routes.runDigests('first')).toBe(0);
+    expect(await store.get('digestSettings', 'uid:alice')).not.toHaveProperty('lastSentWeek');
+
+    await call('PUT', '/api/digest/snapshot', { token: 'alice', body: snapshot });
+    const runs = await Promise.all([routes.runDigests('a'), routes.runDigests('b'), routes.runDigests('c')]);
+    expect(runs.reduce((total, count) => total + count, 0)).toBe(1);
+    expect(sent).toHaveLength(1);
+    expect(await store.get('digestSettings', 'uid:alice')).toMatchObject({ lastSentWeek: '2026-W45' });
   });
 });

@@ -92,7 +92,8 @@ model" instead of tripping the circuit breaker.
 | `src/services/assistantText.ts` | `fold`, `hasStem`, `escapeRegExp` — accent- and case-insensitive matching that works for Greek. |
 | `src/services/aiService.ts` | Gemini access. Proxy by default; `generateContent`, `generateContentStream` (SSE), `plan()`, `extractJson()`, `status()`, circuit breaker, `AIProxyError`. |
 | `server/aiProxy.ts`, `server/firebaseAuth.ts`, `server/cors.ts`, `server/identity.ts` | The proxy, token verification, origin policy and the one caller rule shared with outreach. |
-| `server/outreach.ts`, `server/email.ts`, `server/digest.ts`, `server/store.ts` | Due-diligence share links (public view counts), provider-agnostic email (queued without a provider), the weekly investor digest and its cron endpoint, and the JSON-file store behind them. |
+| `server/outreach.ts`, `server/email.ts`, `server/digest.ts` | Due-diligence share links (public view counts; files kept apart in chunks and deleted on revoke), provider-agnostic email (queued without a provider), the weekly investor digest and its cron endpoint (each week claimed in the store before sending, so overlapping runs send once). |
+| `server/store.ts`, `server/firestoreStore.ts`, `server/outreachStore.ts` | The store behind outreach: one async interface (get / put / find by equality / insert with a per-owner cap / transactional update / remove) with memory, JSON-file and Firestore backends. Firestore is the default on Cloud Run (`OUTREACH_STORE`). `store.contract.ts` is the behaviour every backend must pass. |
 | `src/lib/aiLedger.ts`, `src/components/AiActionLedger.tsx` | The action history: every proposal and what the founder did with it — an account list, synced like the others. |
 | `src/components/ChatWidget.tsx` | The conversation UI — `floating` (corner panel on every page) and `page` (inline on `/assistant`). One persisted transcript for both, synced across devices by `cloudSync`. Streams the model's text as it arrives; batches get "Confirm all". |
 | `src/pages/AssistantPage.tsx` | The AI Studio: the conversation plus the capability list read from the catalogue, with read/write and undo badges and the model status. |
@@ -141,8 +142,19 @@ model" instead of tripping the circuit breaker.
   scenarios, kept as regressions for the merged implementation (batch, slash forms,
   drafts, share links).
 - `server/outreach.test.ts` — sign-in required, owner-only lists and revokes, public
-  views counted, bad files and second recipients refused, digest schedule once per
-  ISO week in the person's zone, cron behind its secret.
+  views counted, bad files and second recipients refused, a 1.2 MB file kept whole
+  across chunks and deleted on revoke, digest schedule once per ISO week in the
+  person's zone, overlapping runs send once, cron behind its secret.
+- `server/store.test.ts` — the store contract on memory and JSON files (and a failed
+  save logged, not fatal); `server/firestoreStore.test.ts` runs the same contract on
+  the Firestore emulator in CI.
+- `tests/rules/*.rules.test.ts` (`npm run test:emulator`, CI job "Firestore rules ·
+  store") — the security rules against the emulators: server-only collections
+  closed to every client, the Verified badge only from a confirmed address, a
+  suspension lifted only by an admin, connection requests answered only by the
+  person asked, endorsements only in your own name, community membership changed
+  only for yourself, messages only between participants, storage folders private
+  to list.
 - `e2e/outreach.spec.ts`, `e2e/a11y.spec.ts` — CRM board and email, a due-diligence
   link opened and revoked, the studio check; no serious axe violations on ten screens.
 - `pageRegistry.test.ts` — every route in `App.tsx` has one registry entry with

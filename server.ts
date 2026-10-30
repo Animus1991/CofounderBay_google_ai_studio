@@ -11,7 +11,7 @@ import { cachedCerts, googleCertFetcher, verifyFirebaseIdToken } from "./server/
 import { geminiModel, readAiEnv, registerAiRoutes } from "./server/aiProxy";
 import { makeIdentify } from "./server/identity";
 import { registerOutreachRoutes } from "./server/outreach";
-import { fileStore } from "./server/store";
+import { openOutreachStore } from "./server/outreachStore";
 import { emailService, smtpProvider } from "./server/email";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -592,10 +592,11 @@ async function startServer() {
 
   // ── Outreach: due-diligence links, email, the weekly digest ───────────────
   // Same sign-in rule as the AI proxy (server/identity); records live in the
-  // server store (server/store, OUTREACH_DATA_DIR). See server/outreach.ts.
+  // server store — Firestore on Cloud Run, JSON files elsewhere
+  // (server/outreachStore, OUTREACH_STORE). See server/outreach.ts.
   const outreach = registerOutreachRoutes(app, {
     identify: makeIdentify({ requireAuth: aiEnv.requireAuth, verifyToken, signInMessage: 'Sign in to share links and send email from the studio.' }),
-    store: fileStore(process.env.OUTREACH_DATA_DIR || path.join(process.cwd(), ".data")),
+    store: await openOutreachStore(process.env),
     email: emailService(smtpProvider(process.env)),
     cronSecret: process.env.DIGEST_CRON_SECRET || process.env.WEBHOOK_CRON_SECRET,
   });
