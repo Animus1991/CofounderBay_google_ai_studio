@@ -537,7 +537,6 @@ export default function DashboardPage() {
     <PageShell
       title={bothText(`${greeting.en}, ${firstName}`, `${greeting.el}, ${firstName}`)}
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
-      sample={isDemoMode}
     >
       <div className="space-y-8">
         <div>

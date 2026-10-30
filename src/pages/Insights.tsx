@@ -197,7 +197,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
 
  return (
-  <PageShell sample={isDemoMode} title={t("Insights", "Αναλύσεις")} description={t('How your venture is progressing.', 'Πώς προχωρά το venture σου.')}>
+  <PageShell title={t("Insights", "Αναλύσεις")} description={t('How your venture is progressing.', 'Πώς προχωρά το venture σου.')}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}

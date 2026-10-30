@@ -162,7 +162,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
  };
 
  return (
-  <PageShell sample={isDemoMode} title={t("Resources", "Πόροι")} description={t('Learning, services and tools.', 'Μάθηση, υπηρεσίες και εργαλεία.')}>
+  <PageShell title={t("Resources", "Πόροι")} description={t('Learning, services and tools.', 'Μάθηση, υπηρεσίες και εργαλεία.')}>
    <div className="space-y-6">
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {(['learning', 'services', 'jobs', 'support'] as const).map((tab) => (

@@ -115,8 +115,8 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
   { icon: Sparkles, label: "AI Studio", path: "/assistant" },
  ];
 
- /* Pinned pages (star on any page header, or "/pin …" in the assistant). Personal
-  * shortcuts — they sit right under Dashboard/Messages where muscle memory expects them. */
+ /* Pinned pages ("/pin …" in the assistant). Personal shortcuts — they sit
+  * right under Dashboard/Messages where muscle memory expects them. */
  const favorites = useStored(readUxPrefs, [UX_PREFS_KEY]).favorites
   .filter((path) => !topItems.some((item) => item.path === path));
 
