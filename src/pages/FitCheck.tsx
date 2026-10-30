@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, RotateCcw, Sparkles, Users, X, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, RotateCcw, Users, X, Zap } from 'lucide-react';
 import { Both } from '../lib/both';
 import { bothText } from '../lib/labels';
 import { LanguageToggle, useLanguage, useT } from '../lib/language';
@@ -379,9 +379,8 @@ export default function FitCheck() {
             <button
               type="button"
               onClick={askAboutMatch}
-              className="min-h-11 inline-flex items-center justify-center gap-2 px-5 rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-900 hover:border-stone-900"
+              className="min-h-11 inline-flex items-center justify-center px-5 rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-900 hover:border-stone-900"
             >
-              <Sparkles className="w-4 h-4" />
               <Both en="Ask the assistant who to meet" el="Ρώτα τον βοηθό ποιον να γνωρίσεις" />
             </button>
           </div>

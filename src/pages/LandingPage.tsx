@@ -11,7 +11,6 @@ import {
   TrendingUp,
   MessageSquare,
   Trophy,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../App";
 import { cn } from "../lib/utils";
@@ -195,8 +194,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
-                <Sparkles className="w-3 h-3" />
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
                 {t("60 seconds · no account needed", "60 δευτερόλεπτα · χωρίς λογαριασμό")}
               </span>
               <h1 className="text-xl sm:text-2xl lg:text-2xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
@@ -275,7 +273,7 @@ export default function LandingPage() {
               {
                 n: "1",
                 to: "/quiz",
-                icon: Sparkles,
+                icon: Zap,
                 title: t("Take the fit check", "Κάνε το fit check"),
                 body: t(
                   "Five questions, no account needed. They capture skills, what you look for, stage, commitment and working hours — the exact fields matching scores.",

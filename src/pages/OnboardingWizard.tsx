@@ -8,7 +8,6 @@ import {
  User,
  Briefcase,
  Target,
- Sparkles,
  ArrowRight,
  ArrowLeft,
  Check,
@@ -84,7 +83,7 @@ const STEPS = [
  { id: 'role', title: 'Your Role', icon: User },
  { id: 'expertise', title: 'Expertise', icon: Briefcase },
  { id: 'goals', title: 'Goals', icon: Target },
- { id: 'final', title: 'Complete', icon: Sparkles },
+ { id: 'final', title: 'Complete', icon: Check },
 ];
 
 const STEP_EL: Record<string, string> = {

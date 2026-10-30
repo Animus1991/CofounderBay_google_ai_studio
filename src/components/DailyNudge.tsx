@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Lightbulb, Sparkles } from 'lucide-react';
+import { Check, Lightbulb } from 'lucide-react';
 import { useT, getLang } from '../lib/language';
 import { keys, localDay, readValue, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
@@ -84,8 +84,8 @@ export function DailyNudge() {
           <p className="text-xs font-medium text-stone-500">
             {t("Today's step", 'Το βήμα της ημέρας')} · {row.name[lang === 'el' ? 1 : 0]}
             {stored?.by === 'ai' && (
-              <span className="ml-1.5 inline-flex items-center gap-0.5 font-medium normal-case tracking-normal text-stone-500">
-                <Sparkles className="h-3 w-3" aria-hidden="true" />{t('picked by AI', 'επιλογή AI')}
+              <span className="ml-1.5 font-medium normal-case tracking-normal text-stone-500">
+                {t('picked by AI', 'επιλογή AI')}
               </span>
             )}
           </p>

@@ -12,7 +12,6 @@ import {
  EyeOff,
  BarChart2,
  Layers,
- Sparkles,
 } from 'lucide-react';
 import { mergeFitIntoViewer, readFitCheck } from '../lib/fitCheck';
 import { motion, AnimatePresence } from 'motion/react';
@@ -200,9 +199,8 @@ export default function MatchDiscovery() {
      title={fitResult
       ? t(`Your fit check: ${fitResult.archetype.en}. Retake it when your stage, commitment or what you look for changes — then apply it to your profile to re-rank.`, `Το fit check σου: ${fitResult.archetype.el}. Επανάλαβέ το όταν αλλάξει το στάδιο, η δέσμευση ή τι ψάχνεις — και εφάρμοσέ το στο προφίλ για νέα κατάταξη.`)
       : t('60 seconds, five questions — sharpens how members are ranked for you.', '60 δευτερόλεπτα, πέντε ερωτήσεις — κάνει πιο ακριβή την κατάταξη των μελών για σένα.')}
-     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+     className="inline-flex items-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
     >
-     <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
      {fitResult ? t('Retake fit check', 'Νέο fit check') : t('Take fit check', 'Κάνε το fit check')}
     </button>
     <button

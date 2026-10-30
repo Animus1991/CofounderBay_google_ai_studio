@@ -4,7 +4,7 @@
  * filled (what the person already typed wins), and Undo puts the form back.
  */
 import { useState } from 'react';
-import { Sparkles, Undo2, Wand2 } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { extractProfileWithModel, type ProfileDraft } from '../../lib/profileFromText';
 import { useLanguage, useT } from '../../lib/language';
 
@@ -56,12 +56,9 @@ export default function DescribeYourself({
 
   return (
     <section data-testid="describe-yourself" className="rounded-2xl border border-stone-200 bg-stone-50 p-4 space-y-3">
-      <div className="flex items-start gap-2">
-        <Wand2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" aria-hidden="true" />
-        <div>
-          <h2 className="text-sm font-semibold text-stone-900">{t('Short on time? Describe yourself and I fill the form', 'Βιάζεσαι; Περιέγραψε τον εαυτό σου και συμπληρώνω τη φόρμα')}</h2>
-          <p className="text-xs text-stone-500">{t('A few lines or your LinkedIn “About”. You review everything before it is kept.', 'Λίγες γραμμές ή το «About» του LinkedIn. Ελέγχεις τα πάντα πριν κρατηθούν.')}</p>
-        </div>
+      <div>
+        <h2 className="text-sm font-semibold text-stone-900">{t('Short on time? Describe yourself and I fill the form', 'Βιάζεσαι; Περιέγραψε τον εαυτό σου και συμπληρώνω τη φόρμα')}</h2>
+        <p className="text-xs text-stone-500">{t('A few lines or your LinkedIn “About”. You review everything before it is kept.', 'Λίγες γραμμές ή το «About» του LinkedIn. Ελέγχεις τα πάντα πριν κρατηθούν.')}</p>
       </div>
       <label className="sr-only" htmlFor="describe-yourself-text">{t('Describe yourself', 'Περιέγραψε τον εαυτό σου')}</label>
       <textarea
@@ -77,9 +74,8 @@ export default function DescribeYourself({
           type="button"
           onClick={() => { void read(); }}
           disabled={reading || text.trim().length < 20}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-stone-900 px-3 text-sm font-medium text-white disabled:opacity-50"
+          className="inline-flex min-h-10 items-center rounded-lg bg-stone-900 px-3 text-sm font-medium text-white disabled:opacity-50"
         >
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           {reading ? t('Reading…', 'Διαβάζω…') : t('Read it', 'Διάβασέ το')}
         </button>
         {text.trim().length > 0 && text.trim().length < 20 && <span className="text-xs text-stone-500">{t('A little more, please.', 'Λίγο ακόμη, παρακαλώ.')}</span>}
