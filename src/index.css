@@ -1489,6 +1489,25 @@ input.h-8 {
   padding-block: 0.16rem;
 }
 
+/*
+ * Header chrome follows the palette that is active right now.
+ * border-stone-* is remapped only for Dark Obsidian, so these rules use
+ * --cfb-accent, which every theme sets.
+ */
+.theme-chrome {
+  border-bottom-color: var(--cfb-accent);
+}
+.theme-chrome-frame {
+  border: 1.5px solid var(--cfb-accent);
+  background-color: var(--cfb-accent-soft);
+}
+.theme-chrome-edge {
+  border-color: var(--cfb-accent);
+}
+.theme-chrome-edge:hover {
+  border-color: var(--cfb-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

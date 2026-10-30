@@ -196,19 +196,24 @@ export default function Layout() {
   ) : null;
 
   /*
-   * The top bar only carries what applies on every page: search (mobile; desktop has it
-   * at the top of the sidebar), the assistant, preferences and session. Page-specific
-   * tools sit on the pages they belong to (Matches, Fundraising, Network → Needs).
+   * The top bar only carries what applies on every page: search, the assistant,
+   * preferences and session. Those four controls share one frame whose border
+   * is the active palette (theme-chrome-frame). Page-specific tools sit on the
+   * pages they belong to (Matches, Fundraising, Network → Needs).
    */
-  const quickStudioActions = (
-    <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+  const studioChrome = (
+    <div
+      role="group"
+      aria-label={t('Search, assistant and preferences', 'Αναζήτηση, βοηθός και προτιμήσεις')}
+      className="theme-chrome-frame flex items-center gap-1 sm:gap-1.5 shrink-0 rounded-xl px-1 py-1"
+    >
       <button
         type="button"
         data-ui="button"
         onClick={() => window.dispatchEvent(new CustomEvent('OPEN_COMMAND_PALETTE'))}
         aria-label={t('Search pages, people and tools', 'Αναζήτηση σελίδων, ατόμων και εργαλείων')}
         title={t('Search (Ctrl K)', 'Αναζήτηση (Ctrl K)')}
-        className="inline-flex lg:hidden items-center justify-center rounded-lg border border-stone-200 bg-white px-2.5 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
+        className="inline-flex min-h-9 items-center justify-center rounded-lg border border-stone-200 bg-white px-2.5 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
       >
         <Search className="w-4 h-4" />
       </button>
@@ -217,13 +222,15 @@ export default function Layout() {
         type="button"
         data-ui="button"
         onClick={() => openAssistant()}
-        className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
+        className="inline-flex min-h-9 items-center gap-1 sm:gap-1.5 rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
         title={t('Open Studio AI Co-Pilot (Reads & edits every module)', 'Άνοιγμα Studio AI Co-Pilot (Διαβάζει & ενημερώνει κάθε ενότητα)')}
       >
         <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         <span className="hidden min-[380px]:inline">AI</span>
         <span className="hidden sm:inline">Co-Pilot</span>
       </button>
+      <ThemePalettePicker paletteTheme={paletteTheme} setPaletteTheme={setPaletteTheme} />
+      <LanguageToggle />
     </div>
   );
 
@@ -235,7 +242,7 @@ export default function Layout() {
       >
         {t('Skip to content', 'Μετάβαση στο περιεχόμενο')}
       </a>
-      <header className="z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b border-stone-200 bg-stone-50 px-2.5 sm:px-3 py-1.5 lg:hidden">
+      <header className="theme-chrome z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b bg-stone-50 px-2.5 sm:px-3 py-1.5 lg:hidden">
         <button
           type="button"
           data-ui="button"
@@ -248,9 +255,7 @@ export default function Layout() {
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center justify-end gap-1 sm:gap-1.5 min-w-0">
-          {quickStudioActions}
-          <ThemePalettePicker paletteTheme={paletteTheme} setPaletteTheme={setPaletteTheme} />
-          <LanguageToggle />
+          {studioChrome}
           {exitButton}
         </div>
       </header>
@@ -268,7 +273,7 @@ export default function Layout() {
           onMenuToggle={toggleMobileSidebar}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="hidden shrink-0 items-center justify-between gap-3 border-b border-stone-200/60 bg-stone-50 px-6 py-[0.485rem] lg:flex">
+          <div className="theme-chrome hidden shrink-0 items-center justify-between gap-3 border-b bg-stone-50 px-6 py-[0.485rem] lg:flex">
             <div className="flex items-center gap-2 text-xs text-stone-500 min-w-0">
               <span className="font-semibold text-stone-900 shrink-0">CoFounderBay Studio</span>
               <span>·</span>
@@ -277,12 +282,7 @@ export default function Layout() {
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {quickStudioActions}
-              <span aria-hidden="true" className="h-5 w-px bg-stone-200" />
-              <div role="group" aria-label={t('Preferences', 'Προτιμήσεις')} className="flex items-center gap-1.5">
-                <ThemePalettePicker paletteTheme={paletteTheme} setPaletteTheme={setPaletteTheme} />
-                <LanguageToggle />
-              </div>
+              {studioChrome}
               {exitButton && (
                 <>
                   <span aria-hidden="true" className="h-5 w-px bg-stone-200" />

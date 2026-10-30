@@ -219,8 +219,8 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
      title={bothText("Search pages, people and tools (Ctrl K)", "Αναζήτηση σελίδων, ατόμων και εργαλείων (Ctrl K)")}
      aria-label={bothText("Search pages, people and tools", "Αναζήτηση σελίδων, ατόμων και εργαλείων")}
      className={cn(
-      "w-full flex items-center gap-3 px-3 min-h-10 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-500 hover:border-stone-300 hover:text-stone-900 transition-colors",
-      collapsed && "justify-center px-0 border-transparent bg-transparent"
+      "w-full flex items-center gap-3 px-3 min-h-10 rounded-lg border bg-stone-50 text-sm text-stone-500 hover:text-stone-900 transition-colors",
+      collapsed ? "justify-center px-0 border-transparent bg-transparent" : "theme-chrome-edge"
      )}
     >
      <Search className="w-4 h-4 shrink-0" />
