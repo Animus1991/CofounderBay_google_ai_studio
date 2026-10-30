@@ -1,7 +1,5 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { Both } from '../../lib/both';
-import PinToggle from './PinToggle';
 
 interface PageShellProps {
  title?: string;
@@ -11,16 +9,6 @@ interface PageShellProps {
  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl' | 'full';
  noPadding?: boolean;
  className?: string;
- sample?: boolean;
-}
-
-/** The shared demo pill — identical markup the Dashboard header used. */
-export function SamplePill() {
- return (
-  <span title="Sample data — nothing is saved to a server" className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-[0.3638rem] leading-snug">
-   <Both en="Demo" el="Demo" />
-  </span>
- );
 }
 
 const maxWidthClass = {
@@ -41,7 +29,6 @@ export default function PageShell({
  maxWidth = 'full',
  noPadding = false,
  className,
- sample = false,
 }: PageShellProps) {
  return (
   <div className={cn(
@@ -50,7 +37,7 @@ export default function PageShell({
    className
   )}>
    <div className={cn('mx-auto w-full min-w-0', maxWidthClass[maxWidth])}>
-    {(title || actions || sample) && (
+    {(title || actions) && (
      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-[1.2125rem]">
       <div className="min-w-0 flex-1 basis-64">
        {title && (
@@ -60,10 +47,8 @@ export default function PageShell({
         <p className="text-sm text-stone-500 mt-1 max-w-2xl leading-relaxed">{description}</p>
        )}
       </div>
-      {(actions || sample) && (
+      {actions && (
        <div data-ui="page-actions" className="flex max-w-full flex-wrap items-center gap-2 min-w-0">
-        {sample && <SamplePill />}
-        <PinToggle />
         {actions}
        </div>
       )}

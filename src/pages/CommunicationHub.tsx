@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
  Search, Plus, MoreVertical, Send, Paperclip, Smile, Phone, Video, Info,
  ChevronLeft, Check, CheckCheck, MessageSquare, Clock, X, FileText, Mic,
- Sparkles, Pin, Reply, Forward, Trash2, Archive, BellOff, Bell, Users,
+ Pin, Reply, Forward, Trash2, Archive, BellOff, Bell, Users,
  Download, Lightbulb, MessageCircle, Copy, Pencil, ExternalLink, AlertCircle,
  BrainCircuit, UserPlus, User as UserIcon, Flag, Ban, Shield, ShieldCheck, Settings, Loader2, Square
 } from "lucide-react";
@@ -129,7 +129,7 @@ const Avatar = ({ src, alt, size = "md", status, isAI = false, icon }: {
    {showImage ? (
     <img src={src} alt={alt} className="w-full h-full object-cover rounded-[inherit]" onError={() => setFailed(true)} referrerPolicy="no-referrer" />
    ) : isAI ? (
-    <div className="w-full h-full rounded-[inherit] bg-stone-900 text-white flex items-center justify-center text-base" aria-hidden="true">{icon || <Sparkles className="w-4 h-4" />}</div>
+    <div className="w-full h-full rounded-[inherit] bg-stone-900 text-white flex items-center justify-center text-base" aria-hidden="true">{icon || initials}</div>
    ) : (
     <div className="w-full h-full rounded-[inherit] bg-stone-100 border border-stone-200 flex items-center justify-center font-semibold text-stone-600">{initials}</div>
    )}
@@ -1025,8 +1025,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        msg.failed && "opacity-70 ring-1 ring-red-300",
       )}>
        {msg.isAI && activeAgent && (
-        <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-stone-200/50">
-         <Sparkles className="w-3 h-3 text-stone-500" />
+        <div className="mb-1.5 pb-1.5 border-b border-stone-200/50">
          <span className="text-xs font-semibold text-stone-600 tracking-wider">{agentName(activeAgent)}</span>
         </div>
        )}
@@ -1156,7 +1155,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      </button>
      <button type="button" onClick={() => { setActiveView("ai-center"); setAiView("agents"); }}
       className="w-full flex items-center justify-center gap-2.5 min-h-12 px-5 bg-white text-stone-700 border border-stone-200 rounded-xl text-sm font-semibold hover:bg-stone-100 transition-all">
-      <Sparkles className="w-4 h-4" /> {t("Ask an AI specialist", "Ρώτα έναν ειδικό AI")}
+      {t("Ask an AI specialist", "Ρώτα έναν ειδικό AI")}
      </button>
      <div className="flex items-center gap-2.5 w-full">
       <button type="button" onClick={() => navigate("/matches")} className="flex-1 flex items-center justify-center gap-2 min-h-11 px-4 bg-white text-stone-600 border border-stone-200 rounded-xl text-xs font-medium hover:bg-stone-50 hover:border-stone-300 transition-all">
@@ -1305,7 +1304,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      {messages.length === 0 ? (
       <div className="flex flex-col items-center justify-center h-full text-center">
        <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
-        {isAIChat ? <Sparkles className="w-8 h-8 text-stone-400" /> : <MessageCircle className="w-8 h-8 text-stone-300" />}
+        <MessageCircle className="w-8 h-8 text-stone-300" />
        </div>
        <p className="text-sm text-stone-600 font-medium">
         {isAIChat && activeAgent ? agentDescription(activeAgent) : t(`Say hello to ${active.other.fullName.split(" ")[0]}.`, `Πες ένα γεια στον/στην ${active.other.fullName.split(" ")[0]}.`)}
@@ -1646,12 +1645,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <motion.button key={agent.id} type="button" whileHover={{ scale: 1.01 }} onClick={() => void startWith(agent.id)}
          className="p-5 bg-white border border-stone-200 rounded-2xl transition-all hover:border-stone-900 text-left">
          <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-stone-900 text-white text-2xl flex items-center justify-center shrink-0" aria-hidden="true">{agent.icon || <Sparkles className="w-5 h-5" />}</div>
+          <div className="w-14 h-14 rounded-2xl bg-stone-900 text-white text-2xl flex items-center justify-center shrink-0" aria-hidden="true">{agent.icon || agentName(agent).slice(0, 1)}</div>
           <div className="flex-1 min-w-0">
-           <div className="flex items-center justify-between mb-1">
-            <h3 className="font-semibold text-stone-900">{agentName(agent)}</h3>
-            <Sparkles className="w-4 h-4 text-stone-400" />
-           </div>
+           <h3 className="font-semibold text-stone-900 mb-1">{agentName(agent)}</h3>
            <p className="text-xs text-stone-600 font-semibold mb-1.5">{agentRole(agent)}</p>
            <p className="text-sm text-stone-500 line-clamp-2 leading-relaxed">{agentDescription(agent)}</p>
            <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1680,7 +1676,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        return (
         <button key={conversation.id} type="button" onClick={() => openConversation(conversation.id)} className="w-full p-4 bg-white border border-stone-200 rounded-xl text-left hover:border-stone-900 transition-colors">
          <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0 text-base" aria-hidden="true">{agent?.icon || <Sparkles className="w-4 h-4" />}</div>
+          <div className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0 text-base" aria-hidden="true">{agent?.icon || (agent ? agentName(agent).slice(0, 1) : conversation.other.fullName.slice(0, 1))}</div>
           <div className="flex-1 min-w-0">
            <div className="flex items-center justify-between gap-2">
             <h3 className="font-semibold text-stone-900 text-sm">{agent ? agentName(agent) : conversation.other.fullName}</h3>

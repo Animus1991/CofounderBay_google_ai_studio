@@ -21,7 +21,6 @@ import {
  ShieldCheck,
  Zap,
  ArrowLeft,
- Sparkles,
  Share2,
  ThumbsUp,
  Award,
@@ -1256,13 +1255,8 @@ export default function ProfilePage() {
 {/* AI Match Insight */}
       <div className="bg-stone-50 border border-stone-200 p-5 rounded-xl space-y-4">
        <div>
-        <div className="flex items-center gap-3 mb-3">
-         <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center backdrop-blur-sm border border-stone-200">
-          <Sparkles className="w-4 h-4 text-amber-600" />
-         </div>
-         <div>
+        <div className="mb-3">
           <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
-         </div>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">

@@ -13,7 +13,6 @@ import {
  Filter,
  ChevronRight,
  Clock,
- Sparkles,
  Zap,
  ArrowRight,
  FileText,
@@ -264,7 +263,6 @@ export default function Workspace({ user }: WorkspaceProps) {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Venture Builder", "Χώρος εργασίας")}
    description={t('Tasks, canvas, milestones and calendar.', 'Εργασίες, canvas, ορόσημα και ημερολόγιο.')}
    maxWidth="full"
@@ -499,10 +497,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Right Column - Quick Actions & AI */}
       <div className="lg:col-span-4 space-y-4">
        <section className="card-minimal p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-         <div className="w-7 h-7 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center">
-          <Sparkles className="w-3.5 h-3.5 text-stone-500" />
-         </div>
+        <div className="mb-1">
          <h3 className="text-sm font-semibold text-stone-900">{t("AI Assistant", "Βοηθός AI")}</h3>
         </div>
         <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-2.5">
@@ -751,7 +746,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           className="h-7 bg-stone-900 text-white text-sm px-3"
           onClick={() => askAssistant('Fill in my lean canvas')}
          >
-          <Sparkles className="w-3 h-3 mr-1.5" /> {t("Fill the empty sections", "Συμπλήρωσε τα κενά")}
+          {t("Fill the empty sections", "Συμπλήρωσε τα κενά")}
          </Button>
         )}
        </div>

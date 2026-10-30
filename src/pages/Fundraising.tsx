@@ -463,7 +463,6 @@ export default function Fundraising({ user }: FundraisingProps) {
  return (
   <>
   <PageShell
-   sample={isDemoMode}
    title={t("Fundraising", "Χρηματοδότηση")}
    description={t('Round, investors, due diligence and programs.', 'Γύρος, επενδυτές, δέουσα επιμέλεια και προγράμματα.')}
    maxWidth="full"

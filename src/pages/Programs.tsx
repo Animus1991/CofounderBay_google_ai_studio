@@ -183,7 +183,6 @@ export default function Programs({ user: _user }: ProgramsProps) {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Programs", "Προγράμματα")}
    description={t('Accelerators and grants for your stage.', 'Επιταχυντές και επιχορηγήσεις για το στάδιό σου.')}
    actions={

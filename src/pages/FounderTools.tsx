@@ -42,7 +42,6 @@ import {
  CreditCard,
  ShoppingCart,
  Headphones,
- Sparkles,
  Pin,
  Search,
  Copy,
@@ -519,7 +518,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
  // AI Suggestions based on startup stage
  const aiSuggestions = [
-  { id: 1, title: t('Refine your pitch narrative', 'Βελτίωσε την αφήγηση του pitch'), reason: t('Based on your stage: Prototype', 'Με βάση το στάδιό σου: Πρωτότυπο'), icon: Sparkles, action: t('Open Pitch Builder', 'Άνοιξε τον Pitch Builder') },
+  { id: 1, title: t('Refine your pitch narrative', 'Βελτίωσε την αφήγηση του pitch'), reason: t('Based on your stage: Prototype', 'Με βάση το στάδιό σου: Πρωτότυπο'), icon: Lightbulb, action: t('Open Pitch Builder', 'Άνοιξε τον Pitch Builder') },
   { id: 2, title: t('Create a financial model', 'Φτιάξε οικονομικό μοντέλο'), reason: t('Readiness score: Financial Planning at 30%', 'Readiness score: οικονομικός σχεδιασμός στο 30%'), icon: BarChart3, action: t('Open Financial Tool', 'Άνοιξε το οικονομικό εργαλείο') },
   { id: 3, title: t('Draft team hiring plan', 'Σχεδίασε πλάνο προσλήψεων'), reason: t('Team Composition is strong but small', 'Η σύνθεση ομάδας είναι ισχυρή αλλά μικρή'), icon: Users, action: t('Open HR Tools', 'Άνοιξε τα εργαλεία HR') },
  ];
@@ -925,9 +924,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
           type="button"
           data-testid="builder-draft-with-assistant"
           onClick={() => askAssistant(`Draft my startup builder ${key} module`)}
-          className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-500 hover:text-stone-900"
+          className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-dashed border-stone-300 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-500 hover:text-stone-900"
          >
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           {t('Draft this module with the assistant', 'Γράψε αυτή την ενότητα με τον βοηθό')}
          </button>
         );
@@ -1070,9 +1068,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
           type="button"
           data-testid="pitch-draft-with-assistant"
           onClick={() => askAssistant(`Write my ${open.map((slide) => slide.key).join(', ')} slides`)}
-          className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-stone-300 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-500 hover:text-stone-900"
+          className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-dashed border-stone-300 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-500 hover:text-stone-900"
          >
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           {t(`Draft the ${open.length} unfinished slide${open.length === 1 ? '' : 's'} with the assistant`, `Γράψε με τον βοηθό ${open.length === 1 ? 'τη διαφάνεια που λείπει' : `τις ${open.length} διαφάνειες που λείπουν`}`)}
          </button>
         );
@@ -1442,8 +1439,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
      {/* AI Suggestions */}
      <Card className="bg-amber-50 border-amber-100 p-4">
-      <div className="flex items-center gap-2 mb-3">
-       <Sparkles className="w-4 h-4 text-amber-600" />
+      <div className="mb-3">
        <h4 className="text-sm font-semibold text-amber-900">{t("AI-Recommended for You", "Προτάσεις AI για σένα")}</h4>
       </div>
       <div className="space-y-2.5">

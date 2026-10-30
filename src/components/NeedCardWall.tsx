@@ -8,7 +8,6 @@ import {
   PlusCircle,
   Send,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 import { NeedCardItem } from '../types';
 import { CardHead, CardFoot } from './CardAnatomy';
@@ -99,7 +98,6 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
         headingAs="h3"
         eyebrow="Live Venture Needs Wall"
         eyebrowEl="Ζωντανός Τοίχος Αναγκών Startups"
-        eyebrowIcon={Sparkles}
         eyebrowColor="text-emerald-400"
         title="Project Need Cards & Co-Founder Openings"
         titleEl="Κάρτες Αναγκών & Ανοιχτές Θέσεις Συνιδρυτών"

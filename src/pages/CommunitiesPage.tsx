@@ -225,7 +225,6 @@ export default function CommunitiesPage() {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t('Communities', 'Κοινότητες')}
    description={t('Ask, share and learn with other founders.', 'Ρώτα, μοιράσου και μάθε με άλλους ιδρυτές.')}
    actions={

@@ -137,7 +137,7 @@ export default function Perks() {
  const featured = perks.find((perk) => perk.featured) ?? (isDemoMode ? perks.find((p) => p.id === 'aws') : undefined);
 
  return (
-  <PageShell sample={isDemoMode} title={t("Perks", "Παροχές")} description={isDemoMode
+  <PageShell title={t("Perks", "Παροχές")} description={isDemoMode
    ? t('Discounts and credits from partners.', 'Εκπτώσεις και πιστώσεις από συνεργάτες.')
    : t('Founder programs — apply on each provider\'s site.', 'Προγράμματα ιδρυτών — αίτηση στο site του παρόχου.')}>
    <div className="space-y-6">

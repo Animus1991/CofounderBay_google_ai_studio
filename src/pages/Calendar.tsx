@@ -299,7 +299,6 @@ export default function Calendar() {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Schedule", "Πρόγραμμα")}
    description={t('Meetings, deadlines and goals.', 'Συναντήσεις, προθεσμίες και στόχοι.')}
    actions={

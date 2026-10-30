@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, X, ArrowRight, Shield, Globe, Sparkles, ZapIcon } from "lucide-react";
+import { Check, X, ArrowRight, Shield, Globe, ZapIcon } from "lucide-react";
 import { motion } from "motion/react";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -50,7 +50,7 @@ export default function Pricing() {
      animate={{ opacity: 1, y: 0 }}
      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide"
     >
-     <Sparkles className="w-3 h-3" /> {t('Pricing Plans', 'Πακέτα τιμών')}
+     {t('Pricing Plans', 'Πακέτα τιμών')}
     </motion.div>
     <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
      {t('Scale your ecosystem with confidence.', 'Κλιμάκωσε το οικοσύστημά σου με σιγουριά.')}

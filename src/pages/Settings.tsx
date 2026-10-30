@@ -367,7 +367,6 @@ export default function Settings() {
 
   return (
     <PageShell
-      sample={isDemoMode}
       title={t("Settings", "Ρυθμίσεις")}
       description={
         isDemoMode

@@ -313,7 +313,6 @@ export default function Network({ user }: NetworkProps) {
 
   return (
     <PageShell
-      sample={isDemoMode}
       title={t('Network', 'Δίκτυο')}
       description={t('Your connections, saved people, endorsements and need cards.', 'Οι συνδέσεις σου, αποθηκευμένες επαφές, συστάσεις και κάρτες ανάγκης.')}
       actions={

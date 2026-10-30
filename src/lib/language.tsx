@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { Languages } from 'lucide-react';
 
 export type LangMode = 'en' | 'el';
 
@@ -92,9 +91,8 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
       onClick={cycle}
       title={hint[mode]}
       aria-label={hint[mode]}
-      className={`inline-flex min-h-11 items-center justify-center gap-1 sm:gap-1.5 rounded-lg border border-stone-200 bg-white px-2 sm:px-2.5 text-xs sm:text-sm font-medium text-stone-900 shrink-0 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-200 bg-white px-2 sm:px-2.5 text-xs sm:text-sm font-medium text-stone-900 shrink-0 ${className}`}
     >
-      <Languages className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
       <span className="whitespace-nowrap">{label}</span>
     </button>
   );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { useT, getLang } from '../lib/language';
 import { keys, readValue, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
@@ -66,10 +66,7 @@ export function AiProfileReview() {
   return (
     <div data-testid="ai-profile-review" className="bg-white border border-stone-200 p-5 rounded-xl space-y-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-600" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-stone-900">{t('AI review of your profile', 'Ανάλυση AI του προφίλ σου')}</h3>
-        </div>
+        <h3 className="text-sm font-semibold text-stone-900">{t('AI review of your profile', 'Ανάλυση AI του προφίλ σου')}</h3>
         <button
           type="button"
           data-testid="ai-profile-review-generate"

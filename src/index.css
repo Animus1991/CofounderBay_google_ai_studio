@@ -710,6 +710,43 @@ input.h-8 {
   padding-block: 0.16rem;
 }
 
+/*
+ * The header bar, edge to edge, uses the palette accent already used by
+ * primary buttons. Each control on the bar keeps a white outline. The theme
+ * menu stays a normal panel.
+ */
+.theme-chrome-frame {
+  background-color: var(--cfb-accent);
+  border-bottom-color: var(--cfb-accent);
+  color: #fff;
+}
+.theme-chrome-frame button[data-ui="button"] {
+  background-color: transparent;
+  border: 1px solid #fff;
+  color: #fff;
+}
+/* Every outline is 3% narrower. The AI control keeps its full width. */
+.theme-chrome-frame button[data-ui="button"]:not([data-chrome="ai"]) {
+  scale: 0.97 1;
+}
+.theme-chrome-frame button[data-ui="button"] svg {
+  color: #fff;
+}
+.theme-chrome-frame button[data-ui="button"][data-chrome="theme"] svg.theme-chrome-chevron {
+  color: #fff;
+  stroke: #fff;
+}
+.theme-chrome-frame button[data-ui="button"]:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+.theme-chrome-chip {
+  background-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.theme-chrome-rule {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

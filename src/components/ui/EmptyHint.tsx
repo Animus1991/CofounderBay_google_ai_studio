@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Sparkles } from 'lucide-react';
 import { useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
 import { askAssistant } from '../../lib/assistantBus';
@@ -53,10 +52,9 @@ export function AskLink({
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1 text-xs font-medium text-stone-900 hover:underline"
+      className="inline-flex items-center text-xs font-medium text-stone-900 hover:underline"
       onClick={() => askAssistant(prompt)}
     >
-      <Sparkles className="w-3 h-3 text-stone-400" aria-hidden="true" />
       {label}
     </button>
   );

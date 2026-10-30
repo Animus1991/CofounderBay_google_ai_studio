@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock,
   Flame,
-  Sparkles,
 } from 'lucide-react';
 import Sparkline from '../components/ui/Sparkline';
 import { motion, AnimatePresence } from 'motion/react';
@@ -538,7 +537,6 @@ export default function DashboardPage() {
     <PageShell
       title={bothText(`${greeting.en}, ${firstName}`, `${greeting.el}, ${firstName}`)}
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
-      sample={isDemoMode}
     >
       <div className="space-y-8">
         <div>
@@ -574,16 +572,6 @@ export default function DashboardPage() {
               className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
               placeholder={bothText('Ask anything…', 'Ρώτα οτιδήποτε…')}
             />
-            <button
-              type="button"
-              title={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')}
-              onClick={sendAsk}
-              disabled={!searchQuery.trim()}
-              className="flex items-center justify-center w-9 h-9 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-all shrink-0 disabled:opacity-50"
-              aria-label={bothText('Ask the studio assistant', 'Ρώτα τον βοηθό')}
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
           </div>
           {slashHits.length > 0 && (
             <div id="dash-slash-list" role="listbox" className="mt-1.5 max-h-44 overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-sm">
