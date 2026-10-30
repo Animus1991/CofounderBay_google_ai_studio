@@ -140,19 +140,19 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 const PROFILE_ACTIVITY = [
  { id: 'a1', type: 'endorsement', text: 'Received endorsement for Machine Learning', textEl: 'Νέα σύσταση για Machine Learning', time: '2h ago', timeEl: 'πριν από 2 ώρες', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
  { id: 'a2', type: 'connection', text: 'Connected with Elena Rodriguez', textEl: 'Σύνδεση με Elena Rodriguez', time: '5h ago', timeEl: 'πριν από 5 ώρες', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
- { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', textEl: 'Ορόσημο: 50+ συνδέσεις', time: '1d ago', timeEl: 'πριν από 1 ημέρα', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' },
+ { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', textEl: 'Ορόσημο: 50+ συνδέσεις', time: '1d ago', timeEl: 'πριν από 1 ημέρα', icon: Trophy, color: 'text-violet-500', bg: 'bg-violet-50' },
  { id: 'a4', type: 'project', text: 'Updated venture "TechFlow AI"', textEl: 'Ενημέρωση εγχειρήματος «TechFlow AI»', time: '2d ago', timeEl: 'πριν από 2 ημέρες', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
  { id: 'a5', type: 'skill', text: 'Added React & TypeScript skills', textEl: 'Προσθήκη δεξιοτήτων React και TypeScript', time: '3d ago', timeEl: 'πριν από 3 ημέρες', icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' },
  { id: 'a6', type: 'view', text: 'Profile viewed 38 times this week', textEl: '38 προβολές προφίλ αυτή την εβδομάδα', time: '4d ago', timeEl: 'πριν από 4 ημέρες', icon: Eye, color: 'text-stone-500', bg: 'bg-stone-50' },
 ];
 // ── Achievements / Badges ────────────────────────────────────────────────────
 const ACHIEVEMENTS = [
- { id: 'b1', name: 'Early Adopter', nameEl: 'Μέλος από την αρχή', desc: 'Joined in the first 1,000 users', descEl: 'Ένα από τα πρώτα 1.000 μέλη', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100', earned: true },
+ { id: 'b1', name: 'Early Adopter', nameEl: 'Μέλος από την αρχή', desc: 'Joined in the first 1,000 users', descEl: 'Ένα από τα πρώτα 1.000 μέλη', icon: Flame, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', earned: true },
  { id: 'b2', name: 'Connector', nameEl: 'Συνδετικός κρίκος', desc: '25+ accepted connections', descEl: '25+ αποδεκτές συνδέσεις', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', earned: true },
  { id: 'b3', name: 'Thought Leader', nameEl: 'Σημείο αναφοράς', desc: '10+ endorsements received', descEl: '10+ συστάσεις από άλλα μέλη', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', earned: true },
  { id: 'b4', name: 'Mentor Star', nameEl: 'Αστέρι καθοδήγησης', desc: 'Complete 5 mentoring sessions', descEl: 'Ολοκλήρωσε 5 συνεδρίες καθοδήγησης', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', earned: false },
- { id: 'b5', name: 'Pitch Pro', nameEl: 'Νικητήριο pitch', desc: 'Win a pitch competition', descEl: 'Κέρδισε έναν διαγωνισμό pitch', icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100', earned: false },
- { id: 'b6', name: 'Full Profile', nameEl: 'Πλήρες προφίλ', desc: '100% profile completion', descEl: 'Προφίλ ολοκληρωμένο 100%', icon: CheckCircle2, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-teal-100', earned: false },
+ { id: 'b5', name: 'Pitch Pro', nameEl: 'Νικητήριο pitch', desc: 'Win a pitch competition', descEl: 'Κέρδισε έναν διαγωνισμό pitch', icon: Trophy, color: 'text-violet-500', bg: 'bg-violet-50', border: 'border-violet-100', earned: false },
+ { id: 'b6', name: 'Full Profile', nameEl: 'Πλήρες προφίλ', desc: '100% profile completion', descEl: 'Προφίλ ολοκληρωμένο 100%', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', earned: false },
 ];
 // ── Mutual connections / People also viewed ──────────────────────────────────
 const MUTUAL_CONNECTIONS = [
@@ -362,7 +362,7 @@ export default function ProfilePage() {
   const rows: ActivityRow[] = [];
   const kindStyle = (kind: string): { icon: React.ElementType; color: string; bg: string } => {
    if (kind === 'request' || kind === 'profile') return { icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' };
-   if (kind === 'milestone') return { icon: Trophy, color: 'text-purple-500', bg: 'bg-purple-50' };
+   if (kind === 'milestone') return { icon: Trophy, color: 'text-violet-500', bg: 'bg-violet-50' };
    if (kind === 'message') return { icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-50' };
    if (kind === 'event' || kind === 'community') return { icon: CalendarIcon, color: 'text-amber-500', bg: 'bg-amber-50' };
    return { icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' };
@@ -1120,7 +1120,7 @@ export default function ProfilePage() {
      {isOwnProfile && (
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-        <Heart className="w-4 h-4 text-rose-400" />
+        <Heart className="w-4 h-4 text-red-400" />
         {t('Open To', 'Ενδιαφέρομαι για')}
        </h3>
        <div className="space-y-2">

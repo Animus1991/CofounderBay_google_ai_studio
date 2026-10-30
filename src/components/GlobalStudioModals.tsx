@@ -599,8 +599,8 @@ export const GlobalStudioModals: React.FC = () => {
       />
 
       {dealRoomModalOpen && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/95 border border-indigo-500/40 shadow-xl backdrop-blur-md max-w-[95vw] overflow-x-auto">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1 px-2 shrink-0">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/95 border border-blue-500/40 shadow-xl backdrop-blur-md max-w-[95vw] overflow-x-auto">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1 px-2 shrink-0">
             <Briefcase className="w-3.5 h-3.5" />
             {lang === 'el' ? 'Deal Rooms:' : 'Deal Rooms:'}
           </span>
@@ -614,7 +614,7 @@ export const GlobalStudioModals: React.FC = () => {
               }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
                 dealRoomMode !== 'create' && activeStartup?.id === s.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >

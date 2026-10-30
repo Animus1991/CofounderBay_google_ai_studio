@@ -119,7 +119,7 @@ export default function Calendar() {
  const chipClass = (type: Event["type"]) =>
   type === 'Meeting' ? "bg-blue-50 text-blue-700 border border-blue-200" :
   type === 'Deadline' ? "bg-red-50 text-red-700 border border-red-200" :
-  type === 'Mentorship' ? "bg-purple-50 text-purple-700 border border-purple-200" :
+  type === 'Mentorship' ? "bg-violet-50 text-violet-700 border border-violet-200" :
   "bg-stone-900 text-white";
 
  const headerLabel =
@@ -490,7 +490,7 @@ export default function Calendar() {
              <span className={cn("w-2 h-2 rounded-full shrink-0",
               ev.type === 'Meeting' ? "bg-blue-500" :
               ev.type === 'Deadline' ? "bg-red-500" :
-              ev.type === 'Mentorship' ? "bg-purple-500" :
+              ev.type === 'Mentorship' ? "bg-violet-500" :
               "bg-emerald-500"
              )} />
              <div className="flex-1 min-w-0">
@@ -553,7 +553,7 @@ export default function Calendar() {
             "w-1.5 h-1.5 rounded-full shrink-0",
             event.type === 'Meeting' ? "bg-blue-500" :
             event.type === 'Deadline' ? "bg-red-500" :
-            event.type === 'Mentorship' ? "bg-purple-500" :
+            event.type === 'Mentorship' ? "bg-violet-500" :
             "bg-emerald-500"
            )} />
            <span className="text-xs font-semibold text-stone-400 tracking-wider">{labelOf(event.type)}</span>

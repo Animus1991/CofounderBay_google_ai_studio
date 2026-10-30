@@ -133,7 +133,7 @@ export default function DomainSettings() {
            <div className="flex items-center gap-2">
             <span className="text-micro">{t('SSL', 'SSL')}</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.sslStatus === 'Active' ? 'text-green-700' : 'text-amber-700'
+             domain.sslStatus === 'Active' ? 'text-emerald-700' : 'text-amber-700'
             }`}>
              {labelOf(domain.sslStatus)}
             </span>
@@ -141,7 +141,7 @@ export default function DomainSettings() {
            <div className="flex items-center gap-2">
             <span className="text-micro">{t('Status', 'Κατάσταση')}</span>
             <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.verificationStatus === 'Verified' ? 'text-green-700' : 'text-stone-500'
+             domain.verificationStatus === 'Verified' ? 'text-emerald-700' : 'text-stone-500'
             }`}>
              {labelOf(domain.verificationStatus)}
             </span>
@@ -168,7 +168,7 @@ export default function DomainSettings() {
              onClick={() => copyToken(domain.id, domain.verificationToken)}
              className="p-1.5 hover:bg-stone-100 rounded-md transition-colors text-stone-400 hover:text-stone-900"
             >
-             {copiedId === domain.id ? <span className="text-xs text-green-700 font-medium">{t('Copied', 'Αντιγράφηκε')}</span> : <Copy className="w-3.5 h-3.5" />}
+             {copiedId === domain.id ? <span className="text-xs text-emerald-700 font-medium">{t('Copied', 'Αντιγράφηκε')}</span> : <Copy className="w-3.5 h-3.5" />}
             </button>
            </div>
            <div className="flex gap-2">

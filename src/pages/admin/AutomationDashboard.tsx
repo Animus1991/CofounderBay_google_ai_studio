@@ -251,7 +251,7 @@ const logMessage = (message: string) => {
     {[
      { label: t('Active Workflows', 'Ενεργές ροές'), value: rules.filter(r => r.status === 'Active').length, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
      { label: t('Total Executions', 'Σύνολο εκτελέσεων'), value: executions.length, icon: Activity, color: "text-blue-600", bg: "bg-blue-50" },
-     { label: t('Success Rate', 'Ποσοστό επιτυχίας'), value: executions.length ? `${Math.round((100 * executions.filter((item) => item.status === 'Success').length) / executions.length)}%` : '—', icon: CheckCircle2, color: "text-green-600", bg: "bg-green-50" },
+     { label: t('Success Rate', 'Ποσοστό επιτυχίας'), value: executions.length ? `${Math.round((100 * executions.filter((item) => item.status === 'Success').length) / executions.length)}%` : '—', icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
      { label: t('Failed (24h)', 'Αποτυχίες (24ω)'), value: rules.reduce((acc, r) => acc + (r.failureCount ?? 0), 0), icon: AlertCircle, color: "text-red-600", bg: "bg-red-50" },
     ].map((stat) => (
      <Card key={stat.label} className="p-4 border border-stone-100">
@@ -377,7 +377,7 @@ const logMessage = (message: string) => {
                 <h3 className="text-base font-medium text-stone-900">{workflowName(rule.name)}</h3>
                 <span className={cn(
                  "px-2 py-0.5 rounded text-xs font-medium tracking-wider",
-                 rule.status === 'Active' ? "bg-green-50 text-green-700 border border-green-100" : "bg-stone-50 text-stone-500 border border-stone-100"
+                 rule.status === 'Active' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-stone-50 text-stone-500 border border-stone-100"
                 )}>
                  {labelOf(rule.status)}
                 </span>
@@ -389,7 +389,7 @@ const logMessage = (message: string) => {
                 onClick={() => handleToggleRule(rule.id)}
                 className={cn(
                  "p-1.5 rounded-md transition-colors",
-                 rule.status === 'Active' ? "text-amber-600 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"
+                 rule.status === 'Active' ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"
                 )}
                 title={rule.status === 'Active' ? t('Pause Workflow', 'Παύση ροής') : t('Resume Workflow', 'Συνέχεια ροής')}
                >
@@ -513,7 +513,7 @@ const logMessage = (message: string) => {
               <td className="px-5 py-3">
                <span className={cn(
                 "px-2 py-0.5 rounded text-xs font-medium tracking-wider",
-                exec.status === 'Success' ? "text-green-700" : 
+                exec.status === 'Success' ? "text-emerald-700" : 
                 exec.status === 'Failure' ? "text-red-700" : "text-blue-700"
                )}>
                 {labelOf(exec.status)}
@@ -597,7 +597,7 @@ const logMessage = (message: string) => {
                <div className="space-y-1">
                 {log.metadata.conditionsMet.map((c: any, i: number) => (
                  <div key={i} className="flex items-center gap-2 text-xs">
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                   <span className="text-stone-600">{c.field} {c.operator} {c.value}</span>
                   <span className="text-stone-400">({t('Actual:', 'Πραγματική:')} {c.actual})</span>
                  </div>
@@ -619,7 +619,7 @@ const logMessage = (message: string) => {
                   </div>
                   <span className={cn(
                    "px-1.5 py-0.5 rounded text-xs font-medium tracking-wider",
-                   a.status === 'success' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                   a.status === 'success' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
                   )}>
                    {a.status === 'success' ? t('success', 'επιτυχία') : a.status === 'failed' ? t('failed', 'αποτυχία') : a.status}
                   </span>

@@ -462,7 +462,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
    name: labelOf('Marketing'),
    icon: ShoppingCart,
    description: t('GTM strategy, content, growth', 'Στρατηγική GTM, περιεχόμενο, ανάπτυξη'),
-   color: 'bg-rose-50 border-rose-100 text-rose-700',
+   color: 'bg-red-50 border-red-100 text-red-700',
    tools: [
     { id: 'gtm', name: t('GTM Strategy', 'Στρατηγική GTM'), desc: t('Go-to-market playbook', 'Playbook go-to-market'), icon: Map },
     { id: 'content', name: t('Content Calendar', 'Ημερολόγιο περιεχομένου'), desc: t('Social media content planner', 'Πλάνο περιεχομένου στα social'), icon: Calendar },
@@ -476,7 +476,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
    name: t('HR & Team', 'HR και ομάδα'),
    icon: Users,
    description: t('Hiring, equity, culture', 'Προσλήψεις, equity, κουλτούρα'),
-   color: 'bg-purple-50 border-purple-100 text-purple-700',
+   color: 'bg-violet-50 border-violet-100 text-violet-700',
    tools: [
     { id: 'hiring', name: t('Hiring Plan', 'Πλάνο προσλήψεων'), desc: t('12-month hiring roadmap', 'Roadmap προσλήψεων 12 μηνών'), icon: Users },
     { id: 'offer', name: t('Offer Letter', 'Επιστολή προσφοράς'), desc: t('Employee offer template', 'Πρότυπο προσφοράς εργασίας'), icon: FileText },
@@ -906,7 +906,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <Check className="w-2.5 h-2.5 text-white" />
           </div>
          ) : step.status === "In-Progress" ? (
-          <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+          <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
            <div className="w-1.5 h-1.5 rounded-full bg-white" />
           </div>
          ) : null}
@@ -1035,7 +1035,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
          </div>
          <div className={cn(
           "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-          slide.status === "complete" ? "bg-emerald-500" : slide.status === "in-progress" ? "bg-orange-500" : "bg-stone-200"
+          slide.status === "complete" ? "bg-emerald-500" : slide.status === "in-progress" ? "bg-amber-500" : "bg-stone-200"
          )}>
           {slide.status === "complete" ? <Check className="w-2.5 h-2.5 text-white" /> : slide.status === "in-progress" ? <div className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
          </div>

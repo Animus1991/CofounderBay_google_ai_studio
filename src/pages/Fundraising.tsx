@@ -96,8 +96,8 @@ const STAGE_META: Record<string, { color: string; dot: string }> = {
  "Meeting":       { color: "text-violet-600",  dot: "bg-violet-500" },
  "Due Diligence": { color: "text-amber-700",   dot: "bg-amber-500" },
  "Term Sheet":    { color: "text-emerald-700", dot: "bg-emerald-500" },
- "Closed":        { color: "text-green-700",   dot: "bg-green-500" },
- "Passed":        { color: "text-rose-500",    dot: "bg-stone-400" },
+ "Closed":        { color: "text-emerald-700",   dot: "bg-emerald-500" },
+ "Passed":        { color: "text-red-500",    dot: "bg-stone-400" },
 };
 
 // Sample investors shown to the demo account only — real accounts see the live member directory.
@@ -814,7 +814,7 @@ export default function Fundraising({ user }: FundraisingProps) {
              )}
              <button type="button" aria-label={t("Remove from pipeline", "Αφαίρεση από τη ροή")} title={t("Remove from pipeline", "Αφαίρεση από τη ροή")}
               onClick={() => { removePipelineInvestor(item.investorId); showToast(t("Removed from pipeline", "Αφαιρέθηκε από τη ροή")); }}
-              className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors">
+              className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors">
               <X className="w-3.5 h-3.5" />
              </button>
             </div>
@@ -878,7 +878,7 @@ export default function Fundraising({ user }: FundraisingProps) {
                 )}
                 <button type="button" aria-label={t("Remove from pipeline", "Αφαίρεση από τη ροή")} title={t("Remove from pipeline", "Αφαίρεση από τη ροή")}
                  onClick={() => { removePipelineInvestor(item.investorId); showToast(t("Removed from pipeline", "Αφαιρέθηκε από τη ροή")); }}
-                 className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors">
+                 className="min-h-8 min-w-8 rounded-lg text-stone-300 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors">
                  <X className="w-3.5 h-3.5" />
                 </button>
                </div>

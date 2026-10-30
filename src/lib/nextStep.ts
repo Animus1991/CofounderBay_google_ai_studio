@@ -102,6 +102,12 @@ export function studioNextStep(profile: CompatibilityInput | null): StudioNext {
 }
 
 /** What waits on the founder before the next step: a session within the hour, then work due today. */
+/** "29 Oct" / "29 Οκτ" for a YYYY-MM-DD. */
+function dayLabel(day: string, lang: 'en' | 'el'): string {
+  const date = new Date(`${day}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? day : date.toLocaleDateString(lang === 'el' ? 'el-GR' : 'en-GB', { day: 'numeric', month: 'short' });
+}
+
 export function studioWaiting(now = Date.now()): StudioNext | null {
   const soon = readSessions()
     .map((session) => ({ session, at: Date.parse(session.time) }))
@@ -131,7 +137,7 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
       title: { en: `${first.name} is waiting: ${first.nextStep}`, el: `Η/Ο ${first.name} περιμένει: ${first.nextStep}` },
       why: late.length > 1
         ? { en: `+${late.length - 1} more investor follow-up overdue`, el: `+${late.length - 1} ακόμη εκπρόθεσμα follow-ups` }
-        : { en: `Was due ${first.nextDate}`, el: `Έληγε ${first.nextDate}` },
+        : { en: `Was due ${dayLabel(first.nextDate, 'en')}`, el: `Έληγε ${dayLabel(first.nextDate, 'el')}` },
       action: { en: 'Open pipeline', el: 'Άνοιγμα ροής' },
       prompt: 'What follow-ups are due?',
     };

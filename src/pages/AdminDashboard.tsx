@@ -147,9 +147,9 @@ export default function AdminDashboard() {
          <div className={cn(
           "p-3 rounded-xl transition-all",
           stat.color === 'blue' ? "bg-blue-50 text-blue-600" :
-          stat.color === 'green' ? "bg-green-50 text-green-600" :
+          stat.color === 'green' ? "bg-emerald-50 text-emerald-600" :
           stat.color === 'amber' ? "bg-amber-50 text-amber-600" :
-          "bg-purple-50 text-purple-600"
+          "bg-violet-50 text-violet-600"
          )}>
           <stat.icon className="w-5 h-5" />
          </div>
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
        <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-sm space-y-6">
         <div className="flex items-center justify-between">
          <h3 className="text-base font-semibold text-white">{t('System Health', 'Υγεία συστήματος')}</h3>
-         <Activity className="w-6 h-6 text-green-400" />
+         <Activity className="w-6 h-6 text-emerald-400" />
         </div>
         <div className="space-y-4">
          {[
@@ -227,7 +227,7 @@ export default function AdminDashboard() {
          ].map((service) => (
           <div key={service.label} className="flex items-center justify-between">
            <div className="flex items-center gap-3">
-            <div className={cn("w-1.5 h-1.5 rounded-full", service.ok ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-400")} />
+            <div className={cn("w-1.5 h-1.5 rounded-full", service.ok ? "bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-400")} />
             <span className="text-sm font-medium">{service.label}</span>
            </div>
            <span className="text-xs font-mono text-stone-500">{service.ok ? 'ok' : t('down', 'εκτός')}</span>
@@ -287,7 +287,7 @@ export default function AdminDashboard() {
              type="button"
              title={t('Mark reviewed — flag clears until the next detection pass', 'Σήμανση ως ελεγμένης — η επισήμανση καθαρίζει μέχρι τον επόμενο έλεγχο')}
              onClick={() => setDismissedFlags((prev) => new Set(prev).add(idx))}
-             className="p-2 text-stone-400 hover:text-green-600 hover:bg-white rounded-lg transition-all shadow-sm"
+             className="p-2 text-stone-400 hover:text-emerald-600 hover:bg-white rounded-lg transition-all shadow-sm"
             >
              <CheckCircle className="w-4 h-4" />
             </button>

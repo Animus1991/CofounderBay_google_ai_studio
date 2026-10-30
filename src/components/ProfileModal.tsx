@@ -108,7 +108,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         aria-label={profile.name}
         className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="relative h-28 w-full bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-border">
+        <div className="relative h-28 w-full bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border-b border-border">
           <button
             type="button"
             onClick={onClose}

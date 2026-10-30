@@ -118,7 +118,7 @@ export default function Footer() {
       © {currentYear} CoFounderBay. {t('All rights reserved.', 'Με επιφύλαξη παντός δικαιώματος.')}
      </p>
      <div className="flex items-center gap-2">
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
       <span className="text-stone-400 text-sm font-medium tracking-wider">{t('System Operational', 'Σύστημα σε λειτουργία')}</span>
      </div>
     </div>

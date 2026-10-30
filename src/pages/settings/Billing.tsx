@@ -173,7 +173,7 @@ export default function Billing({ user }: BillingProps) {
           <span className="text-lg font-semibold">${subscription?.billingCycle === 'Annual' ? (currentPlan?.priceAnnual ?? 0) / 12 : currentPlan?.priceMonthly}</span>
           <span className="text-stone-400 text-sm font-medium">{t('/ month', '/ μήνα')}</span>
           {subscription?.billingCycle === 'Annual' && (
-           <span className="text-xs text-green-600 font-medium tracking-wider ml-2">{t('Billed Annually', 'Ετήσια χρέωση')}</span>
+           <span className="text-xs text-emerald-600 font-medium tracking-wider ml-2">{t('Billed Annually', 'Ετήσια χρέωση')}</span>
           )}
          </div>
 
@@ -184,11 +184,11 @@ export default function Billing({ user }: BillingProps) {
           </div>
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
            <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Payment Status', 'Κατάσταση πληρωμής')}</p>
-           <p className="text-sm font-medium text-green-600">{subscription?.status ? labelOf(subscription.status) : '—'}</p>
+           <p className="text-sm font-medium text-emerald-600">{subscription?.status ? labelOf(subscription.status) : '—'}</p>
           </div>
           {requestNote && (
-           <div className="px-4 py-2 bg-green-50 rounded-xl border border-green-100">
-            <p className="text-sm font-medium text-green-700">{requestNote}</p>
+           <div className="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+            <p className="text-sm font-medium text-emerald-700">{requestNote}</p>
            </div>
           )}
          </div>
@@ -221,7 +221,7 @@ export default function Billing({ user }: BillingProps) {
           return (
            <li key={key} className="flex items-center gap-3 text-sm">
             {enabled ? (
-             <CheckCircle2 className="w-4 h-4 text-green-500" />
+             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : (
              <AlertCircle className="w-4 h-4 text-stone-300" />
             )}
@@ -306,7 +306,7 @@ export default function Billing({ user }: BillingProps) {
             <p className="text-xs text-stone-500 tracking-wide font-medium">{t('Expires', 'Λήξη')} {card.expiry}</p>
            </div>
            <div className="flex gap-2">
-            {idx === 0 && <span className="self-center text-xs text-green-700 bg-green-50 px-2 py-1 rounded-lg font-medium">{t('Default', 'Προεπιλογή')}</span>}
+            {idx === 0 && <span className="self-center text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg font-medium">{t('Default', 'Προεπιλογή')}</span>}
             <Button
              variant="outline"
              className="text-xs px-3 py-1.5 text-red-500 hover:text-red-600"
@@ -397,7 +397,7 @@ export default function Billing({ user }: BillingProps) {
            <td className="px-4 py-2 text-sm font-medium">${invoice.total}</td>
            <td className="px-4 py-2">
             <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             invoice.status === 'Paid' ? 'text-green-700' : 'text-amber-700'
+             invoice.status === 'Paid' ? 'text-emerald-700' : 'text-amber-700'
             }`}>
              {labelOf(invoice.status)}
             </span>

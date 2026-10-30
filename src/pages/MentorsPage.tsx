@@ -313,7 +313,7 @@ export default function MentorsPage() {
           <span className="text-xs text-stone-400">({mentor.reviews})</span>
          </div>
          <div className="flex items-center gap-1 text-xs font-semibold text-stone-400 tracking-wider">
-          <CheckCircle2 className="w-3 h-3 text-green-500" />
+          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           {t(mentor.availability, AVAILABILITY_EL[mentor.availability] ?? mentor.availability)}
          </div>
         </div>

@@ -46,7 +46,7 @@ type ViewMode = 'kanban' | 'timeline' | 'list';
 
 const CATEGORY_COLORS: Record<string, string> = {
  Product: 'text-blue-600 border-transparent',
- Legal: 'text-purple-600 border-transparent',
+ Legal: 'text-violet-600 border-transparent',
  Funding: 'text-emerald-600 border-transparent',
  Marketing: 'text-amber-600 border-transparent',
 };

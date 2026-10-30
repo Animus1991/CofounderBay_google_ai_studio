@@ -246,7 +246,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              <p className="text-micro mb-0.5">{t('Organization Context', 'Πλαίσιο οργανισμού')}</p>
              <p className="text-xs font-medium text-stone-900">{tenantName}</p>
             </div>
-            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium tracking-wider">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
+            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-medium tracking-wider">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -543,7 +543,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
            <div key={log.id} className="p-3.5 flex items-center justify-between hover:bg-stone-50 transition-colors">
             <div className="flex items-center gap-3.5">
              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-              log.status === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+              log.status === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
              }`}>
               {log.status === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
              </div>

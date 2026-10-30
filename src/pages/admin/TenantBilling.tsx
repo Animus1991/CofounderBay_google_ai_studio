@@ -97,7 +97,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
      {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — billing data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα χρέωσης εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-3">
-     {requestState && <span className="self-center text-xs font-medium text-green-700 bg-green-50 px-3 py-2 rounded-xl">{requestState}</span>}
+     {requestState && <span className="self-center text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl">{requestState}</span>}
      <Button variant="outline" className="gap-2" onClick={() => ask(`Show billing settings and invoices for tenant ${tenant.name}`)}>
       <Settings2 className="w-4 h-4" /> {t('Billing Settings', 'Ρυθμίσεις χρέωσης')}
      </Button>
@@ -211,7 +211,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
           return (
            <li key={f} className="flex items-center gap-3 text-sm">
             {enabled ? (
-             <CheckCircle2 className="w-4 h-4 text-green-500" />
+             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : (
              <AlertCircle className="w-4 h-4 text-stone-300" />
             )}
@@ -230,7 +230,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
           return (
            <li key={f} className="flex items-center gap-3 text-sm">
             {enabled ? (
-             <CheckCircle2 className="w-4 h-4 text-green-500" />
+             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : (
              <AlertCircle className="w-4 h-4 text-stone-300" />
             )}
@@ -249,7 +249,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
           return (
            <li key={f} className="flex items-center gap-3 text-sm">
             {enabled ? (
-             <CheckCircle2 className="w-4 h-4 text-green-500" />
+             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : (
              <AlertCircle className="w-4 h-4 text-stone-300" />
             )}
@@ -368,7 +368,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
            <td className="px-4 py-2 text-sm font-medium">${invoice.total}</td>
            <td className="px-4 py-2">
             <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             invoice.status === 'Paid' ? 'text-green-700' : 'text-amber-700'
+             invoice.status === 'Paid' ? 'text-emerald-700' : 'text-amber-700'
             }`}>
              {labelOf(invoice.status)}
             </span>

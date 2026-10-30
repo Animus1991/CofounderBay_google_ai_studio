@@ -193,7 +193,7 @@ export default function LegalHub() {
          className="w-full flex items-center gap-3 p-3 bg-stone-50 rounded-xl border border-stone-100 text-left hover:border-stone-300 transition-all"
         >
          {isDone(item.id) ? (
-          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
          ) : (
           <div className="w-5 h-5 rounded-full border-2 border-stone-200 shrink-0" />
          )}

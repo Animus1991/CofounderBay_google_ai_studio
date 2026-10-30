@@ -42,7 +42,7 @@ export default function LandingPage() {
         "Πρόσβαση σε επιλεγμένο δίκτυο έμπειρων συμβούλων και ειδικών του κλάδου για να καθοδηγήσουν το εγχείρημά σου.",
       ),
       icon: GraduationCap,
-      color: "bg-purple-50 text-purple-600",
+      color: "bg-violet-50 text-violet-600",
     },
     {
       title: t("Thematic Communities", "Θεματικές κοινότητες"),
@@ -415,7 +415,7 @@ export default function LandingPage() {
             <div className="lg:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
               {[
                 { icon: TrendingUp, color: "bg-blue-50 text-blue-600", title: t("Growth Hub", "Κόμβος ανάπτυξης"), body: t("Acquisition, retention and pricing experiments, discussed with numbers.", "Απόκτηση πελατών, διατήρηση και πειράματα τιμολόγησης, με αριθμούς.") },
-                { icon: MessageSquare, color: "bg-purple-50 text-purple-600", title: t("Founder Lounge", "Στέκι ιδρυτών"), body: t("Ask anything about the first year of a company — honest answers from people living it.", "Ρώτα οτιδήποτε για τον πρώτο χρόνο μιας εταιρείας — ειλικρινείς απαντήσεις από ανθρώπους που το ζουν.") },
+                { icon: MessageSquare, color: "bg-violet-50 text-violet-600", title: t("Founder Lounge", "Στέκι ιδρυτών"), body: t("Ask anything about the first year of a company — honest answers from people living it.", "Ρώτα οτιδήποτε για τον πρώτο χρόνο μιας εταιρείας — ειλικρινείς απαντήσεις από ανθρώπους που το ζουν.") },
                 { icon: Zap, color: "bg-amber-50 text-amber-600", title: t("AI Builders", "Δημιουργοί AI"), body: t("Models, evaluation, costs and what actually ships to customers.", "Μοντέλα, αξιολόγηση, κόστη και τι φτάνει πραγματικά στους πελάτες.") },
                 { icon: Globe, color: "bg-emerald-50 text-emerald-600", title: t("Global Scale", "Διεθνής επέκταση"), body: t("Entering new markets, remote teams and working across time zones.", "Είσοδος σε νέες αγορές, απομακρυσμένες ομάδες και δουλειά σε διαφορετικές ζώνες ώρας.") },
               ].map((hub) => (

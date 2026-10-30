@@ -77,7 +77,7 @@ export default function Pricing() {
      </button>
      <div className="flex items-center gap-2">
       <span className={`text-sm font-medium ${billingCycle === 'Annual' ? 'text-stone-900' : 'text-stone-400'}`}>{t('Annual', 'Ετήσια')}</span>
-      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium tracking-wider rounded">{t('Save 20%', 'Εξοικονόμηση 20%')}</span>
+      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium tracking-wider rounded">{t('Save 20%', 'Εξοικονόμηση 20%')}</span>
      </div>
     </div>
    </div>
@@ -116,7 +116,7 @@ export default function Pricing() {
         <p className="text-xs font-medium text-stone-400 tracking-wide">{t("What's included", 'Τι περιλαμβάνεται')}</p>
         <ul className="space-y-3">
          <li className="flex items-start gap-3 text-sm">
-          <Check className="w-4 h-4 text-green-500 mt-0.5" />
+          <Check className="w-4 h-4 text-emerald-500 mt-0.5" />
           <span>{(plan.limits?.seats === -1 || !plan.limits?.seats) ? t('Unlimited', 'Απεριόριστες') : plan.limits.seats} {plan.customerType === 'Individual' ? t('User', 'χρήστης') : t('Seats', 'θέσεις')}</span>
          </li>
          {features.map(f => {
@@ -124,7 +124,7 @@ export default function Pricing() {
           return (
            <li key={f.key} className={`flex items-start gap-3 text-sm ${included ? 'text-stone-900' : 'text-stone-500'}`}>
             {included ? (
-             <Check className="w-4 h-4 text-green-500 mt-0.5" />
+             <Check className="w-4 h-4 text-emerald-500 mt-0.5" />
             ) : (
              <X className="w-4 h-4 mt-0.5" />
             )}
@@ -217,7 +217,7 @@ export default function Pricing() {
           return (
            <td key={p.id} aria-label={included ? t('Included', 'Περιλαμβάνεται') : t('Not included', 'Δεν περιλαμβάνεται')} className="py-4 px-4 text-center">
             {included ? (
-             <Check aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" />
+             <Check aria-hidden="true" className="w-5 h-5 text-emerald-500 mx-auto" />
             ) : (
              <X aria-hidden="true" className="w-5 h-5 text-stone-500 mx-auto" />
             )}
