@@ -197,8 +197,8 @@ export default function Layout() {
 
   /*
    * The top bar only carries what applies on every page: search, the assistant,
-   * preferences and session. Those four controls share one frame whose border
-   * is the active palette (theme-chrome-frame). Page-specific tools sit on the
+   * preferences and session. Those four controls sit in one capsule filled with
+   * the palette accent already used by primary buttons. Page-specific tools sit on the
    * pages they belong to (Matches, Fundraising, Network → Needs).
    */
   const studioChrome = (
@@ -242,7 +242,7 @@ export default function Layout() {
       >
         {t('Skip to content', 'Μετάβαση στο περιεχόμενο')}
       </a>
-      <header className="theme-chrome z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b bg-stone-50 px-2.5 sm:px-3 py-1.5 lg:hidden">
+      <header className="z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b border-stone-200 bg-stone-50 px-2.5 sm:px-3 py-1.5 lg:hidden">
         <button
           type="button"
           data-ui="button"
@@ -273,7 +273,7 @@ export default function Layout() {
           onMenuToggle={toggleMobileSidebar}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="theme-chrome hidden shrink-0 items-center justify-between gap-3 border-b bg-stone-50 px-6 py-[0.485rem] lg:flex">
+          <div className="hidden shrink-0 items-center justify-between gap-3 border-b border-stone-200/60 bg-stone-50 px-6 py-[0.485rem] lg:flex">
             <div className="flex items-center gap-2 text-xs text-stone-500 min-w-0">
               <span className="font-semibold text-stone-900 shrink-0">CoFounderBay Studio</span>
               <span>·</span>

@@ -1490,22 +1490,24 @@ input.h-8 {
 }
 
 /*
- * Header chrome follows the palette that is active right now.
- * border-stone-* is remapped only for Dark Obsidian, so these rules use
- * --cfb-accent, which every theme sets.
+ * The whole header cluster uses the palette accent already used by primary
+ * buttons. Controls sit on that fill; the edge is the same color, not a
+ * darker outline. Menu items inside the theme picker are left alone.
  */
-.theme-chrome {
-  border-bottom-color: var(--cfb-accent);
-}
 .theme-chrome-frame {
-  border: 1.5px solid var(--cfb-accent);
-  background-color: var(--cfb-accent-soft);
+  background-color: var(--cfb-accent);
+  border: 1px solid var(--cfb-accent);
 }
-.theme-chrome-edge {
-  border-color: var(--cfb-accent);
+.theme-chrome-frame button[data-ui="button"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #fff !important;
 }
-.theme-chrome-edge:hover {
-  border-color: var(--cfb-accent);
+.theme-chrome-frame button[data-ui="button"] svg {
+  color: #fff !important;
+}
+.theme-chrome-frame button[data-ui="button"]:hover {
+  background-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
