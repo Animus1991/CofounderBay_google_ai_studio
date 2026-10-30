@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 6: tested declutter, provider-agnostic email, alerts when a share link is opened, DD file attachments, weekly digest and regressions. Backend: 51/51 pytest pass (12 new tests in test_email_digest.py). Frontend: all 22 routes render with the short subtitles, the tagline is gone, Perks is OK. The email flow passes end to end and the digest UI passes end to end. Regressions pass: Confirm all (3), CRM add via the assistant, overdue alert, Fundraising tabs. Found 2 functional bugs: the first share-link open is never alerted, and a real data-room upload hangs forever, so file attachment cannot be done from the UI. Also 1 timezone bug and some stale or contradicting texts.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/dd/shares", "issue": "DDShareFile.url allows up to 2 MB per file and 10 files. That can push a dd_shares doc past Mongo's 16 MB document limit (500 error). Inline files are capped at 700 KB on the client, but the API does not enforce it. Cap the total size, or the data: URL length (e.g. 1 MB)."},
+      {"endpoint": "run_digests (cron background)", "issue": "Only HTTPException is caught. Any other exception, e.g. a Mongo or provider error raised outside deliver(), aborts the loop for every remaining founder. Catch Exception per client."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Data room upload (Fundraising → Tracker → Data room folders → Open data room → Upload)", "issue": "The upload stays on 'Uploading…' for over 120 s and never finishes. RCA: the Firebase Storage POST to firebasestorage.googleapis.com fails the CORS preflight (bucket CORS not configured / Storage not enabled). The SDK keeps retrying with backoff (default maxUploadRetryTime is about 10 min), so uploadFile() never reaches the catch that falls back to an inline data: URL. Fix: set storage.maxUploadRetryTime (e.g. 15000) in getStorageInstance, or race uploadBytes against a timeout before falling back. Demo users could also skip cloud upload entirely. This blocks attaching a real file to a DD link from the UI.", "selector": "input[type=file] inside the Data Room modal (no data-testid)", "priority": "HIGH"},
+      {"component": "OutreachWatcher / checkShareOpens (lib/outreach.ts)", "issue": "The first open of a newly created link never raises an alert. The share is first seen by the poll with views already at 1, and seen[token] is undefined, so that becomes the baseline without a toast. Reproduced: link created, opened 9 s later in a new context, no toast in 75 s, and ddSeen was {token:1}. A second open did alert after about 25 s (toast plus notification). This happens in the normal case: the founder creates a link, switches tabs (the hidden-tab check skips), and the investor opens it. Fix: seed ddSeen[token]=0 when creating a link in DueDiligenceTracker, or treat undefined as 0 when share.createdAt is after the last check.", "selector": "toast 'Sequoia Capital opened your due-diligence link'", "priority": "HIGH"},
+      {"component": "InvestorDigestSettings timezone", "issue": "The timezone label shows 'Europe/Athens' even when the browser is UTC. GET /api/digest/settings returns the server default timezone 'Europe/Athens' for unsaved settings, and it is spread over DEFAULT_DIGEST, which held the browser zone. Saving then stores Athens, so the digest fires at the wrong local hour for non-Greek users. Fix: drop timezone from the server default response, or prefer the browser timezone when no settings doc exists. There is also no way to change the timezone in the UI.", "selector": "[data-testid=investor-digest-settings]", "priority": "MEDIUM"},
+      {"component": "DD share panel → Attach data-room files", "issue": "On fresh demo data the 'Attach data-room files' details (dd-share-files) is not rendered at all. readRoomFiles() returns [] while the Tracker data room shows 4 sample files from another source, so the spec 'sample files disabled with sample' is not met. After addRoomFile, the room list contains only the new file, so the samples may disappear from the Tracker too. Verify.", "selector": "[data-testid=dd-share-files]", "priority": "LOW"},
+      {"component": "DD share list", "issue": "The views count and 'not opened yet' stay stale (0) after the investor opens the link and the alert fires. The list is not refreshed when OutreachWatcher detects opens.", "selector": "[data-testid^=dd-share-views-]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Fundraising → Due diligence share panel", "issues": ["The subtitle says 'Files are not shared', which now contradicts the 'Attach data-room files' feature."]},
+      {"screen": "Data Room modal", "issues": ["The footer 'there is no per-investor access log yet' is outdated now that share links track opens."]},
+      {"screen": "Settings → Notifications", "issues": ["Three 'digest' concepts sit side by side: the Digest card (Instant/Daily/Weekly/Off), the Product news 'Weekly founder digest' toggle and the new 'Weekly investor digest'. This may confuse users; consider a short distinguishing label.", "Quiet hours use the native time input (browser picker), which was there before."]},
+      {"screen": "SendEmailModal mailto", "issues": ["The address is percent-encoded (naval%40example.com). That is RFC-valid, but some mail clients do not decode the '@'. Consider leaving the address part unencoded."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_email_digest.py", "/app/backend/tests/test_dd_shares.py", "/app/backend/tests/test_cofounderbay_api.py", "/app/test_reports/pytest/pytest_results_iter6.xml"],
+  "action_items": [
+    "Fix the hanging data-room upload: set the Firebase storage maxUploadRetryTime, or add a timeout, so it falls back to inline data: URLs (also check Storage CORS on the bucket).",
+    "Fix the swallowed first share-open alert: set ddSeen[token]=0 on link creation.",
+    "Use the browser timezone for the digest when no settings are saved, and don't return 'Europe/Athens' as the server default (optionally add a timezone picker).",
+    "Show sample room files (disabled, 'sample') in dd-share-files on demo data. Make sure addRoomFile does not drop the samples.",
+    "Refresh the DD share list views after OutreachWatcher detects opens.",
+    "Update the outdated texts: 'Files are not shared' and 'no per-investor access log yet'.",
+    "Backend hardening: cap the total size of DD files, and catch generic exceptions per client in run_digests."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 806 lines (over the 700 limit). Split the dd/email/digest routers into modules.",
+    "checkShareOpens: a baseline of undefined means 'no alert'. That is also true after localStorage is cleared or on a new device, which is acceptable, but new links need seeding.",
+    "Cron dedupe uses the cron_runs _id: fine. The cron body must be JSON, otherwise it returns 400. Make sure the scheduler sends a JSON body.",
+    "The data room upload input has no data-testid."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_digest.py"],
+  "success_rate": {"backend": "100% (51/51)", "frontend": "~85% (email, digest, declutter and regressions pass; DD upload hangs; first-open alert missed)"},
+  "seed_data_creation": "TEST_ clientIds in the email_log/digest_* collections are cleaned up by the module fixture. The browser runs created DD shares and email logs under random demo deviceIds.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "ledgerClientId = `${cfb.deviceId}@demo` (not the bare deviceId) for email/digest/dd calls. Data room upload: open Tracker → 'Data room folders' → 'Open data room' to reveal input[type=file]. Workaround to seed a room file: page.evaluate(import('/src/lib/localLists.ts')).addRoomFile({...url:'data:...'}). The first-open alert bug repro: create a link and open it within 60 s, and no toast appears; the 2nd open alerts. Settings Notifications tab is role=button 'Notifications'. The browser tz is UTC.",
+  "rca of the issue": "Upload hang: Firebase uploadBytes keeps retrying the CORS-failed request and never throws, so the inline fallback never runs. Missed alert: checkShareOpens only alerts when a baseline exists, and new tokens get their baseline from the first poll, which already includes the first open. Timezone: the server GET default {timezone:'Europe/Athens'} overrides the client's Intl timezone in setSettings({...DEFAULT_DIGEST, ...s})."
+}
