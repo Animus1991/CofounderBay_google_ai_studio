@@ -176,3 +176,17 @@ describe('assistant engine', () => {
     expect(result.en).toBe('Start with value');
   });
 });
+
+describe('content the model writes', () => {
+  it('knows which part of the studio a draft request is for, and leaves tasks and emails alone', async () => {
+    const { draftTarget } = await import('./engine');
+    expect(draftTarget('Write my problem and market slides')?.action).toBe('set_pitch_slide');
+    expect(draftTarget('Fill in my lean canvas')?.action).toBe('set_canvas');
+    expect(draftTarget('Συμπλήρωσε τον καμβά μου')?.action).toBe('set_canvas');
+    expect(draftTarget('Draft my startup builder market module')?.action).toBe('set_builder');
+    expect(draftTarget('Set the problem slide to: buildings waste water')).toBeNull();
+    expect(draftTarget('Create a task to prepare the pitch deck')).toBeNull();
+    expect(draftTarget('Draft a follow-up email about the pitch deck to Naval')).toBeNull();
+    expect(draftTarget('Is my pitch deck complete?')).toBeNull();
+  });
+});

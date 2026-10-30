@@ -371,7 +371,7 @@ export default function Workspace({ user }: WorkspaceProps) {
                <span className={cn(
                 "text-xs tracking-wider font-medium",
                 task.status === "In Progress" ? "text-violet-500" : 
-                task.status === "Review" ? "text-amber-500" : 
+                task.status === "Review" ? "text-amber-700" : 
                 task.status === "Done" ? "text-emerald-500" : "text-stone-400"
                )}>{labelOf(task.status)}</span>
                <span className="w-1 h-1 bg-stone-200 rounded-full" />
@@ -416,7 +416,7 @@ export default function Workspace({ user }: WorkspaceProps) {
              <span className={cn(
               "text-xs font-semibold tracking-wider",
               status === "In Progress" ? "text-violet-500" : 
-              status === "Review" ? "text-amber-500" : 
+              status === "Review" ? "text-amber-700" : 
               status === "Done" ? "text-emerald-500" : "text-stone-400"
              )}>{labelOf(status)}</span>
              <span className="text-xs text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
@@ -735,14 +735,25 @@ export default function Workspace({ user }: WorkspaceProps) {
          <Save className="w-3 h-3 mr-1.5" /> {t("Save canvas", "Αποθήκευση canvas")}
         </Button>
         <Button
+         variant="outline"
          size="sm"
-         className="h-7 bg-stone-900 text-white text-sm px-3"
+         className="h-7 text-sm border-stone-200"
          onClick={() => {
           askAssistant('Can you help me refine my Lean Canvas?', { agentId: 'a3' });
          }}
         >
-         <Sparkles className="w-3 h-3 mr-1.5" /> {t("AI Refine", "Βελτίωση με AI")}
+         {t("Review with a specialist", "Έλεγχος από ειδικό")}
         </Button>
+        {CANVAS_SECTIONS.some((section) => !canvasValue(section.key).trim()) && (
+         <Button
+          size="sm"
+          data-testid="canvas-fill-with-assistant"
+          className="h-7 bg-stone-900 text-white text-sm px-3"
+          onClick={() => askAssistant('Fill in my lean canvas')}
+         >
+          <Sparkles className="w-3 h-3 mr-1.5" /> {t("Fill the empty sections", "Συμπλήρωσε τα κενά")}
+         </Button>
+        )}
        </div>
       </div>
 

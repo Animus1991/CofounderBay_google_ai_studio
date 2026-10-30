@@ -32,3 +32,12 @@ describe('assistant prompts in the reader’s language', () => {
     expect(runAssistant(localizePrompt('Tell me about Sequoia Capital', 'el'), null).tool).toBe(runAssistant('Tell me about Sequoia Capital', null).tool);
   });
 });
+
+describe('drafting prompts keep their meaning in Greek', () => {
+  it('still asks the model to write the same part of the studio', async () => {
+    const { draftTarget } = await import('../ai/engine');
+    expect(draftTarget(localizePrompt('Write my problem, market slides', 'el'))?.action).toBe('set_pitch_slide');
+    expect(draftTarget(localizePrompt('Fill in my lean canvas', 'el'))?.action).toBe('set_canvas');
+    expect(draftTarget(localizePrompt('Draft my startup builder market module', 'el'))?.action).toBe('set_builder');
+  });
+});

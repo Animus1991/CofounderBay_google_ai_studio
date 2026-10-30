@@ -180,16 +180,34 @@ function batchFor(text: string, profile: AssistantProfile | null): EngineResult 
 // ── Content the router cannot write ────────────────────────────────────────
 
 /**
- * "Write my problem and market slides" asks for content the router cannot author —
- * it would only report status. These go straight to the model, which drafts one
- * set_pitch_slide call per slide (a batch when there are several).
+ * "Write my problem and market slides", "fill in my lean canvas", "draft my
+ * builder market module" ask for content the router cannot author — it would
+ * only report status. These go straight to the model, which drafts one write
+ * per part (a batch when there are several), each still a card to confirm.
  */
-export function isDraftRequest(text: string): boolean {
+export type DraftTarget = { action: 'set_pitch_slide' | 'set_canvas' | 'set_builder'; part: string };
+
+const DRAFT_VERB = /\b(write|draft|fill(?:\s+in)?|generate|create|prepare)\b|(γραψε|συμπληρωσε|ετοιμασε|συνταξε)/;
+/** A task, a reminder or an email that only mentions the deck is not a request to write the deck. */
+const NOT_CONTENT = /\b(tasks?|todo|milestones?|reminders?|meetings?|sessions?|events?|e-?mails?|mails?|messages?|notes?)\b|εργασι|οροσημ|υπενθυμισ|συναντησ|μηνυμ|email/;
+
+export function draftTarget(text: string): DraftTarget | null {
   const folded = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (/[:]|\bslide\s+(?:to|as)\b|\bσε\s+«/.test(folded)) return false;
-  return /\b(write|draft|fill(?:\s+in)?|generate|create|prepare)\b.{0,60}\b(slides?|pitch\s+deck)\b/.test(folded)
-    || /(γραψε|συμπληρωσε|ετοιμασε|συνταξε).{0,60}(διαφανει|pitch)/.test(folded);
+  // The founder already wrote the content ("set the problem slide to: …"): that is a plain write.
+  if (/[:]|\b(?:slide|section|module)\s+(?:to|as)\b|\bσε\s+«/.test(folded)) return null;
+  if (!DRAFT_VERB.test(folded) || NOT_CONTENT.test(folded)) return null;
+  if (/\b(slides?|pitch\s+deck)\b|διαφανει|\bpitch\b/.test(folded)) return { action: 'set_pitch_slide', part: 'slide' };
+  if (/\b(lean\s+)?canvas\b|καμβα/.test(folded)) return { action: 'set_canvas', part: 'section' };
+  if (/\b(startup\s+)?builder\b|\bmodules?\b/.test(folded)) return { action: 'set_builder', part: 'module' };
+  return null;
 }
+
+export function isDraftRequest(text: string): boolean {
+  return draftTarget(text) !== null;
+}
+
+const draftHint = (target: DraftTarget) =>
+  `\n\n(The founder wants the content written. Call ${target.action} once for every ${target.part} they named — or for every empty one if they named none — with text you write from the studio context: 1-3 sentences each, specific to this venture, no invented numbers.)`;
 
 const DRAFT_SYSTEM = `You write short, specific founder-to-investor emails. Use ONLY the facts given — never invent metrics, names, dates or amounts.
 Max 140 words in the body. Warm, direct, no hype, no Markdown. Sign with the sender name. Return JSON {"subject": string, "body": string}.`;
@@ -242,14 +260,13 @@ function readLinks(reads: Read[]): AssistantLink[] {
   return links.slice(0, 3);
 }
 
-const DRAFT_HINT = '\n\n(The founder wants the content written. Call set_pitch_slide once for every slide they named, with text you write from the studio context — 1-3 sentences each, no invented numbers.)';
-
 /** Runs one assistant turn: batch → router (or a draft for the model) → model (reads, then tools or an answer) → honest fallback. */
 export async function respond(text: string, profile: AssistantProfile | null, options: EngineOptions): Promise<EngineResult> {
   const batch = batchFor(text, profile);
   if (batch) return batch;
 
-  const drafting = isDraftRequest(text);
+  const target = draftTarget(text);
+  const drafting = target !== null;
   const routed = drafting ? null : runAssistant(text, profile, { propose: true });
   if (routed && !routed.fallback) {
     if (routed.draft) return writeDraft(routed, options);
@@ -265,7 +282,7 @@ export async function respond(text: string, profile: AssistantProfile | null, op
 
   const controller = new AbortController();
   options.signal?.addEventListener('abort', () => controller.abort(), { once: true });
-  const prompt = `${promptFor(text, options)}${drafting ? DRAFT_HINT : ''}`;
+  const prompt = `${promptFor(text, options)}${target ? draftHint(target) : ''}`;
   const context = `The founder is on the ${options.page.en} page (${options.page.href}).\n${assistantContextBlock(profile)}`;
   const contents: unknown[] = [{ role: 'user', parts: [{ text: prompt }] }];
   const reads: Read[] = [];

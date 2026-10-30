@@ -16,8 +16,14 @@ founder types ─► engine.respond()                              src/ai/engine
                   │
                   ├─ 1. runAssistant(text, propose)        services/assistantOps.ts
                   │     deterministic router, instant, offline, same data as pages
-                  │     (where-is, pipeline/follow-ups, briefing, 60+ tools)
+                  │     (where-is, pipeline/follow-ups, due diligence, pitch, legal,
+                  │     studio check, briefing, 70+ tools)
                   │     matched? ──► reply (reads) or proposal card (writes)
+                  │     an investor email draft ──► the model rewrites it from the
+                  │       same facts (writeDraft); the template is the offline copy
+                  │     "write my slides / fill my canvas / draft my builder
+                  │       module" (draftTarget) ──► straight to the model, which
+                  │       calls one write per part → a batch of cards
                   │
                   ├─ 2. not matched (result.fallback === true)
                   │     AIService.plan({ prompt, contents, context, … })   services/aiService.ts
@@ -75,14 +81,19 @@ model" instead of tripping the circuit breaker.
 
 | File | Role |
 | --- | --- |
-| `src/ai/catalog.ts` | The declaration of every capability (67): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
+| `src/ai/catalog.ts` | The declaration of every capability (78): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
 | `src/ai/engine.ts` | One turn: batch → router → model (with the read loop) → honest fallback. React-free and fully tested with a stub planner. |
 | `src/ai/whereIs.ts` | "Where is X?" — 33 places (page, section, control) with a "Take me there" link. |
 | `src/services/assistantOps.ts` | The deterministic router and every tool's read/write/undo, against `lib/localLists` (the same lists the pages read). |
-| `src/services/assistantPipeline.ts` | Investor pipeline, follow-ups and next steps, including EN/EL date parsing ("by Friday", "μέχρι την Παρασκευή", `14/11`). |
+| `src/services/assistantPipeline.ts` | The one implementation of investor reads and writes: pipeline (stage, check size, next step), follow-ups, move, add (optionally at a stage), next step with EN/EL dates ("by Friday", «μέχρι την Παρασκευή», `14/11`), `/investor add|move|next` and `/pipeline`. Every undo restores exactly that investor (stage history included). |
+| `src/services/investorOps.ts` | Stage-aware follow-up email drafts from the founder's own data, and `overdueInvestors()` for the daily step and Notifications. |
+| `src/services/ddOps.ts`, `src/lib/dueDiligence.ts` | Due diligence: 12 standard items in 5 categories, status, notes, data-room hints, and read-only share links (server/outreach). |
+| `src/services/studioAreas.ts` | Pitch slides, the Legal Hub checklist, today's focus time and saved searches, read and written by the assistant. `studioAudit()` (assistantOps) scores eight areas for the studio check, the daily step and the profile insight. |
 | `src/services/assistantText.ts` | `fold`, `hasStem`, `escapeRegExp` — accent- and case-insensitive matching that works for Greek. |
 | `src/services/aiService.ts` | Gemini access. Proxy by default; `generateContent`, `generateContentStream` (SSE), `plan()`, `extractJson()`, `status()`, circuit breaker, `AIProxyError`. |
-| `server/aiProxy.ts`, `server/firebaseAuth.ts`, `server/cors.ts` | The proxy, token verification and origin policy above. |
+| `server/aiProxy.ts`, `server/firebaseAuth.ts`, `server/cors.ts`, `server/identity.ts` | The proxy, token verification, origin policy and the one caller rule shared with outreach. |
+| `server/outreach.ts`, `server/email.ts`, `server/digest.ts`, `server/store.ts` | Due-diligence share links (public view counts), provider-agnostic email (queued without a provider), the weekly investor digest and its cron endpoint, and the JSON-file store behind them. |
+| `src/lib/aiLedger.ts`, `src/components/AiActionLedger.tsx` | The action history: every proposal and what the founder did with it — an account list, synced like the others. |
 | `src/components/ChatWidget.tsx` | The conversation UI — `floating` (corner panel on every page) and `page` (inline on `/assistant`). One persisted transcript for both, synced across devices by `cloudSync`. Streams the model's text as it arrives; batches get "Confirm all". |
 | `src/pages/AssistantPage.tsx` | The AI Studio: the conversation plus the capability list read from the catalogue, with read/write and undo badges and the model status. |
 | `src/lib/assistantBus.ts` | `askAssistant(prompt, { context, agentId })` / `openAssistant()` — the only way a page hands something to the assistant. Prompts are translated to the founder's language first (`lib/promptLanguage.ts`). |
@@ -126,6 +137,14 @@ model" instead of tripping the circuit breaker.
   and undone, follow-ups read and a next step set in Greek, where-is with its
   link, "Waiting on you" on the dashboard, a next step edited on the pipeline,
   onboarding filled from a description.
+- `investorOps.test.ts`, `ddOps.test.ts`, `studioAreas.test.ts` — the other agent's
+  scenarios, kept as regressions for the merged implementation (batch, slash forms,
+  drafts, share links).
+- `server/outreach.test.ts` — sign-in required, owner-only lists and revokes, public
+  views counted, bad files and second recipients refused, digest schedule once per
+  ISO week in the person's zone, cron behind its secret.
+- `e2e/outreach.spec.ts`, `e2e/a11y.spec.ts` — CRM board and email, a due-diligence
+  link opened and revoked, the studio check; no serious axe violations on ten screens.
 - `pageRegistry.test.ts` — every route in `App.tsx` has one registry entry with
   both languages; `bilingual.test.ts` — every translation key has EN and EL;
   `palette.test.ts` — status colours stay within the five hue families.

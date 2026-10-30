@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { recordLocalSave } from './saveFeedback';
 
 type Draft<T> = { key: string; value: T; baseline: T; durable: boolean; restored: boolean };
@@ -53,31 +53,40 @@ export function useProtectedDraft<T>(name: string, owner: string, initial: T) {
  const dirty = !equal(active.value, active.baseline);
  useBeforeUnload(dirty);
 
- const persist = (next: Draft<T>) => {
-  const changed = !equal(next.value, next.baseline);
-  try {
-   if (!changed) localStorage.removeItem(key);
-   else localStorage.setItem(key, JSON.stringify({ version: 1, value: next.value, baseline: next.baseline }));
-   next.durable = true;
-   memoryDrafts.delete(key);
-  } catch { next.durable = false; }
-  if (!next.durable && changed) memoryDrafts.set(key, next);
-  if (!changed) memoryDrafts.delete(key);
-  recordLocalSave(key, changed ? JSON.stringify(next.value) : null, !changed || next.durable);
-  current.current = next;
-  setState(next);
- };
+ // Stable for a given draft key, so effects can depend on setValue/reset without re-running every render.
+ const actions = useMemo(() => {
+  const persist = (next: Draft<T>) => {
+   const changed = !equal(next.value, next.baseline);
+   try {
+    if (!changed) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify({ version: 1, value: next.value, baseline: next.baseline }));
+    next.durable = true;
+    memoryDrafts.delete(key);
+   } catch { next.durable = false; }
+   if (!next.durable && changed) memoryDrafts.set(key, next);
+   if (!changed) memoryDrafts.delete(key);
+   recordLocalSave(key, changed ? JSON.stringify(next.value) : null, !changed || next.durable);
+   current.current = next;
+   setState(next);
+  };
+  return {
+   setValue: (value: T | ((previous: T) => T)) => {
+    const previous = current.current;
+    const nextValue = typeof value === 'function' ? (value as (previous: T) => T)(previous.value) : value;
+    // Nothing changed: no write, no re-render.
+    if (equal(nextValue, previous.value)) return;
+    persist({ ...previous, value: nextValue });
+   },
+   reset: (value: T = current.current.baseline) => persist({ key, value, baseline: value, durable: true, restored: false }),
+  };
+ }, [key]);
  return {
   value: active.value,
   baseline: active.baseline,
   dirty,
   durable: active.durable,
   restored: active.restored,
-  setValue: (value: T | ((previous: T) => T)) => {
-   const previous = current.current;
-   const nextValue = typeof value === 'function' ? (value as (previous: T) => T)(previous.value) : value;
-   persist({ ...previous, value: nextValue });
-  },
-  reset: (value: T = current.current.baseline) => persist({ key, value, baseline: value, durable: true, restored: false }),
+  setValue: actions.setValue,
+  reset: actions.reset,
  };
 }

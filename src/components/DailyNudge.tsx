@@ -72,8 +72,8 @@ export function DailyNudge() {
   if (!row) return null;
   const done = stored?.done === true;
   const why = stored?.why || t(
-    `${row.en} — the weakest area in your studio check (${audit.score}% overall).`,
-    `${row.el} — η πιο αδύναμη περιοχή στον έλεγχο του studio (${audit.score}% συνολικά).`,
+    `${row.en} — one of the weakest areas in your studio check (${audit.score}% overall).`,
+    `${row.el} — από τις πιο αδύναμες περιοχές στον έλεγχο του studio (${audit.score}% συνολικά).`,
   );
 
   return (

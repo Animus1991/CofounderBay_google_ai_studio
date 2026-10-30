@@ -29,6 +29,8 @@ export function InvestorPipelineBoard() {
   const pipeline = useStored(() => readRound().pipeline ?? [], [keys.round]);
   const [draft, setDraft] = useState({ name: '', stage: 'Identified', checkSize: '', nextStep: '', nextDate: '' });
   const [error, setError] = useState('');
+  // The add form stays folded until it is wanted: the board is what the page is for.
+  const [adding, setAdding] = useState(false);
 
   const add = () => {
     const name = draft.name.trim();
@@ -39,6 +41,7 @@ export function InvestorPipelineBoard() {
     updatePipelineInvestor(investorId, { checkSize: draft.checkSize.trim() || undefined, nextStep: draft.nextStep.trim() || undefined, nextDate: draft.nextDate || undefined });
     setDraft({ name: '', stage: 'Identified', checkSize: '', nextStep: '', nextDate: '' });
     setError('');
+    setAdding(false);
   };
 
   const active = pipeline.filter((item) => item.stage !== 'Passed' && item.stage !== 'Closed');
@@ -54,23 +57,36 @@ export function InvestorPipelineBoard() {
             {t(`${pipeline.length} tracked · ${active.length} active · ${overdue} overdue next step${overdue === 1 ? '' : 's'}`, `${pipeline.length} σε παρακολούθηση · ${active.length} ενεργοί · ${overdue} εκπρόθεσμα βήματα`)}
           </p>
         </div>
-        <button
-          type="button"
-          data-testid="investor-crm-ask"
-          onClick={() => askAssistant('Show my pipeline')}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-stone-200 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
-        >
-          <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
-          {t('Ask the assistant about my pipeline', 'Ρώτα τον βοηθό για τον αγωγό')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid="investor-crm-ask"
+            onClick={() => askAssistant('Show my pipeline')}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-stone-200 px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
+          >
+            <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+            {t('Ask about my pipeline', 'Ρώτα για τη ροή μου')}
+          </button>
+          {!adding && (
+            <button
+              type="button"
+              data-testid="investor-crm-add-open"
+              onClick={() => setAdding(true)}
+              className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />{t('Add investor', 'Προσθήκη επενδυτή')}
+            </button>
+          )}
+        </div>
       </div>
 
+      {adding && (
       <form
         data-testid="investor-crm-add-form"
         onSubmit={(event) => { event.preventDefault(); add(); }}
         className="grid grid-cols-1 gap-2 rounded-xl border border-stone-200 bg-white p-3 sm:grid-cols-2 lg:grid-cols-6"
       >
-        <input data-testid="investor-crm-add-name" className={cn(field, 'lg:col-span-2')} placeholder={t('Investor or fund', 'Επενδυτής ή fund')} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+        <input data-testid="investor-crm-add-name" autoFocus className={cn(field, 'lg:col-span-2')} placeholder={t('Investor or fund', 'Επενδυτής ή fund')} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         <select data-testid="investor-crm-add-stage" className={field} value={draft.stage} onChange={(e) => setDraft({ ...draft, stage: e.target.value })} aria-label={t('Stage', 'Στάδιο')}>
           {PIPELINE_STAGES.map((stage) => <option key={stage} value={stage}>{stageLabel(stage, lang)}</option>)}
         </select>
@@ -84,6 +100,7 @@ export function InvestorPipelineBoard() {
         </div>
         {error && <p className="text-xs text-red-600 sm:col-span-2 lg:col-span-6" data-testid="investor-crm-add-error">{error}</p>}
       </form>
+      )}
 
       <div className="grid grid-flow-col auto-cols-[minmax(10.5rem,1fr)] gap-2 overflow-x-auto pb-2" data-testid="investor-crm-board">
         {PIPELINE_STAGES.map((stage) => {
@@ -149,7 +166,7 @@ function InvestorCard({ item, lang }: { item: RoundInvestor; lang: 'en' | 'el' }
           </button>
         </div>
         <div className="flex gap-1">
-          <button type="button" data-testid={`investor-card-ask-${testId}`} onClick={() => askAssistant(`Draft a follow-up email to ${item.name}`)} className="rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-900">
+          <button type="button" data-testid={`investor-card-ask-${testId}`} onClick={() => askAssistant(`Draft a follow-up email to ${item.name}`)} className="whitespace-nowrap rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-900">
             {t('Draft email', 'Email')}
           </button>
           <button type="button" aria-label={t('Remove', 'Αφαίρεση')} data-testid={`investor-card-remove-${testId}`} onClick={remove} className="rounded-md p-1 text-stone-400 transition-colors hover:text-red-600">

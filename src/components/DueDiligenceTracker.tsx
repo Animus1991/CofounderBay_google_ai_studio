@@ -66,7 +66,7 @@ export function DueDiligenceTracker({ roomFileNames, ventureName }: { roomFileNa
           </div>
           {found.length > 0 && (
             <p className="text-xs text-stone-600" data-testid="dd-found-in-room">
-              {t(`${found.length} item(s) look covered by files in your data room — review and mark them ready.`, `${found.length} στοιχεία φαίνεται να καλύπτονται από αρχεία του data room — έλεγξέ τα και σημείωσέ τα έτοιμα.`)}
+              {t(`${found.length === 1 ? '1 item looks' : `${found.length} items look`} covered by files in your data room — check and mark ${found.length === 1 ? 'it' : 'them'} ready.`, `${found.length === 1 ? '1 στοιχείο φαίνεται να καλύπτεται' : `${found.length} στοιχεία φαίνεται να καλύπτονται`} από αρχεία του data room — έλεγξε και σημείωσε ως έτοιμα.`)}
             </p>
           )}
         </div>

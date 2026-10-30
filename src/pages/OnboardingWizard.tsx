@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useProtectedDraft } from '../lib/useProtectedDraft';
 import {
  useNavigate } from 'react-router-dom';
 import { motion,
@@ -114,7 +115,6 @@ const LOOKING_EL: Record<string, string> = {
 export default function OnboardingWizard() {
  const t = useT();
  const { user, profile, isDemoMode } = useAuth();
- const [currentStep, setCurrentStep] = useState(0);
  const [loading, setLoading] = useState(false);
  const [errors, setErrors] = useState<Record<string, string>>({});
  const navigate = useNavigate();
@@ -125,14 +125,13 @@ export default function OnboardingWizard() {
   }
  }, [profile, isDemoMode, navigate]);
 
- useEffect(() => {
-  if (!user) return;
-  const name = user.displayName || user.email?.split('@')[0] || '';
-  if (!name) return;
-  setFormData((prev) => (prev.fullName ? prev : { ...prev, fullName: name }));
- }, [user]);
-
- const [formData, setFormData] = useState({
+ // What has been typed and the step reached stay on this device until the profile is created,
+ // so a reload or a closed tab does not cost the founder their answers (lib/useProtectedDraft).
+ const draftOwner = user?.uid ?? 'sample';
+ const stepDraft = useProtectedDraft('onboarding-step', draftOwner, 0);
+ const currentStep = stepDraft.value;
+ const setCurrentStep = stepDraft.setValue;
+ const formDraft = useProtectedDraft('onboarding', draftOwner, {
   role: UserRole.FOUNDER,
   fullName: '',
   headline: '',
@@ -148,6 +147,16 @@ export default function OnboardingWizard() {
   location: '',
   linkedinUrl: '',
  });
+ const formData = formDraft.value;
+ const setFormData = formDraft.setValue;
+ const clearDrafts = () => { formDraft.reset(); stepDraft.reset(0); };
+
+ useEffect(() => {
+  if (!user) return;
+  const name = user.displayName || user.email?.split('@')[0] || '';
+  if (!name) return;
+  setFormData((prev) => (prev.fullName ? prev : { ...prev, fullName: name }));
+ }, [user, setFormData]);
 
  const updateFormData = (data: Partial<typeof formData>) => {
   setFormData(prev => ({ ...prev, ...data }));
@@ -227,7 +236,7 @@ export default function OnboardingWizard() {
   };
 
   loadProgress();
- }, [user]);
+ }, [user, setFormData, setCurrentStep]);
 
  const saveProgress = async (step: number, data: typeof formData) => {
   if (!user) return;
@@ -279,6 +288,7 @@ export default function OnboardingWizard() {
 
  const handleSubmit = async () => {
   if (isDemoMode || !user) {
+    clearDrafts();
     navigate('/dashboard');
     return;
    }
@@ -367,6 +377,7 @@ export default function OnboardingWizard() {
     console.warn('Failed to delete onboarding progress:', error);
    }
 
+   clearDrafts();
    navigate('/dashboard');
   } catch (error) {
    console.error('Submission error:', error);

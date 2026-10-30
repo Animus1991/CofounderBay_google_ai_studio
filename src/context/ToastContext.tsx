@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertCircle, Info, X, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getLang } from '../lib/language';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -75,7 +76,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   <ToastContext.Provider value={{ toast: addToast, success, error, info, warning, dismiss }}>
    {children}
    {/* Toast Container */}
-   <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none max-w-sm w-full">
+   {/* Announced politely to screen readers; each toast can be closed by keyboard. */}
+   <div data-toasts aria-live="polite" className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none max-w-sm w-full">
     <AnimatePresence mode="popLayout">
      {toasts.map(t => (
       <motion.div
@@ -104,9 +106,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
          </button>
         )}
        </div>
-       <button 
-        onClick={() => dismiss(t.id)} 
-        className="p-1 hover:bg-stone-100 rounded-lg transition-colors text-stone-400 hover:text-stone-900 shrink-0"
+       <button
+        type="button"
+        onClick={() => dismiss(t.id)}
+        aria-label={getLang() === 'el' ? 'Κλείσιμο' : 'Close'}
+        className="p-1 hover:bg-stone-100 rounded-lg transition-colors text-stone-500 hover:text-stone-900 shrink-0"
        >
         <X className="w-3.5 h-3.5" />
        </button>

@@ -87,6 +87,8 @@ import {
 import { UserProfile, Endorsement, ReadinessScore } from '../types';
 import { askAssistant } from '../lib/assistantBus';
 import { AiProfileReview } from '../components/AiProfileReview';
+import DescribeYourself from '../components/onboarding/DescribeYourself';
+import type { ProfileDraft } from '../lib/profileFromText';
 
 enum OperationType {
  CREATE = 'create',
@@ -248,6 +250,8 @@ export default function ProfilePage() {
  const [isEditing, setIsEditing] = useState(false);
  const [isEndorsing, setIsEndorsing] = useState(false);
  const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+ // What the form held before "Fill from a description", so Undo can put it back.
+ const [beforeFill, setBeforeFill] = useState<Partial<UserProfile> | null>(null);
  const [selectedSkillForEndorsement, setSelectedSkillForEndorsement] = useState('');
  const [endorsementComment, setEndorsementComment] = useState('');
  const [loading, setLoading] = useState(true);
@@ -554,6 +558,30 @@ export default function ProfilePage() {
   }
  };
 
+ /** The same reader as onboarding: fills only the empty fields of the edit form; nothing is saved until Save. */
+ const fillFromDescription = (draft: ProfileDraft): number => {
+  const next: Partial<UserProfile> = { ...editForm };
+  let count = 0;
+  const empty = (value: unknown) => (typeof value === 'string' ? !value.trim() : Array.isArray(value) ? value.length === 0 : value == null);
+  const fill = <K extends keyof UserProfile>(key: K, value: UserProfile[K] | undefined) => {
+   if (value === undefined || empty(value) || !empty(next[key])) return;
+   next[key] = value;
+   count += 1;
+  };
+  fill('headline', draft.headline);
+  fill('bio', draft.bio);
+  fill('location', draft.location);
+  fill('industry', draft.industry);
+  fill('skills', draft.skills.length ? draft.skills : undefined);
+  if (draft.stage && empty(next.stage)) { next.stage = draft.stage === 'Revenue' ? 'Early Traction' : draft.stage; count += 1; }
+  if (draft.commitment && empty(next.commitment)) { next.commitment = draft.commitment; count += 1; }
+  if (count > 0) {
+   setBeforeFill(editForm);
+   setEditForm(next);
+  }
+  return count;
+ };
+
  const handleSave = async (data: Partial<UserProfile>) => {
   if (!profileId) return;
   // Reject non-http(s) link values instead of storing a scriptable scheme.
@@ -574,12 +602,16 @@ export default function ProfilePage() {
    writeProfileLocal(clean);
    setProfile(prev => prev ? { ...prev, ...clean } : null);
    setIsEditing(false);
+   setBeforeFill(null);
+   toast.success(t('Profile saved', 'Το προφίλ αποθηκεύτηκε'), t('Saved in this browser (sample account).', 'Αποθηκεύτηκε σε αυτόν τον browser (δοκιμαστικός λογαριασμός).'));
    return;
   }
   try {
    await persistProfilePatch(profileId, clean);
    setProfile(prev => prev ? { ...prev, ...clean } : null);
    setIsEditing(false);
+   setBeforeFill(null);
+   toast.success(t('Profile saved', 'Το προφίλ αποθηκεύτηκε'), t('Members see the new version now.', 'Τα μέλη βλέπουν ήδη τη νέα εκδοχή.'));
   } catch (err: unknown) {
    handleFirestoreError(err, OperationType.UPDATE, `profiles/${profileId}`);
   }
@@ -818,6 +850,13 @@ export default function ProfilePage() {
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('About Me', 'Σχετικά με μένα')}</h3>
       {isEditing ? (
        <div className="space-y-4">
+        {isOwnProfile && (
+         <DescribeYourself
+          onApply={fillFromDescription}
+          onUndo={() => { if (beforeFill) setEditForm(beforeFill); setBeforeFill(null); }}
+          industryLabel={(industry) => labelOf(industry)}
+         />
+        )}
         <textarea 
           aria-label={t('About me', 'Σχετικά με μένα')}
          value={editForm.bio || ''}

@@ -568,7 +568,8 @@ export default function DashboardPage() {
                   sendAsk();
                 }
               }}
-              aria-controls="dash-slash-list"
+              data-testid="dashboard-ask"
+              aria-controls={slashHits.length ? 'dash-slash-list' : undefined}
               aria-activedescendant={slashHits.length ? `dash-slash-${slashActive}` : undefined}
               className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
               placeholder={bothText('Ask anything…', 'Ρώτα οτιδήποτε…')}

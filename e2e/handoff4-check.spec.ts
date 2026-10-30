@@ -57,20 +57,25 @@ test('dashboard shows Now chips with counts and slash opens the list', async ({ 
   expect(await chips.count()).toBeGreaterThanOrEqual(2);
   await expect(chips.first()).toContainText('·');
 
-  const ask = page.locator('textarea[aria-controls="dash-slash-list"]');
+  const ask = page.getByTestId('dashboard-ask');
   await ask.fill('/');
   const list = page.locator('#dash-slash-list');
   await expect(list).toBeVisible();
+  // The field points at the list only while it is open (a closed list has no id to point at).
+  await expect(ask).toHaveAttribute('aria-controls', 'dash-slash-list');
   expect(await list.locator('[role="option"]').count()).toBeGreaterThan(3);
   await ask.press('Escape');
   await expect(list).toHaveCount(0);
+  await expect(ask).not.toHaveAttribute('aria-controls', /.+/);
 });
 
 test('one h1 per page on five routes', async ({ page }) => {
   await demoEl(page);
   for (const route of ['/dashboard', '/matches', '/network', '/events', '/mentors']) {
     await page.goto(route);
-    await page.waitForTimeout(1200);
+    // Pages are lazy chunks: wait for the heading itself, not a fixed delay.
+    await page.locator('h1').first().waitFor({ timeout: 10_000 });
+    await page.waitForTimeout(300);
     const count = await page.locator('h1').count();
     expect(count, `${route} should have exactly one h1`).toBe(1);
   }

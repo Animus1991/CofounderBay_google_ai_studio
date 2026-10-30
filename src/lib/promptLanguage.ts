@@ -26,6 +26,9 @@ const EXACT: Record<string, string> = {
   'Walk me through setting up SSO for my organization': 'Δείξε μου βήμα-βήμα πώς στήνω SSO για τον οργανισμό μου',
   'Explain the scoring weights on this page': 'Εξήγησε τα βάρη βαθμολογίας αυτής της σελίδας',
   'Help me design a new subscription plan': 'Βοήθησέ με να σχεδιάσω νέο πλάνο συνδρομής',
+  'Fill in my lean canvas': 'Συμπλήρωσε τα κενά στον καμβά μου',
+  'Show my pipeline': 'Δείξε τη ροή επενδυτών μου',
+  'What is still open in due diligence?': 'Τι εκκρεμεί στη δέουσα επιμέλεια;',
 };
 
 const PATTERNS: Rule[] = [
@@ -35,6 +38,8 @@ const PATTERNS: Rule[] = [
   [/^Why do I match with (.+)\?$/, (m) => `Γιατί ταιριάζω με ${m[1]};`],
   [/^What should I do about (.+)\?$/, (m) => `Τι να κάνω για το «${m[1]}»;`],
   [/^Draft a follow-up email to (.+)$/, (m) => `Γράψε follow-up email για ${m[1]}`],
+  [/^Write my (.+) slides$/, (m) => `Γράψε τις διαφάνειες ${m[1]}`],
+  [/^Draft my startup builder (\w+) module$/, (m) => `Γράψε την ενότητα ${m[1]} του startup builder`],
   [/^Share due diligence with (.+)$/, (m) => `Μοιράσου τη δέουσα επιμέλεια με ${m[1]}`],
 ];
 
