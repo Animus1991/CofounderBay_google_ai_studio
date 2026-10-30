@@ -27,7 +27,7 @@ import {
 import { db } from '../firebase';
 import { createLogger } from './logger';
 import { toMillis } from './peopleSource';
-import { readNotificationPrefs, writeValue } from './localLists';
+import { keys, readNotificationPrefs, writeValue } from './localLists';
 
 const log = createLogger('social');
 
@@ -490,7 +490,7 @@ export function startBlocks(uid: string) {
         return { id: entry.id, name: String(data.name || ''), at: toMillis(data.at) ?? Date.now() };
       });
       blockStore.set(items);
-      writeValue('cfb.blockedPeople', items.map((item) => item.id));
+      writeValue(keys.blockedPeople, items.map((item) => item.id));
     },
     (error) => log.warn('blocks listener failed', { error: String(error) }),
   );

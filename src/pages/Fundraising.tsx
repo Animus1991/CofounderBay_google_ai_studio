@@ -74,7 +74,7 @@ import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { useUIStore } from "../stores/useUIStore";
 import { askAssistant } from '../lib/assistantBus';
 import { formatBytes, uploadFile, UploadError } from '../lib/files';
-import { DEMO_VENTURE } from '../data/demoVenture';
+import { useVentureName } from '../lib/entities';
 import { DEMO_FUNDING_OPPORTUNITIES, DEMO_FUNDING_PROGRAMS, DEMO_INVESTOR_MEETINGS, DEMO_ROOM_FILES, demoDay } from '../data/demoCatalog';
 
 interface FundraisingProps {
@@ -292,7 +292,8 @@ export default function Fundraising({ user }: FundraisingProps) {
  const pipelineName = (item: { investorId: string; name?: string }, index: number) =>
   item.name || investorDirectory.find((v) => v.id === item.investorId)?.name || `${t("Investor", "Επενδυτής")} ${index + 1}`;
 
- const startupName = (profile as { company?: string } | null)?.company || (isDemoMode ? DEMO_VENTURE.name : '');
+ // One venture name for the room, the due-diligence links and the digest (lib/entities).
+ const startupName = useVentureName((profile as { company?: string } | null)?.company);
  const roomStartup = startupName || t('your startup', 'το startup σου');
 
  const mockOpportunities: { id: string; title: string; org: string; type: string; amount: string; deadline: string; tags: string[]; status: string }[] = DEMO_FUNDING_OPPORTUNITIES.map(({ inDays, tags, ...opportunity }) => ({ ...opportunity, tags: [...tags], deadline: inDays === null ? 'Rolling' : demoDay(inDays) }));

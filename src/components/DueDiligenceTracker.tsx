@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Check, Copy, Link2, Loader2, MessageSquare, Plus, RefreshCw, Trash2, Eye } from 'lucide-react';
 import { useT, getLang } from '../lib/language';
 import { useStored } from '../lib/useStored';
@@ -7,13 +7,11 @@ import { keys, readRound, readRoomFiles } from '../lib/localLists';
 import { useToast } from '../context/ToastContext';
 import {
   DD_CATEGORIES,
-  DD_SHARES_EVENT,
   DD_STATUS_LABEL,
   addDDItem,
   createDDShare,
   ddFoundInRoom,
   ddProgress,
-  listDDShares,
   readDD,
   refreshDDShare,
   removeDDItem,
@@ -28,6 +26,7 @@ import {
 } from '../lib/dueDiligence';
 import { cn } from '../lib/utils';
 import { apiErrorText, needsSignIn } from '../lib/studioApi';
+import { useDdShares } from '../lib/outreachQueries';
 
 const NEXT: Record<DDStatus, DDStatus> = { todo: 'in_progress', in_progress: 'done', done: 'todo' };
 const TONE: Record<DDStatus, string> = {
@@ -144,8 +143,9 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
   const t = useT();
   const toast = useToast();
   const investors = useStored(() => (readRound().pipeline ?? []).filter((p) => p.stage !== 'Passed').map((p) => p.name), [keys.round]);
-  const [shares, setShares] = useState<DDShare[] | null>(null);
-  const [failed, setFailed] = useState<'' | 'sign-in' | 'down'>('');
+  const sharesQuery = useDdShares();
+  const shares: DDShare[] | null = sharesQuery.data ?? null;
+  const failed: '' | 'sign-in' | 'down' = sharesQuery.isError ? (needsSignIn(sharesQuery.error) ? 'sign-in' : 'down') : '';
   const [confirming, setConfirming] = useState('');
   const [who, setWho] = useState('');
   const [notes, setNotes] = useState(false);
@@ -153,15 +153,6 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
-
-  const load = useCallback(() => {
-    listDDShares().then((list) => { setShares(list); setFailed(''); }).catch((err) => setFailed(needsSignIn(err) ? 'sign-in' : 'down'));
-  }, []);
-  useEffect(() => {
-    load();
-    window.addEventListener(DD_SHARES_EVENT, load);
-    return () => window.removeEventListener(DD_SHARES_EVENT, load);
-  }, [load]);
 
   const copy = (token: string) => {
     void navigator.clipboard?.writeText(shareUrl(token)).catch(() => undefined);

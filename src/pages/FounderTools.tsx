@@ -64,6 +64,7 @@ import { DEMO_VENTURE } from "../data/demoVenture";
 import { monthFromToday, shortDay } from "../data/demoClock";
 import { formatDate } from "../lib/dates";
 import { useStored } from "../lib/useStored";
+import { pinnedTools as pinnedToolsEntity, pushRecent, recentTools, startupRecord, useEntity, type StartupRecord } from "../lib/entities";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
 import { useUIStore } from "../stores/useUIStore";
@@ -175,11 +176,11 @@ export default function FounderTools({ user }: FounderToolsProps) {
   setSearchParams(next, { replace: true });
  };
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
- const pinnedTools = useStored(() => readValue<string[]>('cfb.pinnedTools', []), ['cfb.pinnedTools']);
- const setPinnedTools = (next: string[]) => writeValue('cfb.pinnedTools', next);
+ const pinnedTools = useEntity(pinnedToolsEntity);
+ const setPinnedTools = (next: string[]) => pinnedToolsEntity.write(next);
  // Recents are account-scoped like the pins above, so the quick-access strip
  // survives a reload instead of resetting on every visit.
- const recentlyUsed = useStored(() => readValue<string[]>('cfb.recentTools', []), ['cfb.recentTools']);
+ const recentlyUsed = useEntity(recentTools);
  const [searchQuery, setSearchQuery] = useState('');
  usePageControls(() => [
   { id: 'tab-dashboard', en: 'Show tools dashboard', el: 'Πίνακας εργαλείων', run: () => setActiveTab('dashboard') },
@@ -203,7 +204,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
  // The founder's venture draft: demo sees the sample startup, real accounts see
  // their own (seeded from the profile) and every edit is persisted per account.
- const savedStartup = useStored(() => readValue<Partial<StartupDraft>>('cfb.startup', {}), ['cfb.startup']);
+ const savedStartup = useEntity(startupRecord) as Partial<StartupDraft>;
  const mockStartup: StartupDraft = useMemo(() => {
   const stageValues = Object.values(FounderStage) as string[];
   const profileStage = profile?.stage && stageValues.includes(profile.stage) ? (profile.stage as FounderStage) : undefined;
@@ -223,7 +224,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   };
  }, [savedStartup, profile, isDemoMode, user.id, t]);
  const setMockStartup = (updater: (prev: StartupDraft) => StartupDraft) => {
-  writeValue('cfb.startup', updater(mockStartup));
+  startupRecord.write(updater(mockStartup) as StartupRecord);
  };
 
  const READINESS_DIMENSIONS = ['Team Composition', 'Market Validation', 'Product/Tech', 'Financial Planning', 'Pitch Readiness'];
@@ -531,7 +532,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
 
  const markToolUsed = (toolId: string) => {
-  writeValue('cfb.recentTools', [toolId, ...readValue<string[]>('cfb.recentTools', []).filter(id => id !== toolId)].slice(0, 5));
+  pushRecent(recentTools, toolId);
  };
 
  const findTool = (toolId: string) => toolCategories.flatMap(c => c.tools).find(tool => tool.id === toolId);

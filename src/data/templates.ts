@@ -9,7 +9,8 @@
  * founder's own data (venture name, round numbers). Outlines are starting
  * points — the legal ones say so plainly.
  */
-import { keys, readRound, readValue } from '../lib/localLists';
+import { readRound } from '../lib/localLists';
+import { ventureName } from '../lib/entities';
 
 export type TemplateFormat = 'doc' | 'csv';
 
@@ -28,8 +29,7 @@ const NOT_LEGAL_ADVICE = {
 };
 
 function venture(): string {
-  const startup = readValue<Record<string, unknown>>(keys.startup, {});
-  return typeof startup.name === 'string' && startup.name.trim() ? startup.name.trim() : '[Company]';
+  return ventureName() || '[Company]';
 }
 
 const outline = (title: string, intro: string, sections: [string, string[]][]) =>

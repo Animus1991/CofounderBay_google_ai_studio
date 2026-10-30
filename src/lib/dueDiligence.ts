@@ -5,6 +5,7 @@
  */
 import { isDemoData, keys, readValue, writeValue } from './localLists';
 import { studioApi } from './studioApi';
+import { queryClient, queryKeys } from './queryClient';
 
 export type DDStatus = 'todo' | 'in_progress' | 'done';
 export type DDCategory = 'corporate' | 'legal' | 'financial' | 'product' | 'team';
@@ -132,8 +133,6 @@ export type DDShare = {
 };
 export type DDPublic = Omit<DDShare, 'done' | 'total' | 'files'> & { files?: DDShareFile[]; items: { category: string; title: string; status: DDStatus; note?: string | null }[] };
 
-export const DD_SHARES_EVENT = 'cfb:dd-shares';
-
 export function shareUrl(token: string): string {
   return `${window.location.origin}/dd/${token}`;
 }
@@ -147,7 +146,7 @@ export async function createDDShare(investorName: string, ventureName: string, i
     method: 'POST',
     body: { investorName: investorName.slice(0, 120), ventureName: ventureName.slice(0, 120), items: snapshot(includeNotes), files },
   });
-  window.dispatchEvent(new Event(DD_SHARES_EVENT));
+  void queryClient.invalidateQueries({ queryKey: queryKeys.ddShares });
   return share;
 }
 
@@ -156,7 +155,7 @@ export async function refreshDDShare(token: string, ventureName: string, include
     method: 'PUT',
     body: { ventureName, items: snapshot(includeNotes) },
   });
-  window.dispatchEvent(new Event(DD_SHARES_EVENT));
+  void queryClient.invalidateQueries({ queryKey: queryKeys.ddShares });
   return share;
 }
 
@@ -166,7 +165,7 @@ export async function listDDShares(): Promise<DDShare[]> {
 
 export async function revokeDDShare(token: string): Promise<void> {
   await studioApi(`/dd/shares/${encodeURIComponent(token)}`, { method: 'DELETE' });
-  window.dispatchEvent(new Event(DD_SHARES_EVENT));
+  void queryClient.invalidateQueries({ queryKey: queryKeys.ddShares });
 }
 
 export async function fetchPublicDD(token: string): Promise<DDPublic> {

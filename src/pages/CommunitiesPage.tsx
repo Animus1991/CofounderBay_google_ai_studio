@@ -114,7 +114,7 @@ export default function CommunitiesPage() {
  const { user, isDemoMode } = useAuth();
  const [searchQuery, setSearchQuery] = useState('');
  const [activeTab, setActiveTab] = useState('all');
- const joinedList = useStored(() => readIds(listKeys.communities), ['cfb.joinedCommunities']);
+ const joinedList = useStored(() => readIds(listKeys.communities), [listKeys.communities]);
  const localJoined = new Set(joinedList);
  const ask = (prompt: string) => askAssistant(prompt);
 

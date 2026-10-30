@@ -32,17 +32,18 @@ export const queryClient = new QueryClient({
   },
 });
 
-/** Stable, hierarchical query keys to avoid cache collisions and typos. */
+/**
+ * Stable, hierarchical query keys for server data. Invalidate a prefix
+ * (`queryKeys.outreach`) to refresh everything under it.
+ */
 export const queryKeys = {
-  currentUser: ['current-user'] as const,
-  profile: (userId: string) => ['profile', userId] as const,
-  matches: (userId: string) => ['matches', userId] as const,
-  conversations: (userId: string) => ['conversations', userId] as const,
-  messages: (conversationId: string) => ['messages', conversationId] as const,
-  mentors: ['mentors'] as const,
-  communities: ['communities'] as const,
-  milestones: (ownerId: string) => ['milestones', ownerId] as const,
-  notifications: (userId: string) => ['notifications', userId] as const,
+  outreach: ['outreach'] as const,
+  ddShares: ['outreach', 'dd-shares'] as const,
+  emailStatus: ['outreach', 'email-status'] as const,
+  emailLogs: ['outreach', 'email-log'] as const,
+  emailLog: (investorId?: string) => ['outreach', 'email-log', investorId ?? 'all'] as const,
+  digestSettings: ['outreach', 'digest-settings'] as const,
+  digestHistory: ['outreach', 'digest-history'] as const,
 } as const;
 
 export default queryClient;

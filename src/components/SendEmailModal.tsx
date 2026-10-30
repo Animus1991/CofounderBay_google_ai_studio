@@ -5,7 +5,8 @@ import { useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
 import { keys, logActivity, readRound, updatePipelineInvestor } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
-import { EMAIL_RE, emailStatus, sendEmail, splitDraft, type EmailStatus } from '../lib/outreach';
+import { EMAIL_RE, sendEmail, splitDraft, type EmailStatus } from '../lib/outreach';
+import { useEmailStatus } from '../lib/outreachQueries';
 import { apiErrorText } from '../lib/studioApi';
 
 const field = 'w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200';
@@ -20,7 +21,8 @@ export function SendEmailModal({ open, onClose, draft, investorId }: { open: boo
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState(initial.subject);
   const [body, setBody] = useState(initial.body);
-  const [status, setStatus] = useState<EmailStatus | null>(null);
+  const statusQuery = useEmailStatus(open);
+  const status: EmailStatus | null = statusQuery.data ?? (statusQuery.isError ? { provider: null, configured: false } : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,7 +34,6 @@ export function SendEmailModal({ open, onClose, draft, investorId }: { open: boo
     const match = investorId ?? pipeline.find((p) => draft.includes(p.name) || draft.includes(`Hi ${p.name.split(/\s+/)[0]}`))?.investorId ?? '';
     setWho(match);
     setTo(pipeline.find((p) => p.investorId === match)?.email ?? '');
-    emailStatus().then(setStatus).catch(() => setStatus({ provider: null, configured: false }));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const investor = pipeline.find((p) => p.investorId === who);

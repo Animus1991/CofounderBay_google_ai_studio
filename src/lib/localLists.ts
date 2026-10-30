@@ -265,6 +265,14 @@ export const keys = {
   ddSeen: 'cfb.ddShareViewsSeen',
   /** What the assistant changed, and what the founder decided (lib/aiLedger). */
   aiLedger: 'cfb.aiLedger',
+  /** Ventures added in the deal room (GlobalStudioModals). */
+  dealRoomStartups: 'cfb.dealRoomStartups',
+  /** Page visit counts for personalisation (lib/usage) — kept on this device. */
+  usage: 'cfb.usage',
+  /** Pinned pages and home page (lib/personalization). */
+  uxPrefs: 'cfb.uxPrefs',
+  /** How the assistant answers (lib/assistantPrefs). */
+  assistantPrefs: 'cfb.assistantPrefs',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */

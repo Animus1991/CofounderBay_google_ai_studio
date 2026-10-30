@@ -4,9 +4,9 @@
  * stored under the same account-scoped local keys as every other list, never sent
  * anywhere. Capped at the 60 most recent paths so it cannot grow unbounded.
  */
-import { readValue, writeValue } from './localLists';
+import { keys, readValue, writeValue } from './localLists';
 
-export const USAGE_KEY = 'cfb.usage';
+export const USAGE_KEY = keys.usage;
 const MAX_PATHS = 60;
 
 export type PageUse = { count: number; last: string };

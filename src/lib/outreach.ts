@@ -1,8 +1,9 @@
 /** Client for the provider-agnostic email API, the weekly digest and share-open alerts. */
 import { studioApi } from './studioApi';
-import { keys, logActivity, readRound, readValue, writeValue, isDemoData } from './localLists';
+import { queryClient, queryKeys } from './queryClient';
+import { keys, logActivity, readRound, readValue, writeValue } from './localLists';
 import { ddProgress, listDDShares, readDD } from './dueDiligence';
-import { DEMO_VENTURE } from '../data/demoVenture';
+import { ventureName } from './entities';
 
 export type EmailStatus = { provider: string | null; configured: boolean };
 export type EmailLogEntry = {
@@ -14,8 +15,10 @@ export const EMAIL_RE = /^[^@\s]{1,64}@[^@\s]{1,190}\.[A-Za-z]{2,24}$/;
 
 export const emailStatus = () => studioApi<EmailStatus>('/email/status');
 
-export function sendEmail(input: { to: string; subject: string; body: string; investorId?: string; investorName?: string }) {
-  return studioApi<EmailLogEntry>('/email/send', { method: 'POST', body: input });
+export async function sendEmail(input: { to: string; subject: string; body: string; investorId?: string; investorName?: string }) {
+  const entry = await studioApi<EmailLogEntry>('/email/send', { method: 'POST', body: input });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.emailLogs });
+  return entry;
 }
 
 export const emailLog = (investorId?: string) =>
@@ -40,6 +43,7 @@ export const getDigestSettings = () => studioApi<DigestSettings>('/digest/settin
 
 export async function saveDigestSettings(settings: DigestSettings): Promise<DigestSettings> {
   const saved = await studioApi<DigestSettings>('/digest/settings', { method: 'PUT', body: settings });
+  queryClient.setQueryData(queryKeys.digestSettings, saved);
   writeValue(keys.digest, { enabled: saved.enabled });
   if (saved.enabled) await syncDigestSnapshot();
   return saved;
@@ -50,15 +54,14 @@ export async function syncDigestSnapshot(): Promise<void> {
   const round = readRound();
   const items = readDD();
   const dd = ddProgress(items);
-  const local = readValue<{ company?: string }>(keys.profileLocal, {});
   const target = round.targetAmount;
   await studioApi('/digest/snapshot', {
     method: 'PUT',
     body: {
-      venture: local.company || (isDemoData() ? DEMO_VENTURE.name : ''),
+      venture: ventureName(),
       pipeline: (round.pipeline ?? []).map((p) => ({
         name: p.name, stage: p.stage, checkSize: p.checkSize, nextStep: p.nextStep, nextDate: p.nextDate,
-        history: (p.history ?? []).slice(-50).map((h) => ({ at: h.at, stage: h.stage })),
+        history: (p.history ?? []).slice(-20).map((h) => ({ at: h.at, stage: h.stage })),
       })),
       dd: { ...dd, open: items.filter((i) => i.status !== 'done').map((i) => i.en) },
       round: { target, committed: round.committedAmount, instrument: round.instrument, targetLabel: target >= 1e6 ? `$${(target / 1e6).toFixed(1).replace(/\.0$/, '')}M` : `$${Math.round(target / 1000)}k` },
@@ -73,7 +76,10 @@ export async function previewDigest(): Promise<DigestPreview> {
 
 export async function sendDigestNow(): Promise<DigestPreview> {
   await syncDigestSnapshot();
-  return studioApi<DigestPreview>('/digest/send-now', { method: 'POST', body: {} });
+  const sent = await studioApi<DigestPreview>('/digest/send-now', { method: 'POST', body: {} });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.digestHistory });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.emailLogs });
+  return sent;
 }
 
 export const digestHistory = () => studioApi<DigestRun[]>('/digest/history');
@@ -83,7 +89,8 @@ export const digestEnabledLocally = () => readValue<{ enabled?: boolean }>(keys.
 // ── Share-open alerts ───────────────────────────────────────────────────────
 /** Compares link view counts with what the founder last saw; each new open becomes an activity (→ notifications). */
 export async function checkShareOpens(): Promise<{ name: string; views: number }[]> {
-  const shares = await listDDShares();
+  // Through the shared cache, so the due-diligence panel shows the same counts without polling itself.
+  const shares = await queryClient.fetchQuery({ queryKey: queryKeys.ddShares, queryFn: listDDShares, staleTime: 0 });
   const seen = readValue<Record<string, number>>(keys.ddSeen, {});
   const fresh: { name: string; views: number }[] = [];
   const next: Record<string, number> = {};

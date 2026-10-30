@@ -66,6 +66,7 @@ import {
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
+import { savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
 import { setGlobalLang } from '../lib/language';
@@ -1744,9 +1745,9 @@ function claimPerkResult(query: string, propose: boolean): AssistantResult {
     hubspot: 'hubspot-startups', intercom: 'intercom-early-stage',
   };
   const perkId = catalogIds[hit.id] ?? hit.id;
-  const saved = readValue<string[]>('cfb.savedPerks', []);
+  const saved = savedPerks.read();
   const apply = (): AssistantResult => {
-    if (!saved.includes(perkId)) writeValue('cfb.savedPerks', [...saved, perkId]);
+    if (!saved.includes(perkId)) savedPerks.write([...saved, perkId]);
     return {
       tool: 'claim-perk',
       en: `Starred ${hit.name} on Perks so you can track it — the card links to the provider site for the actual application.`,
@@ -1761,7 +1762,7 @@ function claimPerkResult(query: string, propose: boolean): AssistantResult {
       summary: { en: `Star ${hit.name} on Perks so you can track it?`, el: `Αστεράκι στο ${hit.name} στις Παροχές;` },
       reversal: 'full',
       apply,
-      undo: () => { writeValue('cfb.savedPerks', saved); },
+      undo: () => { savedPerks.write(saved); },
     },
     { tool: 'claim-perk', href: '/perks', links: [{ href: '/perks', en: 'Open perks', el: 'Άνοιγμα παροχών' }] },
   );
@@ -2389,10 +2390,9 @@ function builderResult(query: string, propose: boolean): AssistantResult {
 }
 
 function readinessResult(query: string, propose: boolean): AssistantResult {
-  const saved = readValue<Record<string, unknown>>('cfb.startup', {});
-  const name = typeof saved.name === 'string' && saved.name ? saved.name : (isDemoData() ? DEMO_VENTURE.name : 'Your Venture');
-  const oneLiner = typeof saved.oneLiner === 'string' && saved.oneLiner ? saved.oneLiner : (isDemoData() ? DEMO_VENTURE.oneLiner : '');
-  const score = typeof saved.readinessScore === 'number' ? saved.readinessScore : (isDemoData() ? DEMO_VENTURE.readinessScore : 0);
+  const saved = startupRecord.read();
+  const name = ventureName() || 'Your Venture';
+  const { oneLiner, readinessScore: score } = ventureSummary();
   const links: AssistantLink[] = [
     { href: '/founder-tools', en: 'Open Founder Tools & Readiness', el: 'Άνοιγμα Εργαλείων Ιδρυτή & Ετοιμότητας' },
     { href: '/insights', en: 'Open Insights', el: 'Άνοιγμα Στατιστικών' },
@@ -2409,7 +2409,7 @@ function readinessResult(query: string, propose: boolean): AssistantResult {
       const before = { ...saved };
       let logged: LoggedWrite | null = null;
       const apply = (): AssistantResult => {
-        writeValue('cfb.startup', { ...before, [field]: nextVal, updatedAt: new Date().toISOString() });
+        startupRecord.write({ ...before, [field]: nextVal, updatedAt: new Date().toISOString() });
         logged = { kind: 'profile', title: `Updated venture ${field === 'name' ? 'name' : 'one-liner'}`, titleEl: `Ενημερώθηκε το ${field === 'name' ? 'όνομα' : 'one-liner'} του venture`, href: '/founder-tools' };
         logActivity({ ...logged, byAssistant: true });
         return {
@@ -2430,7 +2430,7 @@ function readinessResult(query: string, propose: boolean): AssistantResult {
           reversal: 'full',
           apply,
           undo: () => {
-            writeValue('cfb.startup', before);
+            startupRecord.write(before);
             logUndo(logged);
           },
         },
@@ -3076,16 +3076,15 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
     const st = builderStatus(m.id, builderInputs);
     return `${m.title} (${st.filled}/${st.total})`;
   }).join(', ');
-  const startup = readValue<Record<string, unknown>>('cfb.startup', {});
-  const ventureName = typeof startup.name === 'string' && startup.name ? startup.name : (isDemoData() ? DEMO_VENTURE.name : 'Unset');
-  const readinessScore = typeof startup.readinessScore === 'number' ? startup.readinessScore : (isDemoData() ? DEMO_VENTURE.readinessScore : 0);
+  const ventureLabel = ventureName() || 'Unset';
+  const { readinessScore } = ventureSummary();
   const needsCount = readNeeds().filter((n) => n.status === 'open').length;
   const uxPrefs = readUxPrefs();
   const visited = topPages(4).map((row) => `${row.path}(${row.count})`).join(', ') || 'nothing yet';
   const usageLine = `Usage: most visited ${visited} · pinned [${uxPrefs.favorites.join(', ') || 'none'}] · home ${uxPrefs.homePath || '/'}`;
   return [
     `Viewer: ${profile?.fullName || 'Demo User'} · ${profile?.headline || ''} · ${profile?.industry || ''}`,
-    `Venture: ${ventureName} · Readiness Score: ${readinessScore}/100 · Open Need Cards: ${needsCount}`,
+    `Venture: ${ventureLabel} · Readiness Score: ${readinessScore}/100 · Open Need Cards: ${needsCount}`,
     `Top matches: ${matches || 'none scored'}`,
     `Overdue milestones: ${overdue}`,
     `Round: ${brief.round.name} ($${brief.round.committedAmount.toLocaleString()} / $${brief.round.targetAmount.toLocaleString()}, burn $${brief.round.monthlyBurn.toLocaleString()}/mo)`,

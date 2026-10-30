@@ -48,8 +48,8 @@ import {
   type NeedCard,
 } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
+import { startupRecord, useEntity } from '../lib/entities';
 
-const DEAL_ROOM_STARTUPS_KEY = 'cfb.dealRoomStartups';
 
 function mapRoleCategory(rawRole?: string, headline?: string): RoleCategory {
   const text = `${rawRole || ''} ${headline || ''}`.toLowerCase();
@@ -166,12 +166,12 @@ export const GlobalStudioModals: React.FC = () => {
   const localNeeds = useStored(readNeeds, [keys.needs]);
   const localProfilePatch = useStored(readProfileLocal, [keys.profileLocal]);
   const localRound = useStored(readRound, [keys.round]);
-  const localStartup = useStored(() => readValue<Record<string, unknown>>('cfb.startup', {}), ['cfb.startup']);
+  const localStartup = useEntity(startupRecord);
   const localCanvas = useStored(() => readValue<Record<string, string>>(keys.canvas, {}), [keys.canvas]);
   const savedProfiles = useStored(readSaved, [keys.saved]);
   const customStartups = useStored(
-    () => readValue<StartupVenture[]>(DEAL_ROOM_STARTUPS_KEY, []),
-    [DEAL_ROOM_STARTUPS_KEY],
+    () => readValue<StartupVenture[]>(keys.dealRoomStartups, []),
+    [keys.dealRoomStartups],
   );
 
   const [myProfileBase, setMyProfileBase] = useState<FounderProfile>(INITIAL_MY_PROFILE);
@@ -443,8 +443,8 @@ export const GlobalStudioModals: React.FC = () => {
       pitchDeck: startupData.pitchDeck,
       applicationsCount: 1,
     };
-    writeValue(DEAL_ROOM_STARTUPS_KEY, [created, ...customStartups]);
-    writeValue('cfb.startup', {
+    writeValue(keys.dealRoomStartups, [created, ...customStartups]);
+    startupRecord.write({
       ...localStartup,
       name,
       oneLiner: tagline,

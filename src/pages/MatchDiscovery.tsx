@@ -57,10 +57,10 @@ export default function MatchDiscovery() {
  const connections = useConnections();
  const [connecting, setConnecting] = useState<string | null>(null);
  const [visibleCount, setVisibleCount] = useState(PAGE);
- const storedFilters = useStored(readMatchFilters, ['cfb.matchFilters']);
+ const storedFilters = useStored(readMatchFilters, [keys.matchFilters]);
  const [searchQuery, setSearchQuery] = useState(() => storedFilters.q);
  const [showFilters, setShowFilters] = useState(false);
- const savedIds = useStored(() => readSaved().map((item) => item.id), ['cfb.savedProfiles']);
+ const savedIds = useStored(() => readSaved().map((item) => item.id), [keys.saved]);
  const hiddenIds = useStored(() => readIds(keys.hiddenPeople), [keys.hiddenPeople]);
  const [filters, setFilters] = useState({
   stage: storedFilters.stage,

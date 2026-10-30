@@ -297,7 +297,7 @@ export default function DashboardPage() {
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [events, setEvents] = useState<DashEvent[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
-  const activity = useStored(readActivity, ['cfb.activity']);
+  const activity = useStored(readActivity, [keys.activity]);
   const { people } = usePeople(user?.uid);
   const messaging = useOptionalMessaging();
   const localRequests = useStored(readRequests, [keys.requests]);

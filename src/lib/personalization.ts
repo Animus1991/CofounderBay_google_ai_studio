@@ -4,9 +4,9 @@
  * Settings, and from the assistant ("/pin matches", "/home matches") — one source
  * of truth for all three.
  */
-import { readValue, writeValue } from './localLists';
+import { keys, readValue, writeValue } from './localLists';
 
-export const UX_PREFS_KEY = 'cfb.uxPrefs';
+export const UX_PREFS_KEY = keys.uxPrefs;
 
 export type UxPrefs = {
   /** Sidebar "Pinned" group, in pin order. */

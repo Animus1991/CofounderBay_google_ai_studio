@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarClock, Eye, Loader2, Send } from 'lucide-react';
 import Card from './ui/Card';
 import { useT } from '../lib/language';
 import { useToast } from '../context/ToastContext';
 import { apiErrorText, needsSignIn } from '../lib/studioApi';
 import {
-  DEFAULT_DIGEST, EMAIL_RE, digestHistory, emailStatus, getDigestSettings, previewDigest, saveDigestSettings, sendDigestNow,
-  type DigestPreview, type DigestRun, type DigestSettings,
+  DEFAULT_DIGEST, EMAIL_RE, previewDigest, saveDigestSettings, sendDigestNow,
+  type DigestPreview, type DigestSettings,
 } from '../lib/outreach';
+import { useDigestHistory, useDigestSettings, useEmailStatus } from '../lib/outreachQueries';
 
 const DAYS: [string, string][] = [['Sunday', 'Κυριακή'], ['Monday', 'Δευτέρα'], ['Tuesday', 'Τρίτη'], ['Wednesday', 'Τετάρτη'], ['Thursday', 'Πέμπτη'], ['Friday', 'Παρασκευή'], ['Saturday', 'Σάββατο']];
 const field = 'min-h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-200';
@@ -16,24 +17,20 @@ const field = 'min-h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-s
 export function InvestorDigestSettings() {
   const t = useT();
   const toast = useToast();
+  const saved = useDigestSettings();
+  const history = useDigestHistory().data ?? [];
+  const status = useEmailStatus();
+  const configured = status.data ? status.data.configured : status.isError ? false : null;
+  const loaded = !saved.isPending;
+  const signIn = saved.isError && needsSignIn(saved.error);
+  // The form edits a copy; it follows the server's copy when that arrives or is saved.
   const [settings, setSettings] = useState<DigestSettings>(DEFAULT_DIGEST);
-  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (saved.data) setSettings({ ...DEFAULT_DIGEST, ...saved.data, email: saved.data.email ?? '' });
+  }, [saved.data]);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<DigestPreview | null>(null);
-  const [history, setHistory] = useState<DigestRun[]>([]);
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const [signIn, setSignIn] = useState(false);
-
-  const reload = useCallback(() => { digestHistory().then(setHistory).catch(() => undefined); }, []);
-  useEffect(() => {
-    getDigestSettings()
-      .then((s) => setSettings({ ...DEFAULT_DIGEST, ...s, email: s.email ?? '' }))
-      .catch((err) => setSignIn(needsSignIn(err)))
-      .finally(() => setLoaded(true));
-    emailStatus().then((s) => setConfigured(s.configured)).catch(() => setConfigured(false));
-    reload();
-  }, [reload]);
 
   const save = async (next: DigestSettings) => {
     setError('');
@@ -42,8 +39,7 @@ export function InvestorDigestSettings() {
     try {
       // The digest goes out at the chosen hour in this browser's own time zone.
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || next.timezone;
-      const saved = await saveDigestSettings({ ...next, timezone, email: next.email || null });
-      setSettings({ ...DEFAULT_DIGEST, ...saved, email: saved.email ?? '' });
+      await saveDigestSettings({ ...next, timezone, email: next.email || null });
       toast.success(t('Digest schedule saved', 'Το πρόγραμμα αποθηκεύτηκε'));
     } catch (err) { setError(apiErrorText(err, t)); } finally { setBusy(''); }
   };
@@ -54,7 +50,6 @@ export function InvestorDigestSettings() {
       setPreview(out);
       if (kind === 'send') {
         toast[out.status === 'sent' ? 'success' : 'info'](out.status === 'sent' ? t('Digest sent', 'Η σύνοψη στάλθηκε') : t('Digest logged — not sent', 'Καταγράφηκε — δεν στάλθηκε'));
-        reload();
       }
     } catch (err) { setError(apiErrorText(err, t)); } finally { setBusy(''); }
   };

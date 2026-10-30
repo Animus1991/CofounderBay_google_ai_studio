@@ -541,7 +541,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
 
   const panel = (
     <>
-      <SendEmailModal open={emailDraft !== null} onClose={() => setEmailDraft(null)} draft={emailDraft ?? ''} />
+      {emailDraft !== null && <SendEmailModal open onClose={() => setEmailDraft(null)} draft={emailDraft} />}
       <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-2xl')}>
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">

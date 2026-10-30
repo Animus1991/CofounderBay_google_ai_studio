@@ -16,7 +16,7 @@ import { pauseAccountSaves, recordSyncPending, recordSyncResult } from './saveFe
 const log = createLogger('cloud-sync');
 
 /** Conversations live in their own collection; account form/switches/cards mirror the profile and billing docs instead, and profileLocal holds demo-only overrides (real profiles live on the profile doc). */
-export const NOT_SYNCED = new Set<string>([keys.chat, keys.inbox, keys.accountForm, keys.accountSwitches, keys.paymentCards, keys.profileLocal]);
+export const NOT_SYNCED = new Set<string>([keys.chat, keys.inbox, keys.accountForm, keys.accountSwitches, keys.paymentCards, keys.profileLocal, keys.usage]);
 const SYNCED: string[] = Object.values(keys).filter((key) => !NOT_SYNCED.has(key));
 const MAX_BYTES = 900_000;
 const DEBOUNCE_MS = 700;

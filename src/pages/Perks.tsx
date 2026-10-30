@@ -18,9 +18,10 @@ import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePageControls } from "../lib/pageControls";
 import { cn } from "../lib/utils";
-import { keys, listKeys, readIds, readValue, writeValue } from "../lib/localLists";
+import { keys, listKeys, readIds } from "../lib/localLists";
 import { perkDollarTotal } from "../lib/perks";
 import { useStored } from "../lib/useStored";
+import { savedPerks, toggleId, useEntity } from "../lib/entities";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { useAuth } from "../App";
@@ -92,7 +93,7 @@ export default function Perks() {
  const { isDemoMode } = useAuth();
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
  const [perkQuery, setPerkQuery] = useState('');
- const savedPerks = useStored(() => readValue<string[]>('cfb.savedPerks', []), ['cfb.savedPerks']);
+ const saved = useEntity(savedPerks);
  const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
  const ask = (prompt: string) => askAssistant(prompt);
 
@@ -105,7 +106,7 @@ export default function Perks() {
  const perks = useMemo<PerkCard[]>(() => isDemoMode ? DEMO_PERKS : (cloud ?? []).map(perkFromDoc), [isDemoMode, cloud]);
 
  const toggleSaved = (id: string) => {
-  writeValue('cfb.savedPerks', savedPerks.includes(id) ? savedPerks.filter((p) => p !== id) : [...savedPerks, id]);
+  toggleId(savedPerks, id);
  };
 
  usePageControls(() => [
@@ -213,8 +214,8 @@ export default function Perks() {
        <div className="w-14 h-11 bg-stone-100 rounded-2xl flex items-center justify-center text-stone-900 font-medium text-sm group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm">
         {perk.logo}
        </div>
-       <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8 hover:text-amber-500", savedPerks.includes(perk.id) ? "text-amber-500" : "text-stone-300")} onClick={() => toggleSaved(perk.id)} aria-label={t(`Save ${perk.name}`, `Αποθήκευση ${perk.name}`)}>
-        <Star className="w-4 h-4" fill={savedPerks.includes(perk.id) ? 'currentColor' : 'none'} />
+       <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8 hover:text-amber-500", saved.includes(perk.id) ? "text-amber-500" : "text-stone-300")} onClick={() => toggleSaved(perk.id)} aria-label={t(`Save ${perk.name}`, `Αποθήκευση ${perk.name}`)}>
+        <Star className="w-4 h-4" fill={saved.includes(perk.id) ? 'currentColor' : 'none'} />
        </Button>
       </div>
       <div className="space-y-2 flex-1">
