@@ -31,7 +31,6 @@ import { useT } from '../lib/language';
 import { formatDate } from '../lib/dates';
 import { usePageControls } from '../lib/pageControls';
 import { useToast } from '../context/ToastContext';
-import { useAuth } from '../App';
 import { useProtectedDraft } from '../lib/useProtectedDraft';
 import DraftNotice from '../components/ui/DraftNotice';
 import SaveStatus from '../components/ui/SaveStatus';
@@ -204,7 +203,6 @@ function MilestoneCard({
 
 export default function MilestonesPage({ user }: MilestonesPageProps) {
  const t = useT();
- const { isDemoMode } = useAuth();
  const toast = useToast();
  const [milestones, setMilestones] = useState<Milestone[]>([]);
  const [loading, setLoading] = useState(true);
@@ -336,7 +334,6 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Milestones", "Ορόσημα")}
    description={t('Goals, progress and wins.', 'Στόχοι, πρόοδος και επιτυχίες.')}
    actions={

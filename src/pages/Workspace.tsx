@@ -264,7 +264,6 @@ export default function Workspace({ user }: WorkspaceProps) {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Venture Builder", "Χώρος εργασίας")}
    description={t('Tasks, canvas, milestones and calendar.', 'Εργασίες, canvas, ορόσημα και ημερολόγιο.')}
    maxWidth="full"

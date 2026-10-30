@@ -189,7 +189,6 @@ export default function MatchDiscovery() {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t('Find co-founders', 'Βρες συνιδρυτές')}
    description={t('Ranked by fit — every score explained.', 'Ταξινόμηση κατά ταίριασμα — κάθε σκορ εξηγείται.')}
    actions={

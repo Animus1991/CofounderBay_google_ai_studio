@@ -228,7 +228,6 @@ export default function Events(_props: EventsProps = {}) {
 
  return (
   <PageShell
-   sample={isDemoMode}
    title={t("Events", "Εκδηλώσεις")}
    description={t('Workshops, networking and pitch nights.', 'Εργαστήρια, δικτύωση και βραδιές pitch.')}
    actions={
