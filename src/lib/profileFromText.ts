@@ -103,8 +103,15 @@ const CITIES: [string, string[]][] = [
 function firstSentence(text: string): string {
   const sentence = text.split(/(?<=[.!?;])\s+|\n+/).map((part) => part.trim()).find((part) => part.length > 8) ?? '';
   const cleaned = sentence.replace(/^(?:hi|hello|γεια)[,!.\s]+/i, '').replace(/^(?:i am|i'm|είμαι|ειμαι)\s+(?:an?\s+|ο\s+|η\s+)?/i, '');
-  const headline = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-  return headline.length > 90 ? `${headline.slice(0, 87).replace(/\s+\S*$/, '')}…` : headline.replace(/[.;]$/, '');
+  let headline = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  // A headline is one clause: where someone lives goes to Location, not the headline,
+  // and a long first sentence is cut at its last comma before 70 characters.
+  headline = headline.replace(/,?\s+(?:based in|living in|located in|from|με έδρα|ζω σ|μένω σ).*$/i, '');
+  if (headline.length > 70) {
+    const comma = headline.lastIndexOf(',', 70);
+    if (comma > 20) headline = headline.slice(0, comma);
+  }
+  return headline.length > 90 ? `${headline.slice(0, 87).replace(/\s+\S*$/, '')}…` : headline.replace(/[.;,]$/, '');
 }
 
 /** Reads what it can from a free description, offline. Never invents. */
@@ -115,8 +122,10 @@ export function extractProfile(text: string): ProfileDraft {
   const skills = SKILLS.filter(([, words]) => words.some((word) => folded.includes(word))).map(([skill]) => skill).slice(0, 10);
   const industry = INDUSTRY_WORDS.find(([, words]) => words.some((word) => folded.includes(word)))?.[0];
   const location = CITIES.find(([, words]) => words.some((word) => folded.includes(word)))?.[0];
-  const years = /(\d{1,2})\+?\s*(?:years?|yrs|χρονια|ετη)/.exec(folded);
-  const field = years ? /(?:in|σε|στο|στη|στην)\s+([a-zα-ω0-9 .&-]{3,40}?)(?=\s(?:and|και|at|στην|στο|,)|\s*$|\.)/.exec(folded.slice(years.index + years[0].length)) : null;
+  // Years and field are read with punctuation kept, so "6 years in payments, based in Athens" stops at the comma.
+  const plain = fold(raw);
+  const years = /(\d{1,2})\+?\s*(?:years?|yrs|χρονια|ετη)/.exec(plain);
+  const field = years ? /^\s*(?:of\s+\w+\s+)?(?:in|σε|στο|στη|στην|στις|στα)\s+([a-zα-ω0-9 &-]{3,40}?)\s*(?=[,.;!?]|\s(?:and|και|at|with|στην|στο)\s|$)/.exec(plain.slice(years.index + years[0].length)) : null;
   const experience = years ? `${years[1]} years${field?.[1] ? ` in ${field[1].trim()}` : ''}` : undefined;
   // Greek letters are not word characters for \b, so Greek stems are matched as substrings.
   const stage = /\b(?:revenue|paying customers)\b/.test(folded) || /πελατες που πληρωνουν|εσοδα/.test(folded) ? 'Revenue'

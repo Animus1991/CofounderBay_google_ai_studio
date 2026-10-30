@@ -30,6 +30,12 @@ describe('profile from a free description', () => {
     expect(draft.stage).toBe('MVP');
   });
 
+  it('keeps the headline to one clause and stops the field at punctuation', () => {
+    const draft = extractProfile('Full-stack engineer with 6 years in payments, based in Athens. React, TypeScript and some B2B sales.');
+    expect(draft.headline).toBe('Full-stack engineer with 6 years in payments');
+    expect(draft.experience).toBe('6 years in payments');
+  });
+
   it('never invents: an unclear text leaves fields empty', () => {
     const draft = extractProfile('Looking to meet interesting people.');
     expect(draft.skills).toEqual([]);
