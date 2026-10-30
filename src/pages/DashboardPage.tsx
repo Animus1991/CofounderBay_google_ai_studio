@@ -41,6 +41,7 @@ import { useNotificationFeed } from '../lib/notificationFeed';
 import { useLanguage, useT } from '../lib/language';
 import { useUIStore } from '../stores/useUIStore';
 import NextMove from '../components/ui/NextMove';
+import { DailyNudge } from '../components/DailyNudge';
 import EmptyHint, { AskLink } from '../components/ui/EmptyHint';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import RelTime from '../components/ui/RelTime';
@@ -664,6 +665,9 @@ export default function DashboardPage() {
           </motion.div>
         </AnimatePresence>
 
+        {/* One area a day from the studio check, picked by the AI model when it is reachable. */}
+        <DailyNudge />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
@@ -693,7 +697,7 @@ export default function DashboardPage() {
           <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
             <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
-            <p className="text-xs text-stone-400 mt-1"><Both en="Writes the same Workspace tasks as the Task button." el="Γράφει τις ίδιες εργασίες με το κουμπί «Εργασία» στον Χώρο εργασίας." /></p>
+            <p className="text-xs text-stone-400 mt-1"><Both en="Adds Workspace tasks." el="Προσθέτει εργασίες στον Χώρο εργασίας." /></p>
           </button>
         </div>
 

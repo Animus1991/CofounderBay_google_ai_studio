@@ -6,15 +6,19 @@
  * assistant reads the same pipeline as Fundraising (lib/localLists → round)
  * and proposes the same writes the page's buttons make:
  *
- * - `pipeline`       read   — who is at which stage, with each next step
+ * - `pipeline`       read   — who is at which stage, with check size and next step
  * - `followups`      read   — overdue and due-this-week follow-ups
  * - `followup-set`   write  — "next step with Sequoia: send the deck by Friday"
- * - `pipeline-move`  write  — "move Naval to Term Sheet"
- * - `pipeline-add`   write  — "add Index Ventures to my pipeline"
+ * - `pipeline-move`  write  — "move Naval to Term Sheet", "Naval moved to Meeting"
+ * - `pipeline-add`   write  — "add Index Ventures to my pipeline (at Contacted)"
  *
- * Every write is a proposal with a full undo. Dates are understood in English
- * and Greek ("tomorrow", "Friday", "in 3 days", "15 Nov", «αύριο»,
- * «Παρασκευή», «σε 3 μέρες», «15 Νοεμβρίου», 2026-11-15).
+ * Slash forms work too: `/pipeline`, `/investor add X at Stage`,
+ * `/investor move X to Stage`, `/investor next X: step by day`.
+ *
+ * Every write is a proposal whose undo puts that one investor back exactly as
+ * it was (stage history included), so batched writes never undo each other.
+ * Dates are understood in English and Greek ("tomorrow", "Friday", "in 3 days",
+ * "15 Nov", «αύριο», «Παρασκευή», «σε 3 μέρες», «15 Νοεμβρίου», 2026-11-15).
  */
 import {
   followUps,
@@ -22,7 +26,7 @@ import {
   localDay,
   logActivity,
   readRound,
-  removePipelineInvestor,
+  restorePipelineEntry,
   setPipelineFollowUp,
   setPipelineStage,
   upsertPipelineInvestor,
@@ -33,8 +37,10 @@ import { DEMO_INVESTOR_NAMES } from '../data/demoCatalog';
 import { escapeRegExp, fold, hasStem } from './assistantText';
 import type { AssistantLink, AssistantProposal, AssistantResult } from './assistantOps';
 
-const FUNDRAISING_LINK: AssistantLink = { href: '/fundraising?tab=tracker', en: 'Open the pipeline', el: 'Άνοιγμα της ροής' };
-const SOURCE = { kind: 'round', en: 'Fundraising pipeline', el: 'Ροή επενδυτών', href: '/fundraising?tab=tracker' };
+/** The investor CRM board — where every pipeline answer and change can be seen. */
+export const CRM_HREF = '/fundraising?tab=crm';
+const FUNDRAISING_LINK: AssistantLink = { href: CRM_HREF, en: 'Open the investor CRM', el: 'Άνοιγμα CRM επενδυτών' };
+const SOURCE = { kind: 'round', en: 'Investor CRM · Fundraising', el: 'CRM επενδυτών · Χρηματοδότηση', href: CRM_HREF };
 
 // ── Stages ─────────────────────────────────────────────────────────────────
 
@@ -52,15 +58,15 @@ const STAGE_STEMS: [string, string[]][] = [
   ['Due Diligence', ['due diligence', 'dd', 'δεουσα', 'επιμελει']],
   ['Term Sheet', ['term sheet', 'termsheet', 'βασικους ορους', 'βασικοι οροι', 'ορους συμφωνιας']],
   ['Identified', ['identified', 'εντοπ']],
-  ['Contacted', ['contacted', 'επαφη', 'επικοινωνι']],
-  ['Meeting', ['meeting', 'συναντησ']],
-  ['Closed', ['closed', 'κλειστ', 'εκλεισε', 'κλεισιμο']],
-  ['Passed', ['passed', 'απορριφθ', 'απερριψ', 'απορριψ']],
+  ['Contacted', ['contacted', 'reached out', 'επαφη', 'επικοινωνι']],
+  ['Meeting', ['meeting', 'συναντησ', 'ραντεβου']],
+  ['Closed', ['closed', 'won', 'signed', 'κλειστ', 'εκλεισε', 'κλεισιμο', 'υπογραφ']],
+  ['Passed', ['passed', 'declined', 'rejected', 'lost', 'απορριφθ', 'απερριψ', 'απορριψ', 'αρνηθ']],
 ];
 
-/** The stage a sentence names after "to/into/as" (or «σε/στο/στη»), if any. */
+/** The stage a sentence names after "to/into/as/in" (or «σε/στο/στη»), if any. */
 export function parseStage(folded: string): string | null {
-  const tail = folded.match(/(?:\b(?:to|into|as|at)\b|\bσε\b|\bστο\b|\bστη\b|\bστην\b|\bως\b)\s+(.+)$/)?.[1] ?? folded;
+  const tail = folded.match(/(?:\b(?:to|into|as|at|in)\b|\bσε\b|\bστο\b|\bστη\b|\bστην\b|\bως\b)\s+(.+)$/)?.[1] ?? folded;
   for (const [stage, stems] of STAGE_STEMS) if (hasStem(tail, ...stems)) return stage;
   return null;
 }
@@ -218,9 +224,10 @@ export function pipelineReadResult(now: Date = new Date()): AssistantResult {
   const sorted = [...pipeline].sort((a, b) => order(b.stage) - order(a.stage));
   const line = (item: RoundInvestor, lang: 'en' | 'el') => {
     const stage = lang === 'el' ? STAGE_LABEL_EL[item.stage] ?? item.stage : item.stage;
-    if (!item.nextStep) return `${item.name} · ${stage}`;
+    const head = `${item.name} · ${stage}${item.checkSize ? ` · ${item.checkSize}` : ''}`;
+    if (!item.nextStep) return head;
     const when = item.nextDate ? ` (${whenWords(dayDiff(item.nextDate, now), item.nextDate)[lang]})` : '';
-    return `${item.name} · ${stage} · ${lang === 'el' ? 'επόμενο' : 'next'}: ${item.nextStep}${when}`;
+    return `${head} · ${lang === 'el' ? 'επόμενο' : 'next'}: ${item.nextStep}${when}`;
   };
   const due = followUps(readRound(), now);
   const active = pipeline.filter((item) => item.stage !== 'Passed' && item.stage !== 'Closed').length;
@@ -228,7 +235,7 @@ export function pipelineReadResult(now: Date = new Date()): AssistantResult {
     tool: 'pipeline',
     en: `${pipeline.length} investors tracked, ${active} active${due.overdue.length ? `, ${due.overdue.length} follow-up overdue` : ''}:\n${sorted.map((item) => `• ${line(item, 'en')}`).join('\n')}`,
     el: `${pipeline.length} επενδυτές στη ροή, ${active} ενεργοί${due.overdue.length ? `, ${due.overdue.length} εκπρόθεσμο follow-up` : ''}:\n${sorted.map((item) => `• ${line(item, 'el')}`).join('\n')}`,
-    href: '/fundraising?tab=tracker',
+    href: CRM_HREF,
     links: [FUNDRAISING_LINK],
     sources: [SOURCE],
     followUps: due.overdue[0]
@@ -257,7 +264,7 @@ export function followUpsResult(now: Date = new Date()): AssistantResult {
       el: later
         ? `Τίποτα εκπρόθεσμο ή για αυτή την εβδομάδα. Επόμενο: ${later.name} — ${later.nextStep} (${whenWords(later.inDays, later.nextDate).el}).`
         : 'Δεν υπάρχουν προγραμματισμένα follow-ups. Πες «επόμενο βήμα με <επενδυτή>: <τι> μέχρι <μέρα>».',
-      href: '/fundraising?tab=tracker',
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
@@ -267,7 +274,7 @@ export function followUpsResult(now: Date = new Date()): AssistantResult {
     tool: 'followups',
     en: `${due.overdue.length} overdue, ${due.soon.length} due in the next 7 days:\n${rows.map((item) => line(item, 'en')).join('\n')}`,
     el: `${due.overdue.length} εκπρόθεσμα, ${due.soon.length} μέσα στις επόμενες 7 μέρες:\n${rows.map((item) => line(item, 'el')).join('\n')}`,
-    href: '/fundraising?tab=tracker',
+    href: CRM_HREF,
     links: [FUNDRAISING_LINK],
     sources: [SOURCE],
     followUps: rows[0]
@@ -279,7 +286,13 @@ export function followUpsResult(now: Date = new Date()): AssistantResult {
 // ── Writes ─────────────────────────────────────────────────────────────────
 
 function proposal(plan: AssistantProposal, tool: string): AssistantResult {
-  return { tool, en: plan.summary.en, el: plan.summary.el, href: '/fundraising?tab=tracker', links: [FUNDRAISING_LINK], proposal: plan };
+  return { tool, en: plan.summary.en, el: plan.summary.el, href: CRM_HREF, links: [FUNDRAISING_LINK], proposal: plan };
+}
+
+/** A deep copy of one investor's entry, for an undo that restores exactly that entry. */
+function snapshot(investorId: string): RoundInvestor | undefined {
+  const entry = (readRound().pipeline ?? []).find((item) => item.investorId === investorId);
+  return entry ? { ...entry, history: entry.history ? entry.history.map((step) => ({ ...step })) : undefined } : undefined;
 }
 
 /** Cuts [start, end) from both the original and its folded twin (same length for precomposed text). */
@@ -325,16 +338,16 @@ export function followUpSetResult(query: string, propose: boolean, now: Date = n
   const { investor } = found;
   const nextStep = step || investor.nextStep || 'Follow up';
   const nextDate = day?.day ?? investor.nextDate;
-  const previous = { nextStep: investor.nextStep ?? '', nextDate: investor.nextDate ?? '' };
+  const before = snapshot(investor.investorId);
   const when = nextDate ? whenWords(dayDiff(nextDate, now), nextDate) : { en: 'no date', el: 'χωρίς ημερομηνία' };
   const apply = (): AssistantResult => {
     setPipelineFollowUp(investor.investorId, { nextStep, nextDate: nextDate ?? '' });
-    logActivity({ kind: 'round', title: `Next step with ${investor.name}: ${nextStep}`, titleEl: `Επόμενο βήμα με ${investor.name}: ${nextStep}`, href: '/fundraising?tab=tracker', byAssistant: true });
+    logActivity({ kind: 'round', title: `Next step with ${investor.name}: ${nextStep}`, titleEl: `Επόμενο βήμα με ${investor.name}: ${nextStep}`, href: CRM_HREF, byAssistant: true });
     return {
       tool: 'followup-set',
       en: `Set: ${investor.name} — ${nextStep} (${when.en}). It shows on the pipeline and in your follow-ups.`,
       el: `Ορίστηκε: ${investor.name} — ${nextStep} (${when.el}). Φαίνεται στη ροή και στα follow-ups σου.`,
-      href: '/fundraising?tab=tracker',
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
@@ -349,8 +362,8 @@ export function followUpSetResult(query: string, propose: boolean, now: Date = n
       reversal: 'full',
       apply,
       undo: () => {
-        setPipelineFollowUp(investor.investorId, previous);
-        logActivity({ kind: 'round', title: `Undid: next step with ${investor.name}`, titleEl: `Αναιρέθηκε: επόμενο βήμα με ${investor.name}`, href: '/fundraising?tab=tracker', byAssistant: true });
+        restorePipelineEntry(investor.investorId, before);
+        logActivity({ kind: 'round', title: `Undid: next step with ${investor.name}`, titleEl: `Αναιρέθηκε: επόμενο βήμα με ${investor.name}`, href: CRM_HREF, byAssistant: true });
       },
     },
     'followup-set',
@@ -369,20 +382,21 @@ export function pipelineMoveResult(query: string, propose: boolean): AssistantRe
       tool: 'pipeline',
       en: `${investor.name} is already at ${stage}.`,
       el: `Η/Ο ${investor.name} είναι ήδη στο στάδιο «${STAGE_LABEL_EL[stage] ?? stage}».`,
-      href: '/fundraising?tab=tracker',
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
   }
   const previous = investor.stage;
+  const before = snapshot(investor.investorId);
   const apply = (): AssistantResult => {
     setPipelineStage(investor.investorId, stage);
-    logActivity({ kind: 'round', title: `${investor.name} → ${stage}`, titleEl: `${investor.name} → ${STAGE_LABEL_EL[stage] ?? stage}`, href: '/fundraising?tab=tracker', byAssistant: true });
+    logActivity({ kind: 'round', title: `${investor.name} → ${stage}`, titleEl: `${investor.name} → ${STAGE_LABEL_EL[stage] ?? stage}`, href: CRM_HREF, byAssistant: true });
     return {
       tool: 'pipeline-move',
       en: `Moved ${investor.name} from ${previous} to ${stage}.`,
       el: `Η/Ο ${investor.name} πέρασε από «${STAGE_LABEL_EL[previous] ?? previous}» σε «${STAGE_LABEL_EL[stage] ?? stage}».`,
-      href: '/fundraising?tab=tracker',
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
@@ -397,27 +411,33 @@ export function pipelineMoveResult(query: string, propose: boolean): AssistantRe
       reversal: 'full',
       apply,
       undo: () => {
-        setPipelineStage(investor.investorId, previous);
+        restorePipelineEntry(investor.investorId, before);
       },
     },
     'pipeline-move',
   );
 }
 
-/** The investor name in "add <name> to my pipeline" / «πρόσθεσε τη <name> στη ροή μου». */
-function nameToAdd(query: string): string | null {
+/** The investor name (and an optional stage) in "add <name> to my pipeline at Meeting" / «πρόσθεσε τη <name> στη ροή μου». */
+function nameToAdd(query: string): { name: string; stage: string | null } | null {
   const folded = fold(query);
   const en = /^(?:please\s+)?(?:add|track|put)\s+(.+?)\s+(?:to|in|into|on)\s+(?:my\s+|the\s+)?(?:investor\s+)?(?:pipeline|investor list|crm|round)\b/.exec(folded);
   const el = /^(?:προσθεσε|βαλε|παρακολουθησε)\s+(?:τη\s+|την\s+|τον\s+|το\s+|τους\s+)?(.+?)\s+(?:στη|στην|στον|στο|στους)\s+(?:ροη|αγωγο|λιστα επενδυτων|επενδυτες|crm)/.exec(folded);
   const match = en ?? el;
   if (!match || match[1] === undefined) return null;
   const start = match.index + match[0].indexOf(match[1]);
-  return query.slice(start, start + match[1].length).trim().replace(/^["“«]|["”»]$/g, '') || null;
+  const name = query.slice(start, start + match[1].length).trim().replace(/^["“«]|["”»]$/g, '');
+  if (name.length < 2 || name.length > 80) return null;
+  const rest = folded.slice(match.index + match[0].length);
+  return { name, stage: /\S/.test(rest) ? parseStage(rest) : null };
 }
 
 export function pipelineAddResult(query: string, propose: boolean): AssistantResult | null {
-  const name = nameToAdd(query);
-  if (!name) return null;
+  const parsed = nameToAdd(query);
+  if (!parsed) return null;
+  const { name } = parsed;
+  const stage = parsed.stage ?? 'Identified';
+  const stageEl = STAGE_LABEL_EL[stage] ?? stage;
   const pipeline = readRound().pipeline ?? [];
   const existing = findInvestor(fold(name), pipeline);
   if (existing) {
@@ -425,7 +445,7 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
       tool: 'pipeline',
       en: `${existing.investor.name} is already in your pipeline (${existing.investor.stage}).`,
       el: `Η/Ο ${existing.investor.name} είναι ήδη στη ροή σου («${STAGE_LABEL_EL[existing.investor.stage] ?? existing.investor.stage}»).`,
-      href: '/fundraising?tab=tracker',
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
@@ -434,13 +454,13 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
   const investorId = known?.id ?? `inv-${fold(name).replace(/[^a-z0-9α-ω]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || Date.now().toString(36)}`;
   const display = known?.name ?? name;
   const apply = (): AssistantResult => {
-    upsertPipelineInvestor({ investorId, name: display, stage: 'Identified' });
-    logActivity({ kind: 'round', title: `Added ${display} to the pipeline`, titleEl: `Προστέθηκε στη ροή: ${display}`, href: '/fundraising?tab=tracker', byAssistant: true });
+    upsertPipelineInvestor({ investorId, name: display, stage });
+    logActivity({ kind: 'round', title: `Added ${display} to the pipeline (${stage})`, titleEl: `Προστέθηκε στη ροή: ${display} (${stageEl})`, href: CRM_HREF, byAssistant: true });
     return {
       tool: 'pipeline-add',
-      en: `Added ${display} to your pipeline as Identified. Set a next step: “next step with ${display}: ask for an intro by Friday”.`,
-      el: `Η/Ο ${display} μπήκε στη ροή σου ως «Εντοπίστηκε». Όρισε επόμενο βήμα: «επόμενο βήμα με ${display}: ζήτα γνωριμία μέχρι Παρασκευή».`,
-      href: '/fundraising?tab=tracker',
+      en: `Added ${display} to your pipeline as ${stage}. Set a next step: “next step with ${display}: ask for an intro by Friday”.`,
+      el: `Η/Ο ${display} μπήκε στη ροή σου ως «${stageEl}». Όρισε επόμενο βήμα: «επόμενο βήμα με ${display}: ζήτα γνωριμία μέχρι Παρασκευή».`,
+      href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
@@ -448,11 +468,11 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
   if (!propose) return apply();
   return proposal(
     {
-      summary: { en: `Add ${display} to your investor pipeline as Identified?`, el: `Προσθήκη ${display} στη ροή επενδυτών ως «Εντοπίστηκε»;` },
+      summary: { en: `Add ${display} to your investor pipeline as ${stage}?`, el: `Προσθήκη ${display} στη ροή επενδυτών ως «${stageEl}»;` },
       reversal: 'full',
       apply,
       undo: () => {
-        removePipelineInvestor(investorId);
+        restorePipelineEntry(investorId, undefined);
       },
     },
     'pipeline-add',
@@ -464,7 +484,22 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
 const QUESTION = /^(?:what|which|when|show|list|any|do i|are there|who)\b|^(?:ποια|ποιο|ποιος|ποιες|τι|δειξε|εχω|υπαρχ|ποτε)/;
 
 /** The pipeline tool a sentence asks for, or null so the router keeps looking. */
-export function routePipeline(query: string, propose: boolean, now: Date = new Date()): AssistantResult | null {
+/** "/investor add X at Y" → "add X to my pipeline at Y", and the other slash forms, into sentences the routes below read. */
+export function expandSlash(query: string): string {
+  const text = query.trim();
+  const add = /^\/investors?\s+add\s+(.+?)(?:\s+(?:at|as|stage:?)\s+(.+))?$/i.exec(text);
+  if (add) return `add ${add[1]} to my pipeline${add[2] ? ` at ${add[2]}` : ''}`;
+  const move = /^\/investors?\s+move\s+(.+)$/i.exec(text);
+  if (move) return `move ${move[1]}`;
+  const next = /^\/investors?\s+next\s+(.+?)\s*:\s*(.+)$/i.exec(text);
+  if (next) return `next step with ${next[1]}: ${next[2]}`;
+  if (/^\/(?:pipeline|crm)\b/i.test(text)) return 'show my pipeline';
+  if (/^\/(?:followups?|follow-ups?)\b/i.test(text)) return 'what follow-ups are due';
+  return text;
+}
+
+export function routePipeline(rawQuery: string, propose: boolean, now: Date = new Date()): AssistantResult | null {
+  const query = expandSlash(rawQuery);
   const folded = fold(query.trim());
   const followWords = hasStem(folded, 'follow-up', 'follow up', 'followup', 'follow-ups', 'followups');
   const nextStepWords = hasStem(folded, 'next step', 'remind me to', 'επομενο βημα', 'υπενθυμισ');
@@ -478,7 +513,7 @@ export function routePipeline(query: string, propose: boolean, now: Date = new D
   const added = hasStem(folded, 'add', 'track', 'put', 'προσθεσ', 'βαλε', 'παρακολουθησ') ? pipelineAddResult(query, propose) : null;
   if (added) return added;
 
-  if (hasStem(folded, 'move', 'mark', 'advance', 'set', 'put', 'μετακινησ', 'βαλε', 'ορισε', 'περασε', 'γυρισε')) {
+  if (hasStem(folded, 'move', 'moved', 'mark', 'advance', 'bump', 'set', 'put', 'is now', 'went', 'μετακινησ', 'βαλε', 'ορισε', 'περασε', 'γυρισε')) {
     const moved = pipelineMoveResult(query, propose);
     if (moved) return moved;
   }
@@ -488,6 +523,6 @@ export function routePipeline(query: string, propose: boolean, now: Date = new D
     if (set) return set;
   }
 
-  if (/\b(pipeline|funnel|investor crm)\b/.test(folded) || hasStem(folded, 'ροη επενδυτ', 'αγωγ', 'ροη μου')) return pipelineReadResult(now);
+  if (/\b(pipeline|funnel|crm|my investors)\b/.test(folded) || hasStem(folded, 'ροη επενδυτ', 'αγωγ', 'ροη μου', 'τους επενδυτες μου')) return pipelineReadResult(now);
   return null;
 }

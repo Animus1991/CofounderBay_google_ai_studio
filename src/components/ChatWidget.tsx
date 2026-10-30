@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bot, Check, ChevronRight, Copy, Maximize2, MessageSquare, Minimize2, Send, Sparkles, Square, SquarePen, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { SendEmailModal } from './SendEmailModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { Both } from '../lib/both';
@@ -12,10 +13,11 @@ import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
 import { respond, type EngineOrigin } from '../ai/engine';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
-import { mergeFitIntoViewer } from '../lib/fitCheck';
+import { viewerFromAuth } from '../lib/viewer';
 import { directoryPeople } from '../lib/peopleSource';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
+import { recordAiAction } from '../lib/aiLedger';
 import { onPageControlsChange, readPageControls } from '../lib/pageControls';
 import { useUIStore } from '../stores/useUIStore';
 import { onAssistantRequest } from '../lib/assistantBus';
@@ -30,28 +32,9 @@ type Bubble = AssistantTurn & {
   undoUntil?: number;
   /** How the reply was produced: the studio router, the model choosing an action, the model answering, or neither. */
   origin?: EngineOrigin;
-  /** Proposals that came from one message share this id, so they can be confirmed together. */
+  /** Proposals that came from one turn share this id, so they can be confirmed together. */
   batchId?: string;
 };
-
-function viewerFromAuth(profile: ReturnType<typeof useAuth>['profile']) {
-  const base = profile
-    ? {
-        fullName: profile.fullName,
-        headline: profile.headline,
-        bio: profile.bio,
-        skills: profile.skills,
-        lookingFor: profile.lookingFor,
-        interests: profile.interests,
-        industry: profile.industry,
-        stage: profile.stage,
-        commitment: profile.commitment,
-        location: profile.location,
-        timezone: profile.timezone,
-      }
-    : null;
-  return mergeFitIntoViewer(base);
-}
 
 const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -71,6 +54,17 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const { mode } = useLanguage();
   const t = useT();
   const toast = useToast();
+  const ledger = (msg: Bubble, status: 'applied' | 'undone' | 'cancelled' | 'failed') => {
+    if (!msg.proposal) return;
+    recordAiAction({
+      tool: msg.tool || 'unknown',
+      summary: mode === 'el' ? msg.proposal.summary.el : msg.proposal.summary.en,
+      status,
+      reversal: msg.proposal.reversal,
+      source: msg.origin === 'model-tool' ? 'model' : 'router',
+      path: typeof window !== 'undefined' ? window.location.pathname : null,
+    });
+  };
   const [isOpen, setIsOpen] = useState(isPage);
   const [isMinimized, setIsMinimized] = useState(false);
   const [tab, setTab] = useState<'studio' | 'agents'>('studio');
@@ -91,6 +85,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const inputRef = useRef<HTMLInputElement>(null);
   const runRef = useRef<(raw: string) => Promise<void>>(async () => undefined);
   const stopRef = useRef(false);
+  const polishingRef = useRef<string | null>(null);
+  const [emailDraft, setEmailDraft] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const turnsRef = useRef<Bubble[]>(turns);
   const undoingRef = useRef<Set<string>>(new Set());
@@ -218,6 +214,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   /** The Gemini "polish" step: rewords a router result without changing a fact. */
   const polishReply = async (replyId: string, payload: string, result: AssistantResult) => {
     if (AIService.coolingDown) return;
+    polishingRef.current = replyId;
     setIsTyping(true);
     try {
       const polished = await Promise.race([
@@ -227,7 +224,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
         ),
         new Promise<{ text: string }>((_, reject) => { window.setTimeout(() => reject(new Error('timeout')), 4500); }),
       ]);
-      if (stopRef.current) return;
+      if (stopRef.current || polishingRef.current !== replyId) return;
       if (polished.text?.trim()) {
         const text = polished.text.trim();
         setTurns((prev) => prev.map((item) => (item.id === replyId ? { ...item, text } : item)));
@@ -236,7 +233,10 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
     } catch {
       /* the deterministic answer stays */
     } finally {
-      setIsTyping(false);
+      if (polishingRef.current === replyId) {
+        polishingRef.current = null;
+        setIsTyping(false);
+      }
     }
   };
 
@@ -246,6 +246,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       ? { ...item, text, resolved: 'cancelled' as const }
       : item)));
     updateAssistantTurn(msg.id, { text });
+    ledger(msg, 'cancelled');
   };
 
   const undoProposal = async (id: string) => {
@@ -266,6 +267,10 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       return;
     }
     setIsTyping(false);
+    ledger(msg, 'undone');
+    const undoneText = `${(mode === 'el' ? msg.proposal.summary.el : msg.proposal.summary.en).replace(/[;?]\s*$/, '')} — ${t('undone, nothing from this change remains.', 'αναιρέθηκε, δεν έμεινε τίποτα από αυτή την αλλαγή.')}`;
+    setTurns((prev) => prev.map((item) => (item.id === id ? { ...item, text: undoneText } : item)));
+    updateAssistantTurn(id, { text: undoneText });
     pushStudio({ id: newId('a-undone'), role: 'assistant', text: t('Undone.', 'Αναιρέθηκε.'), at: new Date().toISOString() });
   };
 
@@ -282,9 +287,11 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       updateAssistantTurn(msg.id, { text });
       toast.error(t('That did not go through', 'Δεν ολοκληρώθηκε'), t('Nothing changed.', 'Τίποτα δεν άλλαξε.'));
       setIsTyping(false);
+      ledger(msg, 'failed');
       return false;
     }
     setIsTyping(false);
+    ledger(msg, 'applied');
     const text = speak(final);
     setTurns((prev) => prev.map((item) => (item.id === msg.id
       ? {
@@ -310,6 +317,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       });
       window.setTimeout(() => setTurns((prev) => prev.map((item) => (item.id === msg.id ? { ...item, undoUntil: 0 } : item))), 60_000);
     }
+    // Batch steps are worded already and must not be restated against the whole multi-change message.
     if (msg.batchId) return true;
     const index = turnsRef.current.findIndex((item) => item.id === msg.id);
     const userSaid = turnsRef.current.slice(0, index).reverse().find((item) => item.role === 'user')?.text ?? '';
@@ -349,7 +357,11 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
 
   const run = async (raw: string) => {
     const text = raw.trim();
-    if (!text || isTyping) return;
+    // A pending polish never blocks a new request — the deterministic reply simply stays.
+    if (text && polishingRef.current) {
+      polishingRef.current = null;
+      setIsTyping(false);
+    } else if (!text || isTyping) return;
     setInputText('');
     setStopped(false);
     setPageOpen(false);
@@ -451,25 +463,27 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
     }
     if (stopRef.current) return;
     if (result.batch?.length) {
-      // Several changes from one message: one card each, plus Confirm all.
+      // Several changes from one turn: one numbered card each, plus Confirm all.
       const batchId = newId('batch');
       const at = new Date().toISOString();
-      pushStudio({ id: newId('a'), role: 'assistant', text: speak(result), tool: 'batch', origin: 'router', batchId, at });
-      for (const item of result.batch) {
+      const count = result.batch.length;
+      pushStudio({ id: newId('a'), role: 'assistant', text: speak(result), tool: 'batch', origin: result.origin, batchId, at });
+      result.batch.forEach((item, index) => {
         pushStudio({
           id: newId('a'),
           role: 'assistant',
-          text: speak(item),
+          text: `${t('Step', 'Βήμα')} ${index + 1}/${count} · ${speak(item)}`,
           href: item.href,
           links: item.links,
           tool: item.tool,
           sources: item.sources,
           proposal: item.proposal,
-          origin: 'router',
+          origin: item.origin,
+          interpretedAs: item.interpretedAs?.label,
           batchId,
           at,
         });
-      }
+      });
       return;
     }
     const replyId = newId('a');
@@ -490,7 +504,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
     if (result.tool === 'navigate' && result.href) navigate(result.href);
     // A proposal is a question — it stays verbatim until confirmed, no polish.
     // Model answers are already worded; only router results get the polish.
-    if (result.proposal || result.origin !== 'router') return;
+    if (result.proposal || result.origin !== 'router' || result.draft) return;
     void polishReply(replyId, payload, result);
   };
 
@@ -527,6 +541,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
 
   const panel = (
     <>
+      <SendEmailModal open={emailDraft !== null} onClose={() => setEmailDraft(null)} draft={emailDraft ?? ''} />
       <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-2xl')}>
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
@@ -654,6 +669,11 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                             {msg.tool && !msg.interpretedAs ? ` · ${msg.tool}` : ''}
                           </span>
                         )}
+                        {msg.tool === 'investor-email' && /^Subject:/i.test(msg.text) && (
+                          <button type="button" data-testid="assistant-email-send" onClick={() => setEmailDraft(msg.text)} className="text-xs font-semibold text-stone-900 hover:underline inline-flex items-center gap-1">
+                            <Send className="w-3 h-3" />{t('Send…', 'Αποστολή…')}
+                          </button>
+                        )}
                         <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
                           {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
@@ -733,6 +753,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                         <div className="flex gap-2">
                           <button
                             type="button"
+                            data-testid="assistant-proposal-confirm"
                             onClick={() => { void confirmProposal(msg); }}
                             className="min-h-8 px-3 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800"
                           >
@@ -740,6 +761,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                           </button>
                           <button
                             type="button"
+                            data-testid="assistant-proposal-cancel"
                             onClick={() => cancelProposal(msg)}
                             className="min-h-8 px-3 bg-white border border-stone-200 text-stone-700 rounded-lg text-xs font-medium hover:border-stone-400"
                           >
@@ -751,6 +773,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                     {msg.resolved === 'confirmed' && msg.proposal?.undo && msg.undoUntil ? (
                       <button
                         type="button"
+                        data-testid="assistant-proposal-undo"
                         onClick={() => { void undoProposal(msg.id); }}
                         className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline"
                       >
@@ -906,6 +929,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                   ref={inputRef}
                   type="text"
                   data-assistant-input
+                  data-testid="assistant-input"
                   aria-label={t('Message the assistant', 'Μήνυμα στον βοηθό')}
                   placeholder={isTyping
                     ? bothText('Studio is answering…', 'Ο βοηθός απαντά…')
@@ -937,6 +961,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                 ) : (
                   <button
                     type="button"
+                    data-testid="assistant-send"
                     onClick={() => { void run(inputText); }}
                     disabled={!inputText.trim()}
                     className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"

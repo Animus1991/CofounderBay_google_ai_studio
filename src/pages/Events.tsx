@@ -230,7 +230,7 @@ export default function Events(_props: EventsProps = {}) {
   <PageShell
    sample={isDemoMode}
    title={t("Events", "Εκδηλώσεις")}
-   description={t("Discover workshops, networking nights, and pitch events designed to accelerate your growth.", "Ανακάλυψε εργαστήρια, βραδιές δικτύωσης και εκδηλώσεις pitch που επιταχύνουν την ανάπτυξή σου.")}
+   description={t('Workshops, networking and pitch nights.', 'Εργαστήρια, δικτύωση και βραδιές pitch.')}
    actions={
     <div className="flex flex-wrap items-center gap-2">
      <button 

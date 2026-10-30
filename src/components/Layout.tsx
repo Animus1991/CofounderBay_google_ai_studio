@@ -11,6 +11,7 @@ import { useAuth } from '../App';
 import { UserRole } from '../types';
 import { useUIStore, PaletteTheme } from '../stores/useUIStore';
 import SaveSafetyGuard from './SaveSafetyGuard';
+import { OutreachWatcher } from './OutreachWatcher';
 import { pageContext } from '../services/assistantOps';
 import { openAssistant } from '../lib/assistantBus';
 import { useFollowUpAlerts } from '../lib/followUpAlerts';
@@ -140,6 +141,8 @@ export default function Layout() {
   const t = useT();
   const currentPage = pageContext(location.pathname);
   const onAssistantPage = location.pathname.replace(/\/+$/, '') === '/assistant';
+  // The messages hub is a full-height app surface: no bottom gutter under the thread.
+  const onMessagesPage = /^\/messages(\/|$)/.test(location.pathname);
 
   const isGuest = !user && !isDemoMode;
   // An investor follow-up that slipped is announced once (toast + Notifications).
@@ -249,6 +252,7 @@ export default function Layout() {
       </header>
       <div className="flex min-h-0 min-w-0 flex-1">
         <SaveSafetyGuard />
+        <OutreachWatcher />
         <Sidebar
           user={sidebarUser}
           guest={isGuest}
@@ -265,12 +269,6 @@ export default function Layout() {
               <span>·</span>
               <span className="inline-flex items-center rounded-md bg-stone-200/70 px-2 py-0.5 text-[11px] font-medium text-stone-800 shrink-0">
                 {t(currentPage.en, currentPage.el)}
-              </span>
-              <span className="hidden 2xl:inline text-stone-400 truncate">
-                {t(
-                  'Unified Workspace · 6-Axis Matching · Deal Room · AI Operator',
-                  'Ενιαίος Χώρος Εργασίας · 6-Axis Matching · Deal Room · AI Operator'
-                )}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -291,7 +289,7 @@ export default function Layout() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onAssistantPage ? 'pb-4' : 'pb-20 sm:pb-24'}`}
+            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onMessagesPage ? 'pb-20 sm:pb-24 lg:pb-0' : onAssistantPage ? 'pb-4' : 'pb-20 sm:pb-24'}`}
           >
             <RouteErrorBoundary>
               {/* Pages load as their own chunks; the frame (sidebar, header, assistant) stays put meanwhile. */}

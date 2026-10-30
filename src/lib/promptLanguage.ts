@@ -34,6 +34,8 @@ const PATTERNS: Rule[] = [
   [/^Tell me about (.+)$/, (m) => `Πες μου για ${m[1]}`],
   [/^Why do I match with (.+)\?$/, (m) => `Γιατί ταιριάζω με ${m[1]};`],
   [/^What should I do about (.+)\?$/, (m) => `Τι να κάνω για το «${m[1]}»;`],
+  [/^Draft a follow-up email to (.+)$/, (m) => `Γράψε follow-up email για ${m[1]}`],
+  [/^Share due diligence with (.+)$/, (m) => `Μοιράσου τη δέουσα επιμέλεια με ${m[1]}`],
 ];
 
 export function localizePrompt(prompt: string, lang: 'en' | 'el'): string {

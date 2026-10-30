@@ -420,7 +420,7 @@ export default function Network({ user }: NetworkProps) {
         {activeTab === 'saved' && (
           <div className="space-y-4">
             {saved.length === 0 && (
-              <EmptyHint title={t('No saved profiles yet.', 'Δεν υπάρχουν αποθηκευμένα προφίλ ακόμη.')} detail={t('Save a person from Matches or Explore and they will wait for you here.', 'Αποθήκευσε ένα άτομο από τις Αντιστοιχίσεις ή την Εξερεύνηση και θα σε περιμένει εδώ.')}>
+              <EmptyHint title={t('No saved profiles yet.', 'Δεν υπάρχουν αποθηκευμένα προφίλ ακόμη.')} detail={t('Saved people appear here.', 'Οι αποθηκευμένοι εμφανίζονται εδώ.')}>
                 <button type="button" className="text-xs font-medium text-stone-900 hover:underline min-h-11" onClick={() => navigate('/matches')}>{t('Open matches', 'Άνοιγμα αντιστοιχίσεων')}</button>
               </EmptyHint>
             )}
@@ -464,7 +464,7 @@ export default function Network({ user }: NetworkProps) {
               {!endorsementsLoaded ? (
                 [0, 1].map((i) => <div key={i} className="h-24 rounded-2xl bg-stone-100 animate-pulse" />)
               ) : received.length === 0 ? (
-                <EmptyHint title={t('No endorsements yet.', 'Δεν υπάρχουν συστάσεις ακόμη.')} detail={t('Members you have worked with can confirm your skills from your profile. Ask a connection to endorse you.', 'Μέλη με τα οποία έχεις συνεργαστεί μπορούν να επιβεβαιώσουν τις δεξιότητές σου από το προφίλ σου. Ζήτησε από μια σύνδεση να σε συστήσει.')}>
+                <EmptyHint title={t('No endorsements yet.', 'Δεν υπάρχουν συστάσεις ακόμη.')} detail={t('Ask a connection to confirm your skills.', 'Ζήτα από μια σύνδεση να επιβεβαιώσει τις δεξιότητές σου.')}>
                   <button type="button" className="text-xs font-medium text-stone-900 hover:underline min-h-11" onClick={() => navigate('/messages')}>{t('Ask a connection', 'Ζήτα από μια σύνδεση')}</button>
                 </EmptyHint>
               ) : received.map((e, i) => {

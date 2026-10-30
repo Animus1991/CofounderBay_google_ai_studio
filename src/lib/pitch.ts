@@ -72,7 +72,20 @@ export function draftPitch(): PitchContent {
   const builder = readBuilderInputs();
   const startup = readValue<Record<string, unknown>>(keys.startup, {});
   const round = readRound();
-  const pick = (...values: (string | undefined)[]) => values.map((value) => (value ?? '').trim()).filter(Boolean).join(' ');
+  // Joins sources but drops one that mostly repeats what is already there (canvas and builder often say the same thing).
+  const words = (text: string) => new Set(text.toLowerCase().match(/[\p{L}\d%]{4,}/gu) ?? []);
+  const pick = (...values: (string | undefined)[]) => {
+    const kept: string[] = [];
+    const seen = new Set<string>();
+    for (const value of values.map((v) => (v ?? '').trim()).filter(Boolean)) {
+      const own = [...words(value)];
+      const overlap = own.length ? own.filter((w) => seen.has(w)).length / own.length : 0;
+      if (kept.length && overlap >= 0.3) continue;
+      kept.push(value);
+      own.forEach((w) => seen.add(w));
+    }
+    return kept.join(' ');
+  };
   const name = typeof startup.name === 'string' && startup.name.trim() ? startup.name.trim() : demo ? DEMO_VENTURE.name : '';
   const oneLiner = typeof startup.oneLiner === 'string' && startup.oneLiner.trim()
     ? startup.oneLiner.trim()
@@ -98,8 +111,8 @@ export function draftPitch(): PitchContent {
 /** What the deck shows: the founder's text, or — in the sample account — the draft. */
 export function effectivePitch(): PitchContent {
   const stored = readPitch();
-  if (Object.keys(stored).length > 0 || !isDemoData()) return stored;
-  return draftPitch();
+  // The sample account keeps its drafted slides; anything the founder wrote wins per slide.
+  return isDemoData() ? { ...draftPitch(), ...stored } : stored;
 }
 
 /** The deck as a Markdown document, in one language, for Word / print / share. */

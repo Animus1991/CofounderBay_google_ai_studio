@@ -137,8 +137,8 @@ export default function Perks() {
 
  return (
   <PageShell sample={isDemoMode} title={t("Perks", "Παροχές")} description={isDemoMode
-   ? t("Exclusive discounts and credits from our ecosystem partners.", "Αποκλειστικές εκπτώσεις και πιστώσεις από τους συνεργάτες του οικοσυστήματος.")
-   : t("Founder programs published for members — apply on each provider's site.", "Προγράμματα ιδρυτών που δημοσιεύει η πλατφόρμα — αίτηση στο site του κάθε παρόχου.")}>
+   ? t('Discounts and credits from partners.', 'Εκπτώσεις και πιστώσεις από συνεργάτες.')
+   : t('Founder programs — apply on each provider\'s site.', 'Προγράμματα ιδρυτών — αίτηση στο site του παρόχου.')}>
    <div className="space-y-6">
     <div className="scroll-tabs gap-2 bg-stone-50 p-1 rounded-xl border border-stone-100">
      {categories.map((cat) => (

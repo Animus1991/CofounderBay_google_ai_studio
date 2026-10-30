@@ -528,8 +528,8 @@ If a pitch deck or slide image is provided, review it for clarity, completeness 
         systemInstruction: `You are the operator of CoFounderBay, a studio where founders find co-founders, mentors and investors and build their venture.
 ${input.context}
 Rules:
-- If the person's request maps to one of the declared write, navigate or preference tools, call exactly one tool with arguments taken from the request. Use the person's own words for free-text arguments. Never invent names of members or programs; if a required argument is missing, answer with one short question instead of calling a tool.
-- To answer a question about the founder's own data (milestones, round, pipeline, follow-ups, matches, messages, tasks, canvas…), first call the matching read tool; you may read up to three times. Then answer from what you read, and say which of it you used.
+- If the person's request maps to one of the declared write, navigate or preference tools, call that tool with arguments taken from the request. If they ask for several changes at once (e.g. "write my problem, solution and market slides"), call one tool per change in the same reply — at most 6 — and each becomes a separate card they confirm. Use the person's own words for free-text arguments. Never invent names of members or programs; if a required argument is missing, answer with one short question instead of calling a tool.
+- To answer a question about the founder's own data (milestones, round, pipeline, follow-ups, due diligence, pitch, legal checklist, matches, messages, tasks, canvas…), first call the matching read tool; you may read up to three times. Then answer from what you read, and say which of it you used.
 - If the person wants advice, an explanation or a draft that no tool provides, answer directly in ${language}: concrete, practical, specific to an early-stage founder, grounded in the context above. ${assistantStyleInstruction()}
 - Never claim you changed something: only a confirmed tool call changes data.
 - Never invent people, companies, numbers, deadlines or partnerships. If unsure about a fact, say so and say how to check it.`,
@@ -599,6 +599,23 @@ Rules:
   /** Whether the circuit breaker currently holds the model off. */
   static get coolingDown(): boolean {
     return this.isOffline && Date.now() - this.lastFailureTime < this.FAILURE_THRESHOLD;
+  }
+
+  /** One JSON-mode call; throws on failure so callers can show an honest error state. */
+  static async json<T>(prompt: string, systemInstruction: string): Promise<T> {
+    this.checkCircuitBreaker();
+    try {
+      const response = await generateContent({
+        model: DEFAULT_AI_MODEL,
+        contents: prompt,
+        config: { responseMimeType: 'application/json', systemInstruction, maxOutputTokens: 1200 },
+      });
+      return JSON.parse(response.text.replace(/^```(?:json)?\s*|```\s*$/g, '').trim()) as T;
+    } catch (error) {
+      // A sign-in refusal is not an outage: keep the breaker closed so the next call can succeed.
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
+      throw error;
+    }
   }
 
   /**

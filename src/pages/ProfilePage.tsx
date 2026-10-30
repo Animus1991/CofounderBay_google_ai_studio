@@ -1,3 +1,5 @@
+import { studioAudit, type AssistantProfile } from '../services/assistantOps';
+import { DEMO_VENTURE } from '../data/demoVenture';
 import React, { useState, useEffect } from 'react';
 import {
  useParams,
@@ -84,6 +86,7 @@ import {
 } from '../lib/social';
 import { UserProfile, Endorsement, ReadinessScore } from '../types';
 import { askAssistant } from '../lib/assistantBus';
+import { AiProfileReview } from '../components/AiProfileReview';
 
 enum OperationType {
  CREATE = 'create',
@@ -138,10 +141,10 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 // ── Activity feed mock data ──────────────────────────────────────────────────
 const PROFILE_ACTIVITY = [
- { id: 'a1', type: 'endorsement', text: 'Received endorsement for Machine Learning', textEl: 'Νέα σύσταση για Machine Learning', time: '2h ago', timeEl: 'πριν από 2 ώρες', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
+ { id: 'a1', type: 'endorsement', text: 'Received endorsement for IoT', textEl: 'Νέα σύσταση για IoT', time: '2h ago', timeEl: 'πριν από 2 ώρες', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50' },
  { id: 'a2', type: 'connection', text: 'Connected with Elena Rodriguez', textEl: 'Σύνδεση με Elena Rodriguez', time: '5h ago', timeEl: 'πριν από 5 ώρες', icon: Handshake, color: 'text-emerald-500', bg: 'bg-emerald-50' },
  { id: 'a3', type: 'milestone', text: 'Reached 50+ connections milestone', textEl: 'Ορόσημο: 50+ συνδέσεις', time: '1d ago', timeEl: 'πριν από 1 ημέρα', icon: Trophy, color: 'text-violet-500', bg: 'bg-violet-50' },
- { id: 'a4', type: 'project', text: 'Updated venture "TechFlow AI"', textEl: 'Ενημέρωση εγχειρήματος «TechFlow AI»', time: '2d ago', timeEl: 'πριν από 2 ημέρες', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
+ { id: 'a4', type: 'project', text: 'Updated venture "EcoFlow Systems"', textEl: 'Ενημέρωση εγχειρήματος «EcoFlow Systems»', time: '2d ago', timeEl: 'πριν από 2 ημέρες', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
  { id: 'a5', type: 'skill', text: 'Added React & TypeScript skills', textEl: 'Προσθήκη δεξιοτήτων React και TypeScript', time: '3d ago', timeEl: 'πριν από 3 ημέρες', icon: Zap, color: 'text-violet-500', bg: 'bg-violet-50' },
  { id: 'a6', type: 'view', text: 'Profile viewed 38 times this week', textEl: '38 προβολές προφίλ αυτή την εβδομάδα', time: '4d ago', timeEl: 'πριν από 4 ημέρες', icon: Eye, color: 'text-stone-500', bg: 'bg-stone-50' },
 ];
@@ -167,17 +170,17 @@ const ALSO_VIEWED = [
 ];
 // ── Mock endorsements fallback (used when Firestore returns empty) ───────────
 const MOCK_ENDORSEMENTS: Endorsement[] = [
- { id: 'me1', endorserId: 'sarah-chen', skillId: 'Machine Learning', comment: 'Exceptional understanding of ML pipelines and model deployment.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+ { id: 'me1', endorserId: 'sarah-chen', skillId: 'IoT', comment: 'Built the sensor-to-cloud pipeline for the EcoFlow pilot in weeks.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
  { id: 'me2', endorserId: 'alex-rivera', skillId: 'Product Strategy', comment: 'Brilliant product thinking. Always sees the bigger picture.', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
  { id: 'me3', endorserId: 'elena-rodriguez', skillId: 'React', comment: 'Clean, maintainable components every time.', createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
- { id: 'me4', endorserId: 'marcus-thorne', skillId: 'Growth Hacking', comment: 'Data-driven growth strategies that actually work.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
+ { id: 'me4', endorserId: 'marcus-thorne', skillId: 'Hardware Prototyping', comment: 'Took the bio-filter from bench rig to a working pilot unit.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
  { id: 'me5', endorserId: 'jordan-taylor', skillId: 'Node.js', comment: 'Strong backend architecture skills.', createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
 ];
 // ── Mock readiness fallback ──────────────────────────────────────────────────
 const MOCK_READINESS: ReadinessScore = {
  id: 'mock-readiness',
  workspaceId: 'default',
- score: 72,
+ score: DEMO_VENTURE.readinessScore,
  dimensionScores: {
   problemClarity: 75,
   solutionClarity: 68,
@@ -352,6 +355,24 @@ export default function ProfilePage() {
   (profile?.skills || []).length, (profile?.lookingFor || []).length,
  ].filter(Boolean).length / 10) * 100);
 
+ // Own profile: the insight card reads the same studio check the assistant runs, so the numbers never disagree.
+ const ownAudit = React.useMemo(() => {
+  if (!isOwnProfile) return null;
+  const audit = studioAudit({ fullName: profile?.fullName, headline: profile?.headline, bio: profile?.bio, location: profile?.location, skills: profile?.skills ?? [] } as unknown as AssistantProfile);
+  const pct = (names: string[]) => {
+   const rows = audit.rows.filter((row) => names.includes(row.name[0]));
+   return rows.length ? Math.round((rows.reduce((sum, row) => sum + row.ratio, 0) / rows.length) * 100) : 0;
+  };
+  return {
+   score: audit.score,
+   weakest: audit.gaps[0]?.name ?? ['—', '—'],
+   areas: [
+    { label: 'Profile', labelEl: 'Προφίλ', pct: pct(['Profile']) },
+    { label: 'Venture', labelEl: 'Venture', pct: pct(['Lean Canvas', 'Startup Builder']) },
+    { label: 'Fundraising', labelEl: 'Χρηματοδότηση', pct: pct(['Pitch deck', 'Legal checklist', 'Fundraising']) },
+   ],
+  };
+ }, [isOwnProfile, profile]);
  const localActivity = useStored(readActivity, [keys.activity]);
  const sessions = useStored(readSessions, [keys.sessions]);
 
@@ -727,6 +748,7 @@ export default function ProfilePage() {
           className="text-sm text-stone-500"
           items={[
            profile.location || t('Remote', 'Εξ αποστάσεως'),
+           profile.industry ? labelOf(profile.industry) : '',
            labelOf(profile.stage),
            labelOf(profile.commitment),
            profile.availability ? t(profile.availability, AVAILABILITY_EL[profile.availability] ?? profile.availability) : '',
@@ -804,7 +826,7 @@ export default function ProfilePage() {
          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-900 text-base"
          placeholder={t('Tell us about yourself...', 'Πες μας για σένα…')}
         />
-        <p className="text-xs text-stone-500 mt-2">{t('Add more details about your professional experience and values highly increases match accuracy.', 'Περισσότερες λεπτομέρειες για την επαγγελματική σου εμπειρία και τις αξίες σου αυξάνουν πολύ την ακρίβεια της αντιστοίχισης.')}</p>
+        <p className="text-xs text-stone-500 mt-2">{t('More detail here sharpens your matches.', 'Περισσότερες λεπτομέρειες = καλύτερες αντιστοιχίσεις.')}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-stone-100">
          <div>
@@ -868,8 +890,8 @@ export default function ProfilePage() {
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Experience & Projects', 'Εμπειρία και έργα')}</h3>
       <div className="space-y-8">
        {[
-        { title: 'Founder & CEO', company: 'TechFlow AI', period: '2021 - Present', periodEl: '2021 - Σήμερα', desc: 'Building the future of automated logistics using computer vision.' },
-        { title: 'Senior Product Manager', company: 'Google', period: '2018 - 2021', periodEl: '2018 - 2021', desc: 'Led the development of core search features for mobile users.' },
+        { title: 'Co-founder & CTO', company: 'EcoFlow Systems', period: '2025 - Present', periodEl: '2025 - Σήμερα', desc: 'IoT bio-filters that let apartment buildings reuse their grey water; Athens pilot running.' },
+        { title: 'Senior Software Engineer', company: 'Smart-building IoT platform', period: '2020 - 2025', periodEl: '2020 - 2025', desc: 'Built sensor ingestion and the building-operator dashboards.' },
        ].map((exp, idx) => (
         <div key={idx} className="flex gap-6 group">
          <div className="flex flex-col items-center">
@@ -904,7 +926,7 @@ export default function ProfilePage() {
       <div className="space-y-1">
        {activityItems.length === 0 && (
         <p className="text-sm text-stone-500 p-3">
-         {isOwnProfile ? t('Nothing in the last 7 days. Save a match, send a request or finish a milestone and it shows up here.', 'Τίποτα τις τελευταίες 7 ημέρες. Αποθήκευσε μια αντιστοίχιση, στείλε αίτημα ή ολοκλήρωσε ένα ορόσημο και θα εμφανιστεί εδώ.') : t('No public activity in the last 7 days.', 'Καμία δημόσια δραστηριότητα τις τελευταίες 7 ημέρες.')}
+         {isOwnProfile ? t('Nothing in the last 7 days.', 'Τίποτα τις τελευταίες 7 ημέρες.') : t('No public activity in the last 7 days.', 'Καμία δημόσια δραστηριότητα τις τελευταίες 7 ημέρες.')}
         </p>
        )}
        {activityItems.map((item, idx) => (
@@ -1201,23 +1223,36 @@ export default function ProfilePage() {
          </div>
          <div>
           <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
-          <p className="text-xs text-stone-600">{t('Powered by CoFounderBay AI', 'Με την υποστήριξη του CoFounderBay AI')}</p>
          </div>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-600">{isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
-          <span className="text-stone-900 font-semibold">{insightScore}%</span>
+          <span className="text-stone-600">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
+          <span className="text-stone-900 font-semibold" data-testid="profile-insight-score">{isOwnProfile && ownAudit ? ownAudit.score : insightScore}%</span>
          </div>
          <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
           <motion.div
            initial={{ width: 0 }}
-           animate={{ width: `${insightScore}%` }}
+           animate={{ width: `${isOwnProfile && ownAudit ? ownAudit.score : insightScore}%` }}
            transition={{ duration: 1.5 }}
            className="h-full bg-stone-700 rounded-full"
           />
          </div>
-         {isDemoMode ? (
+         {isOwnProfile && ownAudit ? (
+         <>
+         <div className="grid grid-cols-3 gap-2 pt-2" data-testid="profile-insight-areas">
+          {ownAudit.areas.map(d => (
+           <div key={d.label} className="text-center p-2 bg-white rounded-lg border border-stone-200">
+            <p className="text-stone-900 font-semibold text-sm">{d.pct}%</p>
+            <p className="text-xs text-stone-600">{t(d.label, d.labelEl)}</p>
+           </div>
+          ))}
+         </div>
+         <p className="text-xs text-stone-600 leading-relaxed pt-1" data-testid="profile-insight-summary">
+          {t(`Weakest area: ${ownAudit.weakest[0]}`, `Πιο αδύναμη περιοχή: ${ownAudit.weakest[1]}`)}
+         </p>
+         </>
+         ) : isDemoMode ? (
          <>
          <div className="grid grid-cols-3 gap-2 pt-2">
           {[
@@ -1246,6 +1281,7 @@ export default function ProfilePage() {
         </div>
        </div>
       </div>
+      {isOwnProfile && <AiProfileReview />}
 {/* Readiness Score Section */}
       {displayReadiness && <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
        <div className="flex items-center justify-between">

@@ -1,9 +1,10 @@
 // Demo-only series — pretty charts for the demo account, never real members.
 // Every page that quotes a demo number reads it through the helpers below so
 // the dashboard card, the profile row and the insights KPI can never disagree.
+// Ends at the EcoFlow venture's Readiness Index (DEMO_VENTURE.readinessScore = 68) so every page agrees.
 export const DEMO_READINESS = [
- { name: 'Jan', score: 45 }, { name: 'Feb', score: 52 }, { name: 'Mar', score: 48 },
- { name: 'Apr', score: 61 }, { name: 'May', score: 58 }, { name: 'Jun', score: 72 }, { name: 'Jul', score: 85 },
+ { name: 'Jan', score: 34 }, { name: 'Feb', score: 41 }, { name: 'Mar', score: 39 },
+ { name: 'Apr', score: 48 }, { name: 'May', score: 52 }, { name: 'Jun', score: 60 }, { name: 'Jul', score: 68 },
 ];
 export const DEMO_ACTIVITY = [
  { name: 'Mon', connections: 4, messages: 12, views: 24 },

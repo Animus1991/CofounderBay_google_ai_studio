@@ -30,7 +30,17 @@ describe('notification feed', () => {
     expect(origins).toContain('activity');
     // the seed unread entries plus the fresh activity entry drive the badge
     expect(result.current.unread).toBe(result.current.items.filter((note) => !note.read).length);
-    expect(result.current.unread).toBe(3);
+    // two unread seed notes + the activity entry + the demo pipeline's overdue investor alert
+    expect(result.current.unread).toBe(4);
+  });
+
+  it('turns overdue investor next steps into live alerts that can be read', () => {
+    const { result } = renderHook(() => useNotificationFeed());
+    const alert = result.current.items.find((note) => note.origin === 'derived');
+    expect(alert?.title).toBe('Overdue follow-up: Andreessen Horowitz');
+    expect(alert?.actionUrl).toBe('/fundraising?tab=crm');
+    act(() => result.current.markRead(alert!.id));
+    expect(result.current.items.find((note) => note.id === alert!.id)?.read).toBe(true);
   });
 
   it('marking a seed note read removes it from unread', () => {
@@ -38,7 +48,7 @@ describe('notification feed', () => {
     const unreadSeed = result.current.items.find((note) => note.origin === 'seed' && !note.read);
     expect(unreadSeed).toBeTruthy();
     act(() => result.current.markRead(unreadSeed!.id));
-    expect(result.current.unread).toBe(1);
+    expect(result.current.unread).toBe(2);
     expect(result.current.items.find((note) => note.id === unreadSeed!.id)?.read).toBe(true);
   });
 

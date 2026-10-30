@@ -258,6 +258,11 @@ export const keys = {
   accountSwitches: 'cfb.accountSwitches',
   paymentCards: 'cfb.paymentCards',
   profileLocal: 'cfb.profileLocal',
+  profileInsight: 'cfb.profileInsight',
+  nudge: 'cfb.dailyNudge',
+  derivedRead: 'cfb.derivedNotesRead',
+  digest: 'cfb.investorDigest',
+  ddSeen: 'cfb.ddShareViewsSeen',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -756,6 +761,13 @@ export type RoundInvestor = {
   nextStep?: string;
   /** When that next step is due, YYYY-MM-DD (local day). */
   nextDate?: string;
+  /** CRM fields — optional so older saved pipelines still load. */
+  checkSize?: string;
+  /** Every stage change, oldest first. */
+  history?: { at: string; stage: string }[];
+  email?: string;
+  /** Last email from the app: when and whether the provider sent it. */
+  lastEmail?: { at: string; subject: string; status: 'sent' | 'queued' | 'failed' };
 };
 
 export const PIPELINE_STAGES = ['Identified', 'Contacted', 'Meeting', 'Due Diligence', 'Term Sheet', 'Closed', 'Passed'] as const;
@@ -804,6 +816,10 @@ export function upsertPipelineInvestor(entry: { investorId: string; name: string
       stage: entry.stage || existing?.stage || 'Identified',
       notes: entry.notes ?? existing?.notes ?? '',
       updatedAt: new Date().toISOString(),
+      checkSize: existing?.checkSize,
+      nextStep: existing?.nextStep,
+      nextDate: existing?.nextDate,
+      history: existing?.history ?? [{ at: new Date().toISOString(), stage: entry.stage || 'Identified' }],
     },
     ...rest,
   ];
@@ -812,8 +828,11 @@ export function upsertPipelineInvestor(entry: { investorId: string; name: string
 
 export function setPipelineStage(investorId: string, stage: string, notes?: string): Round {
   const round = readRound();
+  const at = new Date().toISOString();
   const next = (round.pipeline ?? []).map((item) =>
-    item.investorId === investorId ? { ...item, stage, notes: notes ?? item.notes, updatedAt: new Date().toISOString() } : item,
+    item.investorId === investorId
+      ? { ...item, stage, notes: notes ?? item.notes, updatedAt: at, history: item.stage === stage ? item.history : [...(item.history ?? []), { at, stage }] }
+      : item,
   );
   return writeRound({ pipeline: next });
 }
@@ -859,6 +878,21 @@ export function followUps(round: Round = readRound(), now: Date = new Date()): {
     later: dated.filter((item) => item.inDays > 7),
     undated: active.filter((item) => !item.nextDate),
   };
+}
+
+/** Edits CRM fields of one tracked investor (check size, next step, date, notes). */
+export function updatePipelineInvestor(investorId: string, patch: Partial<Pick<RoundInvestor, 'name' | 'notes' | 'checkSize' | 'nextStep' | 'nextDate' | 'email' | 'lastEmail'>>): Round {
+  const round = readRound();
+  const at = new Date().toISOString();
+  return writeRound({ pipeline: (round.pipeline ?? []).map((item) => (item.investorId === investorId ? { ...item, ...patch, updatedAt: at } : item)) });
+}
+
+/** Puts one entry back exactly as it was (or removes it when it did not exist) — the assistant's per-investor undo. */
+export function restorePipelineEntry(investorId: string, before: RoundInvestor | undefined): Round {
+  const pipeline = readRound().pipeline ?? [];
+  if (!before) return writeRound({ pipeline: pipeline.filter((item) => item.investorId !== investorId) });
+  const has = pipeline.some((item) => item.investorId === investorId);
+  return writeRound({ pipeline: has ? pipeline.map((item) => (item.investorId === investorId ? before : item)) : [before, ...pipeline] });
 }
 
 export function removePipelineInvestor(investorId: string): Round {

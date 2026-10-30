@@ -301,7 +301,7 @@ export default function Calendar() {
   <PageShell
    sample={isDemoMode}
    title={t("Schedule", "Πρόγραμμα")}
-   description={t("Manage meetings, track deadlines, and stay aligned with your objectives.", "Διαχειρίσου συναντήσεις και προθεσμίες και μείνε σε ευθυγράμμιση με τους στόχους σου.")}
+   description={t('Meetings, deadlines and goals.', 'Συναντήσεις, προθεσμίες και στόχοι.')}
    actions={
     <div className="flex items-center gap-2 flex-wrap">
      <div className="relative">

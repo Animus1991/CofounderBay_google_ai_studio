@@ -9,7 +9,10 @@
  *     milestone title).
  *  2. **Router first.** The deterministic operator answers everything it
  *     recognises instantly, offline, with the same data the pages show. Most
- *     turns end here.
+ *     turns end here. Two exceptions go to the model: a request to *write*
+ *     content ("write my problem and market slides" — the router could only
+ *     report status), and a router draft (an investor email) that the model
+ *     rewrites from the same facts, the template staying as the offline copy.
  *  3. **Model second, and only for what the router could not place.** The model
  *     gets the question, the studio context and the declared action catalogue.
  *     - It may *read* first (up to three read actions — milestones, round,
@@ -19,7 +22,8 @@
  *       was read ("Read from").
  *     - A write, navigation or preference it picks is validated against its
  *       declaration and run through the same router in propose mode, so it is
- *       still a card the person confirms.
+ *       still a card the person confirms. Several writes in one reply become a
+ *       batch (one card each, plus Confirm all).
  *     - Or it answers in words, streamed as it is written when `onText` is given.
  *  4. **Honesty last.** When neither can help (model not configured, sign-in
  *     needed, cooling down, timed out, or nothing usable), the reply says so and
@@ -45,7 +49,11 @@ export type EngineResult = AssistantResult & {
   origin: EngineOrigin;
   /** The catalogue action the model chose, shown as "Understood as …". */
   interpretedAs?: { id: string; label: Bilingual };
-  /** Several proposals from one message, confirmed one by one or all at once. */
+  /**
+   * Several proposals from one turn — from one message with several commands, or
+   * from several model tool calls. Each is confirmed, cancelled or undone on its
+   * own, or all at once with Confirm all.
+   */
   batch?: EngineResult[];
 };
 
@@ -68,6 +76,8 @@ export type EngineOptions = {
   suggestions?: AssistantFollowUp[];
   /** Overridable for tests; defaults to the Gemini planner. */
   planner?: Planner;
+  /** Overridable for tests; rewrites a router draft (investor email) from its facts. */
+  writer?: (prompt: string, system: string) => Promise<{ subject?: string; body?: string }>;
   timeoutMs?: number;
   signal?: AbortSignal;
   /** Receives the model's answer as it is written. */
@@ -146,21 +156,59 @@ export function splitCommands(text: string): string[] {
   return parts.length >= 2 && parts.length <= MAX_BATCH ? parts : [];
 }
 
+function batchResult(steps: EngineResult[], origin: EngineOrigin): EngineResult {
+  const count = steps.length;
+  return {
+    tool: 'batch',
+    origin,
+    en: `${count} changes — confirm each one, or all of them at once. Nothing changes until you confirm, and each can be undone on its own.`,
+    el: `${count} αλλαγές — επιβεβαίωσε την καθεμία ή όλες μαζί. Τίποτα δεν αλλάζει πριν επιβεβαιώσεις, και καθεμία αναιρείται χωριστά.`,
+    links: [],
+    batch: steps,
+  };
+}
+
 function batchFor(text: string, profile: AssistantProfile | null): EngineResult | null {
   const parts = splitCommands(text);
   if (parts.length < 2) return null;
   const results = parts.map((part) => runAssistant(part, profile, { propose: true }));
   // Only when every part is, on its own, a change the router recognises.
   if (!results.every((result) => !result.fallback && result.proposal)) return null;
-  const count = results.length;
-  return {
-    tool: 'batch',
-    origin: 'router',
-    en: `${count} changes from your message — confirm each one, or all of them at once. Nothing changes until you confirm.`,
-    el: `${count} αλλαγές από το μήνυμά σου — επιβεβαίωσε την καθεμία ή όλες μαζί. Τίποτα δεν αλλάζει πριν επιβεβαιώσεις.`,
-    links: [],
-    batch: results.map((result) => ({ ...result, origin: 'router' as const })),
-  };
+  return batchResult(results.map((result) => ({ ...result, origin: 'router' as const })), 'router');
+}
+
+// ── Content the router cannot write ────────────────────────────────────────
+
+/**
+ * "Write my problem and market slides" asks for content the router cannot author —
+ * it would only report status. These go straight to the model, which drafts one
+ * set_pitch_slide call per slide (a batch when there are several).
+ */
+export function isDraftRequest(text: string): boolean {
+  const folded = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/[:]|\bslide\s+(?:to|as)\b|\bσε\s+«/.test(folded)) return false;
+  return /\b(write|draft|fill(?:\s+in)?|generate|create|prepare)\b.{0,60}\b(slides?|pitch\s+deck)\b/.test(folded)
+    || /(γραψε|συμπληρωσε|ετοιμασε|συνταξε).{0,60}(διαφανει|pitch)/.test(folded);
+}
+
+const DRAFT_SYSTEM = `You write short, specific founder-to-investor emails. Use ONLY the facts given — never invent metrics, names, dates or amounts.
+Max 140 words in the body. Warm, direct, no hype, no Markdown. Sign with the sender name. Return JSON {"subject": string, "body": string}.`;
+
+/** The template is already a complete email; the model only rewrites it from the same facts when reachable. */
+async function writeDraft(routed: AssistantResult, options: EngineOptions): Promise<EngineResult> {
+  const fallback: EngineResult = { ...routed, origin: 'router' };
+  const write = options.writer ?? (AIService.coolingDown ? null : (prompt: string, system: string) => AIService.json<{ subject?: string; body?: string }>(prompt, system));
+  if (!write || !routed.draft) return fallback;
+  try {
+    const out = await write(`Write in ${options.lang === 'el' ? 'Greek' : 'English'}.\nFacts:\n${routed.draft.facts}\n\nTemplate to improve:\n${routed.en}`, DRAFT_SYSTEM);
+    const subject = String(out.subject ?? '').trim();
+    const body = String(out.body ?? '').trim();
+    if (!subject || body.length < 40) return fallback;
+    const text = `Subject: ${subject}\n\n${body}`;
+    return { ...routed, en: text, el: text, origin: 'model-answer' };
+  } catch {
+    return fallback;
+  }
 }
 
 // ── The model, with reads ──────────────────────────────────────────────────
@@ -194,20 +242,30 @@ function readLinks(reads: Read[]): AssistantLink[] {
   return links.slice(0, 3);
 }
 
-/** Runs one assistant turn: batch → router → model (reads, then a tool or an answer) → honest fallback. */
+const DRAFT_HINT = '\n\n(The founder wants the content written. Call set_pitch_slide once for every slide they named, with text you write from the studio context — 1-3 sentences each, no invented numbers.)';
+
+/** Runs one assistant turn: batch → router (or a draft for the model) → model (reads, then tools or an answer) → honest fallback. */
 export async function respond(text: string, profile: AssistantProfile | null, options: EngineOptions): Promise<EngineResult> {
   const batch = batchFor(text, profile);
   if (batch) return batch;
 
-  const routed = runAssistant(text, profile, { propose: true });
-  if (!routed.fallback) return { ...routed, origin: 'router' };
+  const drafting = isDraftRequest(text);
+  const routed = drafting ? null : runAssistant(text, profile, { propose: true });
+  if (routed && !routed.fallback) {
+    if (routed.draft) return writeDraft(routed, options);
+    return { ...routed, origin: 'router' };
+  }
 
   const planner: Planner = options.planner ?? ((input) => AIService.plan(input));
-  if (!options.planner && AIService.coolingDown) return unmatched('offline', options);
+  const offline = (): EngineResult => {
+    const status = drafting ? runAssistant(text, profile, { propose: true }) : null;
+    return status && !status.fallback ? { ...status, origin: 'router' } : unmatched('offline', options);
+  };
+  if (!options.planner && AIService.coolingDown) return offline();
 
   const controller = new AbortController();
   options.signal?.addEventListener('abort', () => controller.abort(), { once: true });
-  const prompt = promptFor(text, options);
+  const prompt = `${promptFor(text, options)}${drafting ? DRAFT_HINT : ''}`;
   const context = `The founder is on the ${options.page.en} page (${options.page.href}).\n${assistantContextBlock(profile)}`;
   const contents: unknown[] = [{ role: 'user', parts: [{ text: prompt }] }];
   const reads: Read[] = [];
@@ -222,7 +280,24 @@ export async function respond(text: string, profile: AssistantProfile | null, op
       );
     } catch (error) {
       if (reads.length) break;
-      return unmatched(error instanceof AIProxyError && error.needsSignIn ? 'sign-in' : 'offline', options);
+      if (error instanceof AIProxyError && error.needsSignIn) return unmatched('sign-in', options);
+      return offline();
+    }
+
+    // Several changes at once ("write my problem and market slides"): one card each.
+    const writes = decision.functionCalls
+      .map((each) => ({ each, action: actionById(each.name) }))
+      .filter((entry): entry is { each: typeof entry.each; action: ActionDeclaration } => entry.action?.kind === 'write');
+    if (writes.length > 1) {
+      const steps: EngineResult[] = [];
+      for (const { each, action } of writes.slice(0, MAX_BATCH)) {
+        const checked = checkArgs(action, each.args);
+        if (!checked.ok) continue;
+        const result = runAssistant(action.command(checked.args), profile, { propose: true });
+        if (!result.fallback && result.proposal) steps.push({ ...result, origin: 'model-tool', interpretedAs: { id: action.id, label: action.label } });
+      }
+      if (steps.length >= 2) return batchResult(steps, 'model-tool');
+      if (steps.length === 1) return steps[0]!;
     }
 
     const call = decision.functionCalls[0];

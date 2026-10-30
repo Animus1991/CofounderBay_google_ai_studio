@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Sparkles, Undo2 } from 'lucide-react';
 import PageShell from '../components/ui/PageShell';
 import ChatWidget from '../components/ChatWidget';
+import { AiActionLedger } from '../components/AiActionLedger';
 import { useLanguage, useT } from '../lib/language';
 import { bothText } from '../lib/labels';
 import { askAssistant } from '../lib/assistantBus';
@@ -83,10 +84,7 @@ export default function AssistantPage() {
   return (
     <PageShell
       title={t('AI Studio', 'AI Studio')}
-      description={t(
-        'Ask in your own words. The assistant reads the same people, scores, milestones and round as every page, changes them only after you confirm, and keeps an Undo for every change it can take back.',
-        'Ρώτα με δικά σου λόγια. Ο βοηθός διαβάζει τους ίδιους ανθρώπους, σκορ, ορόσημα και γύρο με κάθε σελίδα, τα αλλάζει μόνο αφού επιβεβαιώσεις και κρατά Αναίρεση για κάθε αλλαγή που επιστρέφει.',
-      )}
+      description={t('Ask in your own words. Every change waits for your Confirm.', 'Ρώτα με δικά σου λόγια. Κάθε αλλαγή περιμένει την επιβεβαίωσή σου.')}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)] lg:items-start">
         <div className="min-w-0 lg:sticky lg:top-4 h-[min(46rem,calc(100dvh-11rem))]">
@@ -97,22 +95,33 @@ export default function AssistantPage() {
           <section className="rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
             <h2 className="text-sm font-semibold text-stone-900">{t('How it decides', 'Πώς αποφασίζει')}</h2>
             <ol className="space-y-2 text-sm text-stone-600">
-              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">1</span>{t('Studio actions first — instant, offline, the same data the pages show.', 'Πρώτα οι ενέργειες του studio — άμεσα, χωρίς δίκτυο, με τα ίδια δεδομένα των σελίδων.')}</li>
-              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">2</span>{t('Anything else goes to the AI model. It can read your data first (up to three times, listed under “Read from”), then pick one of the actions below or answer in words, as it writes.', 'Ό,τι άλλο πάει στο μοντέλο AI. Μπορεί πρώτα να διαβάσει τα δεδομένα σου (έως τρεις φορές, φαίνονται στο «Ανάγνωση από»), μετά να διαλέξει μία από τις παρακάτω ενέργειες ή να απαντήσει με λόγια, καθώς γράφει.')}</li>
-              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">3</span>{t('Every change waits for your Confirm — several changes in one message get “Confirm all”. If neither can help, it says so instead of guessing.', 'Κάθε αλλαγή περιμένει το δικό σου «Επιβεβαίωση» — πολλές αλλαγές σε ένα μήνυμα παίρνουν «Επιβεβαίωση όλων». Αν δεν μπορεί να βοηθήσει, το λέει αντί να μαντέψει.')}</li>
+              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">1</span>{t('Studio actions answer first — instantly, from the same data as the pages.', 'Πρώτα απαντούν οι ενέργειες του studio — αμέσως, με τα ίδια δεδομένα των σελίδων.')}</li>
+              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">2</span>{t('Anything else goes to the AI model. It can read your data first (shown under “Read from”) and answers as it writes.', 'Ό,τι άλλο πάει στο μοντέλο AI. Μπορεί πρώτα να διαβάσει τα δεδομένα σου (φαίνονται στο «Ανάγνωση από») και απαντά καθώς γράφει.')}</li>
+              <li className="flex gap-2"><span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700">3</span>{t('Nothing changes without your Confirm — several changes get “Confirm all”. No guessing.', 'Τίποτα δεν αλλάζει χωρίς επιβεβαίωση — πολλές αλλαγές μαζί παίρνουν «Επιβεβαίωση όλων». Χωρίς εικασίες.')}</li>
             </ol>
             <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-3 text-xs text-stone-500">
               <ShieldCheck className="h-3.5 w-3.5 text-stone-400" aria-hidden="true" />
               {status === null
                 ? t('Checking the AI model…', 'Έλεγχος μοντέλου AI…')
                 : status.configured
-                  ? `${t(`AI model connected${status.model ? ` (${status.model})` : ''}`, `Μοντέλο AI συνδεδεμένο${status.model ? ` (${status.model})` : ''}`)}${status.requiresSignIn ? t(' · open questions need you to be signed in', ' · οι ανοιχτές ερωτήσεις χρειάζονται σύνδεση') : ''}`
-                  : t('AI model not configured — studio actions still work; free-form questions are answered honestly as “not matched”.', 'Το μοντέλο AI δεν έχει ρυθμιστεί — οι ενέργειες του studio λειτουργούν· οι ελεύθερες ερωτήσεις σημειώνονται τίμια ως «χωρίς αντιστοίχιση».')}
+                  ? `${t(`AI model connected${status.model ? ` (${status.model})` : ''}`, `Μοντέλο AI συνδεδεμένο${status.model ? ` (${status.model})` : ''}`)}${status.requiresSignIn ? t(' · open questions need sign-in', ' · οι ανοιχτές ερωτήσεις θέλουν σύνδεση') : ''}`
+                  : t('AI model not connected — studio actions still work.', 'Το μοντέλο AI δεν είναι συνδεδεμένο — οι ενέργειες του studio λειτουργούν.')}
             </div>
+            <button
+              type="button"
+              data-testid="assistant-run-studio-check"
+              onClick={() => askAssistant('/audit')}
+              className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('Run a studio check', 'Έλεγχος studio')}
+            </button>
             <p className="text-xs text-stone-500">
-              {t(`${ACTION_CATALOG.length} actions: ${reads} read, ${writes} change data after you confirm, the rest open pages or set preferences.`, `${ACTION_CATALOG.length} ενέργειες: ${reads} διαβάζουν, ${writes} αλλάζουν δεδομένα αφού επιβεβαιώσεις, οι υπόλοιπες ανοίγουν σελίδες ή ορίζουν προτιμήσεις.`)}
+              {t(`${ACTION_CATALOG.length} actions · ${reads} read · ${writes} change data`, `${ACTION_CATALOG.length} ενέργειες · ${reads} ανάγνωσης · ${writes} αλλαγής`)}
             </p>
           </section>
+
+          <AiActionLedger />
 
           <section id="capabilities" className="rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">

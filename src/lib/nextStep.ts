@@ -133,13 +133,14 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
       id: `followup-${first.investorId}`,
       en: `${first.name}: ${first.nextStep} is overdue.`,
       el: `${first.name}: «${first.nextStep}» είναι εκπρόθεσμο.`,
-      href: '/fundraising?tab=tracker',
+      href: '/fundraising?tab=crm',
       title: { en: `${first.name} is waiting: ${first.nextStep}`, el: `Η/Ο ${first.name} περιμένει: ${first.nextStep}` },
       why: late.length > 1
         ? { en: `+${late.length - 1} more investor follow-up overdue`, el: `+${late.length - 1} ακόμη εκπρόθεσμα follow-ups` }
         : { en: `Was due ${dayLabel(first.nextDate, 'en')}`, el: `Έληγε ${dayLabel(first.nextDate, 'el')}` },
-      action: { en: 'Open pipeline', el: 'Άνοιγμα ροής' },
-      prompt: 'What follow-ups are due?',
+      action: { en: 'Open CRM', el: 'Άνοιγμα CRM' },
+      // The fastest way to unblock an investor: a drafted follow-up the founder reviews and sends.
+      prompt: `Draft a follow-up email to ${first.name}`,
     };
   }
   const due = readTasks().filter((task) => task.status !== 'Done' && /^today$/i.test(task.deadline.trim()));

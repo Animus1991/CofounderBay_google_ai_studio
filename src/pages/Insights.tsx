@@ -1,3 +1,4 @@
+import { DEMO_VENTURE } from '../data/demoVenture';
 import {
  useEffect,
  useMemo,
@@ -81,7 +82,7 @@ export default function Insights({ user }: InsightsProps) {
  const history = useStored(() => readValue<ScorePoint[]>(keys.readiness, []), [keys.readiness]);
 
  const merged = useMemo(() => mergeFitIntoViewer(profile), [profile]);
- const readinessScore = isDemoMode ? 85 : profileCompleteness(merged);
+ const readinessScore = isDemoMode ? DEMO_VENTURE.readinessScore : profileCompleteness(merged);
 
  // Persist one score point a day so the progression chart is real.
  useEffect(() => {
@@ -181,7 +182,7 @@ export default function Insights({ user }: InsightsProps) {
   })),
   ...(isDemoMode ? [
    { user: 'Alex Rivera', action: t('connected with you', 'συνδέθηκε μαζί σου'), time: t('2h ago', 'πριν 2 ώρες'), icon: Users, bg: 'bg-stone-50', ic: 'text-stone-600', href: '/network' },
-   { user: you, action: t('reached 85% Readiness Score', 'έφτασε 85% στον δείκτη ετοιμότητας'), time: t('5h ago', 'πριν 5 ώρες'), icon: Award, bg: 'bg-amber-50', ic: 'text-amber-600', href: '/profile' },
+   { user: you, action: t(`reached ${DEMO_VENTURE.readinessScore}% Readiness Score`, `έφτασε ${DEMO_VENTURE.readinessScore}% στον δείκτη ετοιμότητας`), time: t('5h ago', 'πριν 5 ώρες'), icon: Award, bg: 'bg-amber-50', ic: 'text-amber-600', href: '/profile' },
    { user: 'Sarah Chen', action: t('sent you a message', 'σου έστειλε μήνυμα'), time: t('1d ago', 'πριν 1 ημέρα'), icon: Zap, bg: 'bg-violet-50', ic: 'text-violet-600', href: '/messages' },
    { user: you, action: t('registered for Pitch Night', 'εγγράφηκε στη βραδιά pitch'), time: t('2d ago', 'πριν 2 ημέρες'), icon: Calendar, bg: 'bg-blue-50', ic: 'text-blue-600', href: '/events' },
   ] : []),
@@ -196,7 +197,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
 
  return (
-  <PageShell sample={isDemoMode} title={t("Insights", "Αναλύσεις")} description={t("Analytics and performance intelligence for your startup journey.", "Αναλυτικά και εικόνα απόδοσης για τη διαδρομή του startup σου.")}>
+  <PageShell sample={isDemoMode} title={t("Insights", "Αναλύσεις")} description={t('How your venture is progressing.', 'Πώς προχωρά το venture σου.')}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}
@@ -253,7 +254,7 @@ export default function Insights({ user }: InsightsProps) {
        <div className="flex items-center justify-between mb-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t('Readiness Score Progression', 'Εξέλιξη δείκτη ετοιμότητας')}</h3>
-         <p className="text-xs text-stone-400">{isDemoMode ? t('Venture maturity over time', 'Ωριμότητα του εγχειρήματος στον χρόνο') : t('How complete your profile is — matching reads these fields', 'Πόσο πλήρες είναι το προφίλ σου — αυτά διαβάζει η αντιστοίχιση')}</p>
+         <p className="text-xs text-stone-400">{isDemoMode ? t('Over time', 'Στον χρόνο') : t('Profile fields matching reads', 'Πεδία προφίλ που διαβάζει η αντιστοίχιση')}</p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-50 rounded-lg border border-stone-100">
          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -297,7 +298,7 @@ export default function Insights({ user }: InsightsProps) {
        <div className="flex items-center justify-between mb-3">
         <div>
          <h3 className="text-sm font-semibold text-stone-900">{t('Weekly Engagement', 'Εβδομαδιαία δραστηριότητα')}</h3>
-         <p className="text-xs text-stone-400">{isDemoMode ? t('Connections · Messages · Views', 'Συνδέσεις · Μηνύματα · Προβολές') : t('Your actions this week, by kind', 'Οι ενέργειές σου αυτή την εβδομάδα, ανά είδος')}</p>
+         <p className="text-xs text-stone-400">{isDemoMode ? t('Connections · Messages · Views', 'Συνδέσεις · Μηνύματα · Προβολές') : t('This week, by kind', 'Αυτή την εβδομάδα, ανά είδος')}</p>
         </div>
         <div className="flex items-center gap-3">
          {[{ label: t("Connect", "Σύνδεση"), color: "bg-stone-900" }, { label: t("Message", "Μήνυμα"), color: "bg-stone-400" }, { label: isDemoMode ? t("View", "Προβολή") : t("Other", "Άλλες"), color: "bg-stone-200" }].map(({ label, color }) => (
@@ -366,7 +367,7 @@ export default function Insights({ user }: InsightsProps) {
       <Card className="p-4 border-stone-100 bg-white" contentClassName="space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Achievements', 'Επιτεύγματα')}</h3>
-        <p className="text-xs text-stone-400">{t('Unlocked by what you actually do', 'Ξεκλειδώνονται από τις πραγματικές σου ενέργειες')}</p>
+        <p className="text-xs text-stone-400">{t('From what you actually do', 'Από ό,τι κάνεις στην πράξη')}</p>
        </div>
        <div className="grid grid-cols-2 gap-2">
         {badges.map((badge, i) => (
@@ -390,9 +391,9 @@ export default function Insights({ user }: InsightsProps) {
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
        <p className="text-xs font-semibold text-stone-500 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
-        {t('Your readiness score is the share of profile fields matching reads — a complete profile produces sharper matches.', 'Ο δείκτης ετοιμότητας είναι το ποσοστό των πεδίων που διαβάζει η αντιστοίχιση — πλήρες προφίλ σημαίνει καλύτερες αντιστοιχίσεις.')}
+        {t('Readiness = share of profile fields matching reads.', 'Ετοιμότητα = ποσοστό πεδίων προφίλ που διαβάζει η αντιστοίχιση.')}
        </p>
-       <p className="text-xs text-stone-500">{t('Next: fill skills and looking-for on Profile so the score can move.', 'Επόμενο: συμπλήρωσε δεξιότητες και τι ζητάς στο προφίλ, ώστε να κινηθεί ο δείκτης.')}</p>
+       <p className="text-xs text-stone-500">{t('Next: skills and looking-for on Profile.', 'Επόμενο: δεξιότητες και τι ζητάς στο προφίλ.')}</p>
        <div className="flex gap-2">
         <Button onClick={() => navigate('/profile')} className="flex-1 h-7 rounded-lg bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800">
          {t('Optimize Score', 'Βελτιστοποίηση δείκτη')}

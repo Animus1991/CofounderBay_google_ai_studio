@@ -86,6 +86,25 @@ import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
 import { DEMO_EVENTS, datedKnowledge, demoEventsLine } from '../data/demoCatalog';
 import { DEMO_CANVAS, DEMO_VENTURE } from '../data/demoVenture';
+import { PITCH_SLIDES, effectivePitch, slideStatus } from '../lib/pitch';
+import { legalProgress } from '../lib/legalChecklist';
+import { ddReadResult, ddSetResult, ddShareResult, isDDReadQuery, parseDDSet, parseDDShare } from './ddOps';
+import { ddProgress } from '../lib/dueDiligence';
+import { investorEmailResult, parseInvestorEmail } from './investorOps';
+import {
+  focusResult,
+  isFocusQuery,
+  isLegalChecklistQuery,
+  isPitchQuery,
+  isSavedSearchQuery,
+  legalChecklistResult,
+  legalToggleResult,
+  parseLegalToggle,
+  parsePitchSet,
+  pitchReadResult,
+  pitchSetResult,
+  savedSearchesResult,
+} from './studioAreas';
 import { daysFromToday, shortDay } from '../data/demoClock';
 
 export type AssistantProfile = CompatibilityInput & {
@@ -131,6 +150,8 @@ export type AssistantResult = {
    * question with a status summary.
    */
   fallback?: boolean;
+  /** A text the model may rewrite from these facts (e.g. an investor email); the router's version is the offline fallback. */
+  draft?: { kind: 'email'; to: string; facts: string };
 };
 
 type LoggedWrite = { kind: ActivityKind; title: string; titleEl?: string; href?: string };
@@ -172,6 +193,10 @@ const SOURCE = {
   canvas: { kind: 'tasks', en: 'Lean Canvas · Workspace', el: 'Lean Canvas · Χώρος εργασίας', href: '/workspace' },
   builder: { kind: 'tasks', en: 'Startup Builder · Founder Tools', el: 'Startup Builder · Εργαλεία ιδρυτή', href: '/founder-tools?step=1' },
   readiness: { kind: 'tasks', en: 'Readiness Index · Founder Tools', el: 'Δείκτης Ετοιμότητας · Εργαλεία ιδρυτή', href: '/founder-tools' },
+  pitch: { kind: 'tasks', en: 'Pitch deck · Founder Tools', el: 'Pitch deck · Εργαλεία ιδρυτή', href: '/founder-tools?tab=pitch' },
+  legalChecklist: { kind: 'legal', en: 'Compliance checklist · Legal Hub', el: 'Λίστα συμμόρφωσης · Νομικά', href: '/legal' },
+  focus: { kind: 'tasks', en: 'Focus timer · Workspace', el: 'Χρονόμετρο συγκέντρωσης · Χώρος εργασίας', href: '/workspace' },
+  searches: { kind: 'people', en: 'Saved searches · Discovery', el: 'Αποθηκευμένες αναζητήσεις · Εξερεύνηση', href: '/discovery' },
 } satisfies Record<string, AssistantSource>;
 
 const TOOL_SOURCES: Record<string, AssistantSource[]> = {
@@ -218,6 +243,20 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   builder: [SOURCE.builder],
   readiness: [SOURCE.readiness],
   'studio-modal': [SOURCE.people, SOURCE.round],
+  pitch: [SOURCE.pitch],
+  'pitch-set': [SOURCE.pitch],
+  'legal-checklist': [SOURCE.legalChecklist],
+  'legal-check': [SOURCE.legalChecklist],
+  focus: [SOURCE.focus],
+  'saved-searches': [SOURCE.searches],
+  'investor-add': [SOURCE.round],
+  'investor-move': [SOURCE.round],
+  'investor-next': [SOURCE.round],
+  'investor-email': [SOURCE.round, SOURCE.profile],
+  dd: [SOURCE.round],
+  'dd-set': [SOURCE.round],
+  'dd-share': [SOURCE.round],
+  audit: [SOURCE.profile, SOURCE.canvas, SOURCE.builder, SOURCE.pitch, SOURCE.legalChecklist, SOURCE.needs, SOURCE.milestones, SOURCE.round],
 };
 
 /** Pages the assistant recognises by name, in matching order — derived from the page registry. */
@@ -250,6 +289,13 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/round', en: 'Read the fundraising round', el: 'Διάβασε τον γύρο χρηματοδότησης' },
   { cmd: '/quiz', en: 'Open or recall the fit check', el: 'Άνοιξε ή θυμήσου το fit check' },
   { cmd: '/overdue', en: 'List overdue milestones', el: 'Δείξε εκπρόθεσμα ορόσημα' },
+  { cmd: '/pitch', en: 'Pitch deck status, or /pitch problem: text', el: 'Κατάσταση pitch deck, ή /pitch problem: κείμενο' },
+  { cmd: '/audit', en: 'Studio check: every area, what is missing, how to fix it', el: 'Έλεγχος studio: κάθε περιοχή, τι λείπει, πώς διορθώνεται' },
+  { cmd: '/pipeline', en: 'Investor CRM by stage; /investor add|move|next', el: 'CRM επενδυτών ανά στάδιο· /investor add|move|next' },
+  { cmd: '/dd', en: 'Due diligence: status, mark items, /dd share <investor>', el: 'Δέουσα επιμέλεια: κατάσταση, σημείωση, /dd share <επενδυτής>' },
+  { cmd: '/legal', en: 'Legal Hub compliance checklist', el: 'Λίστα συμμόρφωσης στα Νομικά' },
+  { cmd: '/focus', en: 'Focus time logged today', el: 'Χρόνος συγκέντρωσης σήμερα' },
+  { cmd: '/searches', en: 'Saved Discovery searches', el: 'Αποθηκευμένες αναζητήσεις' },
   { cmd: '/help', en: 'What this assistant can change', el: 'Τι μπορεί να αλλάξει αυτός ο βοηθός' },
 ];
 
@@ -2132,6 +2178,79 @@ function helpResult(): AssistantResult {
   };
 }
 
+/**
+ * One pass over every area the studio keeps — profile, canvas, builder, pitch,
+ * legal, needs, milestones, round — with the exact sentence that fixes each gap.
+ */
+export type AuditRow = { name: [string, string]; en: string; el: string; ratio: number; fix?: AssistantFollowUp; href: string };
+
+export function studioAudit(profile: AssistantProfile | null): { score: number; rows: AuditRow[]; gaps: AuditRow[] } {
+  const canvasRaw = readValue<Record<string, string>>(keys.canvas, {});
+  const canvas = isDemoData() ? { ...DEMO_CANVAS_FALLBACK, ...canvasRaw } : canvasRaw;
+  const canvasFilled = CANVAS_FIELDS.filter((f) => (canvas[f.key] || '').trim()).length;
+  const builderInputs = readBuilderInputs();
+  const builder = BUILDER_MODULES.map((m) => builderStatus(m.id, builderInputs));
+  const builderFilled = builder.reduce((sum, b) => sum + b.filled, 0);
+  const builderTotal = builder.reduce((sum, b) => sum + b.total, 0) || 1;
+  const pitch = effectivePitch();
+  const pitchDone = PITCH_SLIDES.filter((slide) => slideStatus(pitch[slide.key]) === 'complete').length;
+  const legal = legalProgress();
+  const profileFields = [profile?.headline, profile?.bio, profile?.location, (Array.isArray(profile?.skills) ? profile.skills.length : 0) >= 3 ? 'ok' : ''];
+  const profileFilled = profileFields.filter((v) => typeof v === 'string' && v.trim()).length;
+  const openNeeds = readNeeds().filter((n) => n.status === 'open').length;
+  const brief = platformBriefing(profile);
+  const round = brief.round;
+  const rows: AuditRow[] = [
+    { name: ['Profile', 'Προφίλ'], en: `Profile ${profileFilled}/4 (headline, bio, location, 3+ skills)`, el: `Προφίλ ${profileFilled}/4 (τίτλος, bio, τοποθεσία, 3+ δεξιότητες)`, ratio: profileFilled / 4, href: '/profile', fix: { en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' } },
+    { name: ['Lean Canvas', 'Lean Canvas'], en: `Lean Canvas ${canvasFilled}/${CANVAS_FIELDS.length}`, el: `Lean Canvas ${canvasFilled}/${CANVAS_FIELDS.length}`, ratio: canvasFilled / CANVAS_FIELDS.length, href: '/workspace', fix: { en: '/canvas', el: '/canvas' } },
+    { name: ['Startup Builder', 'Startup Builder'], en: `Startup Builder ${builderFilled}/${builderTotal} answers`, el: `Startup Builder ${builderFilled}/${builderTotal} απαντήσεις`, ratio: builderFilled / builderTotal, href: '/founder-tools?step=1', fix: { en: '/builder', el: '/builder' } },
+    { name: ['Pitch deck', 'Pitch deck'], en: `Pitch deck ${pitchDone}/${PITCH_SLIDES.length} slides`, el: `Pitch deck ${pitchDone}/${PITCH_SLIDES.length} διαφάνειες`, ratio: pitchDone / PITCH_SLIDES.length, href: '/founder-tools?tab=pitch', fix: { en: '/pitch', el: '/pitch' } },
+    { name: ['Legal checklist', 'Νομική λίστα'], en: `Legal checklist ${legal.done}/${legal.total}`, el: `Νομική λίστα ${legal.done}/${legal.total}`, ratio: legal.done / legal.total, href: '/legal', fix: { en: '/legal', el: '/legal' } },
+    { name: ['Need cards', 'Κάρτες ανάγκης'], en: `Open need cards ${openNeeds}`, el: `Ανοιχτές κάρτες ανάγκης ${openNeeds}`, ratio: openNeeds > 0 ? 1 : 0, href: NEED_HREF, fix: { en: 'Draft a need card for a co-founder', el: 'Γράψε κάρτα ανάγκης για συνιδρυτή' } },
+    { name: ['Milestones', 'Ορόσημα'], en: `Overdue milestones ${brief.overdue.length}`, el: `Εκπρόθεσμα ορόσημα ${brief.overdue.length}`, ratio: brief.overdue.length === 0 ? 1 : 0, href: '/milestones', fix: { en: 'What is overdue?', el: 'Τι είναι εκπρόθεσμο;' } },
+    { name: ['Fundraising', 'Χρηματοδότηση'], en: `Round ${round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0}% committed`, el: `Γύρος ${round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0}% δεσμευμένος`, ratio: round.targetAmount > 0 ? Math.min(1, round.committedAmount / round.targetAmount) : 0, href: '/fundraising', fix: { en: '/round', el: '/round' } },
+  ];
+  const score = Math.round((rows.reduce((sum, row) => sum + row.ratio, 0) / rows.length) * 100);
+  const gaps = rows.filter((row) => row.ratio < 1).sort((a, b) => a.ratio - b.ratio);
+  return { score, rows, gaps };
+}
+
+function studioAuditResult(profile: AssistantProfile | null): AssistantResult {
+  const { score, rows, gaps } = studioAudit(profile);
+  const mark = (ratio: number) => (ratio >= 1 ? '✓' : ratio > 0 ? '…' : '○');
+  return {
+    tool: 'audit',
+    en: `Studio check: ${score}% complete across ${rows.length} areas — read from the same lists the pages use.\n${rows.map((row) => `${mark(row.ratio)} ${row.en}`).join('\n')}${gaps.length ? `\nWeakest first: ${gaps.slice(0, 3).map((g) => g.name[0]).join(', ')}.` : '\nEverything is in place.'}`,
+    el: `Έλεγχος studio: ${score}% πληρότητα σε ${rows.length} περιοχές — από τις ίδιες λίστες με τις σελίδες.\n${rows.map((row) => `${mark(row.ratio)} ${row.el}`).join('\n')}${gaps.length ? `\nΠρώτα τα πιο αδύναμα: ${gaps.slice(0, 3).map((g) => g.name[1]).join(', ')}.` : '\nΌλα είναι στη θέση τους.'}`,
+    href: '/assistant',
+    links: gaps.slice(0, 3).map((g) => ({ href: g.href, en: `Open ${g.name[0]}`, el: `Άνοιγμα: ${g.name[1]}` })),
+    followUps: gaps.slice(0, 3).map((g) => g.fix!).filter(Boolean),
+  };
+}
+
+function emailContext(profile: AssistantProfile | null) {
+  const round = readRound();
+  const pct = round.targetAmount > 0 ? Math.round((round.committedAmount / round.targetAmount) * 100) : 0;
+  const local = readValue<{ company?: string }>(keys.profileLocal, {});
+  const demo = isDemoData();
+  const dd = ddProgress();
+  return {
+    venture: local.company || (demo ? DEMO_VENTURE.name : ''),
+    oneLiner: demo ? DEMO_VENTURE.oneLiner : profile?.headline ?? '',
+    founder: profile?.fullName ?? '',
+    round: round.targetAmount > 0 ? `We are raising ${round.targetAmount >= 1e6 ? `$${(round.targetAmount / 1e6).toFixed(1).replace(/\.0$/, '')}M` : `$${Math.round(round.targetAmount / 1000)}k`} on a ${round.instrument}${round.valuationCap ? ` ($${(round.valuationCap / 1e6).toFixed(1)}M cap)` : ''}, ${pct}% committed.` : '',
+    dd: `${dd.done}/${dd.total} items ready`,
+  };
+}
+
+function isAuditQuery(folded: string): boolean {
+  return /^\/(audit|check|health)\b/.test(folded)
+    || /\b(audit|check|review)\s+(my\s+)?(studio|workspace|platform|everything)\b/.test(folded)
+    || /\bstudio\s+(health|check|completeness)\b/.test(folded)
+    || /\bwhat\s+is\s+(still\s+)?(incomplete|missing)\b/.test(folded)
+    || /(ελεγχ|πληροτητ).{0,15}(studio|πλατφορμ|ολων)|τι λειπει απο το studio/.test(folded);
+}
+
 const CANVAS_FIELDS: { key: string; en: string; el: string; aliases: string[] }[] = [
   { key: 'problem', en: 'Problem', el: 'Πρόβλημα', aliases: ['problem', 'προβλημα', 'πρόβλημα'] },
   { key: 'solution', en: 'Solution', el: 'Λύση', aliases: ['solution', 'λυση', 'λύση'] },
@@ -2851,6 +2970,28 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     return readinessResult(query, propose);
   }
 
+  const ddShare = parseDDShare(query);
+  if (ddShare) return ddShareResult(ddShare, propose, proposalResult);
+  const ddSet = parseDDSet(query);
+  if (ddSet) return ddSetResult(ddSet, propose, proposalResult);
+  if (isDDReadQuery(folded)) return ddReadResult();
+  const investorEmail = parseInvestorEmail(query);
+  if (investorEmail) return investorEmailResult(investorEmail, emailContext(profile));
+  if (isAuditQuery(folded)) return studioAuditResult(profile);
+  // Investor pipeline and follow-ups (services/assistantPipeline): before the pitch,
+  // round and people routes, because investors are named like people and a next
+  // step may mention "the pitch deck".
+  const pipelineHit = routePipeline(query, propose);
+  if (pipelineHit) return pipelineHit;
+  const pitchSet = parsePitchSet(query);
+  if (pitchSet) return pitchSetResult(pitchSet, propose, proposalResult);
+  if (isPitchQuery(folded)) return pitchReadResult();
+  const legalToggle = parseLegalToggle(query);
+  if (legalToggle) return legalToggleResult(legalToggle, propose, proposalResult);
+  if (isLegalChecklistQuery(folded)) return legalChecklistResult();
+  if (isFocusQuery(folded)) return focusResult();
+  if (isSavedSearchQuery(folded)) return savedSearchesResult();
+
   const roundSet = parseRoundSet(query);
   if (roundSet) return roundSetResult(roundSet, propose);
 
@@ -2861,11 +3002,6 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (profileSet) return profileSetResult(profileSet, profile, propose);
 
   if (parseNotificationsRead(query)) return notificationsReadResult(propose);
-
-  // Investor pipeline and follow-ups (services/assistantPipeline): before "next step"
-  // and the people routes, because investors are named like people.
-  const pipelineHit = routePipeline(query, propose);
-  if (pipelineHit) return pipelineHit;
 
   const person = namedPerson(query);
   if (person && hasStem(folded, 'why', 'γιατι') && hasStem(folded, 'match', 'ταιριαζ')) return matchDetailResult(profile, person);
@@ -2924,7 +3060,8 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(legal|template|nda)\b/.test(folded) || hasStem(folded, 'νομικ')) return legalResult();
   if (/\b(courses?|learning|resources?)\b/.test(folded) || hasStem(folded, 'μαθημ', 'πορο')) return resourcesResult();
   if (/\b(milestones?|overdue|due)\b/.test(folded) || hasStem(folded, 'οροσημ', 'εκπροθεσμ')) return milestonesResult(query, propose);
-  if (/\b(pipeline|funnel|due diligence|term sheet)\b/.test(folded)) return routePipeline('show my pipeline', propose)!;
+  if (/\bdue diligence\b/.test(folded) || hasStem(folded, 'δεουσα επιμελεια')) return ddReadResult();
+  if (/\b(pipeline|funnel|term sheet)\b/.test(folded)) return routePipeline('show my pipeline', propose)!;
   if (/\b(rounds?|raise|runway|valuation)\b/.test(folded) || hasStem(folded, 'γυρο', 'χρηματοδ', 'επενδυτ')) return roundResult();
   if (/\b(today|status|brief|next)\b/.test(folded) || hasStem(folded, 'τι εκκρεμ', 'επομεν', 'σημεριν', 'κατασταση', 'συνοψη')) return briefingResult(profile);
   // "Help me design a plan" is a request for the model, not for the capability list.

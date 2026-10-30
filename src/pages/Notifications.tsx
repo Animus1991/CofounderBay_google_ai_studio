@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, MessageSquare, UserPlus, Zap, Trophy, Rocket, Check, Trash2, Award, Calendar, UserCheck } from 'lucide-react';
+import { Bell, BellRing, MessageSquare, UserPlus, Zap, Trophy, Rocket, Check, Trash2, Award, Calendar, UserCheck, AlarmClock } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import PageShell from '../components/ui/PageShell';
@@ -72,6 +72,7 @@ export default function Notifications() {
       case 'system': return <Zap className={iconCls} />;
       case 'event': return <Calendar className={iconCls} />;
       case 'community': return <Rocket className={iconCls} />;
+      case 'investor': return <AlarmClock className="w-4 h-4 text-red-500" />;
       default: return <Bell className={iconCls} />;
     }
   };
@@ -87,14 +88,14 @@ export default function Notifications() {
     <PageShell
       sample={isDemoMode}
       title={t('Notifications', 'Ειδοποιήσεις')}
-      description={t('Requests, messages and endorsements from members, plus your own activity.', 'Αιτήματα, μηνύματα και συστάσεις από μέλη, μαζί με τη δική σου δραστηριότητα.')}
+      description={t('Requests, messages and your activity.', 'Αιτήματα, μηνύματα και η δραστηριότητά σου.')}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <AskLink prompt="show my studio activity" />
-          <Button variant="outline" size="sm" onClick={feed.markAllRead} disabled={unreadCount === 0}>
+          <Button variant="outline" size="sm" data-testid="notifications-mark-all-read" onClick={feed.markAllRead} disabled={unreadCount === 0}>
             <Check className="w-4 h-4 mr-2" /> {t('Mark all as read', 'Σήμανση όλων ως αναγνωσμένων')}
           </Button>
-          <Button type="button" variant="ghost" size="sm" className="text-stone-400 hover:text-red-600" onClick={feed.clearAll} disabled={feed.items.length === 0}>
+          <Button type="button" variant="ghost" size="sm" className="text-stone-400 hover:text-red-600" data-testid="notifications-clear-all" onClick={feed.clearAll} disabled={feed.items.length === 0}>
             <Trash2 className="w-4 h-4 mr-2" /> {t('Clear all', 'Διαγραφή όλων')}
           </Button>
         </div>
@@ -128,6 +129,7 @@ export default function Notifications() {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
+                  data-testid={`notification-row-${notification.id}`}
                   // The whole row opens its context (not only the title words); the row's own buttons stop propagation.
                   onClick={(e) => {
                     if (!notification.actionUrl) return;
@@ -176,7 +178,7 @@ export default function Notifications() {
 
                   <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
                     {!notification.read && (
-                      <Button type="button" variant="ghost" size="icon" aria-label={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} title={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} className="h-9 w-9 text-stone-400 hover:text-stone-900" onClick={() => feed.markRead(notification.id)}>
+                      <Button type="button" variant="ghost" size="icon" aria-label={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} title={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} className="h-9 w-9 text-stone-400 hover:text-stone-900" data-testid={`notification-mark-read-${notification.id}`} onClick={() => feed.markRead(notification.id)}>
                         <Check className="w-4 h-4" />
                       </Button>
                     )}
@@ -187,6 +189,7 @@ export default function Notifications() {
                       aria-label={t('Delete', 'Διαγραφή')}
                       title={t('Delete', 'Διαγραφή')}
                       className="h-9 w-9 text-stone-400 hover:text-red-600"
+                      data-testid={`notification-delete-${notification.id}`}
                       onClick={() => feed.remove(notification.id)}
                     >
                       <Trash2 className="w-4 h-4" />

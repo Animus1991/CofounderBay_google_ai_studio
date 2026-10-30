@@ -185,7 +185,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
   <PageShell
    sample={isDemoMode}
    title={t("Programs", "Προγράμματα")}
-   description={t("Curated accelerators, grants, and strategic opportunities for every stage.", "Επιλεγμένοι επιταχυντές, επιχορηγήσεις και στρατηγικές ευκαιρίες για κάθε στάδιο.")}
+   description={t('Accelerators and grants for your stage.', 'Επιταχυντές και επιχορηγήσεις για το στάδιό σου.')}
    actions={
     <Button
      type="button"
@@ -287,7 +287,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
      <Card className="rounded-2xl border-stone-100 p-4" contentClassName="space-y-3">
       <div>
        <h4 className="text-sm font-semibold text-stone-900">{t('Program Finder', 'Εύρεση προγραμμάτων')}</h4>
-       <p className="text-xs text-stone-400 mt-0.5">{t('AI-matched to your stage, industry, and goals.', 'Με AI, με βάση το στάδιο, τον κλάδο και τους στόχους σου.')}</p>
+       <p className="text-xs text-stone-400 mt-0.5">{t('Matched to your stage and goals', 'Με βάση το στάδιο και τους στόχους σου')}</p>
       </div>
       <div className="p-3 bg-stone-50 rounded-xl border border-stone-100 flex items-center gap-2.5">
        <div className="w-7 h-7 rounded-lg bg-stone-900 flex items-center justify-center text-white shrink-0">

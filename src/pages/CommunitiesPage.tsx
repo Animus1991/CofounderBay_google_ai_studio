@@ -227,7 +227,7 @@ export default function CommunitiesPage() {
   <PageShell
    sample={isDemoMode}
    title={t('Communities', 'Κοινότητες')}
-   description={t('Connect with like-minded founders. Share insights, ask questions, and grow together.', 'Συνδέσου με ιδρυτές που σκέφτονται σαν εσένα. Μοιράσου γνώσεις, κάνε ερωτήσεις και εξελίξου μαζί τους.')}
+   description={t('Ask, share and learn with other founders.', 'Ρώτα, μοιράσου και μάθε με άλλους ιδρυτές.')}
    actions={
     <button
      type="button"

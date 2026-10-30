@@ -1,3 +1,4 @@
+import { addFocusSession, readFocusToday, todayKey } from '../lib/focusStats';
 import {
  useState,
  useEffect,
@@ -66,7 +67,6 @@ type TabType = "Dashboard" | "Builder" | "Canvas" | "Milestones" | "Calendar";
 type TaskView = "list" | "kanban";
 type FocusMode = "work" | "shortBreak" | "longBreak";
 
-type FocusStats = { date: string; seconds: number; sessions: number };
 type CanvasDraft = Record<string, string>;
 type AssetRow = { name: string; size: string; url?: string; path?: string };
 
@@ -80,8 +80,6 @@ const CANVAS_SECTIONS = [
 
 // Demo-only canvas content — real members start from their own draft. One sample story: data/demoVenture.
 const DEMO_CANVAS: CanvasDraft = { ...SAMPLE_CANVAS };
-
-const todayKey = () => new Date().toISOString().slice(0, 10);
 
 export default function Workspace({ user }: WorkspaceProps) {
  const t = useT();
@@ -97,10 +95,7 @@ export default function Workspace({ user }: WorkspaceProps) {
  const [focusTimer, setFocusTimer] = useState(25 * 60); // 25 minutes in seconds
  const [focusState, setFocusState] = useState<FocusMode>("work");
  const [isTimerRunning, setIsTimerRunning] = useState(false);
- const focusStats = useStored(() => {
-  const stats = readValue<FocusStats>(keys.focus, { date: todayKey(), seconds: 0, sessions: 0 });
-  return stats.date === todayKey() ? stats : { date: todayKey(), seconds: 0, sessions: 0 };
- }, [keys.focus]);
+ const focusStats = useStored(readFocusToday, [keys.focus]);
  useEffect(() => {
   if (!isTimerRunning || focusTimer <= 0) return;
   const interval = setInterval(() => {
@@ -108,10 +103,7 @@ export default function Workspace({ user }: WorkspaceProps) {
     if (prev <= 1) {
      setIsTimerRunning(false);
      // A finished work block is a real recorded session.
-     if (focusState === 'work') {
-      const stats = focusStats.date === todayKey() ? focusStats : { date: todayKey(), seconds: 0, sessions: 0 };
-      writeValue(keys.focus, { date: todayKey(), seconds: stats.seconds + 25 * 60, sessions: stats.sessions + 1 });
-     }
+     if (focusState === 'work') addFocusSession(25);
      return 0;
     }
     return prev - 1;
@@ -274,7 +266,7 @@ export default function Workspace({ user }: WorkspaceProps) {
   <PageShell
    sample={isDemoMode}
    title={t("Venture Builder", "Χώρος εργασίας")}
-   description={t("Your startup's central workspace — tasks, canvas, milestones, and calendar.", "Ο κεντρικός χώρος εργασίας του startup — εργασίες, canvas, ορόσημα και ημερολόγιο.")}
+   description={t('Tasks, canvas, milestones and calendar.', 'Εργασίες, canvas, ορόσημα και ημερολόγιο.')}
    maxWidth="full"
   >
    {/* Section tabs sit under the title, like Founder Tools and Fundraising. */}
@@ -703,7 +695,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           <Plus className="w-3.5 h-3.5 mr-1.5" /> {uploading ? t('Uploading…', 'Μεταφορτώνεται…') : t("Upload file", "Μεταφόρτωση αρχείου")}
           <input type="file" disabled={uploading} className="sr-only" onChange={(e) => { void addAsset(e.target.files?.[0] ?? null); e.target.value = ''; }} />
         </label>
-         {isDemoMode && <p className="text-xs text-stone-500">{t('Demo: only the file name is kept; no file is uploaded.', 'Demo: διατηρείται μόνο το όνομα· δεν μεταφορτώνεται αρχείο.')}</p>}
+         {isDemoMode && <p className="text-xs text-stone-500">{t('Demo keeps the file name only.', 'Στο demo κρατιέται μόνο το όνομα.')}</p>}
          {uploadError && <div className="space-y-2">
           <p role="alert" className="text-xs text-red-700">{uploadError}</p>
           <p className="text-xs text-stone-500 break-words">{failedUpload?.name}</p>

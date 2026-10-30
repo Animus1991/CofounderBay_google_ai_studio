@@ -36,6 +36,7 @@ import { topPages } from './lib/usage';
 // First-paint pages load with the app; every other page is its own chunk (see lib/lazyPage).
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+const DueDiligenceSharePage = lazyPage('DueDiligenceSharePage', () => import('./pages/DueDiligenceSharePage'));
 import SignUpPage from './pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFound';
@@ -121,13 +122,14 @@ function demoProfile(): UserProfile {
     uid: DEMO_USER_ID,
     fullName: 'Demo User',
     email: 'demo@cofounderbay.com',
-    bio: 'Technical founder exploring CoFounderBay with sample data. Nothing here is saved to a server.',
-    headline: 'Technical founder building a FinTech product',
+    bio: 'Technical co-founder of EcoFlow Systems — IoT bio-filters that let buildings reuse their grey water. Raising a pre-seed SAFE and looking for a commercial co-founder.',
+    headline: 'Technical founder building EcoFlow Systems (water-tech)',
+    company: 'EcoFlow Systems',
     roles: [UserRole.FOUNDER, UserRole.ADMIN],
-    skills: ['React', 'TypeScript', 'Node.js'],
+    skills: ['React', 'TypeScript', 'Node.js', 'IoT'],
     lookingFor: ['Sales', 'Growth', 'Fundraising'],
-    interests: ['FinTech', 'SaaS', 'AI'],
-    industry: 'FinTech',
+    interests: ['CleanTech', 'Water', 'SaaS', 'AI'],
+    industry: 'CleanTech',
     location: 'Athens, Greece',
     timezone: 'Europe/Athens',
     stage: 'Pre-seed',
@@ -513,6 +515,7 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<HomeGate />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/dd/:token" element={<DueDiligenceSharePage />} />
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/quiz" element={<FitCheck />} />
 

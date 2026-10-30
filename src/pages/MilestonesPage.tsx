@@ -338,7 +338,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
   <PageShell
    sample={isDemoMode}
    title={t("Milestones", "Ορόσημα")}
-   description={t("Track your progress, set goals, and celebrate achievements.", "Παρακολούθησε την πρόοδο, βάλε στόχους και γιόρτασε τα επιτεύγματα.")}
+   description={t('Goals, progress and wins.', 'Στόχοι, πρόοδος και επιτυχίες.')}
    actions={
     <div className="flex flex-wrap items-center gap-2">
      <AskLink prompt="What is overdue?">{t("Ask assistant", "Ρώτα τον βοηθό")}</AskLink>

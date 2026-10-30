@@ -1132,7 +1132,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     </div>
     <h2 className="text-base font-semibold text-stone-900 mb-2 tracking-tight">{t("Your conversations", "Οι συνομιλίες σου")}</h2>
     <p className="text-sm text-stone-500 max-w-sm mx-auto mb-8 leading-relaxed">
-     {t("Message co-founders, mentors and investors, share files, start a call, or ask an AI specialist.", "Στείλε μήνυμα σε συνιδρυτές, μέντορες και επενδυτές, μοιράσου αρχεία, ξεκίνα κλήση ή ρώτησε έναν ειδικό AI.")}
+     {t('Messages, files, calls and AI specialists.', 'Μηνύματα, αρχεία, κλήσεις και ειδικοί AI.')}
     </p>
     <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
      {[
@@ -1699,7 +1699,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <div className="max-w-2xl mx-auto">
       <h2 className="text-base font-semibold text-stone-900 mb-4 tracking-tight">{t("Specialist conversations", "Συνομιλίες με ειδικούς")}</h2>
       {aiConversations.length === 0 ? (
-       <p className="text-sm text-stone-500 text-center py-12">{t("No conversations with specialists yet. Open a specialist chat from the list to start one.", "Δεν υπάρχουν συνομιλίες με ειδικούς ακόμη. Άνοιξε συνομιλία με ειδικό από τη λίστα για να ξεκινήσεις.")}</p>
+       <p className="text-sm text-stone-500 text-center py-12">{t('No specialist conversations yet.', 'Καμία συνομιλία με ειδικούς ακόμη.')}</p>
       ) : (
        <div className="space-y-2">
         {aiConversations.map((conv) => {

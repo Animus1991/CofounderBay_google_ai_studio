@@ -8,7 +8,7 @@ describe('demoStats', () => {
  });
 
  it('readiness delta is last minus previous', () => {
-  expect(demoReadinessDelta()).toBe(13);
+  expect(demoReadinessDelta()).toBe(8);
  });
 
  it('activity deltas are signed percents of the previous day', () => {

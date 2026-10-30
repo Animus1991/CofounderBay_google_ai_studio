@@ -6,6 +6,9 @@ import {
  useEffect } from "react";
 import { FollowUpEditor } from '../components/fundraising/FollowUp';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { InvestorPipelineBoard } from '../components/InvestorPipelineBoard';
+import { DueDiligenceTracker } from '../components/DueDiligenceTracker';
+import { readDD } from '../lib/dueDiligence';
 import { motion,
  AnimatePresence } from "motion/react";
 import {
@@ -54,7 +57,7 @@ import FactLine from "../components/ui/FactLine";
 import { User } from "../types";
 import { cn } from "../lib/utils";
 import { labelOf } from "../lib/labels";
-import { useT } from "../lib/language";
+import { useT, getLang } from "../lib/language";
 import { formatDate } from "../lib/dates";
 import { addRoomFile, addSession, followUps, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
@@ -165,9 +168,9 @@ export default function Fundraising({ user }: FundraisingProps) {
   const names = new Set(extraRoom.map((file) => file.name));
   return [...extraRoom, ...seedRoomFiles().filter((file) => !names.has(file.name))];
  }, [extraRoom, isDemoMode]);
- // The tab lives in the URL (?tab=investors), so the assistant, the help and a shared link open the right one.
+ // The tab lives in the URL (?tab=crm), so the assistant, the help and a shared link open the right one.
  const [tabParams, setTabParams] = useSearchParams();
- const FUNDRAISING_TABS = ["tracker", "investors", "programs", "opportunities"] as const;
+ const FUNDRAISING_TABS = ["tracker", "crm", "dd", "investors", "programs", "opportunities"] as const;
  type FundraisingTab = (typeof FUNDRAISING_TABS)[number];
  const rawTab = tabParams.get("tab");
  const activeTab: FundraisingTab = FUNDRAISING_TABS.includes(rawTab as FundraisingTab) ? (rawTab as FundraisingTab) : "tracker";
@@ -200,6 +203,7 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  usePageControls(() => [
   { id: 'show-tracker', en: 'Show tracker', el: 'Εμφάνιση παρακολούθησης', run: () => setActiveTab('tracker') },
+  { id: 'show-crm', en: 'Show investor CRM', el: 'Εμφάνιση CRM επενδυτών', run: () => setActiveTab('crm') },
   { id: 'show-investors', en: 'Show investors', el: 'Εμφάνιση επενδυτών', run: () => setActiveTab('investors') },
   { id: 'show-programs', en: 'Show programs', el: 'Εμφάνιση προγραμμάτων', run: () => setActiveTab('programs') },
   { id: 'show-opportunities', en: 'Show opportunities', el: 'Εμφάνιση ευκαιριών', run: () => setActiveTab('opportunities') },
@@ -212,9 +216,9 @@ export default function Fundraising({ user }: FundraisingProps) {
  const [showDocumentRoom, setShowDocumentRoom] = useState(false);
  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
- // The pipeline lives on the account's round — one source for the table, the funnel, the CRM,
- // the follow-ups and the assistant. The sample round brings its own (data/demoCatalog);
- // a real account starts empty and fills it from the Investors tab or the assistant.
+ // The pipeline lives on the account's round — one source for the table, the CRM board, the funnel,
+ // the follow-ups, the due-diligence card and the assistant. The sample round brings its own
+ // (data/demoCatalog); a real account starts empty and fills it from the Investors tab, the CRM or the assistant.
  const pipeline: RoundInvestor[] = round.pipeline ?? [];
  const due = useMemo(() => followUps(round), [round]);
  const stageIndex = (stage: string) => Math.max(0, PIPELINE_STAGES.indexOf(stage as (typeof PIPELINE_STAGES)[number]));
@@ -313,19 +317,12 @@ export default function Fundraising({ user }: FundraisingProps) {
   { name: "Founders", shares: 10000000, pct: 100, color: "bg-stone-900" },
  ];
 
- // A real account's checklist fills from the documents it actually uploaded; the demo keeps its seeded state.
- const DD_RULES: { id: string; label: string; match: RegExp; demoStatus: string }[] = [
-  { id: "dd1", label: "Incorporation docs",      match: /incorp|articles|certificate|bylaws/i,        demoStatus: "complete" },
-  { id: "dd2", label: "IP assignments",          match: /\bip\b|assign|invention/i,                    demoStatus: "complete" },
-  { id: "dd3", label: "Financial projections",   match: /financ|projection|model|forecast|p&l/i,       demoStatus: "pending" },
-  { id: "dd4", label: "Cap table audit",         match: /cap.?table|safe|equity/i,                     demoStatus: "pending" },
-  { id: "dd5", label: "Key contracts",           match: /contract|agreement|msa|nda|offer/i,           demoStatus: "pending" },
- ];
- const dueDiligenceItems = DD_RULES.map((rule) => ({
-  id: rule.id,
-  label: rule.label,
-  status: isDemoMode ? rule.demoStatus : roomFiles.some((file) => rule.match.test(file.name)) ? 'complete' : 'pending',
- }));
+ // The mini card reads the same tracker as Fundraising → Due diligence and the assistant
+ // (lib/dueDiligence: 12 standard items; uploaded data-room files are offered as evidence there).
+ const ddItems = useStored(readDD, [keys.dueDiligence]);
+ const dueDiligenceItems = [...ddItems]
+  .sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'))
+  .map((item) => ({ id: item.id, label: getLang() === 'el' ? item.el : item.en, status: item.status === 'done' ? 'complete' : 'pending' }));
 
  const emailTemplates = [
   { id: "et1", name: "Cold Intro", subject: "Introduction: {{startup}} — {{sector}}" },
@@ -381,6 +378,8 @@ export default function Fundraising({ user }: FundraisingProps) {
 
  const tabLabel: Record<typeof activeTab, string> = {
   tracker: t("Tracker", "Παρακολούθηση"),
+  crm: t("CRM", "CRM"),
+  dd: t("Due diligence", "Δέουσα επιμέλεια"),
   investors: t("Investors", "Επενδυτές"),
   programs: t("Programs", "Προγράμματα"),
   opportunities: t("Opportunities", "Ευκαιρίες"),
@@ -465,7 +464,7 @@ export default function Fundraising({ user }: FundraisingProps) {
   <PageShell
    sample={isDemoMode}
    title={t("Fundraising", "Χρηματοδότηση")}
-   description={t("Track your round, discover investors, and apply for programs.", "Παρακολούθησε τον γύρο, βρες επενδυτές και κάνε αίτηση σε προγράμματα.")}
+   description={t('Round, investors, due diligence and programs.', 'Γύρος, επενδυτές, δέουσα επιμέλεια και προγράμματα.')}
    maxWidth="full"
    actions={
     <button
@@ -484,9 +483,10 @@ export default function Fundraising({ user }: FundraisingProps) {
 
     {/* Tab Bar */}
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
-     {(["tracker", "investors", "programs", "opportunities"] as const).map((tab) => (
+     {(["tracker", "crm", "dd", "investors", "programs", "opportunities"] as const).map((tab) => (
       <button
        key={tab}
+       data-testid={`fundraising-tab-${tab}`}
        onClick={() => setActiveTab(tab)}
        className={cn(
         "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
@@ -630,8 +630,8 @@ export default function Fundraising({ user }: FundraisingProps) {
         {/* Due Diligence Checklist Mini */}
         <div className="pt-2 border-t border-stone-100 space-y-1.5">
          <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Due Diligence", "Δέουσα επιμέλεια")}</p>
-          <span className="text-xs text-emerald-600 font-semibold">
+          <button type="button" data-testid="fundraising-open-dd" onClick={() => setActiveTab('dd')} className="text-xs font-semibold text-stone-400 tracking-wide hover:text-stone-900 hover:underline">{t("Due Diligence", "Δέουσα επιμέλεια")} →</button>
+          <span className="text-xs text-emerald-600 font-semibold" data-testid="fundraising-dd-mini-count">
            {dueDiligenceItems.filter(i => i.status === "complete").length}/{dueDiligenceItems.length}
           </span>
          </div>
@@ -900,7 +900,7 @@ export default function Fundraising({ user }: FundraisingProps) {
          </table>
         </div>
         <div className="px-3 py-2.5 bg-stone-50 border-t border-stone-100 flex justify-center">
-         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-wide text-stone-400 hover:text-stone-900 min-h-11" onClick={() => setActiveTab('investors')}>
+         <Button variant="ghost" size="sm" className="text-xs font-semibold tracking-wide text-stone-400 hover:text-stone-900 min-h-11" data-testid="fundraising-open-crm" onClick={() => setActiveTab('crm')}>
           {t("View Full CRM", "Όλο το CRM")} <ChevronRight className="w-3 h-3 ml-1" />
          </Button>
         </div>
@@ -1071,6 +1071,9 @@ export default function Fundraising({ user }: FundraisingProps) {
     )}
 
     {/* ── INVESTORS TAB ───────────────────────────────────── */}
+    {activeTab === "crm" && <InvestorPipelineBoard />}
+    {activeTab === "dd" && <DueDiligenceTracker roomFileNames={roomFiles.map((file) => file.name)} ventureName={startupName} />}
+
     {activeTab === "investors" && (
      <div className="space-y-4">
       {/* Toolbar */}

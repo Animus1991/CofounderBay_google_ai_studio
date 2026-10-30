@@ -17,8 +17,8 @@ interface PageShellProps {
 /** The shared demo pill — identical markup the Dashboard header used. */
 export function SamplePill() {
  return (
-  <span className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-[0.3638rem] leading-snug">
-   <Both en="Demo — sample data" el="Demo — δοκιμαστικά δεδομένα" />
+  <span title="Sample data — nothing is saved to a server" className="text-xs font-medium text-stone-500 border border-stone-200 rounded-lg px-2.5 py-[0.3638rem] leading-snug">
+   <Both en="Demo" el="Demo" />
   </span>
  );
 }

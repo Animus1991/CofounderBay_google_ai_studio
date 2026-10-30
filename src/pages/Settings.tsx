@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import SaveStatus from "../components/ui/SaveStatus";
+import { InvestorDigestSettings } from "../components/InvestorDigestSettings";
 import AssistantReplyCard from "../components/AssistantReplyCard";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
@@ -370,8 +371,8 @@ export default function Settings() {
       title={t("Settings", "Ρυθμίσεις")}
       description={
         isDemoMode
-          ? t("Account, notifications, privacy and plan. In the demo, changes stay in this browser.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Στη δοκιμαστική λειτουργία, οι αλλαγές μένουν σε αυτόν τον περιηγητή.")
-          : t("Account, notifications, privacy and plan. Changes are saved to your account and follow you to every device.", "Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο. Οι αλλαγές αποθηκεύονται στον λογαριασμό σου και σε ακολουθούν σε κάθε συσκευή.")
+          ? t('Account, notifications, privacy and plan.', 'Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο.')
+          : t('Account, notifications, privacy and plan — synced to every device.', 'Λογαριασμός, ειδοποιήσεις, απόρρητο και πλάνο — σε κάθε συσκευή.')
       }
       actions={
         <div className="flex flex-wrap items-center gap-3">
@@ -677,6 +678,7 @@ export default function Settings() {
               />
             </div>
           </Card>
+          <InvestorDigestSettings />
         </div>
       )}
 

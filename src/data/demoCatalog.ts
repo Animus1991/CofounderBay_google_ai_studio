@@ -134,14 +134,14 @@ export function demoEventsLine(lang: Lang): string {
  * true to show.
  */
 export const DEMO_PIPELINE = [
-  { investorId: 'inv_1', name: 'Sequoia Capital', stage: 'Due Diligence', notes: 'Requested financial projections for 2027.', nextStep: 'Share the data room with the pilot report', nextStepEl: 'Μοιράσου το data room με την αναφορά του πιλότου', dueInDays: 2 },
-  { investorId: 'inv_2', name: 'Naval Ravikant', stage: 'Meeting', notes: 'Second meeting scheduled for next Tuesday.', nextStep: 'Send the per-building cost model', nextStepEl: 'Στείλε το μοντέλο κόστους ανά κτίριο', dueInDays: 5 },
-  { investorId: 'inv_3', name: 'Andreessen Horowitz', stage: 'Contacted', notes: 'Intro sent via Alex.', nextStep: 'Follow up on the intro', nextStepEl: 'Κάνε follow-up στη γνωριμία', dueInDays: -1 },
-  { investorId: 'inv_4', name: 'First Round Capital', stage: 'Identified', notes: 'Fits our thesis perfectly.', nextStep: 'Ask Alex for a warm intro', nextStepEl: 'Ζήτα από τον Alex μια γνωριμία', dueInDays: 9 },
-  { investorId: 'inv_5', name: 'Bessemer Venture', stage: 'Passed', notes: 'Too early for their current fund.', nextStep: '', nextStepEl: '', dueInDays: null },
+  { investorId: 'inv_1', name: 'Sequoia Capital', stage: 'Due Diligence', notes: 'Asked for the 2027 projections and the Athens pilot water-savings data.', checkSize: '$500k', nextStep: 'Share the data room with the pilot report', nextStepEl: 'Μοιράσου το data room με την αναφορά του πιλότου', dueInDays: 2 },
+  { investorId: 'inv_2', name: 'Naval Ravikant', stage: 'Meeting', notes: 'Second meeting next Tuesday — wants unit economics per building.', checkSize: '$100k', nextStep: 'Send the per-building cost model', nextStepEl: 'Στείλε το μοντέλο κόστους ανά κτίριο', dueInDays: 5 },
+  { investorId: 'inv_3', name: 'Andreessen Horowitz', stage: 'Contacted', notes: 'Intro sent via Alex; the climate partner is the right person.', checkSize: '$1M', nextStep: 'Follow up on the intro', nextStepEl: 'Κάνε follow-up στη γνωριμία', dueInDays: -1 },
+  { investorId: 'inv_4', name: 'First Round Capital', stage: 'Identified', notes: 'Backs hardware-plus-SaaS at pre-seed — fits EcoFlow.', checkSize: '$250k', nextStep: 'Ask Alex for a warm intro', nextStepEl: 'Ζήτα από τον Alex μια γνωριμία', dueInDays: 9 },
+  { investorId: 'inv_5', name: 'Bessemer Venture', stage: 'Passed', notes: 'Too early for their current fund; revisit after the pilot.', checkSize: '$2M', nextStep: 'Re-engage after 3 pilot sites', nextStepEl: 'Επανεπικοινωνία μετά από 3 πιλοτικά κτίρια', dueInDays: 60 },
 ] as const;
 
-/** The sample pipeline as stored rows, dated from today. */
+/** The sample pipeline as stored rows, dated from today (local day), with a first stage-history entry. */
 export function demoPipeline(lang: Lang = 'en', now: Date = new Date()) {
   const at = now.toISOString();
   return DEMO_PIPELINE.map((item) => ({
@@ -149,10 +149,11 @@ export function demoPipeline(lang: Lang = 'en', now: Date = new Date()) {
     name: item.name,
     stage: item.stage,
     notes: item.notes,
+    checkSize: item.checkSize,
     updatedAt: at,
-    ...(item.dueInDays === null
-      ? {}
-      : { nextStep: lang === 'el' ? item.nextStepEl : item.nextStep, nextDate: daysFromToday(item.dueInDays, now) }),
+    history: [{ at, stage: item.stage }],
+    nextStep: lang === 'el' ? item.nextStepEl : item.nextStep,
+    nextDate: daysFromToday(item.dueInDays, now),
   }));
 }
 

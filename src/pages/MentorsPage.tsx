@@ -145,7 +145,7 @@ export default function MentorsPage() {
  });
 
  return (
-  <PageShell sample={isDemoMode} title={t('Mentors', 'Μέντορες')} description={t('Connect with world-class mentors who have built and scaled successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει και αναπτύξει επιτυχημένες startups.')}>
+  <PageShell sample={isDemoMode} title={t('Mentors', 'Μέντορες')} description={t('Founders who have built and scaled.', 'Ιδρυτές που έχουν χτίσει και αναπτύξει.')}>
   <div className="space-y-6">
    {/* Hero Section */}
    <section aria-labelledby="mentor-hero-title" className="bg-stone-900 rounded-xl p-5 sm:p-6 relative overflow-hidden">

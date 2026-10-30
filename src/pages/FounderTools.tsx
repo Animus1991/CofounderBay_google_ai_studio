@@ -1,7 +1,7 @@
 import {
  useState,
  useCallback,
- useMemo } from "react";
+ useMemo, useEffect } from "react";
 import { useNavigate,
  useSearchParams } from 'react-router-dom';
 import { motion,
@@ -19,7 +19,6 @@ import {
  Lightbulb,
  Layers,
  X,
- Activity,
  Cpu,
  ShieldCheck,
  Zap,
@@ -172,6 +171,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   if (tab === 'dashboard') next.delete('tab');
   else next.set('tab', tab);
   if (tab !== 'builder') next.delete('step');
+  if (tab !== 'pitch') next.delete('slide');
   setSearchParams(next, { replace: true });
  };
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
@@ -216,7 +216,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
    description: savedStartup.description ?? (isDemoMode ? DEMO_VENTURE.description : ''),
    industry: savedStartup.industry ?? (isDemoMode ? ['Sustainability', 'CleanTech', 'PropTech'] : (profile?.industry ? [String(profile.industry)] : [])),
    stage: savedStartup.stage ?? profileStage ?? (isDemoMode ? FounderStage.PROTOTYPE : FounderStage.IDEA),
-   readinessScore: savedStartup.readinessScore ?? (isDemoMode ? 68 : 0),
+   readinessScore: savedStartup.readinessScore ?? (isDemoMode ? DEMO_VENTURE.readinessScore : 0),
    createdAt: savedStartup.createdAt ?? new Date().toISOString(),
    updatedAt: savedStartup.updatedAt ?? new Date().toISOString(),
    dimensions: savedStartup.dimensions,
@@ -311,7 +311,15 @@ export default function FounderTools({ user }: FounderToolsProps) {
   const step = Number(searchParams.get('step'));
   return step >= 1 && step <= BUILDER_MODULES.length ? step : 1;
  });
- const [pitchSlide, setPitchSlide] = useState(1);
+ const [pitchSlide, setPitchSlide] = useState(() => {
+  const index = PITCH_SLIDES.findIndex((slide) => slide.key === searchParams.get('slide'));
+  return index >= 0 ? index + 1 : 1;
+ });
+ const slideParam = searchParams.get('slide');
+ useEffect(() => {
+  const index = PITCH_SLIDES.findIndex((slide) => slide.key === slideParam);
+  if (index >= 0) setPitchSlide(index + 1);
+ }, [slideParam]);
 
  const builderContent: Record<number, { title: string; description: string; questions: string[] }> = Object.fromEntries(
   Object.entries(BUILDER_CONTENT).map(([id, content]) => [id, {
@@ -546,7 +554,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
   <>
   <PageShell
    title={t("Founder Tools", "Εργαλεία ιδρυτή")}
-   description={t("Diagnostic and construction suite — from concept to scale.", "Σουίτα διάγνωσης και κατασκευής — από την ιδέα στην κλίμακα.")}
+   description={t('From idea to scale.', 'Από την ιδέα στην κλίμακα.')}
    maxWidth="full"
    actions={
     <button
@@ -696,7 +704,6 @@ export default function FounderTools({ user }: FounderToolsProps) {
       <div className="flex items-center justify-between">
        <div>
         <h3 className="text-base font-semibold text-stone-900">{t("Readiness Index", "Δείκτης ετοιμότητας")}</h3>
-        <p className="text-sm text-stone-400 mt-0.5">{t("Venture assessment score", "Βαθμός αξιολόγησης")}</p>
        </div>
        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -771,11 +778,6 @@ export default function FounderTools({ user }: FounderToolsProps) {
        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
         <div>
          <h3 className="text-base font-semibold text-stone-900">{t("Startup Builder Progress", "Πρόοδος κατασκευής startup")}</h3>
-         <p className="text-sm text-stone-400 mt-0.5">{t("Complete core modules to optimize your venture architecture", "Ολοκλήρωσε τις βασικές ενότητες για να βελτιώσεις την αρχιτεκτονική του εγχειρήματος")}</p>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-stone-50 rounded-lg border border-stone-100">
-         <Activity className="w-3.5 h-3.5 text-stone-400" />
-         <span className="text-xs font-mono text-stone-500 tracking-wider">{t("System Active", "Σύστημα ενεργό")}</span>
         </div>
        </div>
 
@@ -826,7 +828,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
        <Card className="p-5 rounded-2xl border-stone-100 shadow-sm bg-white">
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Recent Achievements", "Πρόσφατα επιτεύγματα")}</h3>
-        <p className="text-xs text-stone-400 mb-4">{t("Verified venture milestones", "Επαληθευμένα ορόσημα")}</p>
+        <div className="mb-4" />
         <div className="space-y-3">
          {recentAchievements.length === 0 && (
           <p className="text-xs text-stone-500">{t('Complete a milestone and it shows here.', 'Ολοκλήρωσε ένα ορόσημο και θα εμφανιστεί εδώ.')}</p>
@@ -847,7 +849,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
        <Card className="p-5 rounded-2xl border-stone-100 shadow-sm bg-white">
         <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("Upcoming Deadlines", "Επερχόμενες προθεσμίες")}</h3>
-        <p className="text-xs text-stone-400 mb-4">{t("Critical ecosystem windows", "Κρίσιμα παράθυρα οικοσυστήματος")}</p>
+        <div className="mb-4" />
         <div className="space-y-3">
          {upcomingDeadlines.length === 0 && (
           <p className="text-xs text-stone-500">{t('No dated milestones ahead. Give a milestone a target date and it shows here.', 'Κανένα ορόσημο με ημερομηνία μπροστά. Δώσε ημερομηνία-στόχο σε ένα ορόσημο και θα εμφανιστεί εδώ.')}</p>

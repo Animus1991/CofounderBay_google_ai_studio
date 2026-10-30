@@ -94,11 +94,11 @@ describe('runAssistant', () => {
     expect(result.en).toMatch(/Networking Night/);
   });
 
-  it('reads the same pipeline the Fundraising page shows, with next steps, and links to its tracker', () => {
+  it('reads the same pipeline the Fundraising CRM shows, with check sizes and next steps, and links to it', () => {
     const result = runAssistant('show my pipeline', demo);
     expect(result.tool).toBe('pipeline');
-    expect(result.href).toBe('/fundraising?tab=tracker');
-    expect(result.en).toMatch(/Sequoia Capital · Due Diligence · next: Share the data room/);
+    expect(result.href).toBe('/fundraising?tab=crm');
+    expect(result.en).toMatch(/Sequoia Capital · Due Diligence · \$500k · next: Share the data room/);
     expect(result.en).toMatch(/1 follow-up overdue/);
   });
 

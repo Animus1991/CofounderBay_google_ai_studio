@@ -1,3 +1,4 @@
+import { LEGAL_CHECKLIST, isLegalDone, readLegalChecklist, setLegalItem } from '../lib/legalChecklist';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
@@ -20,7 +21,7 @@ import { cn } from "../lib/utils";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { useAuth } from "../App";
-import { addSession, keys, readValue, writeValue } from "../lib/localLists";
+import { addSession, keys } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { askAssistant } from "../lib/assistantBus";
@@ -59,13 +60,6 @@ function downloadTemplate(template: Template) {
  URL.revokeObjectURL(url);
 }
 
-const CHECKLIST_ITEMS = [
- { id: 'incorporate', en: 'Incorporate the legal entity', el: 'Σύσταση της νομικής οντότητας' },
- { id: 'ip', en: 'Assign all IP to the company', el: 'Ανάθεση όλης της IP στην εταιρεία' },
- { id: 'ein', en: 'Obtain Employer Identification Number (EIN)', el: 'Απόκτηση EIN' },
- { id: 'bank', en: 'Open a business bank account', el: 'Άνοιγμα επαγγελματικού λογαριασμού' },
- { id: 'vesting', en: 'Draft and sign Founder Vesting agreements', el: 'Σύνταξη και υπογραφή συμφωνιών vesting ιδρυτών' },
-];
 
 export default function LegalHub() {
  const t = useT();
@@ -76,11 +70,9 @@ export default function LegalHub() {
 
  // Per-account compliance checklist — real accounts start empty, demo gets a
  // head start. Persisted scoped to the account.
- const checklistDone = useStored(() => readValue<Record<string, boolean>>(keys.legalChecklist, {}), [keys.legalChecklist]);
- const toggleChecklist = (id: string) => {
-  writeValue(keys.legalChecklist, { ...checklistDone, [id]: !checklistDone[id] });
- };
- const isDone = (id: string) => checklistDone[id] === true || (isDemoMode && (id === 'incorporate' || id === 'ip'));
+ const checklistDone = useStored(readLegalChecklist, [keys.legalChecklist]);
+ const isDone = (id: string) => isLegalDone(id, checklistDone);
+ const toggleChecklist = (id: string) => { setLegalItem(id, !isDone(id)); };
 
  const bookOfficeHours = () => {
   const at = new Date();
@@ -130,7 +122,7 @@ export default function LegalHub() {
  };
 
  return (
-  <PageShell sample={isDemoMode} title={t("Legal Hub", "Νομικά")} description={t("Protect your startup with verified templates and legal resources.", "Προστάτεψε το startup σου με επαληθευμένα πρότυπα και νομικούς πόρους.")}>
+  <PageShell sample={isDemoMode} title={t("Legal Hub", "Νομικά")} description={t('Templates and your legal checklist.', 'Πρότυπα και η νομική σου λίστα.')}>
    <div className="space-y-6">
     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
      {categories.map((cat) => (
@@ -184,7 +176,7 @@ export default function LegalHub() {
      {/* Legal Checklist */}
      <Card title={t("Compliance Checklist", "Λίστα συμμόρφωσης")} subtitle={t("Tick off each step as you complete it — saved to your account", "Τσέκαρε κάθε βήμα όπως το ολοκληρώνεις — αποθηκεύεται στον λογαριασμό σου")}>
       <div className="space-y-4">
-       {CHECKLIST_ITEMS.map((item) => (
+       {LEGAL_CHECKLIST.map((item) => (
         <button
          key={item.id}
          type="button"
