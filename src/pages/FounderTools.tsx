@@ -63,7 +63,7 @@ import { DEMO_VENTURE } from "../data/demoVenture";
 import { monthFromToday, shortDay } from "../data/demoClock";
 import { formatDate } from "../lib/dates";
 import { useStored } from "../lib/useStored";
-import { pinnedTools as pinnedToolsEntity, pushRecent, recentTools, startupRecord, useEntity, type StartupRecord } from "../lib/entities";
+import { pinnedTools as pinnedToolsEntity, pushRecent, recentTools, startupRecord, useEntity } from "../lib/entities";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
 import { useUIStore } from "../stores/useUIStore";
@@ -72,6 +72,9 @@ import { PITCH_SLIDES, draftPitch, effectivePitch, pitchMarkdown, slideStatus, w
 import { FOUNDER_TEMPLATES } from "../data/templates";
 import { copyText, downloadCsv, downloadWord, markdownToHtml, openPrintable, slugify } from "../lib/download";
 import { useLanguage } from "../lib/language";
+import { currentReadiness, readinessStatus, useReadiness } from "../lib/readiness";
+import FounderToolPanel from "../components/founderTools/FounderToolPanel";
+import { isInteractiveTool } from "../components/founderTools/tools";
 
 interface FounderToolsProps {
  user: User;
@@ -166,13 +169,18 @@ export default function FounderTools({ user }: FounderToolsProps) {
  type ToolTab = (typeof TOOL_TABS)[number];
  const rawToolTab = searchParams.get('tab');
  const activeTab: ToolTab = TOOL_TABS.includes(rawToolTab as ToolTab) ? (rawToolTab as ToolTab) : searchParams.get('step') ? 'builder' : 'dashboard';
+ // Functional updates: page controls registered once (for the assistant) must not
+ // write back a stale copy of the URL.
  const setActiveTab = (tab: ToolTab) => {
-  const next = new URLSearchParams(searchParams);
-  if (tab === 'dashboard') next.delete('tab');
-  else next.set('tab', tab);
-  if (tab !== 'builder') next.delete('step');
-  if (tab !== 'pitch') next.delete('slide');
-  setSearchParams(next, { replace: true });
+  setSearchParams((current) => {
+   const next = new URLSearchParams(current);
+   if (tab === 'dashboard') next.delete('tab');
+   else next.set('tab', tab);
+   if (tab !== 'builder') next.delete('step');
+   if (tab !== 'pitch') next.delete('slide');
+   if (tab !== 'tools') next.delete('tool');
+   return next;
+  }, { replace: true });
  };
  // Pinned tools and builder drafts are account-scoped (and cloud-synced for real accounts).
  const pinnedTools = useEntity(pinnedToolsEntity);
@@ -188,6 +196,13 @@ export default function FounderTools({ user }: FounderToolsProps) {
   { id: 'tab-applications', en: 'Open applications', el: 'Άνοιγμα αιτήσεων', run: () => setActiveTab('applications') },
   { id: 'tab-tools', en: 'Open tool library', el: 'Βιβλιοθήκη εργαλείων', run: () => setActiveTab('tools') },
   { id: 'tab-templates', en: 'Open templates', el: 'Πρότυπα', run: () => setActiveTab('templates') },
+  { id: 'tool-safe', en: 'Open the SAFE calculator', el: 'Άνοιγμα υπολογιστή SAFE', run: () => setOpenToolId('safe') },
+  { id: 'tool-captable', en: 'Open the cap table', el: 'Άνοιγμα cap table', run: () => setOpenToolId('captable') },
+  { id: 'tool-valuation', en: 'Open the valuation calculator', el: 'Άνοιγμα υπολογιστή αποτίμησης', run: () => setOpenToolId('valuation') },
+  { id: 'tool-burn', en: 'Open the runway calculator', el: 'Άνοιγμα υπολογιστή runway', run: () => setOpenToolId('burn') },
+  { id: 'tool-model', en: 'Open the financial model', el: 'Άνοιγμα οικονομικού μοντέλου', run: () => setOpenToolId('model') },
+  { id: 'tool-equity', en: 'Open the equity grant calculator', el: 'Άνοιγμα υπολογιστή equity grant', run: () => setOpenToolId('equity') },
+  { id: 'tool-metrics', en: 'Open growth metrics', el: 'Άνοιγμα μετρικών ανάπτυξης', run: () => setOpenToolId('metrics') },
   { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
   { id: 'open-need-wall', en: 'Open Need Wall', el: 'Πίνακας Αναγκών', run: () => useUIStore.getState().setNeedCardWallOpen(true) },
   { id: 'clear-tool-search', en: 'Clear tool search', el: 'Καθάρισε την αναζήτηση εργαλείων', run: () => setSearchQuery('') },
@@ -222,38 +237,28 @@ export default function FounderTools({ user }: FounderToolsProps) {
    dimensions: savedStartup.dimensions,
   };
  }, [savedStartup, profile, isDemoMode, user.id, t]);
- const setMockStartup = (updater: (prev: StartupDraft) => StartupDraft) => {
-  startupRecord.write(updater(mockStartup) as StartupRecord);
- };
 
- const READINESS_DIMENSIONS = ['Team Composition', 'Market Validation', 'Product/Tech', 'Financial Planning', 'Pitch Readiness'];
- const demoReadinessMetrics = [
-  { label: "Team Composition", score: 85, status: "Strong", next: t("Keep the team page current.", "Κράτα τη σελίδα ομάδας ενημερωμένη.") },
-  { label: "Market Validation", score: 45, status: "In-Progress", next: t("Add one customer conversation this week.", "Πρόσθεσε μία συζήτηση με πελάτη αυτή την εβδομάδα.") },
-  { label: "Product/Tech", score: 70, status: "Good", next: t("Ship the next milestone on Workspace.", "Παράδωσε το επόμενο ορόσημο στον χώρο εργασίας.") },
-  { label: "Financial Planning", score: 30, status: "Critical", next: t("Open Fundraising and fill the 12-month model.", "Άνοιξε τη Χρηματοδότηση και συμπλήρωσε το μοντέλο 12 μηνών.") },
-  { label: "Pitch Readiness", score: 60, status: "Improving", next: t("Export the pitch from Founder Tools.", "Εξήγαγε το pitch από τα Εργαλεία ιδρυτή.") }
- ];
- const nextSteps: Record<string, string> = {
-  'Team Composition': t("Add a co-founder or key hire.", "Πρόσθεσε συνιδρυτή ή βασική πρόσληψη."),
-  'Market Validation': t("Add one customer conversation this week.", "Πρόσθεσε μία συζήτηση με πελάτη αυτή την εβδομάδα."),
-  'Product/Tech': t("Ship the next milestone on Workspace.", "Παράδωσε το επόμενο ορόσημο στον χώρο εργασίας."),
-  'Financial Planning': t("Open Fundraising and fill the 12-month model.", "Άνοιξε τη Χρηματοδότηση και συμπλήρωσε το μοντέλο 12 μηνών."),
-  'Pitch Readiness': t("Export the pitch from Founder Tools.", "Εξήγαγε το pitch από τα Εργαλεία ιδρυτή."),
- };
- // Real accounts see scores only from assessments they actually ran.
- const readinessMetrics = isDemoMode
-  ? demoReadinessMetrics
-  : READINESS_DIMENSIONS.map((label) => {
-     const score = mockStartup.dimensions?.[label];
-     return {
-      label,
-      score: score ?? 0,
-      status: score == null ? 'Planned' : score < 40 ? 'Critical' : score < 70 ? 'In-Progress' : 'Strong',
-      next: nextSteps[label] ?? '',
-      assessed: score != null,
-     };
-    });
+ // One readiness definition for the studio (lib/readiness): the diagnostic plus evidence
+ // the studio already holds — the team's skills, the pitch deck and the round. Founder Tools,
+ // Insights, the profile and the assistant all read it, so the number is the same everywhere.
+ const readiness = useReadiness(isDemoMode ? undefined : profile?.skills);
+ const readinessMetrics = readiness.dimensions.map((dim) => ({
+  label: dim.key,
+  score: dim.score ?? 0,
+  status: readinessStatus(dim.score),
+  next: t(dim.next.en, dim.next.el),
+  assessed: dim.score != null,
+  evidence: dim.evidence ? t(dim.evidence.en, dim.evidence.el) : null,
+  basis: dim.basis,
+ }));
+ // Keep the stored snapshot (read by the weekly digest and older readers) equal to the live index.
+ useEffect(() => {
+  if (isDemoMode) return;
+  if (readiness.known === 0 && savedStartup.readinessScore == null) return;
+  if (savedStartup.readinessScore !== readiness.score) {
+   startupRecord.update((prev) => ({ ...prev, readinessScore: readiness.score }));
+  }
+ }, [isDemoMode, readiness.known, readiness.score, savedStartup.readinessScore]);
 
  const builderSteps = BUILDER_MODULES.map((module, index) => ({
   ...module,
@@ -261,46 +266,56 @@ export default function FounderTools({ user }: FounderToolsProps) {
   icon: [Lightbulb, Layers, Target, BarChart3, Rocket][index] ?? Lightbulb,
  }));
 
+ // Five questions, one per readiness dimension (the assistant calls it the 5-step diagnostic).
+ // Options are ordered from least to most ready; an answer maps linearly onto 0–100.
  const assessmentQuestions = [
+  {
+   dim: 'Team Composition',
+   category: dimensionName("Team Composition"),
+   question: t("Who is on the founding team today?", "Ποιοι είναι σήμερα στην ιδρυτική ομάδα;"),
+   options: [t("Solo founder", "Μόνος ιδρυτής"), t("Co-founders with clear skill gaps", "Συνιδρυτές με εμφανή κενά δεξιοτήτων"), t("Complementary co-founders", "Συνιδρυτές που αλληλοσυμπληρώνονται"), t("Complementary founders and first key hires", "Συμπληρωματικοί ιδρυτές και πρώτες βασικές προσλήψεις")],
+  },
   {
    dim: 'Market Validation',
    category: dimensionName("Market Validation"),
    question: t("How many potential customers have you interviewed?", "Με πόσους δυνητικούς πελάτες έχεις μιλήσει;"),
    options: ["0-5", "6-20", "21-50", "50+"],
-   impact: 15
   },
   {
    dim: 'Product/Tech',
    category: dimensionName("Product/Tech"),
    question: t("What is the current state of your product?", "Σε τι στάδιο είναι το προϊόν σου;"),
    options: [t("Idea only", "Μόνο ιδέα"), t("Mockups/Wireframes", "Mockups/wireframes"), t("Functional Prototype", "Λειτουργικό πρωτότυπο"), t("MVP in Market", "MVP στην αγορά")],
-   impact: 20
   },
   {
    dim: 'Financial Planning',
    category: dimensionName("Financial Planning"),
    question: t("Do you have a detailed 12-month financial projection?", "Έχεις αναλυτική οικονομική πρόβλεψη 12 μηνών;"),
    options: [t("No", "Όχι"), t("Basic estimates", "Βασικές εκτιμήσεις"), t("Detailed model", "Αναλυτικό μοντέλο"), t("Verified by advisor", "Επαληθευμένο από σύμβουλο")],
-   impact: 25
-  }
+  },
+  {
+   dim: 'Pitch Readiness',
+   category: dimensionName("Pitch Readiness"),
+   question: t("How far along is your investor pitch?", "Πόσο έτοιμο είναι το pitch σου προς επενδυτές;"),
+   options: [t("No deck yet", "Δεν υπάρχει ακόμη deck"), t("First draft", "Πρώτο προσχέδιο"), t("Reviewed by a mentor or advisor", "Ελεγμένο από μέντορα ή σύμβουλο"), t("Pitched to investors", "Παρουσιασμένο σε επενδυτές")],
+  },
  ];
 
  const [assessmentAnswers, setAssessmentAnswers] = useState<Record<number, number>>({});
 
- const handleCompleteAssessment = () => {
-  // Answers → per-dimension scores → overall readiness. Persisted per account.
+ // The last answer is passed in: it is chosen in the same click that finishes, before
+ // React has applied it to `assessmentAnswers` (it used to be lost, so the last
+ // dimension was always saved as 0).
+ const handleCompleteAssessment = (answers: Record<number, number> = assessmentAnswers) => {
   const dims: Record<string, number> = { ...(mockStartup.dimensions ?? {}) };
-  let weighted = 0;
-  let totalImpact = 0;
   assessmentQuestions.forEach((q, i) => {
-   totalImpact += q.impact;
-   const picked = assessmentAnswers[i];
-   const frac = picked == null ? 0 : (q.options.length > 1 ? picked / (q.options.length - 1) : 1);
-   dims[q.dim] = Math.round(frac * 100);
-   weighted += frac * q.impact;
+   const picked = answers[i];
+   if (picked == null) return; // a skipped question keeps its earlier answer instead of becoming 0
+   dims[q.dim] = Math.round((q.options.length > 1 ? picked / (q.options.length - 1) : 1) * 100);
   });
-  const score = totalImpact ? Math.min(100, Math.round((weighted / totalImpact) * 100)) : mockStartup.readinessScore ?? 0;
-  setMockStartup(prev => ({ ...prev, readinessScore: score, dimensions: dims, updatedAt: new Date().toISOString() }));
+  startupRecord.update((prev) => ({ ...prev, dimensions: dims, updatedAt: new Date().toISOString() }));
+  const score = currentReadiness(isDemoMode ? undefined : profile?.skills).score;
+  startupRecord.update((prev) => ({ ...prev, readinessScore: score }));
   logActivity({ kind: 'milestone', title: `Readiness diagnostic: ${score}/100`, titleEl: `Διάγνωση ετοιμότητας: ${score}/100`, href: '/founder-tools' });
   setAssessmentAnswers({});
   setShowAssessment(false);
@@ -517,10 +532,41 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
 
  // AI Suggestions based on startup stage
+ // Suggestions read the live readiness: the weakest dimension, the pitch and the team.
+ const weakest = readiness.weakest;
+ const pitchDim = readiness.dimensions.find((dim) => dim.key === 'Pitch Readiness');
+ const teamDim = readiness.dimensions.find((dim) => dim.key === 'Team Composition');
  const aiSuggestions = [
-  { id: 1, title: t('Refine your pitch narrative', 'Βελτίωσε την αφήγηση του pitch'), reason: t('Based on your stage: Prototype', 'Με βάση το στάδιό σου: Πρωτότυπο'), icon: Lightbulb, action: t('Open Pitch Builder', 'Άνοιξε τον Pitch Builder') },
-  { id: 2, title: t('Create a financial model', 'Φτιάξε οικονομικό μοντέλο'), reason: t('Readiness score: Financial Planning at 30%', 'Readiness score: οικονομικός σχεδιασμός στο 30%'), icon: BarChart3, action: t('Open Financial Tool', 'Άνοιξε το οικονομικό εργαλείο') },
-  { id: 3, title: t('Draft team hiring plan', 'Σχεδίασε πλάνο προσλήψεων'), reason: t('Team Composition is strong but small', 'Η σύνθεση ομάδας είναι ισχυρή αλλά μικρή'), icon: Users, action: t('Open HR Tools', 'Άνοιξε τα εργαλεία HR') },
+  {
+   id: 1,
+   title: t('Refine your pitch narrative', 'Βελτίωσε την αφήγηση του pitch'),
+   reason: pitchDim?.evidence
+    ? t(`Pitch: ${pitchDim.evidence.en}`, `Pitch: ${pitchDim.evidence.el}`)
+    : t(`Based on your stage: ${labelOf(mockStartup.stage)}`, `Με βάση το στάδιό σου: ${labelOf(mockStartup.stage)}`),
+   icon: Lightbulb,
+   action: t('Open Pitch Builder', 'Άνοιξε τον Pitch Builder'),
+   run: () => setActiveTab('pitch'),
+  },
+  {
+   id: 2,
+   title: weakest ? t(weakest.next.en, weakest.next.el) : t('Run the readiness diagnostic', 'Κάνε τη διάγνωση ετοιμότητας'),
+   reason: weakest
+    ? t(`Weakest readiness area: ${weakest.label.en} at ${weakest.score}/100`, `Πιο αδύναμος τομέας ετοιμότητας: ${weakest.label.el} στο ${weakest.score}/100`)
+    : t('Five questions find the area to work on first.', 'Πέντε ερωτήσεις δείχνουν πού να δουλέψεις πρώτα.'),
+   icon: BarChart3,
+   action: weakest ? t('Open', 'Άνοιγμα') : t('Run diagnostic', 'Διάγνωση'),
+   run: () => (weakest ? navigate(weakest.href) : setShowAssessment(true)),
+  },
+  {
+   id: 3,
+   title: t('Draft team hiring plan', 'Σχεδίασε πλάνο προσλήψεων'),
+   reason: teamDim?.evidence
+    ? t(`Team: ${teamDim.evidence.en}`, `Ομάδα: ${teamDim.evidence.el}`)
+    : t('Add your skills to see what the team still lacks.', 'Πρόσθεσε τις δεξιότητές σου για να δεις τι λείπει από την ομάδα.'),
+   icon: Users,
+   action: t('Open HR Tools', 'Άνοιξε τα εργαλεία HR'),
+   run: () => setActiveTab('tools'),
+  },
  ];
 
  const togglePin = (toolId: string) => {
@@ -530,8 +576,27 @@ export default function FounderTools({ user }: FounderToolsProps) {
   setPinnedTools(newPinned);
  };
 
+ // The open tool lives in the URL too (?tab=tools&tool=safe), so Fundraising, the
+ // assistant and a shared link can open a calculator directly.
+ const rawTool = searchParams.get('tool');
+ const openToolId = rawTool && isInteractiveTool(rawTool) ? rawTool : null;
+ const setOpenToolId = (toolId: string | null) => {
+  setSearchParams((current) => {
+   const next = new URLSearchParams(current);
+   if (toolId) {
+    next.set('tab', 'tools');
+    next.set('tool', toolId);
+   } else next.delete('tool');
+   return next;
+  }, { replace: true });
+ };
+ const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+ // Opening a tool records it as recently used and opens what it actually does:
+ // a calculator, a template download, the pitch builder or a drafted document.
  const markToolUsed = (toolId: string) => {
   pushRecent(recentTools, toolId);
+  if (toolId === 'pitch-deck') { setActiveTab('pitch'); return; }
+  if (isInteractiveTool(toolId)) setOpenToolId(toolId);
  };
 
  const findTool = (toolId: string) => toolCategories.flatMap(c => c.tools).find(tool => tool.id === toolId);
@@ -575,6 +640,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
     {showAssessment && (
      <div className="fixed inset-0 bg-stone-950/90 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-6">
       <motion.div 
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="venture-diagnostic-title"
        initial={{ opacity: 0, scale: 0.9, y: 40 }}
        animate={{ opacity: 1, scale: 1, y: 0 }}
        exit={{ opacity: 0, scale: 0.9, y: 40 }}
@@ -591,14 +659,14 @@ export default function FounderTools({ user }: FounderToolsProps) {
         <div className="space-y-0.5">
          <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <h3 className="text-base font-semibold text-stone-900 flex items-center gap-2">
-           {t("Venture Diagnostic", "Διάγνωση εγχειρήματος")} <span className="text-stone-300 font-mono text-xs">v4.2.0</span>
+          <h3 id="venture-diagnostic-title" className="text-base font-semibold text-stone-900 flex items-center gap-2">
+           {t("Venture Diagnostic", "Διάγνωση εγχειρήματος")}
           </h3>
          </div>
          <div className="flex items-center gap-3">
           <p className="text-xs font-mono text-stone-400 tracking-wider">{t("Module", "Ενότητα")} {assessmentStep + 1} / {assessmentQuestions.length}</p>
           <div className="h-1 w-1 rounded-full bg-stone-200" />
-          <p className="text-xs font-mono text-amber-600 tracking-wider">{t("Analyzing", "Ανάλυση")}</p>
+          <p className="text-xs font-mono text-amber-600 tracking-wider">{t("Self-assessment", "Αυτοαξιολόγηση")}</p>
          </div>
         </div>
         <button
@@ -642,11 +710,12 @@ export default function FounderTools({ user }: FounderToolsProps) {
            animate={{ opacity: 1, x: 0 }}
            transition={{ delay: i * 0.07 }}
            onClick={() => {
-            setAssessmentAnswers(prev => ({ ...prev, [assessmentStep]: i }));
+            const answers = { ...assessmentAnswers, [assessmentStep]: i };
+            setAssessmentAnswers(answers);
             if (assessmentStep < assessmentQuestions.length - 1) {
              setAssessmentStep(prev => prev + 1);
             } else {
-             handleCompleteAssessment();
+             handleCompleteAssessment(answers);
             }
            }}
            className="p-3 text-left border border-stone-200 rounded-xl hover:border-stone-900 hover:bg-stone-50 transition-all group flex items-center justify-between"
@@ -720,18 +789,24 @@ export default function FounderTools({ user }: FounderToolsProps) {
           stroke="currentColor" strokeWidth="8" fill="transparent"
           strokeDasharray={2 * Math.PI * 60}
           initial={{ strokeDashoffset: 2 * Math.PI * 60 }}
-          animate={{ strokeDashoffset: 2 * Math.PI * 60 * (1 - (mockStartup.readinessScore ?? 0) / 100) }}
+          animate={{ strokeDashoffset: 2 * Math.PI * 60 * (1 - readiness.score / 100) }}
           transition={{ duration: 1.5, ease: "circOut" }}
           strokeLinecap="round"
           className="text-stone-900"
          />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-         <span className="text-lg font-semibold text-stone-900 tracking-tight leading-none tabular-nums">{mockStartup.readinessScore}</span>
+         <span className="text-lg font-semibold text-stone-900 tracking-tight leading-none tabular-nums" data-testid="readiness-score">{readiness.score}</span>
          <span className="text-sm text-stone-400 tracking-wider mt-1">/ 100</span>
         </div>
        </div>
       </div>
+
+      <p className="text-xs text-stone-500 text-center -mt-2" data-testid="readiness-coverage">
+       {readiness.known === 0
+        ? t('Run the diagnostic, add your skills or write a slide to get a score.', 'Κάνε τη διάγνωση, πρόσθεσε δεξιότητες ή γράψε μια διαφάνεια για να πάρεις σκορ.')
+        : t(`Based on ${readiness.known} of 5 dimensions (${Math.round(readiness.coverage * 100)}% of the weight)`, `Με βάση ${readiness.known} από 5 διαστάσεις (${Math.round(readiness.coverage * 100)}% του βάρους)`)}
+      </p>
 
       <div className="space-y-2.5 pt-3 border-t border-stone-100">
        {readinessMetrics.map((m, i) => (
@@ -758,6 +833,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            )}
           />
          </div>
+         {m.evidence && <p className="text-xs leading-snug text-stone-500">{m.basis === 'both' ? t('Diagnostic + ', 'Διάγνωση + ') : ''}{m.evidence}</p>}
          <p className="text-xs leading-snug text-stone-400">{t('Next', 'Επόμενο')} · {m.next}</p>
         </div>
        ))}
@@ -1382,28 +1458,48 @@ export default function FounderTools({ user }: FounderToolsProps) {
          <p className="text-xs text-stone-600 mb-4">{category.description}</p>
 
          <div className="space-y-2">
-          {(toolQuery ? category.tools : category.tools.slice(0, 3)).map((tool) => (
-           <button
-            key={tool.id}
-            onClick={() => markToolUsed(tool.id)}
-            className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-stone-200/60 hover:border-stone-300 hover:shadow-2xs transition-all text-left group"
-           >
-            <tool.icon className="w-4 h-4 shrink-0 opacity-85 group-hover:opacity-100" />
-            <div className="flex-1 min-w-0">
-             <p className="text-xs font-semibold text-stone-900 truncate">{tool.name}</p>
-             <p className="text-xs text-stone-500 truncate">{tool.desc}</p>
-            </div>
-            <Pin 
-             className={cn(
-              "w-3.5 h-3.5 shrink-0 transition-all cursor-pointer",
-              pinnedTools.includes(tool.id) ? "fill-current text-stone-900" : "text-stone-400 opacity-0 group-hover:opacity-100"
-             )}
-             onClick={(e) => { e.stopPropagation(); togglePin(tool.id); }}
-            />
-           </button>
+          {(toolQuery || expandedCategories.includes(category.id) ? category.tools : category.tools.slice(0, 3)).map((tool) => (
+           // Two sibling buttons instead of a clickable icon inside a button
+           // (nested interactive controls are unreachable by keyboard).
+           <div key={tool.id} className="w-full flex items-center gap-1 rounded-xl bg-white border border-stone-200/60 hover:border-stone-300 hover:shadow-2xs transition-all group">
+            <button
+             type="button"
+             onClick={() => markToolUsed(tool.id)}
+             data-testid={`founder-tool-${tool.id}`}
+             className="flex-1 min-w-0 flex items-center gap-2.5 p-2.5 text-left rounded-xl"
+            >
+             <tool.icon className="w-4 h-4 shrink-0 opacity-85 group-hover:opacity-100" />
+             <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-stone-900 truncate">{tool.name}</p>
+              <p className="text-xs text-stone-500 truncate">{tool.desc}</p>
+             </div>
+            </button>
+            <button
+             type="button"
+             aria-pressed={pinnedTools.includes(tool.id)}
+             aria-label={pinnedTools.includes(tool.id) ? t(`Unpin ${tool.name}`, `Ξεκαρφίτσωμα: ${tool.name}`) : t(`Pin ${tool.name}`, `Καρφίτσωμα: ${tool.name}`)}
+             onClick={() => togglePin(tool.id)}
+             className="mr-1.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-stone-100 focus-visible:opacity-100"
+            >
+             <Pin
+              aria-hidden="true"
+              className={cn(
+               "w-3.5 h-3.5 transition-all",
+               pinnedTools.includes(tool.id) ? "fill-current text-stone-900" : "text-stone-400 opacity-60 group-hover:opacity-100"
+              )}
+             />
+            </button>
+           </div>
           ))}
           {!toolQuery && category.tools.length > 3 && (
-           <p className="text-xs font-medium text-stone-600 text-center py-1">+{category.tools.length - 3} {t("more", "ακόμη")}</p>
+           <button
+            type="button"
+            aria-expanded={expandedCategories.includes(category.id)}
+            onClick={() => setExpandedCategories((open) => (open.includes(category.id) ? open.filter((id) => id !== category.id) : [...open, category.id]))}
+            className="w-full text-xs font-medium text-stone-600 hover:text-stone-900 text-center py-1 rounded-lg"
+           >
+            {expandedCategories.includes(category.id) ? t("Show fewer", "Λιγότερα") : `+${category.tools.length - 3} ${t("more", "ακόμη")}`}
+           </button>
           )}
          </div>
         </Card>
@@ -1454,7 +1550,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <p className="text-xs text-stone-500 leading-relaxed">{suggestion.reason}</p>
           </div>
          </div>
-         <Button size="sm" variant="secondary" className="h-8 px-3.5 text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shrink-0 self-start sm:self-center" onClick={() => { if (suggestion.id === 1) setActiveTab('pitch'); else if (suggestion.id === 2) setActiveTab('tools'); else setActiveTab('tools'); }}>
+         <Button size="sm" variant="secondary" className="h-8 px-3.5 text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shrink-0 self-start sm:self-center" onClick={suggestion.run}>
           {suggestion.action}
          </Button>
         </div>
@@ -1548,6 +1644,12 @@ export default function FounderTools({ user }: FounderToolsProps) {
    )}
   </div>
   </PageShell>
+  <FounderToolPanel
+   toolId={openToolId}
+   toolName={openToolId ? findTool(openToolId)?.name : undefined}
+   onClose={() => setOpenToolId(null)}
+   onToast={showToast}
+  />
   {/* Toast Notification */}
   <AnimatePresence>
    {toastMsg && (

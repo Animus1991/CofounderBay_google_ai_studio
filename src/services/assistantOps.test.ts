@@ -27,6 +27,22 @@ describe('runAssistant', () => {
     try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
   });
 
+  it('answers the round with the post-money SAFE ownership the Fundraising card shows', () => {
+    const result = runAssistant('/round', demo);
+    expect(result.tool).toBe('round');
+    // Sample round: $450k committed at a $12M post-money cap → 3.75%.
+    expect(result.en).toContain('3.75%');
+    expect(result.links.some((link) => link.href.includes('tool=captable'))).toBe(true);
+  });
+
+  it('answers readiness with the five-dimension index Founder Tools shows', () => {
+    const result = runAssistant('/readiness', demo);
+    expect(result.tool).toBe('readiness');
+    expect(result.en).toContain('68/100');
+    expect(result.en).toMatch(/based on 5 of 5 dimensions/);
+    expect(result.en).toMatch(/Weakest: Financial Planning/);
+  });
+
   it('ranks matches from the shared cast', () => {
     const result = runAssistant('who is my best match', demo);
     expect(result.tool).toBe('matches');

@@ -15,7 +15,8 @@ import {
  Target,
  Zap,
  Rocket,
- ArrowUpRight
+ ArrowUpRight,
+ ArrowDownRight
 } from "lucide-react";
 import {
  XAxis, YAxis, CartesianGrid,
@@ -36,6 +37,7 @@ import { mergeFitIntoViewer } from "../lib/fitCheck";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { DEMO_ACTIVITY, DEMO_READINESS, demoActivityDelta, demoReadinessDelta } from "../data/demoStats";
 import { askAssistant } from "../lib/assistantBus";
+import { useReadiness } from "../lib/readiness";
 
 interface InsightsProps {
  user: User;
@@ -43,9 +45,15 @@ interface InsightsProps {
 
 const DAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function localTime(iso: string, mode: 'en' | 'el'): string {
+ const date = new Date(iso);
+ if (Number.isNaN(date.getTime())) return '';
+ return date.toLocaleTimeString(mode === 'el' ? 'el-GR' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
 type ScorePoint = { at: string; score: number };
 
-/** Readiness = share of the profile fields matching actually reads. */
+/** Share of the profile fields that matching reads (shown next to the readiness index). */
 function profileCompleteness(profile: UserProfile | null): number {
  if (!profile) return 0;
  const fields = [
@@ -82,7 +90,11 @@ export default function Insights({ user }: InsightsProps) {
  const history = useStored(() => readValue<ScorePoint[]>(keys.readiness, []), [keys.readiness]);
 
  const merged = useMemo(() => mergeFitIntoViewer(profile), [profile]);
- const readinessScore = isDemoMode ? DEMO_VENTURE.readinessScore : profileCompleteness(merged);
+ // The Venture Readiness Index (lib/readiness) — the same number as Founder Tools and the
+ // assistant. Profile completeness used to be shown under this name; it is now its own line.
+ const readiness = useReadiness(isDemoMode ? undefined : merged?.skills);
+ const readinessScore = isDemoMode ? DEMO_VENTURE.readinessScore : readiness.score;
+ const completeness = profileCompleteness(merged);
 
  // Persist one score point a day so the progression chart is real.
  useEffect(() => {
@@ -164,7 +176,7 @@ export default function Insights({ user }: InsightsProps) {
    { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: signedPct(demoActivityDelta('messages')), icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
   ]
   : [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/profile' },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/founder-tools', hint: t(`Profile ${completeness}% complete · ${readiness.known} of 5 dimensions scored`, `Προφίλ ${completeness}% πλήρες · ${readiness.known} από 5 διαστάσεις`) },
    { label: t("Saved people", "Αποθηκευμένοι"), value: String(saved.length), change: null, icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, saved.length * 10), href: '/network' },
    { label: t("Requests sent", "Αιτήματα"), value: String(requests.length), change: null, icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, requests.length * 12), href: '/network' },
    { label: t("Applications", "Αιτήσεις"), value: String(tracked.length), change: null, icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(100, tracked.length * 20), href: '/fundraising' },
@@ -174,7 +186,8 @@ export default function Insights({ user }: InsightsProps) {
   ...studioActivity.slice(0, 4).map((item: ActivityItem) => ({
    user: item.byAssistant ? t('Assistant', 'Βοηθός') : (user.fullName?.split(' ')[0] || you),
    action: t(item.title, item.titleEl ?? item.title),
-   time: item.at.slice(11, 16) || '',
+   // Local time of day (the stored value is UTC; slicing the ISO string showed UTC hours).
+   time: localTime(item.at, mode),
    icon: Zap,
    bg: 'bg-stone-50',
    ic: 'text-stone-600',
@@ -225,13 +238,21 @@ export default function Insights({ user }: InsightsProps) {
          <stat.icon className="w-4 h-4 text-stone-500" />
         </div>
         {stat.change ? (
-         <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
-          <ArrowUpRight className="w-2.5 h-2.5" />{stat.change}
-         </div>
+         // A fall is shown as a fall: red and pointing down, not green and up.
+         /^[-−]/.test(stat.change) ? (
+          <div className="flex items-center gap-1 text-xs font-semibold text-red-600 px-2 py-0.5 rounded-md">
+           <ArrowDownRight className="w-2.5 h-2.5" aria-hidden="true" />{stat.change}
+          </div>
+         ) : (
+          <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
+           <ArrowUpRight className="w-2.5 h-2.5" aria-hidden="true" />{stat.change}
+          </div>
+         )
         ) : null}
        </div>
        <p className="text-base font-bold text-stone-900">{stat.value}</p>
        <p className="text-xs text-stone-400 tracking-wider mt-0.5">{stat.label}</p>
+       {'hint' in stat && stat.hint ? <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">{stat.hint}</p> : null}
        <div className="mt-2.5 h-1 bg-stone-100 rounded-full overflow-hidden">
         <motion.div
          initial={{ width: 0 }}
