@@ -5,7 +5,8 @@ import { createServer, type Server } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TokenError } from './firebaseAuth';
 import { makeIdentify } from './identity';
-import { BRANDING_FIELDS, CONTENT_FIELDS, readTenantAdmins, registerTenantRoutes, resolveTenant, validatePatch, type TenantRecord } from './tenants';
+import { BRANDING_FIELDS, CONTENT_FIELDS, loadTenantOverrides, readTenantAdmins, registerTenantRoutes, resolveTenant, validatePatch, type TenantRecord } from './tenants';
+import { memoryStore } from './store';
 
 const tenants = (): TenantRecord[] => [
   { id: 't1', slug: 'default', branding: { primaryColor: '#1c1917' }, content: {} },
@@ -58,7 +59,7 @@ describe('tenant patches', () => {
 
 let server: Server | null = null;
 
-async function start({ requireAuth = true, adminUids = ['alice'] }: { requireAuth?: boolean; adminUids?: string[] } = {}) {
+async function start({ requireAuth = true, adminUids = ['alice'], store }: { requireAuth?: boolean; adminUids?: string[]; store?: ReturnType<typeof memoryStore> } = {}) {
   const app = express();
   app.use(express.json());
   const list = tenants();
@@ -66,6 +67,8 @@ async function start({ requireAuth = true, adminUids = ['alice'] }: { requireAut
     tenants: list,
     requireAuth,
     adminUids,
+    store,
+    log: () => {},
     identify: makeIdentify({
       requireAuth,
       verifyToken: async (token) => {
@@ -126,5 +129,18 @@ describe('tenant routes', () => {
     const { call } = await start({ requireAuth: false, adminUids: [] });
     expect((await call('POST', '/api/tenants/t2/content', { body: { heroTitle: 'Dev copy' } })).status).toBe(200);
     expect((await call('POST', '/api/tenants/t2/branding', { body: { primaryColor: 'blue' } })).status).toBe(422);
+  });
+
+  it('keeps branding across a restart when a store is given', async () => {
+    const store = memoryStore();
+    const first = await start({ store });
+    expect((await first.call('POST', '/api/tenants/t2/branding', { token: 'alice', body: { primaryColor: '#123456' } })).status).toBe(200);
+    expect((await first.call('POST', '/api/tenants/t2/content', { token: 'alice', body: { heroTitle: 'Saved copy' } })).status).toBe(200);
+    // A fresh process: built-in tenants, then the saved overrides on top.
+    const restarted = tenants();
+    expect(await loadTenantOverrides(restarted, store)).toBe(1);
+    expect(restarted[1]?.branding?.primaryColor).toBe('#123456');
+    expect(restarted[1]?.content?.heroTitle).toBe('Saved copy');
+    expect(restarted[1]?.branding).toMatchObject({ primaryColor: '#123456' });
   });
 });

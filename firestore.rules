@@ -623,6 +623,7 @@ service cloud.firestore {
     match /outreach_emailLog/{id} { allow read, write: if false; }
     match /outreach_digestSettings/{id} { allow read, write: if false; }
     match /outreach_digestSnapshots/{id} { allow read, write: if false; }
+    match /outreach_tenant_overrides/{id} { allow read, write: if false; }
     match /outreach_digests/{id} { allow read, write: if false; }
 
     match /{path=**}/messages/{messageId} {

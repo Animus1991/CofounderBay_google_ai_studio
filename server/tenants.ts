@@ -24,6 +24,7 @@
  */
 import express, { type Express, type Request, type Response } from 'express';
 import type { Caller } from './identity';
+import type { Store } from './store';
 
 export type TenantRecord = {
   id: string;
@@ -152,8 +153,27 @@ export type TenantRouteOptions = {
   requireAuth: boolean;
   /** Firebase uids allowed to change tenants when sign-in is required. */
   adminUids: readonly string[];
+  /** Where branding and copy changes are kept across restarts; in memory only without it. */
+  store?: Store;
   now?: () => Date;
+  log?: (message: string, detail?: unknown) => void;
 };
+
+const TENANT_COLLECTION = 'tenant_overrides';
+
+/** Applies the branding and copy saved in the store on top of the built-in tenants. */
+export async function loadTenantOverrides(tenants: TenantRecord[], store: Store): Promise<number> {
+  let applied = 0;
+  for (const tenant of tenants) {
+    const saved = await store.get<{ branding?: Record<string, unknown>; content?: Record<string, unknown>; updatedAt?: string }>(TENANT_COLLECTION, tenant.id);
+    if (!saved) continue;
+    if (saved.branding) tenant.branding = { ...(tenant.branding ?? {}), ...saved.branding };
+    if (saved.content) tenant.content = { ...(tenant.content ?? {}), ...saved.content };
+    if (saved.updatedAt) tenant.updatedAt = saved.updatedAt;
+    applied += 1;
+  }
+  return applied;
+}
 
 /** Parses TENANT_ADMIN_UIDS ("uid1, uid2"). */
 export function readTenantAdmins(env: Record<string, string | undefined>): string[] {
@@ -163,9 +183,18 @@ export function readTenantAdmins(env: Record<string, string | undefined>): strin
     .filter(Boolean);
 }
 
-export function registerTenantRoutes(app: Express, opts: TenantRouteOptions): void {
+export function registerTenantRoutes(app: Express, opts: TenantRouteOptions): { ready: Promise<void> } {
   const now = opts.now ?? (() => new Date());
+  const log = opts.log ?? ((message: string, detail?: unknown) => console.warn(message, detail ?? ''));
   const small = express.json({ limit: '32kb' });
+  // Saved branding is applied before the first request is answered.
+  const ready = opts.store
+    ? loadTenantOverrides(opts.tenants, opts.store).then(() => undefined, (error) => log('Saved tenant branding could not be loaded', error))
+    : Promise.resolve();
+
+  app.use('/api/tenants', (_req, _res, next) => {
+    void ready.then(() => next());
+  });
 
   app.get('/api/tenants', (_req, res) => res.json(opts.tenants));
 
@@ -203,11 +232,24 @@ export function registerTenantRoutes(app: Express, opts: TenantRouteOptions): vo
         res.status(422).json({ error: checked.errors.join(' '), code: 'invalid', errors: checked.errors });
         return;
       }
-      tenant[part] = { ...(tenant[part] ?? {}), ...checked.patch };
-      tenant.updatedAt = now().toISOString();
+      const next = { ...(tenant[part] ?? {}), ...checked.patch };
+      const updatedAt = now().toISOString();
+      if (opts.store) {
+        try {
+          const saved = (await opts.store.get<Record<string, unknown>>(TENANT_COLLECTION, tenant.id)) ?? {};
+          await opts.store.put(TENANT_COLLECTION, tenant.id, { ...saved, [part]: next, updatedAt });
+        } catch (error) {
+          log('Tenant change could not be saved', error);
+          res.status(503).json({ error: 'The change could not be saved right now. Try again shortly.', code: 'store-unavailable' });
+          return;
+        }
+      }
+      tenant[part] = next;
+      tenant.updatedAt = updatedAt;
       res.json(tenant[part]);
     };
 
   app.post('/api/tenants/:id/branding', small, write('branding', BRANDING_FIELDS));
   app.post('/api/tenants/:id/content', small, write('content', CONTENT_FIELDS));
+  return { ready };
 }

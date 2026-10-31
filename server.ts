@@ -332,8 +332,14 @@ async function startServer() {
     res.json({ status: "ok", uptimeSeconds: Math.round((Date.now() - startedAt) / 1000) });
   });
 
-  app.get("/api/users", (req, res) => res.json(db.users));
-  app.get("/api/users/:id", (req, res) => {
+  // The in-memory sample API (users, matches, communities, mentors, conversations).
+  // The studio client does not call it — it reads Firestore and the local lists —
+  // so production does not serve it: it would hand out sample people and accept
+  // unauthenticated writes. MOCK_API=on keeps it for a demo deployment.
+  const mockApiEnabled = process.env.MOCK_API === "on" || (process.env.NODE_ENV !== "production" && process.env.MOCK_API !== "off");
+  const mock = express.Router();
+  mock.get("/api/users", (req, res) => res.json(db.users));
+  mock.get("/api/users/:id", (req, res) => {
     const user = db.users.find(u => u.id === req.params.id);
     const profile = db.profiles.find(p => p.userId === req.params.id);
     const skills = db.userSkills
@@ -344,7 +350,7 @@ async function startServer() {
     return res.json({ ...user, profile, skills });
   });
 
-  app.get("/api/matches/:userId", (req, res) => {
+  mock.get("/api/matches/:userId", (req, res) => {
     const userId = req.params.userId;
     const user = db.users.find(u => u.id === userId);
     const userProfile = db.profiles.find(p => p.userId === userId);
@@ -437,8 +443,8 @@ async function startServer() {
     return res.json(enrichedMatches.slice(0, 4));
   });
 
-  app.get("/api/communities", (req, res) => res.json(db.communities));
-  app.get("/api/communities/:id/posts", (req, res) => {
+  mock.get("/api/communities", (req, res) => res.json(db.communities));
+  mock.get("/api/communities/:id/posts", (req, res) => {
     const posts = db.posts.filter(p => p.communityId === req.params.id);
     const enrichedPosts = posts.map(p => ({
       ...p,
@@ -447,7 +453,7 @@ async function startServer() {
     res.json(enrichedPosts);
   });
 
-  app.get("/api/mentors", (req, res) => {
+  mock.get("/api/mentors", (req, res) => {
     const mentors = db.users.filter(u => u.roles.includes("Mentor"));
     const enrichedMentors = mentors.map(m => ({
       ...m,
@@ -456,7 +462,7 @@ async function startServer() {
     res.json(enrichedMentors);
   });
 
-  app.get("/api/conversations/:userId", (req, res) => {
+  mock.get("/api/conversations/:userId", (req, res) => {
     const userId = req.params.userId;
     const userConversations = db.conversations.filter(c => c.participants.includes(userId));
     
@@ -520,7 +526,7 @@ async function startServer() {
     res.json(sortedConversations);
   });
 
-  app.post("/api/conversations", (req, res) => {
+  mock.post("/api/conversations", (req, res) => {
     const { participants } = req.body;
     // Check if conversation already exists
     let conversation = db.conversations.find(c => 
@@ -540,12 +546,12 @@ async function startServer() {
     res.json(conversation);
   });
 
-  app.get("/api/messages/:conversationId", (req, res) => {
+  mock.get("/api/messages/:conversationId", (req, res) => {
     const messages = db.messages.filter(m => m.conversationId === req.params.conversationId);
     res.json(messages);
   });
 
-  app.post("/api/messages/mark-read", (req, res) => {
+  mock.post("/api/messages/mark-read", (req, res) => {
     const { conversationId, userId } = req.body;
     db.messages.forEach(m => {
       if (m.conversationId === conversationId && m.senderId !== userId) {
@@ -554,6 +560,8 @@ async function startServer() {
     });
     res.json({ success: true });
   });
+
+  if (mockApiEnabled) app.use(mock);
 
   // ── AI Proxy ─────────────────────────────────────────────────────────────
   // Gemini stays behind the server (GEMINI_API_KEY never ships to browsers).
@@ -585,9 +593,10 @@ async function startServer() {
   // Same sign-in rule as the AI proxy (server/identity); records live in the
   // server store — Firestore on Cloud Run, JSON files elsewhere
   // (server/outreachStore, OUTREACH_STORE). See server/outreach.ts.
+  const serverStore = await openOutreachStore(process.env);
   const outreach = registerOutreachRoutes(app, {
     identify: makeIdentify({ requireAuth: aiEnv.requireAuth, verifyToken, signInMessage: 'Sign in to share links and send email from the studio.' }),
-    store: await openOutreachStore(process.env),
+    store: serverStore,
     email: emailService(smtpProvider(process.env)),
     cronSecret: process.env.DIGEST_CRON_SECRET || process.env.WEBHOOK_CRON_SECRET,
   });
@@ -597,6 +606,8 @@ async function startServer() {
     identify: makeIdentify({ requireAuth: aiEnv.requireAuth, verifyToken, signInMessage: 'Sign in as a tenant administrator to change branding.' }),
     requireAuth: aiEnv.requireAuth,
     adminUids: readTenantAdmins(process.env),
+    // Branding and copy changes survive restarts (same store as outreach: Firestore on Cloud Run).
+    store: serverStore,
   });
 
   // Optional in-process schedule for long-running servers; serverless hosts call POST /api/cron/digest instead.
@@ -661,6 +672,11 @@ async function startServer() {
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
     });
+  });
+
+  // Any other /api path is an API 404 in JSON — never the SPA's index.html with a 200.
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "Not found", code: "not-found" });
   });
 
   // Vite middleware for development

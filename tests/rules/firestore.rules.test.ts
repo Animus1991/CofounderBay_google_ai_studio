@@ -39,7 +39,7 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('firestore.rules', () => {
   const admin = () => seed('users/admin', user('admin', { roles: ['Admin'] }));
 
   describe('server-only outreach records', () => {
-    const collections = ['ddShares', 'ddShareFiles', 'emailLog', 'digestSettings', 'digestSnapshots', 'digests'];
+    const collections = ['ddShares', 'ddShareFiles', 'emailLog', 'digestSettings', 'digestSnapshots', 'digests', 'tenant_overrides'];
 
     it('no member — and no admin — reads or writes them', async () => {
       await admin();
