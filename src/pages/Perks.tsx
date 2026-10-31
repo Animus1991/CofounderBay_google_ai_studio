@@ -3,14 +3,14 @@ import PageShell from "../components/ui/PageShell";
 import {
  Gift,
  Search,
- SlidersHorizontal,
  ArrowRight,
  ExternalLink,
  Zap,
  Cloud,
  CreditCard,
  BarChart3,
- Star
+ Star,
+ Check
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -93,6 +93,7 @@ export default function Perks() {
  const { isDemoMode } = useAuth();
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
  const [perkQuery, setPerkQuery] = useState('');
+ const [savedOnly, setSavedOnly] = useState(false);
  const saved = useEntity(savedPerks);
  const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
  const ask = (prompt: string) => askAssistant(prompt);
@@ -110,7 +111,8 @@ export default function Perks() {
  };
 
  usePageControls(() => [
-  { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); } },
+  { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); setSavedOnly(false); } },
+  { id: 'saved-perks', en: 'Show saved perks', el: 'Αποθηκευμένες παροχές', run: () => setSavedOnly(true) },
  ], []);
 
  const perkClaimId = (name: string) => {
@@ -131,8 +133,13 @@ export default function Perks() {
 
  const filteredPerks = (activeCategory === 'all' ? perks : perks.filter(p => p.category === activeCategory)).filter((perk) => {
   const q = perkQuery.trim().toLowerCase();
+  if (savedOnly && !saved.includes(perk.id)) return false;
   return !q || perk.name.toLowerCase().includes(q) || perk.category.toLowerCase().includes(q) || perk.description.toLowerCase().includes(q);
  });
+ const categoryCount = (id: string) => (id === 'all' ? perks.length : perks.filter((perk) => perk.category === id).length);
+ const savedCount = perks.filter((perk) => saved.includes(perk.id)).length;
+ // A short mark for the tile ("HubSpot" → "HS", "AWS" → "AWS"), so the name is not printed twice.
+ const monogram = (logo: string) => (logo.length <= 4 && logo === logo.toUpperCase() ? logo : (logo.match(/[A-Z]/g)?.join('') || logo.charAt(0).toUpperCase()).slice(0, 3));
 
  const featured = perks.find((perk) => perk.featured) ?? (isDemoMode ? perks.find((p) => p.id === 'aws') : undefined);
 
@@ -145,6 +152,8 @@ export default function Perks() {
      {categories.map((cat) => (
       <button
        key={cat.id}
+       type="button"
+       aria-pressed={activeCategory === cat.id}
        onClick={() => setActiveCategory(cat.id)}
        className={cn(
         "px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
@@ -155,6 +164,7 @@ export default function Perks() {
       >
        <cat.icon className="w-3.5 h-3.5" />
        {cat.label}
+       <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", activeCategory === cat.id ? "bg-white/20 text-white" : "bg-stone-200/70 text-stone-600")}>{categoryCount(cat.id)}</span>
       </button>
      ))}
     </div>
@@ -172,12 +182,10 @@ export default function Perks() {
        className="w-full bg-stone-50 border border-stone-200 rounded-full py-2.5 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-stone-200"
       />
      </div>
-     <Button type="button" variant="outline" className="h-9 px-4 shrink-0" onClick={() => {
-      const ids = ['all', 'cloud', 'finance', 'marketing', 'productivity'] as const;
-      const index = ids.indexOf(activeCategory);
-      setActiveCategory(ids[(index + 1) % ids.length] ?? 'all');
-     }}>
-      <SlidersHorizontal className="w-4 h-4 mr-2" /> {activeCategory === 'all' ? t('Filters', 'Φίλτρα') : categories.find((c) => c.id === activeCategory)?.label}
+     {/* The ☆ on each card saves a perk; this shows only the saved ones. (It used to be a
+         "Filters" button that cycled the same categories the tabs above already switch.) */}
+     <Button type="button" variant={savedOnly ? 'primary' : 'outline'} aria-pressed={savedOnly} className="h-9 px-4 shrink-0" onClick={() => setSavedOnly((on) => !on)}>
+      <Star className="w-4 h-4 mr-2" fill={savedOnly ? 'currentColor' : 'none'} aria-hidden="true" /> {t(`Saved (${savedCount})`, `Αποθηκευμένες (${savedCount})`)}
      </Button>
     </Card>
     <Card className="bg-stone-900 text-white border-none p-4 self-start" contentClassName="flex items-center justify-between gap-3">
@@ -191,15 +199,17 @@ export default function Perks() {
 
    {filteredPerks.length === 0 && (
     <EmptyHint
-     title={perkQuery || activeCategory !== 'all'
+     title={savedOnly && savedCount === 0
+      ? t("No saved perks yet — tap ☆ on a perk to keep it here.", "Δεν έχεις αποθηκεύσει παροχές — πάτα ☆ σε μια παροχή για να μείνει εδώ.")
+      : perkQuery || activeCategory !== 'all' || savedOnly
       ? t("No perks match this search.", "Καμία παροχή δεν ταιριάζει σε αυτή την αναζήτηση.")
       : t("No perks published yet.", "Δεν έχουν δημοσιευτεί παροχές ακόμη.")}
      detail={perkQuery || activeCategory !== 'all'
       ? t("Ask the studio assistant which credits you can claim.", "Ρώτα τον βοηθό ποιες πιστώσεις μπορείς να διεκδικήσεις.")
       : t("New partner programs appear here the moment they are published.", "Νέες παροχές εμφανίζονται εδώ μόλις δημοσιευτούν.")}
     >
-     {(perkQuery || activeCategory !== 'all') && (
-      <ClearFiltersButton onClick={() => { setPerkQuery(''); setActiveCategory('all'); }} />
+     {(perkQuery || activeCategory !== 'all' || savedOnly) && (
+      <ClearFiltersButton onClick={() => { setPerkQuery(''); setActiveCategory('all'); setSavedOnly(false); }} />
      )}
      <AskLink prompt="What perks can I claim?" />
     </EmptyHint>
@@ -211,10 +221,10 @@ export default function Perks() {
      return (
      <Card key={perk.id} className="group hover:border-stone-900 transition-all h-full" contentClassName="flex flex-col gap-3 h-full">
       <div className="flex items-start justify-between">
-       <div className="w-14 h-11 bg-stone-100 rounded-2xl flex items-center justify-center text-stone-900 font-medium text-sm group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm">
-        {perk.logo}
+       <div aria-hidden="true" className="w-14 h-11 bg-stone-100 rounded-2xl flex items-center justify-center text-stone-900 font-medium text-sm group-hover:bg-stone-900 group-hover:text-white transition-all shadow-sm">
+        {monogram(perk.logo)}
        </div>
-       <Button type="button" variant="ghost" size="icon" className={cn("h-8 w-8 hover:text-amber-500", saved.includes(perk.id) ? "text-amber-500" : "text-stone-300")} onClick={() => toggleSaved(perk.id)} aria-label={t(`Save ${perk.name}`, `Αποθήκευση ${perk.name}`)}>
+       <Button type="button" variant="ghost" size="icon" aria-pressed={saved.includes(perk.id)} className={cn("h-8 w-8 hover:text-amber-500", saved.includes(perk.id) ? "text-amber-500" : "text-stone-300")} onClick={() => toggleSaved(perk.id)} aria-label={saved.includes(perk.id) ? t(`Remove ${perk.name} from saved`, `Αφαίρεση ${perk.name} από τις αποθηκευμένες`) : t(`Save ${perk.name}`, `Αποθήκευση ${perk.name}`)}>
         <Star className="w-4 h-4" fill={saved.includes(perk.id) ? 'currentColor' : 'none'} />
        </Button>
       </div>
@@ -223,14 +233,22 @@ export default function Perks() {
         <h4 className="font-medium text-base">{perk.name}</h4>
         <FactLine items={[labelOf(perk.category)]} label={t('Category', 'Κατηγορία')} />
        </div>
-       {perk.value ? <p className="text-sm font-medium text-stone-900">{t(perk.value, PERK_VALUE_EL[perk.value] ?? perk.value)}</p> : null}
+       {/* The value is the reason to open the card: shown as the deal, not as one more line. */}
+       {perk.value ? <p className="inline-flex w-fit items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-sm font-medium text-emerald-800">{t(perk.value, PERK_VALUE_EL[perk.value] ?? perk.value)}</p> : null}
        <p className="text-sm text-stone-500 leading-relaxed line-clamp-2">{t(perk.description, PERK_DESC_EL[perk.id] ?? perk.description)}</p>
       </div>
       <div className="mt-auto pt-3 border-t border-stone-100">
        {isDemoMode ? (
-        <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
-         {claimed.includes(perkClaimId(perk.name)) ? t('Claimed', 'Εξαργυρώθηκε') : t('Claim Perk', 'Εξαργύρωση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
-        </Button>
+        claimed.includes(perkClaimId(perk.name)) ? (
+         // Claimed: say so plainly, and offer the next step instead of claiming again.
+         <Button type="button" variant="outline" size="sm" className="w-full text-sm py-2" onClick={() => ask(`How do I redeem the ${perk.name} perk?`)}>
+          <Check className="w-3.5 h-3.5 mr-1 text-emerald-600" aria-hidden="true" /> {t('Claimed · how to redeem', 'Εξαργυρώθηκε · πώς χρησιμοποιείται')}
+         </Button>
+        ) : (
+         <Button type="button" variant="primary" size="sm" className="w-full text-sm py-2" onClick={() => ask(`Claim the ${perk.name} perk`)}>
+          {t('Claim Perk', 'Εξαργύρωση παροχής')} <ArrowRight className="w-3 h-3 ml-1" />
+         </Button>
+        )
        ) : perkUrl ? (
         <a href={perkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 transition-all">
          {t('Apply on site', 'Άνοιγμα στον πάροχο')} <ExternalLink className="w-3 h-3 ml-1" />

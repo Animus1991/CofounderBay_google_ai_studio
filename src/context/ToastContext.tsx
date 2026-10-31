@@ -77,7 +77,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
    {children}
    {/* Toast Container */}
    {/* Announced politely to screen readers; each toast can be closed by keyboard. */}
-   <div data-toasts aria-live="polite" className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none max-w-sm w-full">
+   <div data-toasts aria-live="polite" className="fixed left-3 right-3 bottom-[calc(var(--bottom-nav-offset,0px)+4.75rem)] sm:left-auto sm:right-6 sm:bottom-[calc(var(--bottom-nav-offset,0px)+6rem)] sm:w-full z-[100] flex flex-col gap-3 pointer-events-none max-w-sm">
     <AnimatePresence mode="popLayout">
      {toasts.map(t => (
       <motion.div

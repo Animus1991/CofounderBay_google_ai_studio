@@ -26,7 +26,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
-import { User, UserProfile } from "../types";
+import { User } from "../types";
 import { keys, readActivity, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import { usePageControls } from "../lib/pageControls";
@@ -38,6 +38,7 @@ import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { DEMO_ACTIVITY, DEMO_READINESS, demoActivityDelta, demoReadinessDelta } from "../data/demoStats";
 import { askAssistant } from "../lib/assistantBus";
 import { useReadiness } from "../lib/readiness";
+import { profileCompleteness } from "../lib/profileCompleteness";
 
 interface InsightsProps {
  user: User;
@@ -52,22 +53,6 @@ function localTime(iso: string, mode: 'en' | 'el'): string {
 }
 
 type ScorePoint = { at: string; score: number };
-
-/** Share of the profile fields that matching reads (shown next to the readiness index). */
-function profileCompleteness(profile: UserProfile | null): number {
- if (!profile) return 0;
- const fields = [
-  (profile.skills?.length ?? 0) > 0,
-  (profile.lookingFor?.length ?? 0) > 0,
-  Boolean(profile.stage),
-  Boolean(profile.commitment),
-  Boolean(profile.location),
-  Boolean(profile.headline),
-  Boolean(profile.bio),
-  Boolean(profile.company),
- ];
- return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-}
 
 export default function Insights({ user }: InsightsProps) {
  const t = useT();
@@ -94,7 +79,8 @@ export default function Insights({ user }: InsightsProps) {
  // assistant. Profile completeness used to be shown under this name; it is now its own line.
  const readiness = useReadiness(isDemoMode ? undefined : merged?.skills);
  const readinessScore = isDemoMode ? DEMO_VENTURE.readinessScore : readiness.score;
- const completeness = profileCompleteness(merged);
+ // The same completeness as the dashboard and the profile page (lib/profileCompleteness).
+ const completeness = profileCompleteness(merged).score;
 
  // Persist one score point a day so the progression chart is real.
  useEffect(() => {
@@ -218,6 +204,8 @@ export default function Insights({ user }: InsightsProps) {
      {['24H', '7D', '30D', 'ALL'].map((range) => (
       <button
        key={range}
+       type="button"
+       aria-pressed={activeRange === range}
        onClick={() => setActiveRange(range)}
        className={cn(
         "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all tracking-wide",

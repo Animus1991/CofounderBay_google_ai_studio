@@ -18,6 +18,7 @@ import {
  DollarSign
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import CoverImage from "../components/ui/CoverImage";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
 import { User } from "../types";
@@ -207,6 +208,8 @@ export default function Programs({ user: _user }: ProgramsProps) {
       {['All', 'Accelerators', 'Grants', 'Bootcamps'].map((tab) => (
        <button
         key={tab}
+        type="button"
+        aria-pressed={activeTab === tab}
         onClick={() => setActiveTab(tab)}
         className={cn(
          "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
@@ -235,18 +238,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
         <Card noPadding className="overflow-hidden group hover:border-stone-300 hover:shadow-md transition-all border-stone-100 rounded-2xl">
          <div className="flex flex-col md:flex-row">
           <div className="md:w-48 h-40 md:h-auto overflow-hidden relative shrink-0">
-           {program.image ? (
-            <img
-             src={program.image}
-             alt={program.title}
-             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-             referrerPolicy="no-referrer"
-            />
-           ) : (
-            <div className="w-full h-full bg-stone-100 flex items-center justify-center" aria-hidden>
-             <Rocket className="w-7 h-7 text-stone-300" />
-            </div>
-           )}
+           <CoverImage src={program.image} alt="" icon={Rocket} className="h-full w-full" imgClassName="group-hover:scale-105 transition-transform duration-200" />
            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-white/95 backdrop-blur-sm rounded-md text-xs font-semibold tracking-wider border border-stone-100 shadow-sm">
             {labelOf(program.type)}
            </div>

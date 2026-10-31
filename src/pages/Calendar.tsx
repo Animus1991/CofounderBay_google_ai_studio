@@ -350,6 +350,8 @@ export default function Calendar() {
         {['Month', 'Week', 'Day'].map((v) => (
          <button
           key={v}
+          type="button"
+          aria-pressed={view === v}
           onClick={() => setView(v)}
           className={cn(
            "px-3 py-1.5 text-sm font-medium rounded-lg transition-all",

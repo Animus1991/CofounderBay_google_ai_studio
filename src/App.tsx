@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { profileCompleteness } from './lib/profileCompleteness';
 import { auth, db } from './firebase';
 import { User, UserProfile, UserRole, ProfileStatus, VerificationStatus, AccountStatus } from './types';
 
@@ -436,6 +437,13 @@ export default function App() {
         unsubscribeProfile = onSnapshot(doc(db, 'profiles', firebaseUser.uid), (doc) => {
           if (doc.exists()) {
             profileData = doc.data();
+            // Keep the stored completeness (read by automation rules and the nudge
+            // optimizer) equal to the one every page shows (lib/profileCompleteness);
+            // onboarding wrote 20 or 80 once and nothing updated it after.
+            const measured = profileCompleteness(profileData as Parameters<typeof profileCompleteness>[0]).score;
+            if (profileData.profileCompletionScore !== measured) {
+              void setDoc(doc.ref, { profileCompletionScore: measured }, { merge: true }).catch(() => undefined);
+            }
           } else {
             profileData = null;
           }

@@ -19,6 +19,8 @@ import { OutreachWatcher } from './OutreachWatcher';
 import { pageContext } from '../lib/pageRegistry';
 import { openAssistant } from '../lib/assistantBus';
 import { useFollowUpAlerts } from '../lib/followUpAlerts';
+import MobileTabBar from './layout/MobileTabBar';
+import ProfileProgressBar from './layout/ProfileProgressBar';
 
 const PALETTES: { id: PaletteTheme; labelEn: string; labelEl: string; dot: string }[] = [
   { id: 'stone', labelEn: 'Comfort Stone', labelEl: 'Πέτρα', dot: 'bg-stone-800' },
@@ -241,17 +243,25 @@ export default function Layout() {
         {t('Skip to content', 'Μετάβαση στο περιεχόμενο')}
       </a>
       <header className="theme-chrome-frame z-[80] flex min-h-[3.395rem] shrink-0 items-center justify-between gap-1.5 border-b px-2.5 sm:px-3 py-1.5 lg:hidden">
-        <button
-          type="button"
-          data-ui="button"
-          onClick={toggleMobileSidebar}
-          aria-label={t('Menu', 'Μενού')}
-          aria-expanded={mobileSidebarOpen}
-          aria-controls="primary-navigation"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        {/* With the bottom tab bar on screen its "Menu" opens the navigation, so the
+            header shows where you are instead of a second menu button. */}
+        {isGuest || onAssistantPage ? (
+          <button
+            type="button"
+            data-ui="button"
+            onClick={toggleMobileSidebar}
+            aria-label={t('Menu', 'Μενού')}
+            aria-expanded={mobileSidebarOpen}
+            aria-controls="primary-navigation"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-900"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        ) : (
+          <span className="theme-chrome-chip inline-flex min-w-0 max-w-[40%] items-center truncate rounded-md px-2 py-0.5 text-[11px] font-medium">
+            {t(currentPage.en, currentPage.el)}
+          </span>
+        )}
         <div className="flex items-center justify-end gap-1 sm:gap-1.5 min-w-0">
           {studioChrome}
           {exitButton}
@@ -289,10 +299,11 @@ export default function Layout() {
               )}
             </div>
           </div>
+          <ProfileProgressBar />
           <main
             id="main-content"
             tabIndex={-1}
-            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onMessagesPage ? 'pb-20 sm:pb-24 lg:pb-0' : onAssistantPage ? 'pb-4' : 'pb-20 sm:pb-24'}`}
+            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onMessagesPage ? 'pb-[calc(var(--bottom-nav-offset,0px)+5rem)] sm:pb-[calc(var(--bottom-nav-offset,0px)+6rem)] lg:pb-0' : onAssistantPage ? 'pb-4' : 'pb-[calc(var(--bottom-nav-offset,0px)+5rem)] sm:pb-[calc(var(--bottom-nav-offset,0px)+6rem)]'}`}
           >
             <RouteErrorBoundary>
               {/* Pages load as their own chunks; the frame (sidebar, header, assistant) stays put meanwhile. */}
@@ -310,6 +321,8 @@ export default function Layout() {
           </main>
         </div>
       </div>
+      {/* Phones and tablets: the four main places and the menu, within thumb reach. */}
+      {!isGuest && <MobileTabBar />}
       {/* The full-page AI Studio hosts the same conversation inline. */}
       {!onAssistantPage && (
         <Suspense fallback={null}>

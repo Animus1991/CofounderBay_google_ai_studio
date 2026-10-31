@@ -13,6 +13,7 @@ import {
 import { FounderProfile } from '../types';
 import { MATCH_WEIGHTS } from '../utils/matchingEngine';
 import { CONFIDENCE_LABELS, type Compatibility } from '../lib/compatibility';
+import CoverImage from './ui/CoverImage';
 
 interface MatchBreakdownModalProps {
   founder: FounderProfile | null;
@@ -132,11 +133,11 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
       >
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 sm:px-6 py-[0.92rem] bg-background/60">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <img
+            <CoverImage
               src={founder.avatar}
               alt={founder.name}
-              referrerPolicy="no-referrer"
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl object-cover ring-1 ring-border shrink-0"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl ring-1 ring-border shrink-0"
+              fallback={<span className="text-xs font-semibold text-stone-500">{founder.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}
             />
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">

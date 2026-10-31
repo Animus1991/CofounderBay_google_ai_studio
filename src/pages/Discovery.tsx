@@ -26,6 +26,7 @@ import { User } from "../types";
 import { useAuth } from "../App";
 import { readDiscoveryFilters, writeDiscoveryFilters, addSavedSearch, removeSavedSearch, readSavedSearches, keys, readValue, writeValue } from "../lib/localLists";
 import { cn } from "../lib/utils";
+import CoverImage from "../components/ui/CoverImage";
 import { explainMatch } from "../lib/matchReason";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, useT } from "../lib/language";
@@ -523,6 +524,8 @@ export default function Discovery({ user }: DiscoveryProps) {
      {categories.map((cat) => (
       <button
        key={cat}
+       type="button"
+       aria-pressed={activeCategory === cat}
        onClick={() => setActiveCategory(cat)}
        className={cn(
         "pb-3 text-sm font-semibold tracking-wider transition-all relative whitespace-nowrap",
@@ -678,11 +681,7 @@ export default function Discovery({ user }: DiscoveryProps) {
           "relative overflow-hidden shrink-0",
           viewMode === "grid" ? "h-40 w-full" : "h-32 w-full md:w-48"
          )}>
-          {opp.photo ? (
-           <img src={opp.photo} alt="" className="w-full h-full object-cover" />
-          ) : (
-           <div className="w-full h-full bg-stone-800" aria-hidden />
-          )}
+          <CoverImage src={opp.photo} alt="" tone="dark" className="h-full w-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
           <div className="absolute top-3 left-3">
            <span className="bg-white/80 backdrop-blur-sm text-stone-700 text-xs font-semibold tracking-wider px-2 py-0.5 rounded-md">

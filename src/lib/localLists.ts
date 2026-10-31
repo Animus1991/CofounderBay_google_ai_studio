@@ -273,6 +273,8 @@ export const keys = {
   uxPrefs: 'cfb.uxPrefs',
   /** How the assistant answers (lib/assistantPrefs). */
   assistantPrefs: 'cfb.assistantPrefs',
+  /** The completeness at which the "finish your profile" bar was closed (components/layout/ProfileProgressBar). */
+  profileNudge: 'cfb.profileNudge',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
