@@ -35,6 +35,10 @@ fundraising and milestones, and accelerate execution with AI assistance.
 - **One Venture Readiness Index** — five weighted dimensions from the diagnostic *and* evidence
   (team skills, pitch deck, round), the same number on Founder Tools, Insights and in the
   assistant ([`src/lib/readiness.ts`](src/lib/readiness.ts)).
+- **Phone-first chrome** — a bottom tab bar (Home, Matches, Messages, Events, Menu), a
+  "finish your profile" bar driven by one completeness measure, one-row tab strips
+  with a side fade, image placeholders that never show a broken picture. See
+  [`docs/UX_ROUND6.md`](docs/UX_ROUND6.md).
 - **Explainable matching** — five-dimension compatibility with one shared vocabulary, a
   working-hours overlap model across time zones and a confidence band from data coverage
   ([`src/lib/compatibility.ts`](src/lib/compatibility.ts)).
