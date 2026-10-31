@@ -20,6 +20,7 @@ import {
  Tags,
  Palette,
  Search,
+ PinOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -29,7 +30,7 @@ import { bothText, labelOf, withEl } from "../../lib/labels";
 import { navTitle } from "../../lib/navHelp";
 import { navIcon, navLabel } from "../../lib/navMap";
 import { memberPages, type PageSection } from "../../lib/pageRegistry";
-import { readUxPrefs, UX_PREFS_KEY } from "../../lib/personalization";
+import { readUxPrefs, toggleFavorite, UX_PREFS_KEY } from "../../lib/personalization";
 import { useStored } from "../../lib/useStored";
 import { useLanguage } from "../../lib/language";
 import { useTenant } from "../../context/TenantContext";
@@ -278,8 +279,9 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
       const Icon = navIcon(path);
       const label = navLabel(path);
       return (
+       // The page-header pin star is gone; a pinned page is unpinned right here (or with “/unpin”).
+       <div key={path} className="relative group/pin">
        <NavLink
-        key={path}
         to={path}
         title={navTitle(label.en, path)}
         className={({ isActive }) =>
@@ -296,8 +298,19 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
          <Icon className="w-4.5 h-4.5 shrink-0 group-hover:text-stone-900" />
          {!collapsed && <span className="truncate">{withEl(label.en)}</span>}
         </div>
-        {!collapsed && <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-all" />}
        </NavLink>
+       {!collapsed && (
+        <button
+         type="button"
+         onClick={() => toggleFavorite(path)}
+         aria-label={bothText(`Unpin ${label.en}`, `Ξεκαρφίτσωμα: ${label.el}`)}
+         title={bothText(`Unpin ${label.en}`, `Ξεκαρφίτσωμα: ${label.el}`)}
+         className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-stone-400 opacity-0 transition-opacity group-hover/pin:opacity-100 focus-visible:opacity-100 hover:bg-stone-100 hover:text-stone-900"
+        >
+         <PinOff className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+       )}
+       </div>
       );
      })}
     </div>

@@ -739,8 +739,15 @@ input.h-8 {
 .theme-chrome-frame button[data-ui="button"]:hover {
   background-color: rgba(255, 255, 255, 0.14);
 }
+/*
+ * The page-name chip: a white tint over the accent lightened the chip, so its
+ * 11px white label fell to 3.5–4.1:1 in five themes (axe, WCAG 1.4.3 needs
+ * 4.5:1). A deeper shade of the same accent keeps the chip distinct from the
+ * bar and puts the label above 5:1 in every theme; the hairline keeps its edge.
+ */
 .theme-chrome-chip {
-  background-color: rgba(255, 255, 255, 0.16);
+  background-color: color-mix(in srgb, var(--cfb-accent) 78%, #000);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
   color: #fff;
 }
 .theme-chrome-rule {
