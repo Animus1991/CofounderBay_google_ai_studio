@@ -22,11 +22,22 @@ fundraising and milestones, and accelerate execution with AI assistance.
 
 - **Matching engine** — compatibility scoring across skills, values, goals and availability.
 - **AI operator** — one assistant that reads and changes the same data as every page
-  (62 declared actions, Gemini tool use, confirm + undo for every write), as a corner
+  (78 declared actions, Gemini tool use, confirm + undo for every write), as a corner
   panel everywhere and as the full-page AI Studio (`/assistant`). See
   [`docs/AI_OPERATOR.md`](docs/AI_OPERATOR.md).
 - **Communication hub** — real-time messaging (Socket.IO) plus 10 specialized AI agents.
 - **Founder tooling** — pitch deck builder, fundraising CRM, milestones, workspace, insights.
+- **Founder finance toolkit** — tested equity math ([`src/lib/equity.ts`](src/lib/equity.ts)):
+  post-money SAFE ownership and conversion (cap vs discount), priced-round cap table with the
+  option-pool shuffle, Berkus / Scorecard / VC-method valuation, month-by-month runway with
+  breakeven and "default alive", unit economics (LTV:CAC, CAC payback, burn multiple) and
+  equity grants with vesting — as working calculators in Founder Tools → Tools.
+- **One Venture Readiness Index** — five weighted dimensions from the diagnostic *and* evidence
+  (team skills, pitch deck, round), the same number on Founder Tools, Insights and in the
+  assistant ([`src/lib/readiness.ts`](src/lib/readiness.ts)).
+- **Explainable matching** — five-dimension compatibility with one shared vocabulary, a
+  working-hours overlap model across time zones and a confidence band from data coverage
+  ([`src/lib/compatibility.ts`](src/lib/compatibility.ts)).
 - **Ecosystem** — communities, events, mentors, programs, resources, perks.
 - **Multi-tenancy & admin** — white-label branding, SSO, automation engine, billing.
 - **Gamification** — XP, badges, streaks, venture-readiness scoring.
@@ -75,7 +86,11 @@ The app starts on `http://localhost:5180` by default (configurable via `VITE_POR
 | `npm run lint` / `lint:fix` | ESLint |
 | `npm run format` / `format:check` | Prettier |
 | `npm run test` / `test:watch` / `test:coverage` | Vitest |
-| `npm run validate` | `typecheck` + `lint` + `test` (the CI gate) |
+| `npm run validate` | `typecheck` + `lint` + `test` + `check:links` + `check:buttons` (the CI gate) |
+| `npm run test:e2e` | Playwright end-to-end tests, including axe-core accessibility in every theme |
+| `npm run test:emulator` | Firestore / Storage security-rules tests on the Firebase emulators |
+| `npm run check:links` / `check:buttons` | Every internal link resolves; no control without an action |
+| `npm run check:bundle` | First-load bundle budget (entry ≤ 560 KB) |
 
 ## Project structure
 
@@ -100,8 +115,11 @@ All runtime configuration is centralized and validated in
 `VITE_`. Firebase config is resolved env-first (with a fallback to
 `firebase-applet-config.json`). See [`.env.example`](.env.example) for the full list.
 
-> **Security:** `VITE_GEMINI_API_KEY` is read by the client. For production, proxy AI calls
-> through a backend so the key is never shipped to the browser (tracked in the roadmap).
+> **Security:** in production the client calls Gemini through the server proxy
+> (`/api/ai/*`, `GEMINI_API_KEY` stays on the server, verified Firebase tokens, rate limits).
+> The server binds `0.0.0.0` in production (`HOST`), sends baseline security headers, answers
+> `GET /api/health`, and only `TENANT_ADMIN_UIDS` may change white-label branding. See
+> [`.env.example`](.env.example) for every server variable.
 
 ## Testing
 

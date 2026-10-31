@@ -7,6 +7,17 @@
 > has been delivered and prioritizes what remains. Status legend: ✅ done · 🟡 in progress ·
 > ⬜ planned.
 
+> **Status reconciliation — 31 Oct 2026 (round 5).** Several items below were delivered by
+> later rounds without this file being updated. Delivered since: zero-warning lint gate,
+> E2E (Playwright) with axe-core accessibility checks in every theme, the AI proxy with
+> verified Firebase tokens and rate limits, Firestore/Storage rules tests on the emulators,
+> the investor CRM / due-diligence / digest outreach server, a bundle budget, and in round 5
+> the equity & valuation library (`src/lib/equity.ts`), one Venture Readiness Index
+> (`src/lib/readiness.ts`), working Founder Tools calculators, white-label tenant
+> resolution with validated admin-only writes (`server/tenants.ts`), security headers,
+> a health endpoint and container-ready binding (`server/http.ts`). See
+> [`docs/AUDIT_ROUND5.md`](docs/AUDIT_ROUND5.md) for the audit and what remains.
+
 ---
 
 ## 0. Production Foundation — ✅ DELIVERED
@@ -66,7 +77,7 @@ non-breaking; `npm run validate` is green (typecheck + lint 0 errors + tests pas
   multi-tenant surface, pending routing).
 - ⬜ Replace `as any` casts with precise types; burn down remaining ESLint warnings (unused
   symbols are delegated to ESLint `no-unused-vars`, not tsc).
-- ⬜ Make `lint` fail on warnings in CI once the warning count hits zero.
+- ✅ `lint` fails on any warning (`eslint . --max-warnings 0`) locally and in CI.
 - ⬜ Reformat the codebase with Prettier (the legacy double-spaced files) in a single dedicated PR.
 
 ## 2. Data Layer Migration (mock → real) — ⬜
@@ -100,7 +111,7 @@ production rather than UI polish only):
 - ⬜ **Profile** — completion flow, skills, endorsements, public view.
 - ⬜ **Matching/Discovery** — filters, saved profiles, debounced search, real scoring service.
 - ⬜ **Messaging** — persistence, typing indicators, reactions, attachments, presence.
-- ⬜ **Fundraising** — investor CRM, pipeline, data room.
+- ✅ **Fundraising** — investor CRM board, pipeline with follow-ups, due-diligence tracker and share links, data room, SAFE card computed from the round.
 - ⬜ **Milestones** — kanban/timeline, assignments, due-date alerts.
 - ⬜ **Admin** — charts, bulk actions, automation rule builder, SSO wizard, billing (Stripe).
 
@@ -110,14 +121,14 @@ production rather than UI polish only):
 - ⬜ Virtualize long lists (`react-window` is already a dependency) for matches/messages/feeds.
 - ⬜ Image lazy-loading + responsive sizes + avatar fallbacks without 404s.
 - ⬜ Add a Service Worker (offline shell, asset caching) — manifest already in place.
-- ⬜ Bundle-size budget in CI; analyze with `rollup-plugin-visualizer`.
+- ✅ Bundle-size budget in CI (`npm run check:bundle`, entry ≤ 560 KB); ⬜ visualizer report.
 
 ## 6. Observability & Analytics (go live) — ⬜
 
 - ⬜ Wire a real error-tracking provider (Sentry) via `initErrorTracking()` + `VITE_SENTRY_DSN`.
 - ⬜ Wire a real analytics provider (PostHog/Segment) via `initAnalytics()`; instrument the
   `AnalyticsEvent` taxonomy across key funnels (signup, onboarding, match, message, checkout).
-- ⬜ Add Web Vitals reporting and a basic uptime/health check.
+- 🟡 `GET /api/health` liveness endpoint for Cloud Run / uptime checks (✅); ⬜ Web Vitals reporting.
 
 ## 7. Testing & QA — ⬜
 
