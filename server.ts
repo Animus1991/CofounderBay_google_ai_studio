@@ -13,6 +13,8 @@ import { makeIdentify } from "./server/identity";
 import { registerOutreachRoutes } from "./server/outreach";
 import { openOutreachStore } from "./server/outreachStore";
 import { emailService, smtpProvider } from "./server/email";
+import { readTenantAdmins, registerTenantRoutes, type TenantRecord } from "./server/tenants";
+import { securityHeaders, readSocketMessage, listenHost } from "./server/http";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,9 +23,15 @@ const __dirname = dirname(__filename);
 const API_PORT = parseInt(process.env.API_PORT || process.env.PORT || "3010");
 const WS_PORT = parseInt(process.env.WS_PORT || "24679"); // Different from 24678
 const VITE_PORT = parseInt(process.env.VITE_PORT || "5180"); // Different from 5173/5174
+// Containers (Cloud Run, Docker) must listen on every interface; local development stays on loopback.
+const HOST = listenHost(process.env);
 
 async function startServer() {
   const app = express();
+  app.disable("x-powered-by");
+  // Behind Cloud Run / a load balancer, req.ip is the client from X-Forwarded-For (rate limits, logs).
+  if (process.env.TRUST_PROXY !== "false") app.set("trust proxy", process.env.NODE_ENV === "production" ? 1 : "loopback");
+  app.use(securityHeaders({ production: process.env.NODE_ENV === "production" }));
   const httpServer = createServer(app);
   // Only the app's own origins may call the API or open a socket (server/cors.ts).
   const allowOrigin = originPolicy(process.env);
@@ -317,28 +325,11 @@ async function startServer() {
     ]
   };
 
-  // API Routes
-  app.get("/api/tenants", (req, res) => res.json(db.tenants));
-  app.get("/api/tenants/:slug", (req, res) => {
-    const tenant = db.tenants.find(t => t.slug === req.params.slug);
-    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
-    return res.json(tenant);
-  });
-
-  app.post("/api/tenants/:id/branding", (req, res) => {
-    const tenant = db.tenants.find(t => t.id === req.params.id);
-    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
-    tenant.branding = { ...tenant.branding, ...req.body };
-    tenant.updatedAt = new Date().toISOString();
-    return res.json(tenant.branding);
-  });
-
-  app.post("/api/tenants/:id/content", (req, res) => {
-    const tenant = db.tenants.find(t => t.id === req.params.id);
-    if (!tenant) return res.status(404).json({ error: "Tenant not found" });
-    tenant.content = { ...tenant.content, ...req.body };
-    tenant.updatedAt = new Date().toISOString();
-    return res.json(tenant.content);
+  // Liveness for Cloud Run / load balancers / uptime checks: no data, no auth.
+  const startedAt = Date.now();
+  app.get("/api/health", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ status: "ok", uptimeSeconds: Math.round((Date.now() - startedAt) / 1000) });
   });
 
   app.get("/api/users", (req, res) => res.json(db.users));
@@ -600,6 +591,14 @@ async function startServer() {
     email: emailService(smtpProvider(process.env)),
     cronSecret: process.env.DIGEST_CRON_SECRET || process.env.WEBHOOK_CRON_SECRET,
   });
+  // ── White-label tenants: host resolution and validated, admin-only changes (server/tenants.ts) ──
+  registerTenantRoutes(app, {
+    tenants: db.tenants as unknown as TenantRecord[],
+    identify: makeIdentify({ requireAuth: aiEnv.requireAuth, verifyToken, signInMessage: 'Sign in as a tenant administrator to change branding.' }),
+    requireAuth: aiEnv.requireAuth,
+    adminUids: readTenantAdmins(process.env),
+  });
+
   // Optional in-process schedule for long-running servers; serverless hosts call POST /api/cron/digest instead.
   if (process.env.DIGEST_SCHEDULER === "on") {
     setInterval(() => { void outreach.runDigests("scheduler"); }, 10 * 60_000).unref();
@@ -610,12 +609,17 @@ async function startServer() {
     console.log("User connected:", socket.id);
 
     socket.on("join_room", (conversationId) => {
+      // Room names are conversation ids — short strings, nothing else.
+      if (typeof conversationId !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(conversationId)) return;
       socket.join(conversationId);
       console.log(`User ${socket.id} joined room ${conversationId}`);
     });
 
     socket.on("send_message", (data) => {
-      const { conversationId, senderId, body, file } = data;
+      // Malformed or oversized payloads are dropped (server/http.ts readSocketMessage).
+      const message = readSocketMessage(data);
+      if (!message) return;
+      const { conversationId, senderId, body, file } = message;
       const newMessage = {
         id: `m${db.messages.length + 1}`,
         conversationId,
@@ -678,13 +682,14 @@ async function startServer() {
   const startServerOnPort = (preferredPort: number) => {
     return new Promise<number>((resolve, reject) => {
       const tryPort = (port: number) => {
-        const testServer = httpServer.listen(port, "localhost", () => {
-          console.log(`✅ Server running on http://localhost:${port}`);
+        const testServer = httpServer.listen(port, HOST, () => {
+          console.log(`✅ Server running on http://localhost:${port} (listening on ${HOST})`);
           console.log(`   API: http://localhost:${port}`);
           console.log(`   WebSocket: ws://localhost:${port}`);
           resolve(port);
         }).on('error', (err: any) => {
-          if (err.code === 'EADDRINUSE') {
+          // In production the platform assigns PORT; serving on another one would be unreachable.
+          if (err.code === 'EADDRINUSE' && process.env.NODE_ENV !== "production") {
             console.log(`⚠️ Port ${port} is in use, trying ${port + 1}...`);
             tryPort(port + 1);
           } else {

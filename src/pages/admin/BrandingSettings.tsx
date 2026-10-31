@@ -16,6 +16,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
  const [activeTab, setActiveTab] = useState<'theme' | 'content' | 'preview'>('theme');
  const [saving, setSaving] = useState(false);
  const [success, setSuccess] = useState(false);
+ const [saveNote, setSaveNote] = useState<string | null>(null);
 
  const [brandingForm, setBrandingForm] = useState(tenant?.branding);
  const [contentForm, setContentForm] = useState(tenant?.content);
@@ -32,15 +33,20 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
 
  const handleSave = async () => {
   setSaving(true);
+  setSaveNote(null);
   try {
-   await Promise.all([
+   const results = await Promise.all([
     updateBranding(brandingForm),
     updateContent(contentForm)
    ]);
-   setSuccess(true);
-   setTimeout(() => setSuccess(false), 3000);
-  } catch (err) {
-   console.error(err);
+   const failed = results.find((result) => !result.saved);
+   if (failed) {
+    // Previewed on this screen, not saved — say so instead of showing "Saved".
+    setSaveNote(t(`Previewing only — not saved: ${failed.message ?? 'the server refused the change.'}`, `Μόνο προεπισκόπηση — δεν αποθηκεύτηκε: ${failed.message ?? 'ο server απέρριψε την αλλαγή.'}`));
+   } else {
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+   }
   } finally {
    setSaving(false);
   }
@@ -57,6 +63,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
     <div>
      <h1 className="section-header">{t('Tenant Branding', 'Ταυτότητα οργανισμού')}</h1>
      <p className="text-sm text-stone-500 mt-1">{t('Customize the visual identity and content of your ecosystem.', 'Προσάρμοσε την οπτική ταυτότητα και το περιεχόμενο του οικοσυστήματος.')}</p>
+     {saveNote && <p role="status" className="text-xs text-amber-700 mt-1">{saveNote}</p>}
     </div>
     <div className="flex gap-2">
      <Button variant="outline" size="sm" onClick={handleReset} className="h-9 px-4 text-xs font-medium">
