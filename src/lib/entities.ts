@@ -9,7 +9,7 @@
  * anywhere outside the storage layer.
  */
 import { useStored } from './useStored';
-import { isDemoData, keys, readProfileLocal, readValue, writeValue } from './localLists';
+import { isDemoData, keys, readProfileLocal, readValue, writeValue, type Round } from './localLists';
 import { DEMO_VENTURE } from '../data/demoVenture';
 
 export type Entity<T> = {
@@ -82,6 +82,43 @@ export function ventureSummary(): { oneLiner: string; readinessScore: number } {
 /** For React: the venture name, following both the venture record and the local profile. */
 export function useVentureName(profileCompany?: string | null): string {
   return useStored(() => ventureName(profileCompany), [keys.startup, keys.profileLocal, `${profileCompany ?? ''}`]);
+}
+
+// ── The cap table ───────────────────────────────────────────────────────────
+/** One line of the cap table before any SAFE converts: founders, early team, the option pool. */
+export type CapTableHolder = { name: string; shares: number; kind?: 'common' | 'pool' };
+
+/** Founders and the option pool; the sample venture keeps a 10% pool. Real accounts start with founders only. */
+export function defaultCapTable(): CapTableHolder[] {
+  return isDemoData()
+    ? [
+        { name: 'Founders', shares: 9_000_000 },
+        { name: 'Option pool', shares: 1_000_000, kind: 'pool' },
+      ]
+    : [{ name: 'Founders', shares: 10_000_000 }];
+}
+
+const holders = (raw: unknown): CapTableHolder[] => {
+  if (!Array.isArray(raw)) return defaultCapTable();
+  const rows = raw
+    .map((item) => record(item))
+    .map((item) => ({
+      name: text(item.name).slice(0, 60) || 'Holder',
+      shares: typeof item.shares === 'number' && Number.isFinite(item.shares) && item.shares > 0 ? Math.round(item.shares) : 0,
+      ...(item.kind === 'pool' ? { kind: 'pool' as const } : {}),
+    }))
+    .filter((item) => item.shares > 0)
+    .slice(0, 40);
+  return rows.length ? rows : defaultCapTable();
+};
+
+/** Cap table lines (Founder Tools → Cap Table, Fundraising's cap-table card, the assistant). */
+export const capTable = entity<CapTableHolder[]>(keys.capTable, defaultCapTable, holders);
+
+/** The round's committed SAFE money as one cap-table line (post-money cap, discount as a fraction). */
+export function roundSafes(round: Pick<Round, 'instrument' | 'committedAmount' | 'valuationCap' | 'discountPct' | 'name'>): { amount: number; cap: number; discount: number; holder: string }[] {
+  if (round.instrument !== 'SAFE' || !(round.committedAmount > 0)) return [];
+  return [{ amount: round.committedAmount, cap: round.valuationCap > 0 ? round.valuationCap : 0, discount: Math.min(1, Math.max(0, (round.discountPct || 0) / 100)), holder: `${round.name || 'Round'} SAFEs` }];
 }
 
 // ── Small id lists ──────────────────────────────────────────────────────────

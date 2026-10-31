@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { FounderProfile } from '../types';
 import { MATCH_WEIGHTS } from '../utils/matchingEngine';
-import type { Compatibility } from '../lib/compatibility';
+import { CONFIDENCE_LABELS, type Compatibility } from '../lib/compatibility';
 
 interface MatchBreakdownModalProps {
   founder: FounderProfile | null;
@@ -172,6 +172,14 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
               <p className="text-xs font-semibold text-foreground">
                 {tr('What the score is made of', 'Από τι αποτελείται το σκορ')}
               </p>
+              {fit && fit.confidence && (
+                <p className="text-[11px] text-muted-foreground leading-snug" data-testid="match-confidence">
+                  {tr(
+                    `Based on ${fit.known} of ${scored.length} factors (${Math.round(fit.coverage * 100)}% of the weight) · ${CONFIDENCE_LABELS[fit.confidence].en}`,
+                    `Με βάση ${fit.known} από ${scored.length} παράγοντες (${Math.round(fit.coverage * 100)}% του βάρους) · ${CONFIDENCE_LABELS[fit.confidence].el}`,
+                  )}
+                </p>
+              )}
               {scored.map((dim) => (
                 <div key={dim.key} className="rounded-xl border border-border bg-background/50 px-3 py-[0.68rem] space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs">

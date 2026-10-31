@@ -1,8 +1,8 @@
 /**
  * Per-account layout personalization: pages the user pinned to the sidebar and
- * the page they want to land on. Writable from the star on each page header, from
- * Settings, and from the assistant ("/pin matches", "/home matches") — one source
- * of truth for all three.
+ * the page they want to land on. Writable from the sidebar's pinned list (unpin),
+ * from Settings, and from the assistant ("/pin matches", "/home matches") — one
+ * source of truth for all three. (The page-header pin star was removed on purpose.)
  */
 import { keys, readValue, writeValue } from './localLists';
 

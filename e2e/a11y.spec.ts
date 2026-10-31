@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright';
  * violations; moderate ones are printed so they can be worked down.
  */
 
-const ROUTES = ['/dashboard', '/assistant', '/fundraising', '/fundraising?tab=crm', '/fundraising?tab=dd', '/matches', '/workspace', '/founder-tools?tab=pitch', '/settings', '/notifications'];
+const ROUTES = ['/dashboard', '/assistant', '/fundraising', '/fundraising?tab=crm', '/fundraising?tab=dd', '/matches', '/workspace', '/founder-tools?tab=pitch', '/founder-tools?tab=tools', '/insights', '/settings', '/notifications'];
 
 async function sample(page: Page, path: string) {
   await page.addInitScript(() => localStorage.setItem('demo_mode', 'true'));

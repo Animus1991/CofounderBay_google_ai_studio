@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, Globe, Lock, Save, Plus, Trash2, AlertCircle, CheckCircle2, Info, ArrowRight, ExternalLink, History, Settings2, Key, Server } from "lucide-react";
+import { ShieldCheck, Globe, Lock, Save, Plus, Trash2, AlertCircle, CheckCircle2, Info, ArrowRight, ExternalLink, History, Settings2, Key, Server, Copy, Check } from "lucide-react";
+import { copyText } from "../../lib/download";
 import { motion, AnimatePresence } from "motion/react";
 import { collection, doc, getDoc, onSnapshot, orderBy, query, limit as qLimit, setDoc } from "firebase/firestore";
 import Button from "../../components/ui/Button";
@@ -41,6 +42,8 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
  const { isDemoMode } = useAuth();
  const configDocId = `sso-${tenant?.id || 'default'}`;
  const [activeTab, setActiveTab] = useState<'config' | 'mapping' | 'audit'>('config');
+ const [copiedSp, setCopiedSp] = useState<string | null>(null);
+ const spOrigin = typeof window !== 'undefined' ? window.location.origin : '';
  const [ssoEnabled, setSsoEnabled] = useState(false);
  const [ssoMandatory, setSsoMandatory] = useState(false);
  const [providerType, setProviderType] = useState<'SAML' | 'OIDC' | 'OAuth'>('SAML');
@@ -611,20 +614,28 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
 
      <Card title={t('Service Provider Info', 'Στοιχεία παρόχου υπηρεσίας')} className="p-5">
       <div className="space-y-4">
-       <div className="space-y-1.5">
-        <label className="text-micro">{t('Assertion Consumer Service (ACS)', 'Υπηρεσία λήψης δήλωσης (ACS)')}</label>
-        <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
-         <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/api/auth/sso/callback</code>
-         <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/api/auth/sso/callback').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
+       {/* The service-provider URLs come from the origin this studio is served on, so the
+           values an identity provider is given are the ones that actually answer. */}
+       {[
+        { id: 'acs', label: t('Assertion Consumer Service (ACS)', 'Υπηρεσία λήψης δήλωσης (ACS)'), value: `${spOrigin}/api/auth/sso/callback` },
+        { id: 'entity', label: t('Entity ID', 'Αναγνωριστικό οντότητας'), value: `${spOrigin}/auth/sp` },
+       ].map((row) => (
+        <div key={row.id} className="space-y-1.5">
+         <p className="text-micro">{row.label}</p>
+         <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
+          <code className="text-xs text-stone-500 truncate flex-1">{row.value}</code>
+          <button
+           type="button"
+           aria-label={t(`Copy ${row.label}`, `Αντιγραφή: ${row.label}`)}
+           onClick={async () => { if (await copyText(row.value)) { setCopiedSp(row.id); setTimeout(() => setCopiedSp(null), 1500); } }}
+           className="inline-flex h-7 w-7 items-center justify-center rounded-md text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+          >
+           {copiedSp === row.id ? <Check className="w-3 h-3" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
+          </button>
+         </div>
         </div>
-       </div>
-       <div className="space-y-1.5">
-        <label className="text-micro">{t('Entity ID', 'Αναγνωριστικό οντότητας')}</label>
-        <div className="flex items-center gap-2 p-2 bg-stone-50/50 rounded-lg border border-stone-100">
-         <code className="text-xs text-stone-500 truncate flex-1">https://cofounderbay.com/auth/sp</code>
-         <button type="button" title={t('Copy', 'Αντιγραφή')} onClick={() => navigator.clipboard?.writeText('https://cofounderbay.com/auth/sp').catch(() => {})} className="text-stone-400 hover:text-stone-900 transition-colors"><Save className="w-3 h-3" /></button>
-        </div>
-       </div>
+       ))}
+       {copiedSp && <p role="status" className="text-xs text-emerald-700">{t('Copied', 'Αντιγράφηκε')}</p>}
       </div>
      </Card>
 

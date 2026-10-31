@@ -73,6 +73,23 @@ deterministic router first, the model only for what the router cannot place, an
 honest "not matched" when neither can help. Writes are always proposals the
 founder confirms. See [`docs/AI_OPERATOR.md`](docs/AI_OPERATOR.md).
 
+### `src/lib/equity.ts` — Early-stage finance math
+Pure, unit-tested functions for every calculator, card and assistant answer that
+involves equity: post-money SAFE ownership (`amount ÷ post-money cap`), SAFE
+conversion at a priced round (lower of cap price and discount price, solved as a
+fixed point together with the option-pool shuffle), pro-forma cap tables,
+Berkus / Scorecard / VC-method valuation, a month-by-month runway simulation
+(breakeven, "default alive"), unit economics and vesting. Founder Tools → Tools
+(`components/founderTools`), the Fundraising SAFE and cap-table cards and the
+assistant's `/round` answer all read it.
+
+### `src/lib/readiness.ts` — One Venture Readiness Index
+Five weighted dimensions (team 25%, market 20%, product 20%, finance 20%, pitch
+15%), each from the 5-step diagnostic and/or evidence the studio holds (skills →
+team areas, pitch slides written, round numbers filled). Unknown dimensions are
+left out and the weights rescaled; the result carries its coverage. Founder Tools,
+Insights and the assistant show the same number.
+
 ### `src/lib/pageRegistry.ts` — One description per page
 Labels (EN/EL), document title, icon, sidebar section, help text and assistant
 keywords for every route. The sidebar, navigation map, ⌘K help, document titles,
@@ -107,6 +124,16 @@ wraps the app so any route can use server-state hooks.
 - **UI state:** Zustand (`useUIStore`).
 - **Realtime:** Socket.IO via `MessagingContext`, with graceful fallback to local data when the
   dev server is unavailable.
+
+## Server (`server.ts`, `server/`)
+One Express process serves the API, Socket.IO and the built SPA. `server/identity`
+decides who is calling (verified Firebase ID token; anonymous only where sign-in is
+not required); `server/aiProxy` keeps Gemini behind the server; `server/outreach`
+holds due-diligence links, email and the weekly digest; `server/tenants` resolves a
+white-label tenant from the host (`/api/tenants/resolve`) and accepts only
+validated, admin-only branding/content changes; `server/http` adds security
+headers, validates socket messages and picks the listen host (`0.0.0.0` in
+containers). `GET /api/health` is the liveness probe.
 
 ## Security
 

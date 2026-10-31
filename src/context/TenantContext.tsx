@@ -1,6 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { TenantConfig } from '../types';
 import { DEFAULT_TENANT, hexToHslTriplet } from '../data/tenant';
+import { studioApi } from '../lib/studioApi';
+import { ApiError } from '../lib/apiClient';
+
+/** Whether a branding or content change reached the server; the theme is previewed locally either way. */
+export type TenantSaveResult = { saved: boolean; message?: string };
+
+function saveFailure(error: unknown): TenantSaveResult {
+  if (error instanceof ApiError) {
+    const body = error.body as { error?: unknown } | null;
+    return { saved: false, message: typeof body?.error === 'string' ? body.error : error.message };
+  }
+  return { saved: false, message: 'The server could not be reached.' };
+}
 
 interface TenantContextType {
   /** The resolved white-label tenant, or the platform's own tenant. Never null after loading. */
@@ -9,8 +22,8 @@ interface TenantContextType {
   isWhiteLabel: boolean;
   loading: boolean;
   error: string | null;
-  updateBranding: (branding: Partial<NonNullable<TenantConfig['branding']>>) => Promise<void>;
-  updateContent: (content: Partial<NonNullable<TenantConfig['content']>>) => Promise<void>;
+  updateBranding: (branding: Partial<NonNullable<TenantConfig['branding']>>) => Promise<TenantSaveResult>;
+  updateContent: (content: Partial<NonNullable<TenantConfig['content']>>) => Promise<TenantSaveResult>;
 }
 
 const defaultTenantContext: TenantContextType = {
@@ -18,8 +31,8 @@ const defaultTenantContext: TenantContextType = {
   isWhiteLabel: false,
   loading: false,
   error: null,
-  updateBranding: async () => {},
-  updateContent: async () => {},
+  updateBranding: async () => ({ saved: false }),
+  updateContent: async () => ({ saved: false }),
 };
 
 const TenantContext = createContext<TenantContextType>(defaultTenantContext);
@@ -83,26 +96,34 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     fetchTenant();
   }, []);
 
-  const updateBranding = async (branding: Partial<NonNullable<TenantConfig['branding']>>) => {
-    const res = await fetch(`/api/tenants/${tenant.id}/branding`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(branding),
-    }).catch(() => null);
-    const saved = res?.ok ? await res.json().catch(() => branding) : branding;
+  // Changes go through the shared API client with the caller's sign-in (server/tenants.ts
+  // validates every field and allows only tenant administrators on a sign-in server).
+  // The new look is applied locally either way, so an admin can preview it; the result
+  // says whether it was saved, and why not.
+  const updateBranding = async (branding: Partial<NonNullable<TenantConfig['branding']>>): Promise<TenantSaveResult> => {
+    let result: TenantSaveResult = { saved: true };
+    let saved: Partial<NonNullable<TenantConfig['branding']>> = branding;
+    try {
+      saved = await studioApi<Partial<NonNullable<TenantConfig['branding']>>>(`/tenants/${encodeURIComponent(tenant.id)}/branding`, { method: 'POST', body: branding });
+    } catch (error) {
+      result = saveFailure(error);
+    }
     const next = { ...tenant, branding: { ...tenant.branding, ...saved } };
     setTenant(next);
     applyTheme(next.branding);
+    return result;
   };
 
-  const updateContent = async (content: Partial<NonNullable<TenantConfig['content']>>) => {
-    const res = await fetch(`/api/tenants/${tenant.id}/content`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(content),
-    }).catch(() => null);
-    const saved = res?.ok ? await res.json().catch(() => content) : content;
+  const updateContent = async (content: Partial<NonNullable<TenantConfig['content']>>): Promise<TenantSaveResult> => {
+    let result: TenantSaveResult = { saved: true };
+    let saved: Partial<NonNullable<TenantConfig['content']>> = content;
+    try {
+      saved = await studioApi<Partial<NonNullable<TenantConfig['content']>>>(`/tenants/${encodeURIComponent(tenant.id)}/content`, { method: 'POST', body: content });
+    } catch (error) {
+      result = saveFailure(error);
+    }
     setTenant({ ...tenant, content: { ...tenant.content, ...saved } });
+    return result;
   };
 
   return (

@@ -134,7 +134,7 @@ export default function BillingOversight() {
    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
     <div>
      <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('Billing Oversight', 'Εποπτεία χρέωσης')}</h1>
-     <p className="text-stone-500">{t('Global platform billing metrics, plan management, and subscription monitoring.', 'Καθολικά μεγέθη χρέωσης, διαχείριση πλάνων και παρακολούθηση συνδρομών.')}</p>
+     <p className="text-sm text-stone-500 mt-1 max-w-2xl leading-relaxed">{t('Global platform billing metrics, plan management, and subscription monitoring.', 'Καθολικά μεγέθη χρέωσης, διαχείριση πλάνων και παρακολούθηση συνδρομών.')}</p>
      {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — billing data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα χρέωσης εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
     </div>
     <div className="flex gap-3">
@@ -194,7 +194,7 @@ export default function BillingOversight() {
           </div>
          </div>
          <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{kpi.label}</p>
-         <p className="text-lg font-semibold">{kpi.value}</p>
+         <p className="text-sm font-semibold tracking-tight tabular-nums">{kpi.value}</p>
         </Card>
        ))}
       </div>
@@ -203,7 +203,7 @@ export default function BillingOversight() {
        <Card title={t('Revenue Growth', 'Ανάπτυξη εσόδων')} className="p-6 h-80">
         {revenueByMonth.length === 0 ? (
          <div className="h-full flex items-center justify-center">
-          <p className="text-stone-400 font-medium italic">{t('Revenue appears here once invoices are issued.', 'Τα έσοδα εμφανίζονται εδώ όταν εκδοθούν τιμολόγια.')}</p>
+          <p className="text-sm text-stone-500 text-center max-w-xs">{t('Revenue appears here once invoices are issued.', 'Τα έσοδα εμφανίζονται εδώ όταν εκδοθούν τιμολόγια.')}</p>
          </div>
         ) : (
          <ResponsiveContainer width="100%" height="100%">
@@ -220,7 +220,7 @@ export default function BillingOversight() {
        <Card title={t('Plan Distribution', 'Κατανομή πλάνων')} className="p-6 h-80">
         {planDistribution.length === 0 ? (
          <div className="h-full flex items-center justify-center">
-          <p className="text-stone-400 font-medium italic">{t('Plan distribution appears once subscriptions exist.', 'Η κατανομή εμφανίζεται όταν υπάρξουν συνδρομές.')}</p>
+          <p className="text-sm text-stone-500 text-center max-w-xs">{t('Plan distribution appears once subscriptions exist.', 'Η κατανομή εμφανίζεται όταν υπάρξουν συνδρομές.')}</p>
          </div>
         ) : (
          <ResponsiveContainer width="100%" height="100%">
@@ -250,7 +250,7 @@ export default function BillingOversight() {
         <div className="space-y-4">
          <div className="flex justify-between items-start">
           <div className="space-y-1">
-           <h3 className="text-base font-semibold">{plan.name}</h3>
+           <h3 className="text-sm font-semibold">{plan.name}</h3>
            <p className="text-xs text-stone-500">{plan.customerType === 'Individual' ? t('Individual Plan', 'Ατομικό πλάνο') : plan.customerType === 'Tenant' ? t('Organization Plan', 'Πλάνο οργανισμού') : `${plan.customerType} ${t('Plan', 'πλάνο')}`}</p>
           </div>
           <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
@@ -260,8 +260,8 @@ export default function BillingOversight() {
           </span>
          </div>
          <div className="pt-2">
-          <span className="text-lg font-semibold">${plan.priceMonthly}</span>
-          <span className="text-stone-400 text-sm"> {t('/ mo', '/ μήνα')}</span>
+          <span className="text-sm font-semibold tracking-tight tabular-nums">${plan.priceMonthly}</span>
+          <span className="text-xs text-stone-400"> {t('/ mo', '/ μήνα')}</span>
          </div>
          <div className="space-y-2">
           <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Key Limits', 'Βασικά όρια')}</p>
@@ -366,7 +366,7 @@ export default function BillingOversight() {
          ))}
          {filteredSubs.length === 0 && (
           <tr>
-           <td colSpan={4} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+           <td colSpan={4} className="px-8 py-12 text-center text-sm text-stone-500">
             {subSearch ? t('No subscriptions match that search.', 'Καμία συνδρομή δεν ταιριάζει.') : t('No subscriptions recorded yet.', 'Δεν έχουν καταγραφεί συνδρομές ακόμη.')}
            </td>
           </tr>
@@ -431,7 +431,7 @@ export default function BillingOversight() {
          ))}
          {invoices.length === 0 && (
           <tr>
-           <td colSpan={6} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+           <td colSpan={6} className="px-8 py-12 text-center text-sm text-stone-500">
             {t('No invoices issued yet.', 'Δεν έχουν εκδοθεί τιμολόγια ακόμη.')}
            </td>
           </tr>

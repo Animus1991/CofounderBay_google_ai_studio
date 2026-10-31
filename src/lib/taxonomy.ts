@@ -25,25 +25,41 @@ export const STAGES: (Term & { hint: string; hintEl: string })[] = [
 const STAGE_ALIASES: Record<string, string> = {
   idea: 'Idea',
   ideation: 'Idea',
+  concept: 'Idea',
+  'idea / concept': 'Idea',
+  ιδέα: 'Idea',
   prototype: 'Pre-seed',
   mvp: 'Pre-seed',
+  'prototype / mvp': 'Pre-seed',
   'pre-seed': 'Pre-seed',
   preseed: 'Pre-seed',
+  'pre seed': 'Pre-seed',
+  'pre-seed (traction)': 'Pre-seed',
   'early traction': 'Seed',
   seed: 'Seed',
+  'seed funded': 'Seed',
   'series a': 'Series A',
   'series-a': 'Series A',
+  'series a+': 'Series A',
+  'series b': 'Growth',
   'series b+': 'Growth',
   scaling: 'Growth',
   scale: 'Growth',
   growth: 'Growth',
+  ανάπτυξη: 'Growth',
   exited: 'Growth',
 };
 
-/** Any stored stage (including older onboarding values such as "MVP") mapped onto STAGES. */
+/**
+ * Any stored stage mapped onto STAGES: older onboarding values ("MVP",
+ * "Early Traction"), the legacy deal-room labels ("Pre-Seed (Traction)",
+ * "Prototype / MVP", "Seed Funded", "Series A+") and the Greek labels.
+ * Unknown values come back unchanged so nothing a person typed is lost.
+ */
 export function canonicalStage(value: string | null | undefined): string {
   if (!value) return '';
-  return STAGE_ALIASES[value.trim().toLowerCase()] ?? value;
+  const folded = value.trim().toLowerCase().replace(/\s+/g, ' ');
+  return STAGE_ALIASES[folded] ?? STAGES.find((item) => item.value.toLowerCase() === folded || item.el.toLowerCase() === folded)?.value ?? value;
 }
 
 export function stageLabel(value: string | null | undefined): string {

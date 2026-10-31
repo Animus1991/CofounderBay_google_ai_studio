@@ -74,7 +74,9 @@ import { onCatalog, str, strList, toMillis } from "../lib/catalog";
 import { useUIStore } from "../stores/useUIStore";
 import { askAssistant } from '../lib/assistantBus';
 import { formatBytes, uploadFile, UploadError } from '../lib/files';
-import { useVentureName } from '../lib/entities';
+import { capTable, roundSafes, useEntity, useVentureName } from '../lib/entities';
+import { formatMoney, formatPct, proFormaCapTable, safeOwnershipAtCap } from '../lib/equity';
+import { copyText } from '../lib/download';
 import { DEMO_FUNDING_OPPORTUNITIES, DEMO_FUNDING_PROGRAMS, DEMO_INVESTOR_MEETINGS, DEMO_ROOM_FILES, demoDay } from '../data/demoCatalog';
 
 interface FundraisingProps {
@@ -310,13 +312,18 @@ export default function Fundraising({ user }: FundraisingProps) {
  const barLabels = isDemoMode ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] : stageOrder.map((s) => s === 'Due Diligence' ? 'DD' : s.slice(0, 2));
  const barMax = Math.max(1, ...barData);
 
- const mockCapTable = isDemoMode ? [
-  { name: "Founders", shares: 8000000, pct: 80, color: "bg-stone-900" },
-  { name: "Seed SAFEs", shares: 1000000, pct: 10, color: "bg-stone-400" },
-  { name: "ESOP Pool", shares: 1000000, pct: 10, color: "bg-stone-200" },
- ] : [
-  { name: "Founders", shares: 10000000, pct: 100, color: "bg-stone-900" },
- ];
+ // The cap table card is computed (lib/equity) from the account's cap table and the
+ // round's committed SAFE money at its post-money cap — the same numbers as Founder Tools → Cap Table.
+ const capHolders = useEntity(capTable);
+ const capColors: Record<string, string> = { common: "bg-stone-900", safe: "bg-stone-400", pool: "bg-stone-200" };
+ const proForma = proFormaCapTable(capHolders, roundSafes(round));
+ const mockCapTable = proForma.rows
+  .filter((row) => row.pct != null)
+  .map((row) => ({ name: row.name, shares: row.shares, pct: Math.round((row.pct ?? 0) * 1000) / 10, color: capColors[row.kind] ?? "bg-stone-300" }));
+ const capShares = Math.round(proForma.capitalization);
+ // SAFE card: the round's own terms (post-money cap, discount, committed or target amount).
+ const safeAmount = round.committedAmount || round.targetAmount;
+ const safeOwnership = safeOwnershipAtCap(safeAmount, round.valuationCap);
 
  // The mini card reads the same tracker as Fundraising → Due diligence and the assistant
  // (lib/dueDiligence: 12 standard items; uploaded data-room files are offered as evidence there).
@@ -418,7 +425,8 @@ export default function Fundraising({ user }: FundraisingProps) {
  const capName = (name: string) => {
   if (name === "Seed SAFEs") return name;
   if (name === "Founders") return t("Founders", "Ιδρυτές");
-  if (name === "ESOP Pool") return t("ESOP Pool", "Δεξαμενή ESOP");
+  if (name === "ESOP Pool" || name === "Option pool") return t("Option pool", "Δεξαμενή ESOP");
+  if (name.endsWith(" SAFEs")) return t(name, `SAFE (${name.replace(/ SAFEs$/, '')})`);
   return name;
  };
  const meetingTypeLabel = (type: string) => {
@@ -610,7 +618,7 @@ export default function Fundraising({ user }: FundraisingProps) {
         <div className="pt-2 border-t border-stone-100 space-y-2">
          <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-stone-400 tracking-wide">{t("Cap Table", "Cap table")}</p>
-          <span className="text-xs text-stone-400">10M {t("shares", "μετοχές")}</span>
+          <span className="text-xs text-stone-400">{capShares >= 1_000_000 ? `${Math.round(capShares / 100_000) / 10}M` : capShares.toLocaleString()} {t("shares", "μετοχές")}</span>
          </div>
          <div className="flex h-2 rounded-full overflow-hidden">
           {mockCapTable.map((row, i) => (
@@ -1031,35 +1039,46 @@ export default function Fundraising({ user }: FundraisingProps) {
 
          <div className="space-y-2">
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
-           <span className="text-xs text-stone-500">{t("Valuation Cap", "Ανώτατο όριο αποτίμησης")}</span>
-           <span className="text-sm font-semibold text-stone-900">$8M</span>
+           <span className="text-xs text-stone-500">{t("Valuation Cap (post-money)", "Ανώτατο όριο αποτίμησης (post-money)")}</span>
+           <span className="text-sm font-semibold text-stone-900" data-testid="safe-card-cap">{round.valuationCap > 0 ? formatMoney(round.valuationCap) : '—'}</span>
           </div>
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
            <span className="text-xs text-stone-500">{t("Discount Rate", "Ποσοστό έκπτωσης")}</span>
-           <span className="text-sm font-semibold text-stone-900">20%</span>
+           <span className="text-sm font-semibold text-stone-900">{round.discountPct > 0 ? `${round.discountPct}%` : '—'}</span>
           </div>
           <div className="flex items-center justify-between p-2 bg-stone-50 rounded-lg">
-           <span className="text-xs text-stone-500">{t("Investment", "Επένδυση")}</span>
-           <span className="text-sm font-semibold text-stone-900">$500k</span>
+           <span className="text-xs text-stone-500">{round.committedAmount > 0 ? t("Committed", "Δεσμευμένα") : t("Target", "Στόχος")}</span>
+           <span className="text-sm font-semibold text-stone-900">{safeAmount > 0 ? formatMoney(safeAmount) : '—'}</span>
           </div>
          </div>
 
          <div className="pt-2 border-t border-stone-100">
           <div className="flex items-center justify-between mb-1">
-           <span className="text-xs text-stone-500">{t("Effective Ownership", "Πραγματική ιδιοκτησία")}</span>
-           <span className="text-base font-bold text-stone-900">5.88%</span>
+           <span className="text-xs text-stone-500">{t("SAFE ownership at the cap", "Ποσοστό SAFE στο cap")}</span>
+           <span className="text-base font-bold text-stone-900" data-testid="safe-card-ownership">{safeOwnership == null ? '—' : formatPct(safeOwnership)}</span>
           </div>
           <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-           <div className="h-full bg-stone-900 w-[5.88%]" />
+           <div className="h-full bg-stone-900" style={{ width: `${Math.min(100, (safeOwnership ?? 0) * 100)}%` }} />
           </div>
+          <p className="text-[11px] text-stone-400 mt-1.5 leading-snug">
+           {safeOwnership == null
+            ? t("Set a valuation cap in Edit round to see the ownership.", "Όρισε ανώτατο όριο αποτίμησης στην επεξεργασία γύρου για να δεις το ποσοστό.")
+            : t("Post-money SAFE: amount ÷ post-money cap. Founder Tools → SAFE models the priced round.", "Post-money SAFE: ποσό ÷ post-money cap. Τα Εργαλεία ιδρυτή → SAFE μοντελοποιούν τον γύρο με τιμή.")}
+          </p>
          </div>
 
          <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => askAssistant('Tell me about SAFE agreement')}>
-           <Download className="w-3 h-3 mr-1" /> SAFE
+          <Button variant="outline" size="sm" className="flex-1 min-h-11 text-sm rounded-lg" onClick={() => navigate('/founder-tools?tab=tools&tool=safe')}>
+           <Calculator className="w-3 h-3 mr-1" /> {t("Open calculator", "Άνοιγμα υπολογιστή")}
           </Button>
-          <Button size="sm" className="flex-1 min-h-11 text-sm rounded-lg bg-stone-900 text-white" onClick={() => { navigator.clipboard.writeText('https://cofounderbay.app/dataroom/safe-note'); showToast(t("Share link copied!", "Ο σύνδεσμος αντιγράφηκε!")); }}>
-           <Share2 className="w-3 h-3 mr-1" /> {t("Share", "Κοινοποίηση")}
+          <Button size="sm" className="flex-1 min-h-11 text-sm rounded-lg bg-stone-900 text-white" onClick={async () => {
+           const text = t(
+            `${round.name} SAFE: ${safeAmount > 0 ? formatMoney(safeAmount) : '—'} at a ${round.valuationCap > 0 ? formatMoney(round.valuationCap) : '—'} post-money cap${round.discountPct > 0 ? `, ${round.discountPct}% discount` : ''}${safeOwnership == null ? '' : ` → ${formatPct(safeOwnership)} at the cap`}.`,
+            `SAFE ${round.name}: ${safeAmount > 0 ? formatMoney(safeAmount) : '—'} με post-money cap ${round.valuationCap > 0 ? formatMoney(round.valuationCap) : '—'}${round.discountPct > 0 ? `, έκπτωση ${round.discountPct}%` : ''}${safeOwnership == null ? '' : ` → ${formatPct(safeOwnership)} στο cap`}.`,
+           );
+           showToast((await copyText(text)) ? t("Terms copied", "Οι όροι αντιγράφηκαν") : t("Copy did not work in this browser", "Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή"));
+          }}>
+           <Share2 className="w-3 h-3 mr-1" /> {t("Copy terms", "Αντιγραφή όρων")}
           </Button>
          </div>
         </Card>

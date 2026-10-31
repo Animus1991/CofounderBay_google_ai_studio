@@ -13,7 +13,7 @@ interface ModalProps {
  title?: string;
  description?: string;
  children?: React.ReactNode;
- size?: 'sm' | 'md' | 'lg' | 'xl';
+ size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
  showClose?: boolean;
  dismissible?: boolean;
 }
@@ -23,6 +23,7 @@ const sizeClasses = {
  md: 'max-w-md',
  lg: 'max-w-lg',
  xl: 'max-w-xl',
+ '2xl': 'max-w-2xl',
 };
 
 export default function Modal({ open, onClose, title, description, children, size = 'md', showClose = true, dismissible = true }: ModalProps) {

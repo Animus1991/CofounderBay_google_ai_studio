@@ -30,6 +30,11 @@ describe('where is', () => {
     expect(whereIsResult('Where do I set the next step with an investor?')?.href).toBe('/fundraising?tab=tracker');
   });
 
+  it('points finance questions at the working calculators', () => {
+    expect(whereIsResult('Where is the cap table?')?.href).toBe('/founder-tools?tab=tools&tool=captable');
+    expect(whereIsResult('How do I find the equity grant vesting calculator?')?.en).toMatch(/Equity Grant/);
+  });
+
   it('understands Greek', () => {
     expect(whereIsResult('Πού κάνω εξαγωγή του pitch deck;')?.href).toBe('/founder-tools?tab=pitch');
     expect(whereIsResult('Πού αλλάζω το θέμα;')?.en).toMatch(/palette/);

@@ -67,6 +67,8 @@ import {
   type TurnSource,
 } from '../lib/localLists';
 import { savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
+import { currentReadiness } from '../lib/readiness';
+import { formatMoney, formatPct, safeOwnershipAtCap } from '../lib/equity';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
 import { setGlobalLang } from '../lib/language';
@@ -313,7 +315,7 @@ const KNOWLEDGE: KnowledgeCard[] = [
   { keys: ['first round'], href: '/fundraising', demo: true, en: 'First Round Capital is Identified on the Fundraising pipeline. Seed specialist, $250k–$3M.', el: 'Η First Round Capital είναι Identified στον αγωγό Χρηματοδότησης. Seed, $250k–$3M.' },
   { keys: ['global startup summit'], href: '/events', demo: true, en: 'Global Startup Summit 2026 is the featured event on Events. Scroll the list or ask me to host a session.', el: 'Το Global Startup Summit 2026 είναι το featured στις Εκδηλώσεις. Άνοιξε τη λίστα ή ρώτα να διοργανώσουμε.' },
   { keys: ['aws activate', 'amazon web services'], href: '/perks', en: 'AWS Activate is the flagship public founder program listed on Perks — apply on the provider site from that card. Open Perks to see every published perk.', el: 'Το AWS Activate είναι δημόσιο πρόγραμμα στις Παροχές — κάνε αίτηση στον πάροχο από την κάρτα. Άνοιξε Παροχές για όλες.' },
-  { keys: ['readiness score', 'δεικτη ετοιμοτητας', 'δεικτης ετοιμοτητας'], href: '/insights', en: 'Readiness Score lives on Insights (and Profile). Improve it from Profile: fill skills, looking-for, and your stage.', el: 'Το Readiness Score είναι στα Insights και στο Προφίλ. Βελτίωσέ το από το Προφίλ: δεξιότητες, τι ψάχνεις και το στάδιό σου.' },
+  { keys: ['readiness score', 'δεικτη ετοιμοτητας', 'δεικτης ετοιμοτητας'], href: '/insights', en: 'The Venture Readiness Index is on Founder Tools (the score and its five dimensions) and on Insights (its history). Raise it with the 5-step diagnostic, your skills, the pitch deck and the round numbers.', el: 'Ο Δείκτης Ετοιμότητας είναι στα Εργαλεία ιδρυτή (σκορ και πέντε διαστάσεις) και στα Insights (ιστορικό). Τον ανεβάζεις με τη διάγνωση 5 βημάτων, τις δεξιότητές σου, το pitch deck και τους αριθμούς του γύρου.' },
   { keys: ['articles of incorporation', 'founder stock', 'safe agreement', 'mutual nda', 'το safe', 'safe note', 'καταστατικ', 'συμφωνια εμπιστευτικοτητας'], href: '/legal', en: 'That template is on Legal Hub, same cards as Incorporation / Fundraising Legal. Download the starter draft there, or book office hours.', el: 'Αυτό το πρότυπο είναι στο Legal Hub. Κατέβασε το αρχικό draft από εκεί ή κλείσε συνεδρία.' },
   { keys: ['legal office hours', 'book legal'], href: '/legal', en: 'Legal office hours are 15-minute sessions you book on Legal Hub — the Book a Session button adds it straight to your Calendar.', el: 'Οι νομικές συνεδρίες είναι 15λεπτες συναντήσεις που κλείνεις στο Legal Hub — το κουμπί τις βάζει στο Ημερολόγιό σου.' },
   { keys: ['start a voice call', 'start a video call', 'how do i start a voice', 'how do i start a video', 'φωνητικη κλησ', 'βιντεοκλησ'], href: '/messages', en: 'Call and Video on Messages do not start a live line. They open this assistant so you can draft the first line or book a Calendar slot instead. I can also search the thread if you say “search my messages for…”.', el: 'Τα Call και Video στα Μηνύματα δεν ανοίγουν ζωντανή κλήση. Ανοίγουν αυτόν τον βοηθό για το πρώτο μήνυμα ή ένα ραντεβού στο Ημερολόγιο. Μπορώ και να ψάξω το νήμα αν πεις «ψάξε στα μηνύματα…».' },
@@ -1506,12 +1508,19 @@ function roundResult(): AssistantResult {
   const metrics = roundMetrics(round);
   const runway = metrics.runwayMonths;
   const pct = metrics.pct;
+  // Post-money SAFE (lib/equity): the committed money owns amount ÷ post-money cap — the same figure as the Fundraising card.
+  const safeShare = round.instrument === 'SAFE' && round.committedAmount > 0 ? safeOwnershipAtCap(round.committedAmount, round.valuationCap) : null;
+  const dilutionEn = safeShare != null ? ` The committed SAFEs own ${formatPct(safeShare)} at the ${formatMoney(round.valuationCap)} post-money cap.` : '';
+  const dilutionEl = safeShare != null ? ` Τα δεσμευμένα SAFE κατέχουν ${formatPct(safeShare)} στο post-money cap ${formatMoney(round.valuationCap)}.` : '';
   return {
     tool: 'round',
-    en: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` About ${runway} months of runway.` : ''} Edit round on Fundraising, or tell me the new number.`,
-    el: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` Περίπου ${runway} μήνες runway.` : ''} Επεξεργασία γύρου στη Χρηματοδότηση, ή πες μου το νέο νούμερο.`,
+    en: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} of $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` About ${runway} months of runway.` : ''}${dilutionEn} Edit round on Fundraising, or tell me the new number.`,
+    el: `${round.name} ${round.instrument}: $${round.committedAmount.toLocaleString()} από $${round.targetAmount.toLocaleString()} (${pct}%).${runway != null ? ` Περίπου ${runway} μήνες runway.` : ''}${dilutionEl} Επεξεργασία γύρου στη Χρηματοδότηση, ή πες μου το νέο νούμερο.`,
     href: '/fundraising',
-    links: [{ href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' }],
+    links: [
+      { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
+      { href: '/founder-tools?tab=tools&tool=captable', en: 'Model the next round', el: 'Μοντελοποίηση επόμενου γύρου' },
+    ],
   };
 }
 
@@ -2389,10 +2398,15 @@ function builderResult(query: string, propose: boolean): AssistantResult {
   };
 }
 
-function readinessResult(query: string, propose: boolean): AssistantResult {
+function readinessResult(query: string, propose: boolean, profile: AssistantProfile | null = null): AssistantResult {
   const saved = startupRecord.read();
   const name = ventureName() || 'Your Venture';
-  const { oneLiner, readinessScore: score } = ventureSummary();
+  const { oneLiner } = ventureSummary();
+  // The same index Founder Tools and Insights show (lib/readiness).
+  const readiness = currentReadiness(isDemoData() ? undefined : profile?.skills);
+  const score = readiness.score;
+  const dimensionLine = (lang: 'en' | 'el') =>
+    readiness.dimensions.map((dim) => `${dim.label[lang]} ${dim.score == null ? (lang === 'el' ? 'χωρίς στοιχεία' : 'no data') : dim.score}`).join(' · ');
   const links: AssistantLink[] = [
     { href: '/founder-tools', en: 'Open Founder Tools & Readiness', el: 'Άνοιγμα Εργαλείων Ιδρυτή & Ετοιμότητας' },
     { href: '/insights', en: 'Open Insights', el: 'Άνοιγμα Στατιστικών' },
@@ -2441,8 +2455,8 @@ function readinessResult(query: string, propose: boolean): AssistantResult {
 
   return {
     tool: 'readiness',
-    en: `${name}${oneLiner ? ` — “${oneLiner}”` : ''} has a Startup Readiness Index of ${score}/100 across Team Composition, Market Validation, Product/Tech, Financial Planning, and Pitch Readiness. Open Founder Tools to run the 5-step diagnostic or say “set startup name to …”.`,
-    el: `Το ${name}${oneLiner ? ` — «${oneLiner}»` : ''} έχει Δείκτη Ετοιμότητας ${score}/100 (Σύνθεση Ομάδας, Επικύρωση Αγοράς, Προϊόν/Τεχνολογία, Οικονομικός Σχεδιασμός, Ετοιμότητα Pitch). Άνοιξε τα Εργαλεία Ιδρυτή για το διαγνωστικό 5 βημάτων ή πες «όρισε το startup name σε …».`,
+    en: `${name}${oneLiner ? ` — “${oneLiner}”` : ''} has a Startup Readiness Index of ${score}/100, based on ${readiness.known} of 5 dimensions (${dimensionLine('en')}).${readiness.weakest ? ` Weakest: ${readiness.weakest.label.en} — ${readiness.weakest.next.en}` : ''} Open Founder Tools to run the 5-step diagnostic or say “set startup name to …”.`,
+    el: `Το ${name}${oneLiner ? ` — «${oneLiner}»` : ''} έχει Δείκτη Ετοιμότητας ${score}/100, με βάση ${readiness.known} από 5 διαστάσεις (${dimensionLine('el')}).${readiness.weakest ? ` Πιο αδύναμη: ${readiness.weakest.label.el} — ${readiness.weakest.next.el}` : ''} Άνοιξε τα Εργαλεία Ιδρυτή για το διαγνωστικό 5 βημάτων ή πες «όρισε το startup name σε …».`,
     href: '/founder-tools',
     links,
   };
@@ -2604,8 +2618,8 @@ function coachResult(propose: boolean): AssistantResult {
     logActivity({ kind: 'profile', title: `Pinned ${names}`, titleEl: `Καρφίτσωσα ${names}`, href: toPin[0], byAssistant: true });
     return {
       tool: 'coach',
-      en: `Pinned ${names} to the top of your sidebar. Unpin anytime with the page star or “/unpin”.`,
-      el: `Καρφίτσωσα ${names} στην κορυφή του μενού. Ξεκαρφίτσωσε με το αστέρι της σελίδας ή «/unpin».`,
+      en: `Pinned ${names} to the top of your sidebar. Unpin anytime from the sidebar (the pin-off button on the pinned page) or with “/unpin”.`,
+      el: `Καρφίτσωσα ${names} στην κορυφή του μενού. Ξεκαρφίτσωσε από το πλαϊνό μενού (κουμπί ξεκαρφιτσώματος στη σελίδα) ή με «/unpin».`,
       href: toPin[0],
       links,
     };
@@ -2630,10 +2644,10 @@ function pinResult(query: string, propose: boolean): AssistantResult {
       tool: 'pin',
       en: ux.favorites.length
         ? `Pinned pages: ${ux.favorites.map((path) => navLabel(path).en).join(', ')}. Pin another with “/pin matches”.`
-        : 'Nothing pinned yet. Use “/pin matches” or the star on any page header.',
+        : 'Nothing pinned yet. Say “/pin matches” (any page name works).',
       el: ux.favorites.length
         ? `Καρφιτσωμένες: ${ux.favorites.map((path) => navLabel(path).el).join(', ')}. Καρφίτσωσε άλλη με «/pin matches».`
-        : 'Τίποτα καρφιτσωμένο. Πες «/pin matches» ή πάτα το αστέρι στην κεφαλίδα σελίδας.',
+        : 'Τίποτα καρφιτσωμένο. Πες «/pin matches» (λειτουργεί με κάθε σελίδα).',
       links: [],
     };
   }
@@ -2914,7 +2928,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'next') return nextStepAssistant(profile);
     if (cmd === 'canvas') return canvasResult(rest ? `/canvas ${rest}` : query, propose);
     if (cmd === 'builder') return builderResult(rest ? `/builder ${rest}` : query, propose);
-    if (cmd === 'readiness') return readinessResult(rest || query, propose);
+    if (cmd === 'readiness') return readinessResult(rest || query, propose, profile);
     if (cmd === '6axis') return studioModalResult('6axis', rest || query, profile);
     if (cmd === 'dealroom') return studioModalResult('dealroom', rest || query, profile);
     if (cmd === 'needwall') return studioModalResult('needwall', rest || query, profile);
@@ -2961,7 +2975,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     return builderResult(query, propose);
   }
   if (!/^(tell me about|πες μου για)(?=\s|$)/.test(folded) && (/\b(readiness\s*score|readiness\s*index|startup\s*name|venture\s*name|one-?liner)\b/.test(folded) || /δεικτ.{0,15}ετοιμοτητ/.test(folded) || /ονομα.{0,10}(startup|venture|εταιρει)/.test(folded))) {
-    return readinessResult(query, propose);
+    return readinessResult(query, propose, profile);
   }
 
   const ddShare = parseDDShare(query);
@@ -3077,7 +3091,7 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
     return `${m.title} (${st.filled}/${st.total})`;
   }).join(', ');
   const ventureLabel = ventureName() || 'Unset';
-  const { readinessScore } = ventureSummary();
+  const readinessScore = currentReadiness(isDemoData() ? undefined : profile?.skills).score;
   const needsCount = readNeeds().filter((n) => n.status === 'open').length;
   const uxPrefs = readUxPrefs();
   const visited = topPages(4).map((row) => `${row.path}(${row.count})`).join(', ') || 'nothing yet';

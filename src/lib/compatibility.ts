@@ -5,14 +5,24 @@
  *   skills       0.35  how much each side covers what the other is looking for
  *   market       0.25  same industry, otherwise overlap of interests (Jaccard)
  *   stage        0.15  distance between start-up stages
- *   commitment   0.15  full-time / part-time / advisory alignment
- *   hours        0.10  overlap of working hours from the two time zones
+ *   commitment   0.15  full-time / part-time / advisory / exploring alignment
+ *   hours        0.10  shared working hours (09:00–18:00 local) of the two time zones
  *
  * A dimension without data on either side is left out and the remaining
  * weights are rescaled, so a missing field never counts as a bad match.
  * When every dimension is missing the score is null and the UI asks for
  * profile details instead of showing a number.
+ *
+ * Because a score built from one dimension is not as solid as one built from
+ * five, every result also carries `coverage` (the share of the total weight
+ * that had data on both sides) and a `confidence` band derived from it, so the
+ * UI can say "based on 3 of 5 factors" instead of implying more certainty.
+ *
+ * Values go through the shared vocabulary (lib/taxonomy) first, so "Seed
+ * Funded", "Pre-Seed (Traction)" or a Greek label are the same stage, and
+ * "Finance" is the same market as "FinTech", on every page.
  */
+import { ALL_SKILLS, canonicalIndustry, canonicalStage } from './taxonomy';
 
 export type Bilingual = { en: string; el: string };
 
@@ -37,12 +47,32 @@ export type Dimension = {
   reason: Bilingual | null;
 };
 
+export type Confidence = 'high' | 'medium' | 'low';
+
 export type Compatibility = {
   score: number | null;
   dimensions: Dimension[];
   /** The strongest reason, for one-line summaries on cards. */
   headline: Bilingual | null;
+  /** Share of the total weight (0–1) that had data on both profiles. */
+  coverage: number;
+  /** How many of the five dimensions were scored. */
+  known: number;
+  /** high ≥ 75% of the weight scored, medium ≥ 45%, else low; null without a score. */
+  confidence: Confidence | null;
 };
+
+export const CONFIDENCE_LABELS: Record<Confidence, Bilingual> = {
+  high: { en: 'High confidence', el: 'Υψηλή αξιοπιστία' },
+  medium: { en: 'Medium confidence', el: 'Μέτρια αξιοπιστία' },
+  low: { en: 'Low confidence — add profile details', el: 'Χαμηλή αξιοπιστία — συμπλήρωσε το προφίλ' },
+};
+
+export function confidenceFor(coverage: number): Confidence {
+  if (coverage >= 0.75) return 'high';
+  if (coverage >= 0.45) return 'medium';
+  return 'low';
+}
 
 export const WEIGHTS: Record<DimensionKey, number> = {
   skills: 0.35,
@@ -62,24 +92,11 @@ const LABELS: Record<DimensionKey, Bilingual> = {
 
 export const STAGE_ORDER = ['Idea', 'Pre-seed', 'Seed', 'Series A', 'Growth'];
 
-const STAGE_ALIASES: Record<string, string> = {
-  idea: 'Idea',
-  ideation: 'Idea',
-  mvp: 'Pre-seed',
-  'pre-seed': 'Pre-seed',
-  preseed: 'Pre-seed',
-  seed: 'Seed',
-  'series a': 'Series A',
-  'series-a': 'Series A',
-  growth: 'Growth',
-  scale: 'Growth',
-};
-
 export function listWords(value: unknown): string[] {
   return words(value);
 }
 
-function words(value: unknown): string[] {
+function words(value: unknown, canonical: (raw: string) => string = (raw) => raw): string[] {
   const items = Array.isArray(value) ? value : value == null ? [] : [value];
   const out: string[] = [];
   for (const item of items) {
@@ -88,11 +105,20 @@ function words(value: unknown): string[] {
     else if (item && typeof item === 'object' && 'name' in item && typeof (item as { name: unknown }).name === 'string') {
       raw = (item as { name: string }).name;
     }
-    const token = raw.trim().toLowerCase();
+    const token = canonical(raw.trim()).trim().toLowerCase();
     if (token && !out.includes(token)) out.push(token);
   }
   return out;
 }
+
+/** A skill typed in Greek ("Πωλήσεις") is the same skill as its stored English value ("Sales"). */
+function canonicalSkill(raw: string): string {
+  const folded = raw.toLowerCase();
+  return ALL_SKILLS.find((item) => item.value.toLowerCase() === folded || item.el.toLowerCase() === folded)?.value ?? raw;
+}
+
+const skillWords = (value: unknown) => words(value, canonicalSkill);
+const marketWords = (value: unknown) => words(value, canonicalIndustry);
 
 function pretty(list: string[], original: unknown): string {
   const source = Array.isArray(original) ? original : [];
@@ -103,17 +129,22 @@ function pretty(list: string[], original: unknown): string {
   return names.slice(0, 3).join(', ');
 }
 
+/** A stage on the five-step ladder (Idea → Growth), from any stored spelling; null when unknown. */
 export function normalizeStage(stage: string | null | undefined): string | null {
   if (!stage) return null;
-  return STAGE_ALIASES[stage.trim().toLowerCase()] ?? (STAGE_ORDER.includes(stage) ? stage : null);
+  const canonical = canonicalStage(stage);
+  return STAGE_ORDER.includes(canonical) ? canonical : null;
 }
 
-function normalizeCommitment(value: string | null | undefined): 'full' | 'part' | 'advisory' | null {
+type CommitmentLevel = 'full' | 'part' | 'advisory' | 'exploring';
+
+export function normalizeCommitment(value: string | null | undefined): CommitmentLevel | null {
   if (!value) return null;
   const v = value.toLowerCase();
-  if (v.includes('full')) return 'full';
-  if (v.includes('part') || v.includes('side')) return 'part';
-  if (v.includes('advis')) return 'advisory';
+  if (v.includes('full') || v.includes('πλήρη') || v.includes('πλήρης')) return 'full';
+  if (v.includes('part') || v.includes('side') || v.includes('evening') || v.includes('weekend') || v.includes('μερική')) return 'part';
+  if (v.includes('advis') || v.includes('συμβουλ')) return 'advisory';
+  if (v.includes('explor') || v.includes('διερευν')) return 'exploring';
   return null;
 }
 
@@ -136,10 +167,10 @@ export function utcOffsetMinutes(timezone: string | null | undefined, at = new D
 }
 
 function skillsDimension(me: CompatibilityInput, them: CompatibilityInput): Dimension {
-  const mySkills = words(me.skills);
-  const theirSkills = words(them.skills);
-  const myNeeds = words(me.lookingFor);
-  const theirNeeds = words(them.lookingFor);
+  const mySkills = skillWords(me.skills);
+  const theirSkills = skillWords(them.skills);
+  const myNeeds = skillWords(me.lookingFor);
+  const theirNeeds = skillWords(them.lookingFor);
   const base = { key: 'skills' as const, label: LABELS.skills, weight: WEIGHTS.skills };
   if (mySkills.length === 0 || theirSkills.length === 0) return { ...base, score: null, reason: null };
 
@@ -181,10 +212,10 @@ function skillsDimension(me: CompatibilityInput, them: CompatibilityInput): Dime
 
 function marketDimension(me: CompatibilityInput, them: CompatibilityInput): Dimension {
   const base = { key: 'market' as const, label: LABELS.market, weight: WEIGHTS.market };
-  const myIndustry = words(me.industry);
-  const theirIndustry = words(them.industry);
-  const mine = [...new Set([...myIndustry, ...words(me.interests)])];
-  const theirs = [...new Set([...theirIndustry, ...words(them.interests)])];
+  const myIndustry = marketWords(me.industry);
+  const theirIndustry = marketWords(them.industry);
+  const mine = [...new Set([...myIndustry, ...marketWords(me.interests)])];
+  const theirs = [...new Set([...theirIndustry, ...marketWords(them.interests)])];
   if (mine.length === 0 || theirs.length === 0) return { ...base, score: null, reason: null };
 
   const sameIndustry = myIndustry.length > 0 && theirIndustry.some((item) => myIndustry.includes(item));
@@ -221,11 +252,25 @@ function commitmentDimension(me: CompatibilityInput, them: CompatibilityInput): 
   const b = normalizeCommitment(them.commitment);
   if (!a || !b) return { ...base, score: null, reason: null };
   if (a === b) {
-    const word = { full: ['full-time', 'πλήρη απασχόληση'], part: ['part-time', 'μερική απασχόληση'], advisory: ['advisory', 'συμβουλευτικά'] }[a];
-    return { ...base, score: 100, reason: { en: `Both ${word[0]}`, el: `Και οι δύο σε ${word[1]}` } };
+    const word = {
+      full: ['full-time', 'σε πλήρη απασχόληση'],
+      part: ['part-time', 'σε μερική απασχόληση'],
+      advisory: ['advisory', 'σε συμβουλευτικό ρόλο'],
+      exploring: ['still exploring', 'ακόμη σε διερεύνηση'],
+    }[a];
+    // Two people who are both still deciding agree on pace, but neither has committed yet.
+    return { ...base, score: a === 'exploring' ? 70 : 100, reason: { en: `Both ${word[0]}`, el: `Και οι δύο ${word[1]}` } };
   }
-  const pair = [a, b].sort().join('+');
-  const score = pair === 'full+part' ? 50 : pair === 'advisory+part' ? 40 : 20;
+  // Ordinal gap on full > part > advisory, with "exploring" sitting next to part-time.
+  const PAIR_SCORES: Record<string, number> = {
+    'full+part': 50,
+    'advisory+part': 40,
+    'advisory+full': 20,
+    'exploring+part': 50,
+    'exploring+full': 30,
+    'advisory+exploring': 40,
+  };
+  const score = PAIR_SCORES[[a, b].sort().join('+')] ?? 20;
   return { ...base, score, reason: { en: 'Different time commitment', el: 'Διαφορετικός χρόνος δέσμευσης' } };
 }
 
@@ -236,14 +281,36 @@ function hoursDimension(me: CompatibilityInput, them: CompatibilityInput): Dimen
   const a = utcOffsetMinutes(me.timezone);
   const b = utcOffsetMinutes(them.timezone);
   if (a == null || b == null) return { ...base, score: null, reason: null };
-  const hours = Math.abs(a - b) / 60;
-  const score = hours <= 1 ? 90 : hours <= 3 ? 70 : hours <= 6 ? 40 : 20;
+  const hours = timeZoneGapHours(a, b);
+  const shared = sharedWorkingHours(hours);
+  // 20 (no shared hours, async only) … 100 (the same working day), linear in shared hours.
+  const score = Math.round(20 + 80 * (shared / WORKDAY_HOURS));
   const rounded = Math.round(hours);
+  const sharedRounded = Math.round(shared);
   const reason: Bilingual =
     rounded === 0
       ? { en: 'Same time zone', el: 'Ίδια ζώνη ώρας' }
-      : { en: `${rounded} h time difference`, el: `${rounded} ώρες διαφορά ώρας` };
+      : sharedRounded > 0
+        ? { en: `${rounded} h time difference · ${sharedRounded} shared working hours`, el: `${rounded} ώρες διαφορά ώρας · ${sharedRounded} κοινές ώρες εργασίας` }
+        : { en: `${rounded} h time difference · no shared working hours`, el: `${rounded} ώρες διαφορά ώρας · καμία κοινή ώρα εργασίας` };
   return { ...base, score, reason };
+}
+
+/** A working day, 09:00–18:00 local. */
+export const WORKDAY_HOURS = 9;
+
+/**
+ * Hours between two UTC offsets on the 24-hour clock — the short way round, so
+ * UTC+12 and UTC−11 are 1 hour apart, not 23.
+ */
+export function timeZoneGapHours(offsetMinutesA: number, offsetMinutesB: number): number {
+  const raw = (Math.abs(offsetMinutesA - offsetMinutesB) / 60) % 24;
+  return Math.min(raw, 24 - raw);
+}
+
+/** Hours two equal working days overlap when their time zones are `gapHours` apart. */
+export function sharedWorkingHours(gapHours: number, workday = WORKDAY_HOURS): number {
+  return Math.max(0, workday - Math.max(0, gapHours));
 }
 
 export function fromCast(person: {
@@ -312,11 +379,12 @@ export function compatibility(me: CompatibilityInput, them: CompatibilityInput):
     hoursDimension(me, them),
   ];
   const known = dimensions.filter((d) => d.score != null);
-  if (known.length === 0) return { score: null, dimensions, headline: null };
+  if (known.length === 0) return { score: null, dimensions, headline: null, coverage: 0, known: 0, confidence: null };
   const totalWeight = known.reduce((sum, d) => sum + d.weight, 0);
   const score = Math.round(known.reduce((sum, d) => sum + d.weight * (d.score as number), 0) / totalWeight);
   const best = [...known].sort((x, y) => y.weight * (y.score as number) - x.weight * (x.score as number))[0];
-  return { score, dimensions, headline: best?.reason ?? null };
+  const coverage = Math.round(totalWeight * 100) / 100;
+  return { score, dimensions, headline: best?.reason ?? null, coverage, known: known.length, confidence: confidenceFor(coverage) };
 }
 
 /** Time zones for profiles that store only a city. */
