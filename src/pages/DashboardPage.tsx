@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Target,
@@ -48,6 +48,8 @@ import PersonHovercard from '../components/ui/PersonHovercard';
 import RelTime from '../components/ui/RelTime';
 import FactLine from '../components/ui/FactLine';
 import { askAssistant } from '../lib/assistantBus';
+import { profileCompleteness } from '../lib/profileCompleteness';
+import SectionHeader from '../components/ui/SectionHeader';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -130,19 +132,6 @@ const DEMO_POSTS = [
   },
 ];
 
-const MISSING_EL: Record<string, string> = {
-  'Basic Info': 'Βασικά στοιχεία',
-  'Full Name': 'Ονοματεπώνυμο',
-  Bio: 'Βιογραφικό',
-  Role: 'Ρόλος',
-  Industry: 'Κλάδος',
-  Skills: 'Δεξιότητες',
-  'Looking for': 'Τι ψάχνεις',
-  Stage: 'Στάδιο',
-  Commitment: 'Δέσμευση',
-  Location: 'Τοποθεσία',
-  'Social Links': 'Σύνδεσμοι',
-};
 
 type Circle = { id: string; name: string; avatar: string; role?: string };
 type CommunityRow = { id: string; name: string; members: string | number; newPosts: number };
@@ -313,26 +302,9 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [user, isDemoMode]);
 
-  const getProfileCompletion = () => {
-    if (!profile) return { score: 0, missing: ['Basic Info'] };
-    let score = 0;
-    const missing = [];
-
-    if (profile.fullName) score += 10; else missing.push('Full Name');
-    if (profile.bio) score += 10; else missing.push('Bio');
-    if (profile.role) score += 5; else missing.push('Role');
-    if (profile.industry) score += 10; else missing.push('Industry');
-    if (profile.skills && profile.skills.length > 0) score += 15; else missing.push('Skills');
-    if (profile.lookingFor && profile.lookingFor.length > 0) score += 15; else missing.push('Looking for');
-    if (profile.stage) score += 10; else missing.push('Stage');
-    if (profile.commitment) score += 10; else missing.push('Commitment');
-    if (profile.location) score += 10; else missing.push('Location');
-    if (profile.socialLinks && Object.keys(profile.socialLinks).length > 0) score += 5; else missing.push('Social Links');
-
-    return { score, missing };
-  };
-
-  const { score, missing } = getProfileCompletion();
+  // One completeness definition (lib/profileCompleteness), the same as the profile page,
+  // Insights and the "finish your profile" banner; fit-check answers count.
+  const { score, missing } = profileCompleteness(mergeFitIntoViewer(profile));
 
   useEffect(() => {
     if (!user) {
@@ -695,10 +667,10 @@ export default function DashboardPage() {
         </div>
 
         <div>
-          <p className="text-xs text-stone-400 mb-2"><Both en="Matches" el="Αντιστοιχίσεις" /></p>
+          <SectionHeader className="mb-2" title={<Both en="Matches" el="Αντιστοιχίσεις" />} actions={[{ label: <Both en="All" el="Όλες" />, to: '/matches' }]} />
           <div className="overflow-x-auto -mx-1 px-1 pb-1">
             <div className="flex items-center gap-4 min-w-max">
-              <div className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => navigate('/profile')}>
+              <button type="button" aria-label={t('Your profile', 'Το προφίλ σου')} className="flex flex-col items-center gap-1.5 group" onClick={() => navigate('/profile')}>
                 <div className="relative">
                   <Avatar src={user?.photoURL || undefined} fallback={profile?.fullName || firstName} size="lg" className="group-hover:scale-105 transition-transform" />
                   <div className="absolute bottom-0 right-0 w-4 h-4 bg-stone-900 border-2 border-white rounded-full flex items-center justify-center">
@@ -706,12 +678,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <span className="text-xs font-medium text-stone-400"><Both en="You" el="Εσύ" /></span>
-              </div>
+              </button>
               {circles.map((match) => (
-                <div key={match.id} className="flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
+                <button type="button" key={match.id} aria-label={t(`View profile: ${match.name}`, `Προβολή προφίλ: ${match.name}`)} className="flex flex-col items-center gap-1.5 group" onClick={() => { rememberPerson({ id: match.id, fullName: match.name, headline: ('role' in match ? String(match.role) : ''), role: ('role' in match ? String(match.role) : '') }); navigate(`/profile/${match.id}`); }}>
                   <Avatar src={match.avatar} fallback={match.name} size="lg" className="group-hover:scale-95 transition-transform" />
-                  <span className="text-xs font-medium text-stone-400"><PersonHovercard person={match.id}>{match.name.split(' ')[0]}</PersonHovercard></span>
-                </div>
+                  <span className="text-xs font-medium text-stone-400">{match.name.split(' ')[0]}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -742,7 +714,7 @@ export default function DashboardPage() {
               value: matchScore == null ? '—' : `${matchScore}%`,
               sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
               href: '/matches',
-              hint: bothText('Shared skills and industry with the top match', 'Κοινές δεξιότητες και κλάδος με την πρώτη αντιστοίχιση'),
+              hint: bothText('Compatibility with your top match: skills, market, stage, commitment and working hours', 'Συμβατότητα με την πρώτη αντιστοίχιση: δεξιότητες, αγορά, στάδιο, δέσμευση και ώρες εργασίας'),
             },
             {
               label: t('Requests', 'Αιτήματα'),
@@ -821,6 +793,11 @@ export default function DashboardPage() {
 
         {chartSeries && chartSeries.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
+            <SectionHeader
+              title={<Both en="Profile views" el="Προβολές προφίλ" />}
+              detail={`${chartSeries[0]?.name ?? ''}–${chartSeries[chartSeries.length - 1]?.name ?? ''} · ${chartSeries.reduce((sum, point) => sum + (Number(point.views) || 0), 0)}`}
+              actions={[{ label: <Both en="Insights" el="Αναλύσεις" />, to: '/insights' }]}
+            />
             <div className="h-32">
               <Sparkline
                 values={chartSeries.map((point) => Number(point.views) || 0)}
@@ -836,11 +813,12 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {prospect && (
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
-              <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">
-                {prospect.id === leadMatch?.id
+              <SectionHeader
+                title={prospect.id === leadMatch?.id
                   ? <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
                   : <Both en="Also worth meeting" el="Αξίζει επίσης να γνωρίσεις" />}
-              </p>
+                actions={[{ label: <Both en="All" el="Όλες" />, to: '/matches' }]}
+              />
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
                   <Avatar src={prospect.avatar || undefined} fallback={prospect.name} size="md" />
@@ -887,7 +865,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between">
             <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχον σερί')}</p>
             <div>
-              <p className="text-sm font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-xs font-medium text-stone-400">d</span></p>
+              <p className="text-sm font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-xs font-medium text-stone-400">{t(streakDays === 1 ? ' day' : ' days', streakDays === 1 ? ' ημέρα' : ' ημέρες')}</span></p>
               <div className="flex items-center gap-1.5 mt-2">
                 <Flame className="w-3.5 h-3.5 text-amber-500" />
                 <p className="text-xs text-stone-400"><Both en="Keep the work moving today" el="Συνέχισε τη δουλειά σήμερα" /></p>
@@ -911,9 +889,9 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-stone-400">
                 {t('Missing:', 'Λείπουν:')} {missing.slice(0, 3).map((item, index) => (
-                  <span key={item}>
+                  <span key={item.key}>
                     {index > 0 ? ', ' : ''}
-                    <Both en={item} el={MISSING_EL[item] || item} />
+                    <Both en={item.label.en} el={item.label.el} />
                   </span>
                 ))}
                 {missing.length > 3 ? t(` +${missing.length - 3} more`, ` +${missing.length - 3} ακόμα`) : ''}
@@ -928,42 +906,45 @@ export default function DashboardPage() {
 
         {communities.length > 0 && (
           <div className="bg-white rounded-2xl border border-stone-100 p-4">
-            <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3"><Both en="Communities" el="Κοινότητες" /></p>
-            <div className="space-y-3">
+            <SectionHeader title={<Both en="Communities" el="Κοινότητες" />} actions={[{ label: <Both en="All" el="Όλες" />, to: '/communities' }]} />
+            <div className="space-y-1">
               {communities.map((community) => (
-                <div key={community.id} className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-stone-900">{community.name}</p>
-                  <p className="text-xs text-stone-400">{community.members} · {community.newPosts}</p>
-                </div>
+                // Labelled numbers ("1.2k members · 12 new posts" used to read "1.2k · 12"), and the row opens the community list.
+                <button type="button" key={community.id} onClick={() => navigate('/communities')} className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50 transition-colors">
+                  <span className="text-sm font-medium text-stone-900">{community.name}</span>
+                  <span className="text-xs text-stone-400 tabular-nums">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
+                </button>
               ))}
             </div>
           </div>
         )}
 
         <div className="bg-white rounded-2xl border border-stone-100 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-semibold text-stone-400 tracking-wider"><Both en="Upcoming" el="Επόμενα" /></p>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => navigate('/events')} className="text-xs text-stone-400 hover:text-stone-900 transition-colors"><Both en="See map" el="Χάρτης" /></button>
-              <NavLink to="/calendar" className="text-xs text-stone-400 hover:text-stone-900 transition-colors"><Both en="View all" el="Όλα" /> →</NavLink>
-            </div>
-          </div>
+          {/* "See map" opened Events, which has no map: the two links now say where they go. */}
+          <SectionHeader
+            className="mb-4"
+            title={<Both en="Upcoming" el="Επόμενα" />}
+            actions={[
+              { label: <Both en="Events" el="Εκδηλώσεις" />, to: '/events' },
+              { label: <Both en="Calendar" el="Ημερολόγιο" />, to: '/calendar' },
+            ]}
+          />
           {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
             <p className="text-xs text-stone-400"><Both en="Nothing scheduled. Add a session or event in Calendar." el="Τίποτα προγραμματισμένο. Πρόσθεσε συνάντηση ή εκδήλωση στο Ημερολόγιο." /></p>
           ) : (
             <div className="space-y-4 relative">
               <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
               {schedule.map((ev) => (
-                <div key={ev.id} className="pl-5 relative cursor-pointer hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}>
-                  <div className="absolute left-[-1px] top-2.5 w-2.5 h-2.5 rounded-full bg-stone-900 border-2 border-white" />
-                  <p className="text-sm font-medium text-stone-900 leading-tight">{t(ev.title, ev.titleEl ?? ev.title)}</p>
-                  <div className="flex items-center gap-2 mt-1">
+                <button type="button" key={ev.id} className="block w-[calc(100%+1rem)] text-left pl-5 relative hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}>
+                  <span aria-hidden="true" className="absolute left-[-1px] top-2.5 w-2.5 h-2.5 rounded-full bg-stone-900 border-2 border-white" />
+                  <span className="block text-sm font-medium text-stone-900 leading-tight">{t(ev.title, ev.titleEl ?? ev.title)}</span>
+                  <span className="flex items-center gap-2 mt-1">
                     <Clock className="w-3 h-3 text-stone-400" />
                     <span className="text-xs text-stone-400">{dashTime(ev.time)}</span>
                     {ev.type && <span className="text-xs font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
                     {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
-                  </div>
-                </div>
+                  </span>
+                </button>
               ))}
             </div>
           )}

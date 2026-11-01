@@ -36,6 +36,9 @@ import { collection, limit, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
 import { askAssistant } from "../lib/assistantBus";
 import { DEMO_EVENTS } from "../data/demoCatalog";
+import CoverImage from "../components/ui/CoverImage";
+import { applyQuickFilter, cityOptions, groupByDay, nextUpcoming, sortEvents, type QuickFilter } from "../lib/eventsView";
+import { copyText } from "../lib/download";
 
 const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
@@ -102,6 +105,8 @@ export default function Events(_props: EventsProps = {}) {
  const [activeTab, setActiveTab] = useState('Upcoming');
  const [typeFilter, setTypeFilter] = useState<'All' | Event['type']>('All');
  const [showTypes, setShowTypes] = useState(false);
+ const [quick, setQuick] = useState<QuickFilter>('all');
+ const [highlighted, setHighlighted] = useState<string | null>(null);
  const registeredEvents = useStored(() => readIds(eventListKeys.registered), [eventListKeys.registered]);
  const bookmarkedEvents = useStored(() => readIds(eventListKeys.bookmarked), [eventListKeys.bookmarked]);
 
@@ -205,8 +210,29 @@ export default function Events(_props: EventsProps = {}) {
    if (activeTab === 'Bookmarked') filtered = filtered.filter((e) => bookmarkedEvents.includes(e.id));
    if (activeTab === 'Past') filtered = filtered.filter((e) => e.startsAt != null && e.startsAt < now);
    if (activeTab === 'Upcoming' && !isDemoMode) filtered = filtered.filter((e) => e.startsAt == null || e.startsAt >= now);
-   return filtered;
-  }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, isDemoMode, now]);
+   filtered = applyQuickFilter(filtered, quick, now);
+   // Soonest first; past events newest first (the live list arrives unordered).
+   return sortEvents(filtered, activeTab === 'Past' ? 'desc' : 'asc');
+  }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, isDemoMode, now, quick]);
+ const cities = useMemo(() => cityOptions(allEvents), [allEvents]);
+ const dayGroups = useMemo(() => groupByDay(visibleEvents), [visibleEvents]);
+ const dayHeading = (startsAt: number | null) => startsAt == null
+  ? t('Date to be announced', 'Η ημερομηνία θα ανακοινωθεί')
+  : formatDate(startsAt, { weekday: 'long', day: 'numeric', month: 'long' });
+ const showEvent = (id: string) => {
+  setActiveTab('Upcoming');
+  setQuick('all');
+  setTypeFilter('All');
+  setHighlighted(id);
+  requestAnimationFrame(() => document.getElementById(`event-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  window.setTimeout(() => setHighlighted((current) => (current === id ? null : current)), 2400);
+ };
+ // Share sends what someone needs to decide: title, day, time and place.
+ const shareEvent = async (event: Event) => {
+  const text = `${t(event.title, event.titleEl ?? event.title)} — ${t(event.date, event.dateEl)}, ${t(event.time, event.timeEl)} — ${t(event.location, event.locationEl ?? event.location)}`;
+  if (await copyText(text)) toast.success(t('Event details copied', 'Τα στοιχεία της εκδήλωσης αντιγράφηκαν'));
+  else toast.error(t('Copy did not work in this browser', 'Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή'));
+ };
 
  // A counter on every tab, read from the same list the tab shows.
  const tabCounts = useMemo(() => {
@@ -219,7 +245,8 @@ export default function Events(_props: EventsProps = {}) {
   } as Record<string, number>;
  }, [allEvents, typeFilter, registeredEvents, bookmarkedEvents, isDemoMode, now]);
 
- const featured = allEvents[0] ?? null;
+ // The next event that has not started; the first listed one when none has a date.
+ const featured = nextUpcoming(allEvents, now) ?? (isDemoMode ? allEvents[0] ?? null : null);
  const typeCounts = useMemo(() => {
   const counts = new Map<Event['type'], number>();
   allEvents.forEach((event) => counts.set(event.type, (counts.get(event.type) ?? 0) + 1));
@@ -257,6 +284,8 @@ export default function Events(_props: EventsProps = {}) {
       {['Upcoming', 'My Events', 'Past', 'Bookmarked'].map((tab) => (
        <button
         key={tab}
+        type="button"
+        aria-pressed={activeTab === tab}
         onClick={() => setActiveTab(tab)}
         className={cn(
          "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
@@ -291,31 +320,58 @@ export default function Events(_props: EventsProps = {}) {
       </div>
      )}
 
+     {/* One tap, one choice: this week, online, or a city that has events. */}
+     <div role="group" aria-label={t('Quick filters', 'Γρήγορα φίλτρα')} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">
+      {([
+       { id: 'all', label: t('All', 'Όλες') },
+       { id: 'week', label: t('This week', 'Αυτή την εβδομάδα') },
+       { id: 'online', label: t('Online', 'Διαδικτυακά') },
+       ...cities.map((city) => ({ id: `city:${city}`, label: city })),
+      ] as { id: QuickFilter; label: string }[]).map((chip) => (
+       <button
+        key={chip.id}
+        type="button"
+        aria-pressed={quick === chip.id}
+        onClick={() => setQuick(chip.id)}
+        className={cn(
+         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+         quick === chip.id ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-600 border-stone-200 hover:border-stone-400 hover:text-stone-900"
+        )}
+       >
+        {chip.id.startsWith('city:') && <MapPin className="w-3 h-3" aria-hidden="true" />}
+        {chip.id === 'online' && <Video className="w-3 h-3" aria-hidden="true" />}
+        {chip.label}
+       </button>
+      ))}
+     </div>
+
      <div id="event-list" className="space-y-4">
       {(visibleEvents.length === 0) && (
        <EmptyHint title={t("No events in this category yet.", "Δεν υπάρχουν ακόμη εκδηλώσεις σε αυτή την κατηγορία.")} detail={t("Ask the studio assistant to host one.", "Ζήτα από τον βοηθό να διοργανώσει μία.")}>
-        {(typeFilter !== 'All' || activeTab !== 'Upcoming') && (
-         <ClearFiltersButton onClick={() => { setTypeFilter('All'); setActiveTab('Upcoming'); setShowTypes(false); }} />
+        {(typeFilter !== 'All' || activeTab !== 'Upcoming' || quick !== 'all') && (
+         <ClearFiltersButton onClick={() => { setTypeFilter('All'); setActiveTab('Upcoming'); setShowTypes(false); setQuick('all'); }} />
         )}
         <AskLink prompt="Schedule a new event on my calendar">{t('Ask assistant', 'Ρώτα τον βοηθό')}</AskLink>
        </EmptyHint>
       )}
-      {visibleEvents.map((event) => (
-       <div key={event.id} className="bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl">
+      {dayGroups.map((group) => (
+       <section key={group.key} aria-label={dayHeading(group.startsAt)} className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3 border-b border-stone-100 pb-1.5">
+         <h2 className="text-sm font-semibold text-stone-900">{dayHeading(group.startsAt)}</h2>
+         <span className="text-xs text-stone-400 tabular-nums">{group.items.length === 1 ? t('1 event', '1 εκδήλωση') : t(`${group.items.length} events`, `${group.items.length} εκδηλώσεις`)}</span>
+        </div>
+      {group.items.map((event) => (
+       <div key={event.id} id={`event-${event.id}`} className={cn("bg-white overflow-hidden group hover:shadow-md transition-all border border-stone-100 rounded-2xl scroll-mt-24", highlighted === event.id && "ring-2 ring-stone-900")}>
         <div className="flex flex-col md:flex-row">
-         <div className="md:w-56 h-44 md:h-auto overflow-hidden relative shrink-0">
-          {event.image ? (
-           <img
-            src={event.image}
-            alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-            referrerPolicy="no-referrer"
-           />
-          ) : (
-           <div className="w-full h-full bg-stone-100 flex items-center justify-center" aria-hidden>
-            <CalendarIcon className="w-8 h-8 text-stone-300" />
-           </div>
-          )}
+         <div className="md:w-56 h-40 md:h-auto overflow-hidden relative shrink-0">
+          {/* A calm placeholder instead of a broken image when the cover is missing or fails. */}
+          <CoverImage
+           src={event.image}
+           alt=""
+           icon={event.isOnline ? Video : CalendarIcon}
+           className="h-full w-full"
+           imgClassName="group-hover:scale-105 transition-transform duration-200"
+          />
           <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold tracking-wider shadow border border-white/20">
            {labelOf(event.type)}
           </div>
@@ -341,7 +397,7 @@ export default function Events(_props: EventsProps = {}) {
              >
               <CalendarPlus className="w-3.5 h-3.5" />
              </button>
-             <button type="button" aria-label={t("Copy event title", "Αντιγραφή τίτλου εκδήλωσης")} title={t("Copy event title", "Αντιγραφή τίτλου εκδήλωσης")} onClick={() => { void navigator.clipboard?.writeText(event.title); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+             <button type="button" aria-label={t("Copy event details", "Αντιγραφή στοιχείων εκδήλωσης")} title={t("Copy event details", "Αντιγραφή στοιχείων εκδήλωσης")} onClick={() => { void shareEvent(event); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
               <Share2 className="w-3.5 h-3.5" />
              </button>
             </div>
@@ -389,6 +445,8 @@ export default function Events(_props: EventsProps = {}) {
         </div>
        </div>
       ))}
+       </section>
+      ))}
      </div>
     </div>
 
@@ -399,18 +457,7 @@ export default function Events(_props: EventsProps = {}) {
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
       <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
       <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3 bg-stone-900">
-       {featured.image ? (
-        <img
-         src={featured.image}
-         alt={featured.title}
-         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-         referrerPolicy="no-referrer"
-        />
-       ) : (
-        <div className="w-full h-full bg-stone-900 flex items-center justify-center" aria-hidden>
-         <CalendarIcon className="w-8 h-8 text-stone-600" />
-        </div>
-       )}
+       <CoverImage src={featured.image} alt="" icon={CalendarIcon} tone="dark" className="h-full w-full" imgClassName="group-hover:scale-105 transition-transform duration-200" />
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
         <span className="text-xs font-semibold text-amber-950 tracking-wider bg-amber-300 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
@@ -422,10 +469,10 @@ export default function Events(_props: EventsProps = {}) {
       </p>
       <button
        type="button"
-       onClick={() => document.getElementById('event-list')?.scrollIntoView({ behavior: 'smooth' })}
+       onClick={() => showEvent(featured.id)}
        className="w-full py-2 rounded-lg text-sm font-medium text-stone-600 bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all"
       >
-       {t('Learn More', 'Περισσότερα')}
+       {t('View event', 'Δες την εκδήλωση')}
       </button>
      </div>
      )}

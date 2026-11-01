@@ -66,6 +66,7 @@ import { useToast } from '../context/ToastContext';
 import { usePeople } from '../lib/directory';
 import { avatarOf, findPerson } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
+import { profileCompleteness } from '../lib/profileCompleteness';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { shareLink } from '../lib/download';
 import { usePageControls } from '../lib/pageControls';
@@ -205,7 +206,7 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
  const person = live
   ? { fullName: live.fullName, headline: live.headline, headlineEl: live.headlineEl, bio: live.bio, bioEl: live.bioEl, location: live.location, stage: live.stage, role: live.role, commitment: live.commitment, industry: live.industry, skills: live.skills, lookingFor: live.lookingFor }
   : lookupPerson(profileId);
- return {
+ const built = {
   id: profileId,
   uid: profileId,
   fullName: person?.fullName || ownName || 'Founder',
@@ -213,7 +214,8 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
   roles: [],
   profileStatus: 'Published',
   verificationStatus: 'Unverified',
-  profileCompletionScore: 40,
+  // Measured from the fields this profile actually has (it was a fixed 40 for everyone).
+  profileCompletionScore: 0,
   accountStatus: 'Active',
   onboardingCompleted: true,
   createdAt: '',
@@ -231,6 +233,7 @@ function fallbackProfile(profileId: string, ownName?: string | null): UserProfil
   lookingFor: person?.lookingFor || [],
   interests: person?.industry ? [person.industry] : [],
  } as UserProfile;
+ return { ...built, profileCompletionScore: profileCompleteness(built).score };
 }
 export default function ProfilePage() {
  const t = useT();
@@ -408,7 +411,7 @@ export default function ProfilePage() {
   const connectedCount = isOwnProfile ? connections.accepted.length : ((profile as unknown as { connectionIds?: string[] } | null)?.connectionIds ?? []).length;
   const endorsementCount = endorsements.length;
   const mentoringSessions = sessions.filter((session) => session.type === 'Mentorship').length;
-  const completion = profile?.profileCompletionScore ?? insightScore;
+  const completion = isOwnProfile ? profileCompleteness(profile).score : (profile?.profileCompletionScore ?? insightScore);
   const joined = profile?.createdAt ? Date.parse(profile.createdAt) : NaN;
   const earlyMember = !Number.isNaN(joined) && joined < Date.UTC(2027, 0, 1);
   const progress = (have: number, need: number) => t(`${Math.min(have, need)}/${need} so far`, `${Math.min(have, need)}/${need} μέχρι τώρα`);
@@ -657,7 +660,10 @@ export default function ProfilePage() {
   { ok: !!profile.commitment, key: t('Commitment', 'Δέσμευση'), why: t('Full-time vs part-time is scored, not guessed.', 'Η πλήρης ή μερική απασχόληση βαθμολογείται, δεν μαντεύεται.') },
   { ok: !!profile.location, key: t('Location', 'Τοποθεσία'), why: t('Working hours come from city and time zone.', 'Οι ώρες εργασίας προκύπτουν από την πόλη και τη ζώνη ώρας.') },
  ].filter((item) => !item.ok);
- const showMatchStatus = isOwnProfile && (matchGaps.length > 0 || (profile.profileCompletionScore ?? 100) < 80);
+ // Your own profile is measured live (lib/profileCompleteness, the same as the dashboard);
+ // someone else's shows the stored score when the server keeps one.
+ const completionScore = isOwnProfile ? profileCompleteness(profile).score : (profile.profileCompletionScore ?? profileCompleteness(profile).score);
+ const showMatchStatus = isOwnProfile && (matchGaps.length > 0 || completionScore < 80);
  const matchNote = matchGaps.length
   ? matchGaps.slice(0, 3).map((item) => `${item.key}: ${item.why}`).join(' ')
   : t('Skills, looking-for, industry, stage and commitment are filled — the same fields Matches scores.', 'Τα πεδία δεξιότητες, τι αναζητάς, κλάδος, στάδιο και δέσμευση είναι συμπληρωμένα — τα ίδια που βαθμολογούν οι αντιστοιχίσεις.');
@@ -809,7 +815,7 @@ export default function ProfilePage() {
           }}
          >
           <span tabIndex={0} className="cursor-default underline decoration-stone-300 underline-offset-4" aria-describedby="match-fields-note">
-           {t(`${profile.profileCompletionScore ?? 0}% complete`, `${profile.profileCompletionScore ?? 0}% ολοκληρωμένο`)}
+           {t(`${completionScore}% complete`, `${completionScore}% ολοκληρωμένο`)}
           </span>
           <div
            id="match-fields-note"
@@ -821,7 +827,7 @@ export default function ProfilePage() {
           >
            <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 shadow-sm">
             <p className="text-sm leading-relaxed text-stone-500">
-             <span className="font-medium text-stone-700">{t(`Matching reads these fields (${profile.profileCompletionScore ?? 0}% complete).`, `Η αντιστοίχιση βασίζεται σε αυτά τα πεδία (ολοκλήρωση ${profile.profileCompletionScore ?? 0}%).`)}</span>{' '}
+             <span className="font-medium text-stone-700">{t(`Matching reads these fields (${completionScore}% complete).`, `Η αντιστοίχιση βασίζεται σε αυτά τα πεδία (ολοκλήρωση ${completionScore}%).`)}</span>{' '}
              {matchNote}
             </p>
             <button

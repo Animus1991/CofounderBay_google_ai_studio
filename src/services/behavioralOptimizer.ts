@@ -1,3 +1,4 @@
+import { profileCompleteness } from '../lib/profileCompleteness';
 import { 
   collection, 
   doc, 
@@ -48,7 +49,8 @@ export const determineUserState = async (userId: string): Promise<UserBehavioral
 
     if (!profile) return UserBehavioralState.NEWLY_ONBOARDED;
     
-    const completionScore = profile.profileCompletionScore || 0;
+    // Measured from the profile itself (lib/profileCompleteness), not the stored copy.
+    const completionScore = profileCompleteness(profile as Parameters<typeof profileCompleteness>[0]).score;
     if (completionScore < 70) return UserBehavioralState.PROFILE_INCOMPLETE;
 
     const xpEventsRef = collection(db, 'xpEvents');

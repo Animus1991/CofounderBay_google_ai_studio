@@ -494,6 +494,8 @@ export default function Fundraising({ user }: FundraisingProps) {
      {(["tracker", "crm", "dd", "investors", "programs", "opportunities"] as const).map((tab) => (
       <button
        key={tab}
+       type="button"
+       aria-pressed={activeTab === tab}
        data-testid={`fundraising-tab-${tab}`}
        onClick={() => setActiveTab(tab)}
        className={cn(
@@ -1574,7 +1576,7 @@ export default function Fundraising({ user }: FundraisingProps) {
      initial={{ opacity: 0, y: 20 }}
      animate={{ opacity: 1, y: 0 }}
      exit={{ opacity: 0, y: 20 }}
-     className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] max-w-md px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl text-center"
+     className="fixed bottom-[calc(var(--bottom-nav-offset,0px)+1.5rem)] left-1/2 -translate-x-1/2 z-[60] max-w-md px-5 py-2.5 bg-stone-900 text-white text-sm font-medium rounded-xl shadow-xl text-center"
     >
      {toastMsg}
     </motion.div>

@@ -68,6 +68,7 @@ import {
 } from '../lib/localLists';
 import { savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
 import { currentReadiness } from '../lib/readiness';
+import { profileCompleteness } from '../lib/profileCompleteness';
 import { formatMoney, formatPct, safeOwnershipAtCap } from '../lib/equity';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
@@ -82,7 +83,7 @@ import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notif
 import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
 import { milestoneService } from './milestoneService';
-import { readFitCheck } from '../lib/fitCheck';
+import { mergeFitIntoViewer, readFitCheck } from '../lib/fitCheck';
 import { roundMetrics } from '../lib/roundMetrics';
 import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
@@ -2199,13 +2200,15 @@ export function studioAudit(profile: AssistantProfile | null): { score: number; 
   const pitch = effectivePitch();
   const pitchDone = PITCH_SLIDES.filter((slide) => slideStatus(pitch[slide.key]) === 'complete').length;
   const legal = legalProgress();
-  const profileFields = [profile?.headline, profile?.bio, profile?.location, (Array.isArray(profile?.skills) ? profile.skills.length : 0) >= 3 ? 'ok' : ''];
-  const profileFilled = profileFields.filter((v) => typeof v === 'string' && v.trim()).length;
+  // The same completeness as the dashboard, the profile page and the banner (lib/profileCompleteness).
+  const completeness = profileCompleteness(mergeFitIntoViewer(profile as Parameters<typeof mergeFitIntoViewer>[0]) as Parameters<typeof profileCompleteness>[0]);
+  const missingEn = completeness.missing.slice(0, 2).map((field) => field.label.en.toLowerCase()).join(', ');
+  const missingEl = completeness.missing.slice(0, 2).map((field) => field.label.el.toLowerCase()).join(', ');
   const openNeeds = readNeeds().filter((n) => n.status === 'open').length;
   const brief = platformBriefing(profile);
   const round = brief.round;
   const rows: AuditRow[] = [
-    { name: ['Profile', 'Προφίλ'], en: `Profile ${profileFilled}/4 (headline, bio, location, 3+ skills)`, el: `Προφίλ ${profileFilled}/4 (τίτλος, bio, τοποθεσία, 3+ δεξιότητες)`, ratio: profileFilled / 4, href: '/profile', fix: { en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' } },
+    { name: ['Profile', 'Προφίλ'], en: `Profile ${completeness.score}%${missingEn ? ` (missing: ${missingEn})` : ''}`, el: `Προφίλ ${completeness.score}%${missingEl ? ` (λείπουν: ${missingEl})` : ''}`, ratio: completeness.score / 100, href: '/profile', fix: { en: 'What should I do first?', el: 'Τι να κάνω πρώτα;' } },
     { name: ['Lean Canvas', 'Lean Canvas'], en: `Lean Canvas ${canvasFilled}/${CANVAS_FIELDS.length}`, el: `Lean Canvas ${canvasFilled}/${CANVAS_FIELDS.length}`, ratio: canvasFilled / CANVAS_FIELDS.length, href: '/workspace', fix: { en: '/canvas', el: '/canvas' } },
     { name: ['Startup Builder', 'Startup Builder'], en: `Startup Builder ${builderFilled}/${builderTotal} answers`, el: `Startup Builder ${builderFilled}/${builderTotal} απαντήσεις`, ratio: builderFilled / builderTotal, href: '/founder-tools?step=1', fix: { en: '/builder', el: '/builder' } },
     { name: ['Pitch deck', 'Pitch deck'], en: `Pitch deck ${pitchDone}/${PITCH_SLIDES.length} slides`, el: `Pitch deck ${pitchDone}/${PITCH_SLIDES.length} διαφάνειες`, ratio: pitchDone / PITCH_SLIDES.length, href: '/founder-tools?tab=pitch', fix: { en: '/pitch', el: '/pitch' } },

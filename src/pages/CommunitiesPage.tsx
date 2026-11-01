@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import CoverImage from '../components/ui/CoverImage';
 import { useT } from '../lib/language';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
@@ -245,6 +246,8 @@ export default function CommunitiesPage() {
      {['all', 'joined', 'trending', 'new'].map((tab) => (
       <button
        key={tab}
+       type="button"
+       aria-pressed={activeTab === tab}
        onClick={() => setActiveTab(tab)}
        className={cn(
         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all",
@@ -304,18 +307,12 @@ export default function CommunitiesPage() {
      >
       {/* Top row: avatar + actions */}
       <div className="flex items-start justify-between mb-5">
-       {community.avatar ? (
-        <img
-         src={community.avatar}
-         alt={community.name}
-         className="w-14 h-14 rounded-xl object-cover shadow-sm"
-         referrerPolicy="no-referrer"
-        />
-       ) : (
-        <div className="w-14 h-14 rounded-xl bg-stone-900 text-white flex items-center justify-center text-base font-semibold shadow-sm" aria-hidden>
-         {community.name.slice(0, 2).toUpperCase()}
-        </div>
-       )}
+       <CoverImage
+        src={community.avatar}
+        alt={community.name}
+        className="w-14 h-14 shrink-0 rounded-xl shadow-sm"
+        fallback={<span className="flex h-full w-full items-center justify-center bg-stone-900 text-base font-semibold text-white">{community.name.slice(0, 2).toUpperCase()}</span>}
+       />
        <div className="flex items-center gap-1">
         <button type="button" aria-label={t('Share community', 'Κοινοποίηση κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all" onClick={() => void navigator.clipboard?.writeText(community.name)}>
          <Share2 className="w-4 h-4" />

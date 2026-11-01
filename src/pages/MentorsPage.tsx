@@ -24,6 +24,7 @@ import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import PageShell from '../components/ui/PageShell';
+import CoverImage from '../components/ui/CoverImage';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
 import { avatarFor, castByRole } from '../data/cast';
@@ -280,16 +281,7 @@ export default function MentorsPage() {
        className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
       >
        <div className="relative">
-        {mentor.avatar ? (
-         <img
-          src={mentor.avatar}
-          alt={mentor.name}
-          className="w-full h-44 object-cover"
-          referrerPolicy="no-referrer"
-         />
-        ) : (
-         <div className="w-full h-44 bg-stone-100 flex items-center justify-center text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</div>
-        )}
+        <CoverImage src={mentor.avatar} alt={mentor.name} className="w-full h-44" fallback={<span className="text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</span>} />
         {mentor.verified && (
          <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-md border-2 border-white shadow">
           <ShieldCheck className="w-3 h-3" />
@@ -380,29 +372,13 @@ export default function MentorsPage() {
    </div>
    <div className="grid grid-cols-2 gap-3">
     {mentors.slice(0, 4).map((mentor, i) => (
-     mentor.avatar ? (
-     <img
+     <CoverImage
       key={mentor.id}
       src={mentor.avatar}
       alt={mentor.name}
-      className={cn(
-       "w-20 h-20 rounded-2xl object-cover shadow border-2 border-white",
-       i % 2 === 0 ? "translate-y-3" : ""
-      )}
-      referrerPolicy="no-referrer"
+      className={cn("w-20 h-20 rounded-2xl shadow border-2 border-white", i % 2 === 0 ? "translate-y-3" : "")}
+      fallback={<span className="text-base font-semibold text-stone-400">{initialsOf(mentor.name)}</span>}
      />
-     ) : (
-     <div
-      key={mentor.id}
-      aria-label={mentor.name}
-      className={cn(
-       "w-20 h-20 rounded-2xl bg-stone-100 flex items-center justify-center text-base font-semibold text-stone-400 shadow border-2 border-white",
-       i % 2 === 0 ? "translate-y-3" : ""
-      )}
-     >
-      {initialsOf(mentor.name)}
-     </div>
-     )
     ))}
    </div>
   </div>
@@ -438,16 +414,12 @@ export default function MentorsPage() {
 
        {/* Profile Header */}
        <div className="text-center space-y-4 pt-8">
-        {selectedMentor.avatar ? (
-         <img
-          src={selectedMentor.avatar}
-          alt={selectedMentor.name}
-          className="w-32 h-32 mx-auto rounded-2xl object-cover shadow-xl border-4 border-white"
-          referrerPolicy="no-referrer"
-         />
-        ) : (
-         <div className="w-32 h-32 mx-auto rounded-2xl bg-stone-100 flex items-center justify-center text-3xl font-semibold text-stone-400 shadow-xl border-4 border-white">{initialsOf(selectedMentor.name)}</div>
-        )}
+        <CoverImage
+         src={selectedMentor.avatar}
+         alt={selectedMentor.name}
+         className="w-32 h-32 mx-auto rounded-2xl shadow-xl border-4 border-white"
+         fallback={<span className="text-3xl font-semibold text-stone-400">{initialsOf(selectedMentor.name)}</span>}
+        />
         <div>
          <h2 className="text-base font-semibold text-stone-900 tracking-tight inline-flex items-center gap-2">
           {selectedMentor.name}

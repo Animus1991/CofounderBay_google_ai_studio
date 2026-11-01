@@ -11,6 +11,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { FounderProfile, RoleCategory, StartupStage, CommitmentType } from '../types';
+import CoverImage from './ui/CoverImage';
 
 interface ProfileModalProps {
   profile: FounderProfile | null;
@@ -122,11 +123,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         <div className="relative px-6 pb-6 pt-0">
           <div className="-mt-12 flex items-end justify-between gap-4">
             <div className="relative">
-              <img
+              <CoverImage
                 src={profile.avatar}
                 alt={profile.name}
-                referrerPolicy="no-referrer"
-                className="h-24 w-24 rounded-2xl object-cover ring-4 ring-card shadow-xl"
+                className="h-24 w-24 rounded-2xl ring-4 ring-card shadow-xl"
+                fallback={<span className="text-xl font-semibold text-stone-400">{profile.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}
               />
               {profile.verified && (
                 <div

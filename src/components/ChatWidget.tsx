@@ -4,6 +4,7 @@ import { Bot, Check, ChevronRight, Copy, Maximize2, MessageSquare, Minimize2, Se
 import { SendEmailModal } from './SendEmailModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import CoverImage from './ui/CoverImage';
 import { Both } from '../lib/both';
 import { bothText, labelOf } from '../lib/labels';
 import { useLanguage, useT } from '../lib/language';
@@ -615,11 +616,12 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                 onClick={() => { setAgentId(item.id); setAgentTurns([]); }}
                 className="w-full p-3 bg-white rounded-xl border border-stone-100 hover:border-stone-300 text-left flex items-start gap-3"
               >
-                {item.avatar ? (
-                  <img src={item.avatar} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                ) : (
-                  <span className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center text-base shrink-0" aria-hidden="true">{item.icon}</span>
-                )}
+                <CoverImage
+                  src={item.avatar}
+                  alt=""
+                  className="w-9 h-9 rounded-lg shrink-0"
+                  fallback={<span className="flex h-full w-full items-center justify-center bg-stone-900 text-base text-white">{item.icon}</span>}
+                />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-stone-900">{bothText(item.name, item.nameEl ?? item.name)}</p>
                   <p className="text-xs text-stone-500 line-clamp-2">{bothText(item.description, item.descriptionEl ?? item.description)}</p>
@@ -1028,7 +1030,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   }
 
   return (
-    <div className="fixed bottom-3 right-3 left-3 sm:left-auto sm:bottom-6 sm:right-6 z-[55] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
+    <div className="fixed bottom-[calc(var(--bottom-nav-offset,0px)+0.75rem)] right-3 left-3 sm:left-auto sm:bottom-[calc(var(--bottom-nav-offset,0px)+1.5rem)] sm:right-6 z-[55] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div

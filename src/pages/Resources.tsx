@@ -17,6 +17,7 @@ import {
  PlayCircle
 } from "lucide-react";
 import Card from "../components/ui/Card";
+import CoverImage from "../components/ui/CoverImage";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import FactLine from "../components/ui/FactLine";
@@ -168,6 +169,8 @@ export default function Resources({ user: _user }: ResourcesProps) {
      {(['learning', 'services', 'jobs', 'support'] as const).map((tab) => (
       <button
        key={tab}
+       type="button"
+       aria-pressed={activeTab === tab}
        onClick={() => setActiveTab(tab)}
        className={cn(
         "px-4 py-2 text-sm font-medium rounded-lg transition-all capitalize",
@@ -238,18 +241,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
        >
         <Card className="group hover:shadow-sm transition-all duration-200 border-stone-200/60 hover:border-stone-900 h-full p-4 rounded-xl bg-white overflow-hidden" contentClassName="flex flex-col">
          <div className="aspect-video bg-stone-100 rounded-xl mb-6 overflow-hidden relative">
-          {course.image ? (
-           <img
-            src={course.image}
-            alt={course.title}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-           />
-          ) : (
-           <div className="w-full h-full flex items-center justify-center" aria-hidden>
-            <GraduationCap className="w-8 h-8 text-stone-300" />
-           </div>
-          )}
+          <CoverImage src={course.image} alt="" className="h-full w-full" />
           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-stone-900 border border-stone-200">
             <PlayCircle className="w-6 h-6" />
@@ -471,10 +463,13 @@ export default function Resources({ user: _user }: ResourcesProps) {
             {(() => {
              const name = isDemoMode ? 'Sarah Chen' : coach?.fullName;
              const src = isDemoMode ? avatarFor('sarah-chen', 150) : coach ? avatarOf(coach) : '';
-             return src ? (
-              <img src={src} alt={t('Coach', 'Σύμβουλος')} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-             ) : (
-              <span className="text-lg font-semibold text-stone-600">{(name ?? '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+             return (
+              <CoverImage
+               src={src}
+               alt={t('Coach', 'Σύμβουλος')}
+               className="w-full h-full bg-white"
+               fallback={<span className="text-lg font-semibold text-stone-600">{(name ?? '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>}
+              />
              );
             })()}
            </div>

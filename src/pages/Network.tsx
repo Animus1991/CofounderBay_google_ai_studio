@@ -156,7 +156,8 @@ export default function Network({ user }: NetworkProps) {
   const initialStatus = (): 'All' | ConnectionStatus => {
     const s = params.get('status');
     if (s === 'Connected' || s === 'Pending' || s === 'Incoming') return s;
-    if (rawTab === 'Requests') return connections.incoming.length > 0 ? 'Incoming' : 'Pending';
+    // "?tab=requests" (notifications) and "?tab=Requests" (dashboard) both open the requests.
+    if (rawTab?.toLowerCase() === 'requests') return connections.incoming.length > 0 ? 'Incoming' : 'Pending';
     return 'All';
   };
   const [statusFilter, setStatusFilter] = useState<'All' | ConnectionStatus>(initialStatus);

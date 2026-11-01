@@ -128,6 +128,8 @@ export default function LegalHub() {
      {categories.map((cat) => (
       <button
        key={cat.id}
+       type="button"
+       aria-pressed={activeCategory === cat.id}
        onClick={() => setActiveCategory(cat.id)}
        className={cn(
         "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
