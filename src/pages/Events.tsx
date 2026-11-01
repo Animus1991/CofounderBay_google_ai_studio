@@ -22,7 +22,8 @@ import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHi
 import { cn } from "../lib/utils";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
-import { addSession, eventListKeys, logActivity, readIds, removeSession, toggleId } from "../lib/localLists";
+import { eventListKeys, readIds, toggleId } from "../lib/localLists";
+import { setEventRegistration } from "../lib/eventRegistration";
 import { toMillis } from "../lib/peopleSource";
 import { formatDate, formatTime } from "../lib/dates";
 import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
@@ -118,24 +119,9 @@ export default function Events(_props: EventsProps = {}) {
  ], []);
 
  const toggleRegistration = (eventId: string) => {
-  const next = toggleId(eventListKeys.registered, eventId);
   const listed = allEvents.find((item) => item.id === eventId);
   if (!listed) return;
-  if (next.includes(eventId)) {
-   addSession({
-    id: `evt-${eventId}`,
-    title: listed.title,
-    type: 'Event',
-    time: listed.startsAt ? new Date(listed.startsAt).toISOString() : `${listed.date} ${listed.time}`,
-    duration: listed.time,
-    location: listed.location,
-    participants: [listed.organizer],
-    priority: 'Medium',
-   });
-   logActivity({ kind: 'event', title: `Registered for ${listed.title}`, titleEl: `Εγγραφή: ${listed.title}`, href: '/calendar' });
-  } else {
-   removeSession(`evt-${eventId}`);
-  }
+  setEventRegistration(listed, !registeredEvents.includes(eventId));
  };
  const toggleBookmark = (eventId: string) => {
   toggleId(eventListKeys.bookmarked, eventId);
