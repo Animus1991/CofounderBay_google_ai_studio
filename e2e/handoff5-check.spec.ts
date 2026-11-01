@@ -17,12 +17,13 @@ const demoEl = async (page: import('@playwright/test').Page) => {
 
 test('fundraising KPIs match the seeded demo round', async ({ page }) => {
   await demoEl(page);
-  await page.goto('/fundraising');
-  await page.waitForTimeout(1500);
+  await page.goto('/fundraising?tab=tracker');
   const kpi = (label: string) => page.locator(`div:has(> p:text-is("${label}")) > p`).nth(1).innerText();
   // Non-Closed/Passed rows are exactly the rows that can move to a next stage.
+  // The seeded round lands after first paint — wait for the rows, then compare with the KPI.
+  await page.locator('button[aria-label="Επόμενο στάδιο"]:visible').first().waitFor({ timeout: 10_000 });
   const activeRows = await page.locator('button[aria-label="Επόμενο στάδιο"]:visible').count();
-  expect(Number(await kpi('Ενεργά leads'))).toBe(activeRows);
+  await expect.poll(async () => Number(await kpi('Ενεργά leads')), { timeout: 10_000 }).toBe(activeRows);
   expect(activeRows).toBe(4);
   expect(await kpi('Ρυθμός καύσης')).toBe('$22k/mo');
   expect(await kpi('Υπόλοιπο περιθώριο')).toBe('8mo');

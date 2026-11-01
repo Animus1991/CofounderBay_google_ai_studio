@@ -22,7 +22,7 @@ fundraising and milestones, and accelerate execution with AI assistance.
 
 - **Matching engine** — compatibility scoring across skills, values, goals and availability.
 - **AI operator** — one assistant that reads and changes the same data as every page
-  (78 declared actions, Gemini tool use, confirm + undo for every write), as a corner
+  (86 declared actions, Gemini tool use, confirm + undo for every write), as a corner
   panel everywhere and as the full-page AI Studio (`/assistant`). See
   [`docs/AI_OPERATOR.md`](docs/AI_OPERATOR.md).
 - **Communication hub** — real-time messaging (Socket.IO) plus 10 specialized AI agents.

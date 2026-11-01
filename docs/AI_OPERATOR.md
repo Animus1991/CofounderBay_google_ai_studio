@@ -81,7 +81,7 @@ model" instead of tripping the circuit breaker.
 
 | File | Role |
 | --- | --- |
-| `src/ai/catalog.ts` | The declaration of every capability (78): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
+| `src/ai/catalog.ts` | The declaration of every capability (86): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
 | `src/ai/engine.ts` | One turn: batch → router → model (with the read loop) → honest fallback. React-free and fully tested with a stub planner. |
 | `src/ai/whereIs.ts` | "Where is X?" — 33 places (page, section, control) with a "Take me there" link. |
 | `src/services/assistantOps.ts` | The deterministic router and every tool's read/write/undo, against `lib/localLists` (the same lists the pages read). |
@@ -90,6 +90,9 @@ model" instead of tripping the circuit breaker.
 | `src/services/ddOps.ts`, `src/lib/dueDiligence.ts` | Due diligence: 12 standard items in 5 categories, status, notes, data-room hints, and read-only share links (server/outreach). |
 | `src/services/studioAreas.ts` | Pitch slides, the Legal Hub checklist, today's focus time and saved searches, read and written by the assistant. `studioAudit()` (assistantOps) scores eight areas for the studio check, the daily step and the profile insight. |
 | `src/services/assistantText.ts` | `fold`, `hasStem`, `escapeRegExp` — accent- and case-insensitive matching that works for Greek. |
+| `src/services/assistantTime.ts` | `parseTime` — clock times in both languages ("3pm", "15:30", «στις 3», «3 μ.μ.») on folded text, with date/amount negatives. |
+| `src/lib/agenda.ts` | `agendaFor(today | tomorrow | week)` — sessions, milestones, investor follow-ups and task deadlines in one sorted list (the `read_agenda` read). |
+| `src/lib/eventRegistration.ts` | `setEventRegistration(event, on)` — the one write path for event registration the Events page toggle and the assistant (`register_event`, `update_session` on `evt-` ids) share. |
 | `src/services/aiService.ts` | Gemini access. Proxy by default; `generateContent`, `generateContentStream` (SSE), `plan()`, `extractJson()`, `status()`, circuit breaker, `AIProxyError`. |
 | `server/aiProxy.ts`, `server/firebaseAuth.ts`, `server/cors.ts`, `server/identity.ts` | The proxy, token verification, origin policy and the one caller rule shared with outreach. |
 | `server/outreach.ts`, `server/email.ts`, `server/digest.ts` | Due-diligence share links (public view counts; files kept apart in chunks and deleted on revoke), provider-agnostic email (queued without a provider), the weekly investor digest and its cron endpoint (each week claimed in the store before sending, so overlapping runs send once). |
