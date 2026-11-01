@@ -314,7 +314,8 @@ const logMessage = (message: string) => {
           />
          </div>
          <div className="flex gap-2">
-          <select 
+          <select
+           aria-label={t('Filter by status', 'Φίλτρο κατάστασης')}
            value={filterStatus}
            onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
            className="px-3 py-2 bg-stone-50/50 border border-stone-200 rounded-lg focus:ring-2 ring-stone-900/5 focus:border-stone-400 outline-none transition-all font-medium text-xs"
