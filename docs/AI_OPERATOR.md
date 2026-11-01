@@ -81,7 +81,7 @@ model" instead of tripping the circuit breaker.
 
 | File | Role |
 | --- | --- |
-| `src/ai/catalog.ts` | The declaration of every capability (86): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
+| `src/ai/catalog.ts` | The declaration of every capability (87): id, kind (read / write / navigate / preference), area, label, model-facing description, parameters (with closed sets), reversal, a canonical example in English and Greek, and `command(args)` — the sentence the router resolves. `toFunctionDeclarations()` is what Gemini receives. |
 | `src/ai/engine.ts` | One turn: batch → router → model (with the read loop) → honest fallback. React-free and fully tested with a stub planner. |
 | `src/ai/whereIs.ts` | "Where is X?" — 33 places (page, section, control) with a "Take me there" link. |
 | `src/services/assistantOps.ts` | The deterministic router and every tool's read/write/undo, against `lib/localLists` (the same lists the pages read). |
