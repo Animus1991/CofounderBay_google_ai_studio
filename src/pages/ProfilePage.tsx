@@ -690,7 +690,7 @@ export default function ProfilePage() {
         return <Avatar src={src || undefined} fallback={name} alt={name} size="xl" className="[&>*]:w-20 [&>*]:h-20 sm:[&>*]:w-28 sm:[&>*]:h-28 lg:[&>*]:w-36 lg:[&>*]:h-36 [&>*]:rounded-2xl [&>*]:border-4 [&>*]:border-white [&>*]:shadow-sm [&>*]:text-2xl" />;
        })()}
        {profile.verificationStatus === 'Verified' && (
-        <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full border-4 border-white shadow-lg" title={t('Verified member', 'Επαληθευμένο μέλος')} aria-label={t('Verified member', 'Επαληθευμένο μέλος')}>
+        <div role="img" className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full border-4 border-white shadow-lg" title={t('Verified member', 'Επαληθευμένο μέλος')} aria-label={t('Verified member', 'Επαληθευμένο μέλος')}>
          <ShieldCheck className="w-5 h-5" />
         </div>
        )}

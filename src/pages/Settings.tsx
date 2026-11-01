@@ -36,6 +36,8 @@ import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
 import { exportMyData } from "../lib/dataExport";
+import { profileCompleteness } from "../lib/profileCompleteness";
+import { mergeFitIntoViewer } from "../lib/fitCheck";
 
 const FORM_KEY = keys.accountForm;
 const SWITCH_KEY = keys.accountSwitches;
@@ -318,10 +320,21 @@ export default function Settings() {
     reader.readAsDataURL(file);
   };
 
-  const filled = [
-    form.fullName, form.email, form.headline, form.bio, form.location, form.role, form.stage, form.industry, form.company, form.photo,
-  ].filter(Boolean).length;
-  const completion = Math.round((filled / 10) * 100);
+  // The same completeness as the dashboard, the profile page and the banner
+  // (lib/profileCompleteness), measured live on what this form holds now.
+  const completion = profileCompleteness({
+    ...(mergeFitIntoViewer(profile) ?? {}),
+    fullName: form.fullName,
+    bio: form.bio,
+    location: form.location,
+    role: form.role,
+    stage: form.stage,
+    industry: form.industry,
+    commitment: form.commitment,
+    socialLinks: { linkedin: form.linkedin, github: form.github, website: form.website },
+    linkedinUrl: undefined,
+    githubUrl: undefined,
+  }).score;
 
   const tabs = [
     { id: "account" as const, label: t("Account", "Λογαριασμός"), icon: User },
@@ -842,7 +855,8 @@ export default function Settings() {
                   <span className="mt-0.5 block text-sm leading-snug text-stone-500">JSON</span>
                 </span>
               </button>
-              <button type="button" onClick={() => setDeleteOpen(true)} className="flex min-h-16 items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left hover:bg-red-50">
+              {/* GitHub's "danger zone" logic: the irreversible action carries the danger outline, the safe one the neutral one. */}
+              <button type="button" onClick={() => setDeleteOpen(true)} className="flex min-h-16 items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-left hover:bg-red-50">
                 <Trash2 className="h-4 w-4 shrink-0 text-red-600" />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold leading-snug text-red-700">{t("Delete account", "Διαγραφή λογαριασμού")}</span>

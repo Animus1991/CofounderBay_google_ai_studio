@@ -81,8 +81,22 @@ export default function AdminDashboard() {
   );
  }
 
+ // Event types read as words in the active language ("PROFILE_COMPLETED" showed as "PROFILE COMPLETED").
+ const EVENT_TYPE_LABELS: Record<string, [string, string]> = {
+  PROFILE_COMPLETED: ['Profile completed', 'Ολοκλήρωση προφίλ'],
+  MATCH_CONNECTED: ['Match connected', 'Σύνδεση αντιστοίχισης'],
+  MILESTONE_COMPLETED: ['Milestone completed', 'Ολοκλήρωση ορόσημου'],
+  MENTOR_SESSION: ['Mentor session', 'Συνεδρία μέντορα'],
+  COMMUNITY_POST: ['Community post', 'Ανάρτηση κοινότητας'],
+ };
+ const eventTypeLabel = (name: string) => {
+  const known = EVENT_TYPE_LABELS[name];
+  if (known) return t(known[0], known[1]);
+  const words = name.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+ };
  const distributionData = analytics?.eventTypeDistribution ? Object.entries(analytics.eventTypeDistribution).map(([name, value]) => ({
-  name: name.replace(/_/g, ' '),
+  name: eventTypeLabel(name),
   value
  })) : [];
 

@@ -14,7 +14,7 @@ async function sample(page: Page, path: string) {
 }
 
 async function ask(page: Page, text: string) {
-  const input = page.getByLabel('Message the assistant');
+  const input = page.getByLabel(/Message the assistant|Μήνυμα στον βοηθό/);
   await input.fill(text);
   await input.press('Enter');
 }
@@ -47,6 +47,27 @@ test.describe('assistant', () => {
     await expect(page.getByText(/Founder Tools → Pitch/)).toBeVisible();
     await page.getByRole('button', { name: 'Take me there' }).click();
     await expect(page).toHaveURL(/\/founder-tools\?tab=pitch/);
+  });
+
+  test('completes a task in Greek, then Undo restores it', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('demo_mode', 'true');
+      localStorage.setItem('cfb.lang', 'el');
+    });
+    await page.goto('/assistant');
+    await ask(page, 'ολοκλήρωσα την εργασία Competitor Analysis');
+    await page.getByRole('button', { name: /Confirm|Επιβεβαίωση/ }).last().click();
+    const taskStatus = () => page.evaluate(() => {
+      const raw = localStorage.getItem('cfb.workspaceTasks');
+      return raw ? JSON.parse(raw).find((t: { title: string }) => t.title === 'Competitor Analysis')?.status : null;
+    });
+    expect(await taskStatus()).toBe('Done');
+    // Undo sits on the confirmed card; click it on the same page before navigating.
+    await page.getByRole('button', { name: /Undo all|Αναίρεση όλων|Undo|Αναίρεση/ }).last().click();
+    expect(await taskStatus()).toBe('Review');
+    // Workspace reads the same list — the task is back under Review («Σε έλεγχο»).
+    await page.goto('/workspace');
+    await expect(page.locator('div', { hasText: 'Competitor Analysis' }).first()).toBeAttached();
   });
 });
 

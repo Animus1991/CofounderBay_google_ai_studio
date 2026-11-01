@@ -9,8 +9,9 @@
 import type { Milestone, UserProfile } from '../types';
 import { findCast } from '../data/cast';
 import { seedMilestones } from '../data/seeds';
+import { daysFromToday, atDaysFromToday } from '../data/demoClock';
 import { recordLocalSave } from './saveFeedback';
-import { demoPipeline } from '../data/demoCatalog';
+import { demoPipeline, DEMO_INVESTOR_MEETINGS } from '../data/demoCatalog';
 
 const CHANGE_EVENT = 'cfb:data';
 const ALL = '*';
@@ -537,19 +538,47 @@ export type StudioTask = {
   priority: 'High' | 'Medium' | 'Low';
   status: 'Todo' | 'In Progress' | 'Review' | 'Done';
   deadline: string;
+  /** Local day 'YYYY-MM-DD' the task is due; the chip derives the label from today. */
+  due?: string;
   timeTracked: number;
   estimatedTime: number;
   tags: string[];
 };
 
 const seedTasks = (): StudioTask[] => [
-  { id: '1', title: 'Refine User Personas', priority: 'High', status: 'Todo', deadline: '2d left', timeTracked: 120, estimatedTime: 180, tags: ['Product', 'Research'] },
-  { id: '2', title: 'Landing Page Copywriting', priority: 'Medium', status: 'In Progress', deadline: 'Today', timeTracked: 90, estimatedTime: 120, tags: ['Marketing'] },
-  { id: '3', title: 'Competitor Analysis', priority: 'Low', status: 'Review', deadline: 'Tomorrow', timeTracked: 240, estimatedTime: 300, tags: ['Strategy'] },
-  { id: '4', title: 'Setup Analytics Pipeline', priority: 'High', status: 'Todo', deadline: '5d left', timeTracked: 0, estimatedTime: 480, tags: ['Tech', 'Data'] },
-  { id: '5', title: 'Pitch Deck Revision', priority: 'High', status: 'In Progress', deadline: '3d left', timeTracked: 180, estimatedTime: 240, tags: ['Fundraising'] },
+  { id: '1', title: 'Refine User Personas', priority: 'High', status: 'Todo', deadline: '2d left', due: daysFromToday(2), timeTracked: 120, estimatedTime: 180, tags: ['Product', 'Research'] },
+  { id: '2', title: 'Landing Page Copywriting', priority: 'Medium', status: 'In Progress', deadline: 'Today', due: daysFromToday(0), timeTracked: 90, estimatedTime: 120, tags: ['Marketing'] },
+  { id: '3', title: 'Competitor Analysis', priority: 'Low', status: 'Review', deadline: 'Tomorrow', due: daysFromToday(1), timeTracked: 240, estimatedTime: 300, tags: ['Strategy'] },
+  { id: '4', title: 'Setup Analytics Pipeline', priority: 'High', status: 'Todo', deadline: '5d left', due: daysFromToday(5), timeTracked: 0, estimatedTime: 480, tags: ['Tech', 'Data'] },
+  { id: '5', title: 'Pitch Deck Revision', priority: 'High', status: 'In Progress', deadline: '3d left', due: daysFromToday(3), timeTracked: 180, estimatedTime: 240, tags: ['Fundraising'] },
   { id: '6', title: 'Customer Interviews', priority: 'Medium', status: 'Done', deadline: 'Done', timeTracked: 360, estimatedTime: 360, tags: ['Research', 'Product'] },
 ];
+
+/** Parts the task chip renders from `due`, as data — the page translates. */
+export function taskDue(task: StudioTask, now: Date = new Date()): { kind: 'done' | 'today' | 'tomorrow' | 'left' | 'overdue' | 'none'; days?: number } {
+  if (task.status === 'Done') return { kind: 'done' };
+  if (!task.due) return { kind: 'none' };
+  const days = daysUntil(task.due, now);
+  if (days === 0) return { kind: 'today' };
+  if (days === 1) return { kind: 'tomorrow' };
+  if (days > 1) return { kind: 'left', days };
+  return { kind: 'overdue', days: -days };
+}
+
+/** The task's chip text: derived from `due` when present, else the legacy `deadline` string. */
+export function taskDueLabel(task: StudioTask, t: (en: string, el: string) => string, now: Date = new Date()): string {
+  const due = taskDue(task, now);
+  switch (due.kind) {
+    case 'done': return task.due ? t('Done', 'Ολοκληρώθηκε') : task.deadline;
+    case 'today': return t('Today', 'Σήμερα');
+    case 'tomorrow': return t('Tomorrow', 'Αύριο');
+    case 'left': return t(`${due.days}d left`, `απομένουν ${due.days} ημ.`);
+    case 'overdue': return t(`${due.days}d overdue`, `καθυστέρηση ${due.days} ημ.`);
+    default:
+      if (task.deadline === 'Done') return t('Done', 'Ολοκληρώθηκε');
+      return task.deadline;
+  }
+}
 
 export function readTasks(): StudioTask[] {
   const stored = readJson<StudioTask[] | null>(keys.tasks, null);
@@ -610,6 +639,18 @@ export function removeStudioTask(id: string): StudioTask[] {
   return writeTasks(readTasks().filter((item) => item.id !== id));
 }
 
+/** Patch one task by id; returns the updated list. Same write the Workspace buttons use. */
+export function updateStudioTask(id: string, patch: Partial<StudioTask>): StudioTask[] {
+  return writeTasks(readTasks().map((item) => (item.id === id ? { ...item, ...patch } : item)));
+}
+
+/** Puts a task back at its index (the assistant's undo for a removal). */
+export function insertStudioTask(task: StudioTask, index: number): StudioTask[] {
+  const next = readTasks().filter((item) => item.id !== task.id);
+  next.splice(Math.min(index, next.length), 0, task);
+  return writeTasks(next);
+}
+
 // ── Calendar sessions ──────────────────────────────────────────────────────
 
 export type StudioSession = {
@@ -625,9 +666,29 @@ export type StudioSession = {
   priority: 'High' | 'Medium' | 'Low';
 };
 
+const demoSeedSessions = (): StudioSession[] => {
+  const starters: StudioSession[] = [
+    { id: 'starter-1', title: 'Co-founder Sync', type: 'Meeting', time: atDaysFromToday(0, 10).toISOString(), duration: '45m', location: 'Google Meet', participants: ['Sarah Chen', 'Alex Rivera'], priority: 'High' },
+    { id: 'starter-2', title: 'MVP Beta Deadline', type: 'Deadline', time: atDaysFromToday(0, 23).toISOString(), duration: 'All Day', location: '', participants: [], priority: 'High' },
+    { id: 'starter-3', title: 'Startup Networking Event', type: 'Event', time: atDaysFromToday(1, 18).toISOString(), duration: '2h', location: 'Tech Hub, London', participants: ['120+ attendees'], priority: 'Medium' },
+    { id: 'starter-4', title: 'Mentorship Session', type: 'Mentorship', time: atDaysFromToday(1, 14).toISOString(), duration: '1h', location: 'Zoom', participants: ['David Miller'], priority: 'Medium' },
+  ];
+  return [...starters, ...DEMO_INVESTOR_MEETINGS.map((meeting) => ({
+  id: `ses-${meeting.id}`,
+  title: `${meeting.type} · ${meeting.investor}`,
+  type: 'Meeting' as const,
+  time: atDaysFromToday(meeting.inDays, Number(meeting.time.slice(0, 2))).toISOString(),
+  duration: meeting.duration,
+  location: meeting.type,
+  participants: [meeting.investor],
+  priority: 'High' as const,
+}))];
+};
+
 export function readSessions(): StudioSession[] {
   const stored = readJson<StudioSession[] | null>(keys.sessions, null);
-  return Array.isArray(stored) ? stored : [];
+  if (!stored) return isDemo() ? demoSeedSessions() : [];
+  return Array.isArray(stored) ? stored : (isDemo() ? demoSeedSessions() : []);
 }
 
 export function addSession(item: StudioSession): StudioSession[] {

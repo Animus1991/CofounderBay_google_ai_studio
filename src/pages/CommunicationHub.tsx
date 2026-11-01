@@ -729,17 +729,18 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   return (
    <div
     key={conv.id}
-    role="button"
-    tabIndex={0}
-    aria-current={activeId === conv.id ? "true" : undefined}
-    onClick={() => openConversation(conv.id)}
-    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openConversation(conv.id); } }}
     className={cn(
-     "w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group/conv relative cursor-pointer",
+     "w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group/conv relative",
      activeId === conv.id ? "bg-white shadow-lg shadow-stone-200/50 border border-stone-200" : "hover:bg-white/80 border border-transparent"
     )}
    >
     {conv.pinned && <Pin className="absolute top-2 right-2 w-3 h-3 text-stone-400 rotate-45" aria-hidden="true" />}
+    <button
+     type="button"
+     aria-current={activeId === conv.id ? "true" : undefined}
+     onClick={() => openConversation(conv.id)}
+     className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
+    >
     <Avatar src={conv.other.avatar} alt={conv.other.fullName} size="md" status={conv.kind === "ai" ? undefined : online ? "online" : "offline"} isAI={conv.kind === "ai"} icon={agent?.icon} />
     <div className="flex-1 min-w-0">
      <div className="flex items-center gap-2 mb-0.5">
@@ -760,6 +761,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       )}
      </div>
     </div>
+    </button>
     <button
      type="button"
      aria-label={t("Conversation actions", "Ενέργειες συνομιλίας")}

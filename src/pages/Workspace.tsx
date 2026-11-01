@@ -40,7 +40,7 @@ import PageShell from "../components/ui/PageShell";
 import Disclosure from "../components/ui/Disclosure";
 import { User } from "../types";
 import { cn } from "../lib/utils";
-import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, writeValue } from "../lib/localLists";
+import { addStudioTask, keys, readMilestones, readSessions, readTasks, readValue, taskDueLabel, writeValue } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import SaveStatus from '../components/ui/SaveStatus';
 import { useBeforeUnload } from '../lib/useProtectedDraft';
@@ -175,16 +175,7 @@ export default function Workspace({ user }: WorkspaceProps) {
   Milestones: t("Milestones", "Ορόσημα"),
   Calendar: t("Calendar", "Ημερολόγιο"),
  }[tab]);
- const deadlineLabel = (value: string) => {
-  if (value === "Today") return t("Today", "Σήμερα");
-  if (value === "Tomorrow") return t("Tomorrow", "Αύριο");
-  if (value === "2d left") return t("2d left", "απομένουν 2 ημ.");
-  if (value === "Done") return labelOf("Done");
-  if (value === "New") return t("New", "Νέο");
-  const match = /^(\d+)d left$/.exec(value);
-  if (match) return t(`${match[1]}d left`, `απομένουν ${match[1]} ημ.`);
-  return value;
- };
+
  const canvasTitle = (title: string) => ({
   Problem: t("Problem", "Πρόβλημα"),
   Solution: t("Solution", "Λύση"),
@@ -374,7 +365,7 @@ export default function Workspace({ user }: WorkspaceProps) {
                )}>{labelOf(task.status)}</span>
                <span className="w-1 h-1 bg-stone-200 rounded-full" />
                <span className="text-xs text-stone-400 flex items-center gap-1">
-                <Clock className="w-2.5 h-2.5" /> {deadlineLabel(task.deadline)}
+                <Clock className="w-2.5 h-2.5" /> {taskDueLabel(task, t)}
                </span>
                {/* Time tracking indicator */}
                {task.timeTracked > 0 && (

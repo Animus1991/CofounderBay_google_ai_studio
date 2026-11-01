@@ -340,7 +340,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
        </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t('Members table', 'Πίνακας μελών')}>
        <table className="w-full text-left border-collapse">
         <thead>
          <tr className="bg-stone-50/20 border-b border-stone-50">

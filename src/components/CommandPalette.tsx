@@ -162,7 +162,7 @@ export default function CommandPalette() {
         { id: 'admin-branding', label: 'Branding Settings', labelEl: 'Ταυτότητα', icon: Globe, action: () => go('/admin/branding'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['theme', 'logo'], kind: 'page' },
         { id: 'admin-sso', label: 'SSO Settings', labelEl: 'Ρυθμίσεις SSO', icon: Lock, action: () => go('/admin/sso'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['sso', 'saml', 'oidc'], kind: 'page' },
         { id: 'admin-taxonomy', label: 'Taxonomy Settings', labelEl: 'Ταξινομίες', icon: Tags, action: () => go('/admin/taxonomy'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['taxonomy', 'skills', 'tags'], kind: 'page' },
-        { id: 'admin-domains', label: 'Domain Settings', labelEl: 'Domains', icon: Globe, action: () => go('/admin/domains'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['domains', 'dns'], kind: 'page' },
+        { id: 'admin-domains', label: 'Domain Settings', labelEl: 'Τομείς', icon: Globe, action: () => go('/admin/domains'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['domains', 'dns'], kind: 'page' },
         { id: 'admin-billing', label: 'Tenant Billing', labelEl: 'Χρέωση Οργανισμού', icon: CreditCard, action: () => go('/admin/billing'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['tenant billing'], kind: 'page' },
         { id: 'admin-billing-oversight', label: 'SuperAdmin Billing Oversight', labelEl: 'Εποπτεία Χρεώσεων SuperAdmin', icon: DollarSign, action: () => go('/admin/billing-oversight'), section: 'Admin', sectionEl: 'Διαχείριση', keywords: ['superadmin', 'oversight', 'mrr'], kind: 'page' },
       );

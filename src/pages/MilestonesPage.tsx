@@ -240,6 +240,9 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
  usePageControls(() => [
   { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: openNew },
+  { id: 'milestones-list', en: 'Show milestones as a list', el: 'Ορόσημα σε λίστα', run: () => setView('list') },
+  { id: 'milestones-board', en: 'Show the milestones board', el: 'Πίνακας ορόσημων', run: () => setView('kanban') },
+  { id: 'milestones-timeline', en: 'Show the milestones timeline', el: 'Χρονολόγιο ορόσημων', run: () => setView('timeline') },
  ], [editor.dirty]);
 
  const fetchMilestones = async () => {

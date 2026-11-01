@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../lib/language';
 import { useParams } from 'react-router-dom';
 import { CheckCircle2, Circle, Clock, Download, FileText, Loader2 } from 'lucide-react';
 import { DD_CATEGORIES, DD_STATUS_LABEL, fetchPublicDD, type DDPublic } from '../lib/dueDiligence';
 
 /** Public, read-only due-diligence status an investor opens from a share link. */
 export default function DueDiligenceSharePage() {
-  const { token = '' } = useParams();
+  const t = useT();  const { token = '' } = useParams();
   const [data, setData] = useState<DDPublic | null>(null);
   const [missing, setMissing] = useState(false);
   const fetched = useRef('');
@@ -21,8 +22,8 @@ export default function DueDiligenceSharePage() {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-6" data-testid="dd-public-missing">
         <div className="max-w-sm space-y-2 text-center">
-          <h1 className="text-lg font-semibold text-stone-900">This link is no longer available</h1>
-          <p className="text-sm text-stone-500">The founder may have revoked it. Ask them for a fresh link.</p>
+          <h1 className="text-lg font-semibold text-stone-900">{t('This link is no longer available', 'Ο σύνδεσμος δεν είναι πλέον διαθέσιμος')}</h1>
+          <p className="text-sm text-stone-500">{t('The founder may have revoked it. Ask them for a fresh link.', 'Ο ιδρυτής μπορεί να τον ανάκλησε. Ζήτα του νέο σύνδεσμο.')}</p>
         </div>
       </main>
     );

@@ -455,7 +455,7 @@ export default function DashboardPage() {
     { count: pendingRequests, en: 'Requests', el: 'Αιτήματα', askEn: 'What needs me in my requests?', askEl: 'Τι χρειάζεται προσοχή στα αιτήματα;' },
     { count: unread ?? 0, en: 'Messages', el: 'Μηνύματα', askEn: 'Which messages are unread?', askEl: 'Ποια μηνύματα είναι αδιάβαστα;' },
     { count: noteFeed.unread, en: 'Notifications', el: 'Ειδοποιήσεις', askEn: 'What is new in my notifications?', askEl: 'Τι νέο στις ειδοποιήσεις;' },
-    { count: investorDue, en: 'Follow-ups due', el: 'Follow-ups', askEn: 'What follow-ups are due?', askEl: 'Ποια follow-ups λήγουν;' },
+    { count: investorDue, en: 'Follow-ups due', el: 'Εκκρεμότητες επενδυτών', askEn: 'What follow-ups are due?', askEl: 'Ποιες εκκρεμότητες με επενδυτές λήγουν;' },
   ].filter((chip) => chip.count > 0).slice(0, 4);
 
   const slashItems: { en: string; el: string; kind: 'ask' | 'control' }[] = [

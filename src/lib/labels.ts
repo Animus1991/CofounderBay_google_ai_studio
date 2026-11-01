@@ -43,7 +43,7 @@ const EL: Record<string, string> = {
   'Branding Settings': 'Ταυτότητα πλατφόρμας',
   'SSO Settings': 'Ρυθμίσεις SSO',
   'Taxonomy Settings': 'Ταξινομίες',
-  'Domain Settings': 'Domains',
+  'Domain Settings': 'Τομείς',
   'Tenant Billing': 'Χρέωση οργανισμού',
   'Billing Oversight': 'Εποπτεία χρεώσεων',
   Billing: 'Χρέωση',

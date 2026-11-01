@@ -696,18 +696,158 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     area: 'calendar',
     reversal: 'full',
     label: { en: 'Put a meeting on the calendar', el: 'Ραντεβού στο ημερολόγιο' },
-    description: 'Add a 30-minute meeting (or a studio event) to the Calendar at 10:00 on a date, or tomorrow.',
+    description: 'Add a 30-minute meeting (or a studio event) to the Calendar. A title, a day and a clock time can all be given; defaults are tomorrow 10:00.',
     params: [
       { name: 'kind', type: 'string', required: false, description: 'Meeting or event.', enum: ['meeting', 'event'] },
       { name: 'date', type: 'string', required: false, description: 'Day in YYYY-MM-DD. Omit for tomorrow.' },
+      { name: 'title', type: 'string', required: false, description: 'Session title, or a person to meet ("with Sarah").' },
+      { name: 'time', type: 'string', required: false, description: 'Clock time, e.g. "3pm" or "15:30". Default 10:00.' },
     ],
     example: { en: 'Schedule a meeting on my calendar', el: 'Κλείσε συνάντηση στο ημερολόγιο' },
     sampleArgs: { kind: 'meeting', date: '2030-01-15' },
     command: (args) => {
       const date = arg(args, 'date');
-      const base = arg(args, 'kind') === 'event' ? 'schedule a new event' : 'schedule a meeting';
-      return date ? `${base} on ${date}` : `${base} on my calendar`;
+      const time = arg(args, 'time');
+      const title = arg(args, 'title');
+      const base = title ? `schedule "meeting with ${title}"` : arg(args, 'kind') === 'event' ? 'schedule a new event' : 'schedule a meeting';
+      return `${base}${date ? ` on ${date}` : ' on my calendar'}${time ? ` at ${time}` : ''}`;
     },
+  },
+  {
+    id: 'update_task',
+    tool: 'update_task',
+    kind: 'write',
+    area: 'venture',
+    reversal: 'full',
+    label: { en: 'Update a task', el: 'Ενημέρωση εργασίας' },
+    description: 'Complete, change the status or due day of, or remove a Workspace task by title.',
+    params: [
+      { name: 'title', type: 'string', required: true, description: 'Task title (a distinctive part is enough).' },
+      { name: 'action', type: 'string', required: true, description: 'What to do.', enum: ['done', 'status', 'due', 'delete'] },
+      { name: 'value', type: 'string', required: false, description: 'For status: Todo | In Progress | Review | Done. For due: a day.' },
+    ],
+    example: { en: 'Mark Competitor Analysis done', el: 'Ολοκλήρωσα την εργασία Competitor Analysis' },
+    sampleArgs: { title: 'Competitor Analysis', action: 'done' },
+    command: (args) => {
+      const action = arg(args, 'action');
+      const title = arg(args, 'title');
+      if (action === 'delete') return `delete task ${title}`;
+      if (action === 'due') return `${title} due ${arg(args, 'value', 'tomorrow')}`;
+      if (action === 'status') return `move ${title} to ${arg(args, 'value', 'in progress')}`;
+      return `mark ${title} done`;
+    },
+  },
+  {
+    id: 'update_milestone',
+    tool: 'update_milestone',
+    kind: 'write',
+    area: 'venture',
+    reversal: 'full',
+    label: { en: 'Update a milestone', el: 'Ενημέρωση οροσήμου' },
+    description: 'Complete a milestone, set its progress percent, or move its target date.',
+    params: [
+      { name: 'title', type: 'string', required: true, description: 'Milestone title (a distinctive part is enough).' },
+      { name: 'action', type: 'string', required: true, description: 'What to do.', enum: ['done', 'progress', 'date'] },
+      { name: 'value', type: 'string', required: false, description: 'For progress: 0-100. For date: a day.' },
+    ],
+    example: { en: 'Set milestone MVP launch to 60%', el: 'Όρισε το ορόσημο MVP launch στο 60%' },
+    sampleArgs: { title: 'MVP launch', action: 'date', value: 'next week' },
+    command: (args) => {
+      const action = arg(args, 'action');
+      const title = arg(args, 'title');
+      if (action === 'date') return `move milestone ${title} to ${arg(args, 'value', 'next week')}`;
+      if (action === 'progress') return `milestone ${title} ${arg(args, 'value', '50')}%`;
+      return `mark milestone ${title} done`;
+    },
+  },
+  {
+    id: 'read_agenda',
+    tool: 'read_agenda',
+    kind: 'read',
+    area: 'calendar',
+    label: { en: 'Read the agenda', el: 'Ανάγνωση προγράμματος' },
+    description: 'What is on today, tomorrow or this week: sessions, milestones, investor follow-ups and task deadlines.',
+    params: [{ name: 'range', type: 'string', required: false, description: 'Which span.', enum: ['today', 'tomorrow', 'week'] }],
+    example: { en: "What's on today", el: 'Τι έχω σήμερα' },
+    sampleArgs: { range: 'today' },
+    command: (args) => ({ tomorrow: "what's on tomorrow", week: "what's on this week" }[arg(args, 'range')] ?? "what's on today"),
+  },
+  {
+    id: 'update_session',
+    tool: 'update_session',
+    kind: 'write',
+    area: 'calendar',
+    reversal: 'full',
+    label: { en: 'Move or cancel a session', el: 'Μεταφορά ή ακύρωση συνάντησης' },
+    description: 'Cancel a calendar session, or move it to another day and/or time, by title or participant.',
+    params: [
+      { name: 'title', type: 'string', required: true, description: 'Session title or participant name.' },
+      { name: 'action', type: 'string', required: true, description: 'Cancel or move.', enum: ['cancel', 'move'] },
+      { name: 'date', type: 'string', required: false, description: 'New day.' },
+      { name: 'time', type: 'string', required: false, description: 'New clock time.' },
+    ],
+    example: { en: 'Cancel my meeting with Maria', el: 'Ακύρωσε τη συνάντηση με τη Maria' },
+    sampleArgs: { title: 'Naval Ravikant', action: 'cancel' },
+    command: (args) => arg(args, 'action') === 'cancel'
+      ? `cancel my meeting with ${arg(args, 'title')}`
+      : `move meeting with ${arg(args, 'title')} to ${arg(args, 'date', 'tomorrow')}${arg(args, 'time') ? ` ${arg(args, 'time')}` : ''}`,
+  },
+  {
+    id: 'register_event',
+    tool: 'register_event',
+    kind: 'write',
+    area: 'calendar',
+    reversal: 'full',
+    label: { en: 'Register for an event', el: 'Εγγραφή σε εκδήλωση' },
+    description: 'Register or unregister for an event by title — the same registration the Events page toggles.',
+    params: [
+      { name: 'title', type: 'string', required: true, description: 'Event title.' },
+      { name: 'on', type: 'string', required: false, description: '"off" unregisters.', enum: ['on', 'off'] },
+    ],
+    example: { en: 'Register me for Global Startup Summit', el: 'Κάνε μου εγγραφή στο Global Startup Summit' },
+    sampleArgs: { title: 'Startup Founders Networking Night' },
+    command: (args) => arg(args, 'on') === 'off' ? `unregister from ${arg(args, 'title')}` : `register me for ${arg(args, 'title')}`,
+  },
+  {
+    id: 'read_requests',
+    tool: 'read_requests',
+    kind: 'read',
+    area: 'people',
+    label: { en: 'Read connection requests', el: 'Εισερχόμενα αιτήματα' },
+    description: 'List the incoming connection requests waiting on the founder.',
+    params: [],
+    example: { en: 'Who wants to connect with me', el: 'Ποιος θέλει να συνδεθεί μαζί μου' },
+    sampleArgs: {},
+    command: () => 'who wants to connect with me',
+  },
+  {
+    id: 'answer_request',
+    tool: 'answer_request',
+    kind: 'write',
+    area: 'people',
+    reversal: 'none',
+    label: { en: 'Answer a connection request', el: 'Απάντηση σε αίτημα σύνδεσης' },
+    description: 'Accept or decline an incoming connection request by name. Accept notifies the other person; Undo is not possible.',
+    params: [
+      { name: 'name', type: 'string', required: true, description: 'The requester.' },
+      { name: 'action', type: 'string', required: true, description: 'Accept or decline.', enum: ['accept', 'decline'] },
+    ],
+    example: { en: 'Accept the request from Sarah Chen', el: 'Αποδέξου το αίτημα της Sarah Chen' },
+    sampleArgs: { name: 'Sarah Chen', action: 'accept' },
+    command: (args) => `${arg(args, 'action', 'accept')} the request from ${arg(args, 'name')}`,
+  },
+  {
+    id: 'export_data',
+    tool: 'export_data',
+    kind: 'write',
+    area: 'account',
+    reversal: 'none',
+    label: { en: 'Export my data', el: 'Εξαγωγή δεδομένων' },
+    description: 'Download a JSON file with the account data — the same export Settings → Account writes. Nothing changes.',
+    params: [],
+    example: { en: 'Export my data', el: 'Εξαγωγή των δεδομένων μου' },
+    sampleArgs: {},
+    command: () => 'export my data',
   },
   {
     id: 'find_mentors',
@@ -842,6 +982,17 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
   },
 
   // ── Profile & settings ─────────────────────────────────────────────────
+  {
+    id: 'profile_completeness',
+    tool: 'profile-completeness',
+    kind: 'read',
+    area: 'account',
+    label: { en: 'Profile completeness', el: 'Πληρότητα προφίλ' },
+    description: 'Read how complete the viewer’s profile is (the same % as the dashboard, the profile page and the banner) and which fields to add first.',
+    params: [],
+    example: { en: 'How complete is my profile?', el: 'Πόσο πλήρες είναι το προφίλ μου;' },
+    command: () => 'How complete is my profile?',
+  },
   {
     id: 'set_profile_field',
     tool: 'profile-set',

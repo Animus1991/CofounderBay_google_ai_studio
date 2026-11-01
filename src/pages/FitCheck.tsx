@@ -169,7 +169,7 @@ export default function FitCheck() {
               <Both en="Back" el="Πίσω" />
             </span>
           </button>
-          <NavLink to="/" className="inline-flex items-center gap-2 min-h-10 text-sm font-medium text-stone-900">
+          <NavLink to="/" aria-label="CoFounderBay" className="inline-flex items-center gap-2 min-h-10 text-sm font-medium text-stone-900">
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0">
               <Zap className="w-4 h-4 text-white" />
             </div>

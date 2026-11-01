@@ -25,6 +25,7 @@ import { addSession, keys } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { askAssistant } from "../lib/assistantBus";
+import { usePageControls } from "../lib/pageControls";
 
 type Template = { name: string; promptName: string; description: string; status: string };
 
@@ -66,6 +67,13 @@ export default function LegalHub() {
  const { isDemoMode } = useAuth();
  const navigate = useNavigate();
  const [activeCategory, setActiveCategory] = useState<'incorporation' | 'ip' | 'employment' | 'fundraising'>('incorporation');
+ // The assistant can switch the template category ("show the fundraising legal templates").
+ usePageControls(() => [
+  { id: 'legal-incorporation', en: 'Show incorporation templates', el: 'Πρότυπα σύστασης εταιρείας', run: () => setActiveCategory('incorporation') },
+  { id: 'legal-ip', en: 'Show IP templates', el: 'Πρότυπα πνευματικής ιδιοκτησίας', run: () => setActiveCategory('ip') },
+  { id: 'legal-employment', en: 'Show employment and HR templates', el: 'Πρότυπα απασχόλησης και HR', run: () => setActiveCategory('employment') },
+  { id: 'legal-fundraising', en: 'Show fundraising legal templates', el: 'Νομικά πρότυπα χρηματοδότησης', run: () => setActiveCategory('fundraising') },
+ ], []);
  const ask = (prompt: string) => askAssistant(prompt);
 
  // Per-account compliance checklist — real accounts start empty, demo gets a

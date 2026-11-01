@@ -104,6 +104,19 @@ describe('theme tokens', () => {
     expect(roles.filter((role) => !(role in dark))).toEqual([]);
   });
 
+  it('give containers a visible, ordered neutral outline (GitHub/Primer contrast)', () => {
+    const white: RGBA = [255, 255, 255, 1];
+    const lightSteps = ['--line-50', '--line-100', '--line-200', '--line-300'].map((name) => contrast(parse(light[name]!), white));
+    // Primer: borderColor-muted ≈ 1.28:1, borderColor-default ≈ 1.43:1 on white.
+    expect(lightSteps[1]).toBeGreaterThanOrEqual(1.25);
+    expect(lightSteps[2]).toBeGreaterThanOrEqual(1.4);
+    lightSteps.slice(1).forEach((step, index) => expect(step).toBeGreaterThan(lightSteps[index]!));
+    const card = parse(dark['--surface-white']!);
+    const darkSteps = ['--line-50', '--line-100', '--line-200', '--line-300'].map((name) => contrast(over(parse(dark[name]!), card), card));
+    expect(darkSteps[2]).toBeGreaterThanOrEqual(1.7);
+    darkSteps.slice(1).forEach((step, index) => expect(step).toBeGreaterThan(darkSteps[index]!));
+  });
+
   describe('light themes meet AA', () => {
     const surfaces = { white: parse('#ffffff'), 'stone-50': parse(tailwind('stone-50')), 'stone-100': parse(tailwind('stone-100')) };
     it.each(['--ink-500', '--ink-400', '--ink-300', '--ink-200'])('%s on white, stone-50 and stone-100', (ink) => {
