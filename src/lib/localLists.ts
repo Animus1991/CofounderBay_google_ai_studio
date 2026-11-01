@@ -666,7 +666,14 @@ export type StudioSession = {
   priority: 'High' | 'Medium' | 'Low';
 };
 
-const demoSeedSessions = (): StudioSession[] => DEMO_INVESTOR_MEETINGS.map((meeting) => ({
+const demoSeedSessions = (): StudioSession[] => {
+  const starters: StudioSession[] = [
+    { id: 'starter-1', title: 'Co-founder Sync', type: 'Meeting', time: atDaysFromToday(0, 10).toISOString(), duration: '45m', location: 'Google Meet', participants: ['Sarah Chen', 'Alex Rivera'], priority: 'High' },
+    { id: 'starter-2', title: 'MVP Beta Deadline', type: 'Deadline', time: atDaysFromToday(0, 23).toISOString(), duration: 'All Day', location: '', participants: [], priority: 'High' },
+    { id: 'starter-3', title: 'Startup Networking Event', type: 'Event', time: atDaysFromToday(1, 18).toISOString(), duration: '2h', location: 'Tech Hub, London', participants: ['120+ attendees'], priority: 'Medium' },
+    { id: 'starter-4', title: 'Mentorship Session', type: 'Mentorship', time: atDaysFromToday(1, 14).toISOString(), duration: '1h', location: 'Zoom', participants: ['David Miller'], priority: 'Medium' },
+  ];
+  return [...starters, ...DEMO_INVESTOR_MEETINGS.map((meeting) => ({
   id: `ses-${meeting.id}`,
   title: `${meeting.type} · ${meeting.investor}`,
   type: 'Meeting' as const,
@@ -675,7 +682,8 @@ const demoSeedSessions = (): StudioSession[] => DEMO_INVESTOR_MEETINGS.map((meet
   location: meeting.type,
   participants: [meeting.investor],
   priority: 'High' as const,
-}));
+}))];
+};
 
 export function readSessions(): StudioSession[] {
   const stored = readJson<StudioSession[] | null>(keys.sessions, null);

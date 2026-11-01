@@ -751,7 +751,7 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
       { name: 'value', type: 'string', required: false, description: 'For progress: 0-100. For date: a day.' },
     ],
     example: { en: 'Set milestone MVP launch to 60%', el: 'Όρισε το ορόσημο MVP launch στο 60%' },
-    sampleArgs: { title: 'MVP launch', action: 'progress', value: '60' },
+    sampleArgs: { title: 'MVP launch', action: 'date', value: 'next week' },
     command: (args) => {
       const action = arg(args, 'action');
       const title = arg(args, 'title');

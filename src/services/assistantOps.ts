@@ -12,6 +12,7 @@ import { atDaysFromToday } from '../data/demoClock';
 import { updateStudioTask, insertStudioTask, readSessions, eventListKeys } from '../lib/localLists';
 import { connectionRecords } from '../lib/social';
 import { exportMyData } from '../lib/dataExport';
+import { formatDate } from '../lib/dates';
 import type { Milestone } from '../types';
 import { whereIsResult } from '../ai/whereIs';
 import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
@@ -1830,7 +1831,8 @@ function addTaskResult(query: string, propose: boolean): AssistantResult {
   const lead = fold(query).match(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε|νεα)\s+(a\s+|μια\s+)?(task|todo|εργασια|καθηκον)\s*(called|named|με τιτλο|:)?\s*/i)?.[0] ?? '';
   const day = parseDay(fold(query));
   // Cut the named day out of the title, like stepText does for investors.
-  const title = (day ? (query.slice(lead.length, day.start - lead.length) + ' ' + query.slice(day.end)).trim() : query.slice(lead.length).trim()) || 'New task';
+  // day.start/day.end index into the folded string — same length as query.
+  const title = (day ? (query.slice(lead.length, day.start) + ' ' + query.slice(day.end)).trim() : query.slice(lead.length).trim()) || 'New task';
   const dueLabel = day ? ` due ${day.day}` : '';
   let created: StudioTask | null = null;
   let logged: LoggedWrite | null = null;
@@ -2978,8 +2980,12 @@ function taskAsk(open: StudioTask[]): AssistantResult {
   };
 }
 
+/** A create sentence ("add task X by Friday" / «πρόσθεσε εργασία X μέχρι…») belongs to the add tools, never to the updaters. */
+const isCreateSentence = (folded: string) => /^(?:παρακαλω\s+|please\s+)?(?:add|create|new|make|προσθεσ|δημιουργ|νεα)/.test(folded);
+
 function updateTaskResult(query: string, propose: boolean): AssistantResult | null {
   const folded = fold(query);
+  if (isCreateSentence(folded)) return null;
   const links: AssistantLink[] = [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }];
   const isTaskTalk = /\b(task|to-?do)\b/.test(folded) || hasStem(folded, 'εργασια', 'καθηκον');
   const removing = /\b(delete|remove|drop)\b/.test(folded) || hasStem(folded, 'διαγραψ', 'αφαιρεσ');
@@ -3002,6 +3008,7 @@ function updateTaskResult(query: string, propose: boolean): AssistantResult | nu
   let patch: Partial<StudioTask>;
   let actionEn: string;
   let actionEl: string;
+  const statusEl: Record<TaskStatus, string> = { Todo: 'Προς υλοποίηση', 'In Progress': 'Σε εξέλιξη', Review: 'Σε έλεγχο', Done: 'Ολοκληρωμένο' };
   if (removing) {
     patch = {};
     actionEn = `delete task “${task.title}”`;
@@ -3009,11 +3016,12 @@ function updateTaskResult(query: string, propose: boolean): AssistantResult | nu
   } else if (status) {
     patch = { status };
     actionEn = `set “${task.title}” to ${status}`;
-    actionEl = `«${task.title}» σε κατάσταση ${status}`;
+    actionEl = `«${task.title}» σε κατάσταση ${statusEl[status]}`;
   } else {
+    const friendly = formatDate(day!.day);
     patch = { due: day!.day };
-    actionEn = `set “${task.title}” due ${day!.day}`;
-    actionEl = `«${task.title}» με προθεσμία ${day!.day}`;
+    actionEn = `set “${task.title}” due ${friendly}`;
+    actionEl = `«${task.title}» με προθεσμία ${friendly}`;
   }
   let logged: LoggedWrite | null = null;
   const apply = (): AssistantResult => {
@@ -3056,6 +3064,7 @@ function matchMilestone(folded: string): { milestone: Milestone; ambiguous: bool
 
 function updateMilestoneResult(query: string, propose: boolean): AssistantResult | null {
   const folded = fold(query);
+  if (isCreateSentence(folded)) return null;
   const links: AssistantLink[] = [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }];
   const isMsTalk = /\bmilestone\b/.test(folded) || hasStem(folded, 'οροσημ');
   const pct = folded.match(/(\d{1,3})\s*%|(\d{1,3})\s*percent|(\d{1,3})\s*τοις εκατο/)?.filter(Boolean).slice(1)[0];
@@ -3084,14 +3093,25 @@ function updateMilestoneResult(query: string, propose: boolean): AssistantResult
     actionEn = `complete “${m.title}”`;
     actionEl = `ολοκλήρωση «${m.title}»`;
   } else if (pct != null) {
+    // With a checklist, the page derives progress from done tasks — a flat % would change nothing visible.
+    if (m.tasks && m.tasks.length > 0) {
+      const done = m.tasks.filter((task) => task.completed).length;
+      return {
+        tool: 'update_milestone',
+        en: `“${m.title}” tracks its progress from its checklist (${done} of ${m.tasks.length} done). Tick the items on Milestones and the percent follows.`,
+        el: `Το «${m.title}» υπολογίζει την πρόοδό του από τη λίστα ελέγχου (${done} από ${m.tasks.length} έτοιμα). Τσέκαρε τα βήματα στα Ορόσημα και το ποσοστό ακολουθεί.`,
+        href: '/milestones', links,
+      };
+    }
     const value = Math.min(100, Math.max(0, Number(pct)));
     patch = { progress: value };
     actionEn = `set “${m.title}” to ${value}%`;
     actionEl = `«${m.title}» στο ${value}%`;
   } else {
+    const friendly = formatDate(day!.day);
     patch = { targetDate: day!.day };
-    actionEn = `move “${m.title}” to ${day!.day}`;
-    actionEl = `«${m.title}» στις ${day!.day}`;
+    actionEn = `move “${m.title}” to ${friendly}`;
+    actionEl = `«${m.title}» στις ${friendly}`;
   }
   let logged: LoggedWrite | null = null;
   const apply = (): AssistantResult => {
@@ -3149,8 +3169,9 @@ function updateSessionResult(query: string, propose: boolean): AssistantResult |
   const move = (/\b(move|reschedule|push)\b/.test(folded) || hasStem(folded, 'μετακινησ', 'μεταφερ', 'αλλαξ')) && (day || time);
   if (!cancel && !move) return null;
   if (!/\b(meeting|session|call|event)\b/.test(folded) && !hasStem(folded, 'συναντησ', 'ραντεβου', 'συνεδρ', 'ατζεντ') && !/investor meeting|studio event|mentorship/.test(folded)) {
-    // A name + cancel/move with no session word is likely a person op, not a session.
-    const hasName = readSessions().some((s) => s.participants.some((p) => fold(p) && folded.includes(fold(p))));
+    // A name or known session title + cancel/move with no session word is likely
+    // a person op — let other routers try it.
+    const hasName = readSessions().some((s) => folded.includes(fold(s.title)) || s.participants.some((p) => fold(p) && folded.includes(fold(p))));
     if (!hasName) return null;
   }
   const hits = readSessions().filter((s) => {
@@ -3181,14 +3202,16 @@ function updateSessionResult(query: string, propose: boolean): AssistantResult |
       if (Number.isNaN(at.getTime())) at.setTime(Date.now());
       addSession({ ...session, time: at.toISOString() });
     }
-    const actionEn = cancel ? `cancelled “${session.title}”` : `moved “${session.title}” to ${day?.day ?? session.time.slice(0, 10)} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
-    const actionEl = cancel ? `ακυρώθηκε «${session.title}»` : `μεταφέρθηκε «${session.title}» στις ${day?.day ?? session.time.slice(0, 10)} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
+    const movedDay = formatDate(day?.day ?? session.time.slice(0, 10));
+    const actionEn = cancel ? `cancelled “${session.title}”` : `moved “${session.title}” to ${movedDay} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
+    const actionEl = cancel ? `ακυρώθηκε «${session.title}»` : `μεταφέρθηκε «${session.title}» στις ${movedDay} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
     logged = { kind: 'session', title: `Session ${actionEn}`, titleEl: `Συνάντηση ${actionEl}`, href: '/calendar' };
     logActivity({ ...logged, byAssistant: true });
     return { tool: 'update_session', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}. Same list Calendar reads.`, el: `${actionEl}. Η ίδια λίστα με το Ημερολόγιο.`, href: '/calendar', links };
   };
-  const sumEn = cancel ? `Cancel “${session.title}”?` : `Move “${session.title}” to ${day?.day ?? session.time.slice(0, 10)}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''}?`;
-  const sumEl = cancel ? `Ακύρωση «${session.title}»;` : `Μεταφορά «${session.title}» στις ${day?.day ?? session.time.slice(0, 10)}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''};`;
+  const sumDay = formatDate(day?.day ?? session.time.slice(0, 10));
+  const sumEn = cancel ? `Cancel “${session.title}”?` : `Move “${session.title}” to ${sumDay}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''}?`;
+  const sumEl = cancel ? `Ακύρωση «${session.title}»;` : `Μεταφορά «${session.title}» στις ${sumDay}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''};`;
   if (!propose) return apply();
   return proposalResult(
     {
@@ -3198,7 +3221,9 @@ function updateSessionResult(query: string, propose: boolean): AssistantResult |
       undo: () => {
         if (cancel) {
           if (session.id.startsWith('evt-')) {
-            setEventRegistration({ id: session.id.slice(4), title: session.title, date: '', time: '', location: session.location, organizer: '' }, true, { byAssistant: true });
+            // Restore exactly: re-mark the registration and put the original session back —
+            // setEventRegistration would also log a fake "Registered for …" activity.
+            setId(eventListKeys.registered, session.id.slice(4), true);
           }
           addSession(session);
         } else {
@@ -3228,9 +3253,8 @@ function registerEventResult(query: string, propose: boolean): AssistantResult |
   const wantsRegister = /\b(register|sign\s?up|rsvp)\b/.test(folded) || hasStem(folded, 'εγγραφ');
   if (!wantsUnregister && !wantsRegister) return null;
   if (!isDemoData()) {
-    const hit = readIds(eventListKeys.registered);
-    void hit;
-    return { tool: 'register_event', en: 'Tell me the event title and I will match it against the Events list.', el: 'Πες μου τον τίτλο της εκδήλωσης για να την βρω στη λίστα Εκδηλώσεων.', href: '/events', links };
+    // The live event list only exists behind the Events page's Firestore listener — no shared store yet.
+    return { tool: 'register_event', en: 'I can’t see the live event list from here yet — open Events and press Register; it lands on your Calendar.', el: 'Δεν βλέπω ακόμη τη ζωντανή λίστα εκδηλώσεων από εδώ — άνοιξε τις Εκδηλώσεις και πάτα Εγγραφή· μπαίνει στο Ημερολόγιό σου.', href: '/events', links };
   }
   const events = demoEventList();
   const hit = events

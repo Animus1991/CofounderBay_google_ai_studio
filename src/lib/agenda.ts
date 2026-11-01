@@ -47,7 +47,5 @@ export function agendaFor(range: 'today' | 'tomorrow' | 'week', now: Date = new 
     items.push({ at: day, allDay: true, kind: 'task', title: task.title, href: '/workspace' });
   }
   items.sort((a, b) => a.at.localeCompare(b.at));
-  // All-day items first within a day.
-  items.sort((a, b) => a.at.slice(0, 10) === b.at.slice(0, 10) ? Number(a.allDay === false) - Number(b.allDay === false) : 0);
   return items;
 }

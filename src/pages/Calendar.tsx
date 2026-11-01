@@ -15,7 +15,6 @@ import { usePageControls } from "../lib/pageControls";
 import { useStored } from "../lib/useStored";
 import { motion } from "framer-motion";
 import { useT } from "../lib/language";
-import { useAuth } from "../App";
 import { labelOf } from "../lib/labels";
 import { formatDate, formatTime, formatWeekRange, formatWhen } from "../lib/dates";
 import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
@@ -36,14 +35,12 @@ interface Event {
 
 export default function Calendar() {
  const t = useT();
- const { isDemoMode } = useAuth();
  const toast = useToast();
  const [currentDate, setCurrentDate] = useState(new Date());
  const [selectedDate, setSelectedDate] = useState(() => new Date());
  const [view, setView] = useState('Month');
  const [searchQuery, setSearchQuery] = useState('');
  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
- const [dismissedStarterIds, setDismissedStarterIds] = useState<string[]>([]);
  const briefingEnabled = useStored(() => readValue<boolean>(keys.calendarBriefing, false), [keys.calendarBriefing]);
 
  useEffect(() => {
@@ -165,64 +162,15 @@ export default function Calendar() {
   toast.success(t('Calendar file downloaded', 'Το αρχείο ημερολογίου κατέβηκε'));
  };
 
- const starterEvents: Event[] = useMemo(() => {
-  const y = today.getFullYear();
-  const m = today.getMonth();
-  const d = today.getDate();
-  return [
-   {
-    id: "1",
-    title: "Co-founder Sync",
-    type: 'Meeting',
-    time: new Date(y, m, d, 10, 0).toISOString(),
-    duration: "45m",
-    location: "Google Meet",
-    participants: ["Sarah Chen", "Alex Rivera"],
-    priority: 'High'
-   },
-   {
-    id: "2",
-    title: "MVP Beta Deadline",
-    type: 'Deadline',
-    time: new Date(y, m, d, 23, 59).toISOString(),
-    duration: "All Day",
-    priority: 'High'
-   },
-   {
-    id: "3",
-    title: "Startup Networking Event",
-    type: 'Event',
-    time: new Date(y, m, d + 1, 18, 0).toISOString(),
-    duration: "2h",
-    location: "Tech Hub, London",
-    participants: ["120+ attendees"],
-    priority: 'Medium'
-   },
-   {
-    id: "4",
-    title: "Mentorship Session",
-    type: 'Mentorship',
-    time: new Date(y, m, d + 1, 14, 0).toISOString(),
-    duration: "1h",
-    location: "Zoom",
-    participants: ["David Miller"],
-    priority: 'Medium'
-   }
-  ];
- }, [today]);
 
  const storedSessions = useStored(readSessions, [keys.sessions]);
- const events: Event[] = [
-  ...storedSessions,
-  ...(isDemoMode ? starterEvents.filter((e) => !dismissedStarterIds.includes(e.id)) : [])
- ].filter((event) => {
+ const events: Event[] = [...storedSessions].filter((event) => {
   const q = searchQuery.trim().toLowerCase();
   return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
  });
 
  const handleDeleteEvent = (id: string) => {
   removeSession(id);
-  setDismissedStarterIds((prev) => [...prev, id]);
  };
 
  const tomorrowEventsCount = useMemo(() => {

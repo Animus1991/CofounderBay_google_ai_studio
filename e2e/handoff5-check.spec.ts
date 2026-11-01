@@ -133,6 +133,6 @@ test('on-this-page chips appear on network, events and notifications', async ({ 
     const rail = page.locator('div:has(> span:text-is("Σε αυτή τη σελίδα:"))');
     await expect(rail).toBeVisible();
     expect(await rail.locator('button').count(), `${route} should offer at least 2 page controls`).toBeGreaterThanOrEqual(2);
-    await page.getByRole('button', { name: 'Κλείσιμο' }).click();
+    await page.getByRole('dialog', { name: 'Βοηθός studio' }).getByLabel('Κλείσιμο').click();
   }
 });

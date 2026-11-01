@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { keys, listKeys, logActivity, readChat, readIds, readInvites, readMilestones, readNotificationPrefs, readOpenTo, readProfileLocal, readRound, readSaved, readSessions, readTasks, readTracked, readValue, resetAllLists, unreadActivityCount, upsertNeed } from '../lib/localLists';
+import { effectiveStatus, keys, listKeys, logActivity, readActivity, readChat, readIds, readInvites, readMilestones, readNotificationPrefs, readOpenTo, readProfileLocal, readRound, readSaved, readSessions, readTasks, readTracked, readValue, resetAllLists, unreadActivityCount, upsertNeed } from '../lib/localLists';
 import { readSwitches } from '../lib/privacySwitches';
 import { useUIStore } from '../stores/useUIStore';
 import { getLang } from '../lib/language';
@@ -784,19 +784,28 @@ describe('round-7 close the loop', () => {
     expect(result.en).toMatch(/which task/i);
   });
 
-  it.each([
-    ['mark milestone MVP Launch done', (m: { status: string; progress: number }) => m.status === 'Completed' && m.progress === 100],
-    ['milestone MVP Launch 60%', (m: { progress: number }) => m.progress === 60],
-  ])('update_milestone: %s', async (phrase, check) => {
-    const target = readMilestones().find((m) => /MVP Launch/i.test(m.title)) ?? readMilestones()[0];
+  it('update_milestone marks a milestone done', async () => {
+    const target = readMilestones().find((m) => /MVP launch/i.test(m.title)) ?? readMilestones()[0];
     if (!target) return; // no open milestones in this env
-    const result = runAssistant(phrase.replace('MVP Launch', target.title), demoProfile, { propose: true });
+    const result = runAssistant(`mark milestone ${target.title} done`, demoProfile, { propose: true });
     expect(result.tool).toBe('update_milestone');
     await result.proposal!.apply();
     const updated = readMilestones().find((m) => m.id === target.id)!;
-    expect(check(updated as { status: string; progress: number })).toBe(true);
+    expect(updated.status).toBe('Completed');
+    expect(updated.progress).toBe(100);
     await result.proposal!.undo!();
     expect(readMilestones().find((m) => m.id === target.id)!.status).toBe(target.status);
+  });
+
+  it('update_milestone sets a flat % only on a checklist-free milestone', async () => {
+    const target = readMilestones().find((m) => (m.tasks?.length ?? 0) === 0 && effectiveStatus(m) !== 'Completed');
+    if (!target) return; // every demo milestone has a checklist — the honesty test covers that path
+    const result = runAssistant(`milestone ${target.title} 60%`, demoProfile, { propose: true });
+    expect(result.tool).toBe('update_milestone');
+    await result.proposal!.apply();
+    expect(readMilestones().find((m) => m.id === target.id)!.progress).toBe(60);
+    await result.proposal!.undo!();
+    expect(readMilestones().find((m) => m.id === target.id)!.progress).toBe(target.progress);
   });
 
   it.each([
@@ -887,5 +896,88 @@ describe('round-7 close the loop', () => {
     const result = runAssistant('add task polish the deck tomorrow', demoProfile, { propose: true });
     expect(result.tool).toBe('task-add');
     expect(result.proposal?.summary.en).not.toMatch(/tomorrow/i);
+  });
+});
+
+describe('round-7 review fixes', () => {
+  const prof = {
+    fullName: 'Demo User', skills: [], lookingFor: [], interests: [],
+    industry: 'FinTech', stage: 'Pre-seed', commitment: 'Full-time',
+    location: 'Athens', timezone: 'Europe/Athens',
+  };
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  it.each([
+    ['add task Write the investor deck by Friday', 'Write the investor deck'],
+    ['add task Call the bank tomorrow', 'Call the bank'],
+  ])('add task keeps the whole title and sets due: %s', async (phrase, title) => {
+    const result = runAssistant(phrase, prof, { propose: true });
+    expect(result.tool).toBe('task-add');
+    expect(result.proposal?.summary.en).toContain(`“${title}”`);
+    await result.proposal!.apply();
+    const task = readTasks().find((t) => t.title === title);
+    expect(task, phrase).toBeTruthy();
+    expect(task?.due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('Greek create with date creates instead of asking', async () => {
+    const result = runAssistant('πρόσθεσε εργασία Γράψε το deck μέχρι την Παρασκευή', prof, { propose: true });
+    expect(result.tool).toBe('task-add');
+    await result.proposal!.apply();
+    const task = readTasks().find((t) => t.title === 'Γράψε το deck');
+    expect(task).toBeTruthy();
+    expect(task?.due).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('Greek update_task reply uses Greek status labels', async () => {
+    const result = runAssistant('μετακίνησε το Landing Page Copywriting σε έλεγχο', prof, { propose: true });
+    await result.proposal!.apply();
+    expect(result.el ?? '').not.toMatch(/σε κατάσταση (Done|Review|Todo|In Progress)/);
+  });
+
+  it('dates in replies are friendly, not raw ISO', async () => {
+    const result = runAssistant('Refine User Personas due tomorrow', prof, { propose: true });
+    expect(result.proposal?.summary.en).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('update_milestone refuses a flat % on a checklist milestone', () => {
+    const m = readMilestones().find((x) => (x.tasks?.length ?? 0) > 0 && effectiveStatus(x) !== 'Completed');
+    if (!m) return;
+    const result = runAssistant(`milestone ${m.title} 60%`, prof, { propose: true });
+    expect(result.tool).toBe('update_milestone');
+    expect(result.proposal).toBeUndefined();
+    expect(result.en).toMatch(/checklist/i);
+  });
+
+  it('update_session undo after cancelling an evt- registration restores exactly', async () => {
+    // Register for the demo event so an evt- session exists.
+    const reg = runAssistant('register me for Startup Founders Networking Night', prof);
+    expect(reg.tool).toBe('register_event');
+    const evtSession = readSessions().find((s) => s.id === 'evt-1')!;
+    const activitiesBefore = readActivity().length;
+    const cancel = runAssistant('cancel Startup Founders Networking Night', prof, { propose: true });
+    expect(cancel.tool).toBe('update_session');
+    await cancel.proposal!.apply();
+    expect(readSessions().find((s) => s.id === 'evt-1')).toBeUndefined();
+    await cancel.proposal!.undo!();
+    const restored = readSessions().find((s) => s.id === 'evt-1')!;
+    expect(restored.time).toBe(evtSession.time);
+    expect(restored.title).toBe(evtSession.title);
+    expect(readIds(keys.registered)).toContain('1');
+    // Only logUndo's entry is added — no fake "Registered for" activity.
+    const added = readActivity().slice(0, readActivity().length - activitiesBefore);
+    expect(added.filter((a) => /Registered for/.test(a.title))).toHaveLength(0);
+  });
+
+  it('register_event is honest for a real account', () => {
+    try { localStorage.removeItem('demo_mode'); } catch { /* non-DOM env */ }
+    const result = runAssistant('register me for Startup Founders Networking Night', prof);
+    expect(result.tool).toBe('register_event');
+    expect(result.en).toMatch(/live event list/i);
+    expect(result.proposal).toBeUndefined();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
   });
 });

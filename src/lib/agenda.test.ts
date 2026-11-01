@@ -47,4 +47,10 @@ describe('agendaFor', () => {
     const lastAllDay = items.map((i, idx) => (i.allDay ? idx : -1)).filter((i) => i >= 0).pop() ?? -1;
     expect(firstTimed).toBeGreaterThan(lastAllDay);
   });
+
+  it('in demo, today includes the starter sessions the Calendar shows', () => {
+    // Demo seeds are relative to real today — not the fixed NOW above.
+    const items = agendaFor('today');
+    expect(items.map((i) => i.title)).toContain('Co-founder Sync');
+  });
 });
