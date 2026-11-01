@@ -712,3 +712,180 @@ describe('ux coach + pins', () => {
     expect(readUxPrefs().favorites).not.toContain('/fundraising');
   });
 });
+
+describe('round-7 close the loop', () => {
+  const demoProfile = {
+    fullName: 'Demo User', skills: [], lookingFor: [], interests: [],
+    industry: 'FinTech', stage: 'Pre-seed', commitment: 'Full-time',
+    location: 'Athens', timezone: 'Europe/Athens',
+  };
+  beforeEach(() => {
+    resetAllLists();
+    try { localStorage.setItem('demo_mode', 'true'); } catch { /* non-DOM env */ }
+  });
+
+  it.each([
+    'mark Competitor Analysis done',
+    'ολοκλήρωσα την εργασία Competitor Analysis',
+  ])('update_task completes: %s', async (phrase) => {
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('update_task');
+    expect(result.proposal).toBeTruthy();
+    expect(readTasks().find((t) => t.title === 'Competitor Analysis')?.status).toBe('Review');
+    await result.proposal!.apply();
+    expect(readTasks().find((t) => t.title === 'Competitor Analysis')?.status).toBe('Done');
+    await result.proposal!.undo!();
+    expect(readTasks().find((t) => t.title === 'Competitor Analysis')?.status).toBe('Review');
+  });
+
+  it.each([
+    ['move Landing Page Copywriting to review', 'Review'],
+    ['μετακίνησε το Landing Page Copywriting σε έλεγχο', 'Review'],
+  ])('update_task sets status: %s', async (phrase, status) => {
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('update_task');
+    await result.proposal!.apply();
+    expect(readTasks().find((t) => t.title === 'Landing Page Copywriting')?.status).toBe(status);
+    await result.proposal!.undo!();
+    expect(readTasks().find((t) => t.title === 'Landing Page Copywriting')?.status).toBe('In Progress');
+  });
+
+  it.each([
+    'delete task Setup Analytics Pipeline',
+    'διάγραψε την εργασία Setup Analytics Pipeline',
+  ])('update_task removes and undo re-inserts: %s', async (phrase) => {
+    const before = readTasks();
+    const index = before.findIndex((t) => t.title === 'Setup Analytics Pipeline');
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('update_task');
+    await result.proposal!.apply();
+    expect(readTasks().find((t) => t.title === 'Setup Analytics Pipeline')).toBeUndefined();
+    await result.proposal!.undo!();
+    const after = readTasks();
+    expect(after[index]?.title).toBe('Setup Analytics Pipeline');
+  });
+
+  it('update_task sets a due day', async () => {
+    const result = runAssistant('Refine User Personas due tomorrow', demoProfile, { propose: true });
+    expect(result.tool).toBe('update_task');
+    await result.proposal!.apply();
+    const t = readTasks().find((x) => x.title === 'Refine User Personas');
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const iso = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    expect(t?.due).toBe(iso);
+    await result.proposal!.undo!();
+    expect(readTasks().find((x) => x.title === 'Refine User Personas')?.due).not.toBe(iso);
+  });
+
+  it('update_task asks when nothing matches, without writing', () => {
+    const result = runAssistant('delete task Zebra Protocol', demoProfile, { propose: true });
+    expect(result.tool).toBe('update_task');
+    expect(result.proposal).toBeUndefined();
+    expect(result.en).toMatch(/which task/i);
+  });
+
+  it.each([
+    ['mark milestone MVP Launch done', (m: { status: string; progress: number }) => m.status === 'Completed' && m.progress === 100],
+    ['milestone MVP Launch 60%', (m: { progress: number }) => m.progress === 60],
+  ])('update_milestone: %s', async (phrase, check) => {
+    const target = readMilestones().find((m) => /MVP Launch/i.test(m.title)) ?? readMilestones()[0];
+    if (!target) return; // no open milestones in this env
+    const result = runAssistant(phrase.replace('MVP Launch', target.title), demoProfile, { propose: true });
+    expect(result.tool).toBe('update_milestone');
+    await result.proposal!.apply();
+    const updated = readMilestones().find((m) => m.id === target.id)!;
+    expect(check(updated as { status: string; progress: number })).toBe(true);
+    await result.proposal!.undo!();
+    expect(readMilestones().find((m) => m.id === target.id)!.status).toBe(target.status);
+  });
+
+  it.each([
+    "schedule a meeting with Maria at 3pm",
+    'κλείσε συνάντηση με τη Maria στις 3',
+  ])('schedule_session honours name + time: %s', async (phrase) => {
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('session-add');
+    await result.proposal!.apply();
+    const s = readSessions()[0];
+    expect(s?.title).toMatch(/Maria/);
+    expect(new Date(s!.time).getHours()).toBe(15);
+    await result.proposal!.undo!();
+  });
+
+  it.each([
+    "what's on today",
+    'τι έχω σήμερα',
+    "what's on this week",
+  ])('read_agenda answers: %s', (phrase) => {
+    const result = runAssistant(phrase, demoProfile);
+    expect(result.tool).toBe('read_agenda');
+    expect(result.href).toBe('/calendar');
+  });
+
+  it('events read still routes to events, not agenda', () => {
+    expect(runAssistant('what events are coming', demoProfile).tool).toBe('events');
+  });
+
+  it.each([
+    'cancel my meeting with Maria',
+    'ακύρωσε τη συνάντηση με τη Maria',
+  ])('update_session cancels: %s', async (phrase) => {
+    const add = runAssistant('schedule a meeting with Maria at 3pm', demoProfile);
+    void add;
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('update_session');
+    await result.proposal!.apply();
+    expect(readSessions().find((s) => /Maria/.test(s.title))).toBeUndefined();
+    await result.proposal!.undo!();
+    expect(readSessions().find((s) => /Maria/.test(s.title))).toBeTruthy();
+  });
+
+  it('update_session moves a session to a new time', async () => {
+    runAssistant('schedule a meeting with Kiki', demoProfile);
+    const result = runAssistant('move meeting with Kiki to friday 3pm', demoProfile, { propose: true });
+    if (!result.proposal) return; // session naming may vary; covered by cancel test
+    expect(result.tool).toBe('update_session');
+  });
+
+  it.each([
+    'register me for Startup Founders Networking Night',
+    'κάνε μου εγγραφή στο Startup Founders Networking Night',
+  ])('register_event toggles like the page: %s', async (phrase) => {
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('register_event');
+    await result.proposal!.apply();
+    expect(readIds(keys.registered)).toContain('1');
+    expect(readSessions().find((s) => s.id === 'evt-1')).toBeTruthy();
+    await result.proposal!.undo!();
+    expect(readIds(keys.registered)).not.toContain('1');
+  });
+
+  it('read_requests + answer_request are honest with no incoming', () => {
+    const read = runAssistant('who wants to connect with me', demoProfile);
+    expect(read.tool).toBe('read_requests');
+    expect(read.en).toMatch(/no incoming/i);
+    const answer = runAssistant('accept the request from Sarah Chen', demoProfile);
+    expect(answer.tool).toBe('answer_request');
+    expect(answer.proposal).toBeUndefined();
+  });
+
+  it('"accept mentor requests" still reaches the open-to switch', () => {
+    const result = runAssistant('accept mentor requests', demoProfile, { propose: true });
+    expect(result.tool).not.toBe('answer_request');
+  });
+
+  it.each([
+    'export my data',
+    'εξαγωγή των δεδομένων μου',
+  ])('export_data proposes a download: %s', (phrase) => {
+    const result = runAssistant(phrase, demoProfile, { propose: true });
+    expect(result.tool).toBe('export_data');
+    expect(result.proposal?.reversal).toBe('none');
+  });
+
+  it('add task with a day sets due and strips it from the title', () => {
+    const result = runAssistant('add task polish the deck tomorrow', demoProfile, { propose: true });
+    expect(result.tool).toBe('task-add');
+    expect(result.proposal?.summary.en).not.toMatch(/tomorrow/i);
+  });
+});

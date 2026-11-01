@@ -4,7 +4,15 @@
  * the app already shows. Gemini only rewrites the wording.
  */
 import { fold, hasStem } from './assistantText';
-import { routePipeline } from './assistantPipeline';
+import { routePipeline, parseDay } from './assistantPipeline';
+import { parseTime } from './assistantTime';
+import { agendaFor, type AgendaItem } from '../lib/agenda';
+import { setEventRegistration } from '../lib/eventRegistration';
+import { atDaysFromToday } from '../data/demoClock';
+import { updateStudioTask, insertStudioTask, readSessions, eventListKeys } from '../lib/localLists';
+import { connectionRecords } from '../lib/social';
+import { exportMyData } from '../lib/dataExport';
+import type { Milestone } from '../types';
 import { whereIsResult } from '../ai/whereIs';
 import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
@@ -1587,34 +1595,44 @@ function bookMentor(person: Person, propose: boolean): AssistantResult {
 }
 
 function sessionAddResult(query: string, propose: boolean): AssistantResult {
-  const meeting = /\bmeeting\b/.test(fold(query)) || hasStem(fold(query), 'συναντησ');
-  const title = meeting ? 'Investor meeting' : 'Studio event';
+  const folded = fold(query);
+  const meeting = /\bmeeting\b/.test(folded) || hasStem(folded, 'συναντησ');
+  // Title: quoted text, or "with <Name>" / «με <Όνομα>»; else the old defaults.
+  const quoted = query.match(/["'«»“”](.+?)["'«»“”]/)?.[1]?.trim();
+  const withName = folded.match(/\bwith\s+([a-z][a-z'. -]{1,40})/)?.[1]
+    ?? folded.match(/με\s+(?:τον|την|το|τη)?\s*([a-zα-ω][a-zα-ω'. -]{1,40})/)?.[1];
+  const name = quoted ?? (withName ? withName.trim().replace(/\s+(on|at|σε|στις|την|τις|tomorrow|today|friday|monday|tuesday|wednesday|thursday|saturday|sunday).*/i, '').trim() : null);
+  const title = quoted ?? (name ? `Meeting with ${name[0]!.toUpperCase()}${name.slice(1)}` : meeting ? 'Investor meeting' : 'Studio event');
+  const participants = name && !quoted ? [name[0]!.toUpperCase() + name.slice(1)] : [];
   const sessionId = `ses-studio-${Date.now()}`;
   let logged: LoggedWrite | null = null;
   // "on 2026-11-05" (e.g. from the Calendar's empty day) schedules that day; otherwise tomorrow.
   const dayMatch = query.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   const onDay = dayMatch ? new Date(Number(dayMatch[1]), Number(dayMatch[2]) - 1, Number(dayMatch[3]), 10, 0, 0, 0) : null;
-  const dayLabel = onDay && !Number.isNaN(onDay.getTime()) ? onDay.toISOString().slice(0, 10) : null;
+  const named = parseDay(folded);
+  const clock = parseTime(folded);
+  const dayLabel = onDay && !Number.isNaN(onDay.getTime()) ? onDay.toISOString().slice(0, 10) : named?.day ?? null;
+  const timeLabel = clock ? `${String(clock.hours).padStart(2, '0')}:${String(clock.minutes).padStart(2, '0')}` : '10:00';
   const apply = (): AssistantResult => {
-    const when = dayLabel && onDay ? new Date(onDay) : new Date();
+    const when = dayLabel ? new Date(`${dayLabel}T${timeLabel}:00`) : new Date();
     if (!dayLabel) when.setDate(when.getDate() + 1);
-    when.setHours(10, 0, 0, 0);
+    if (!dayLabel) when.setHours(clock?.hours ?? 10, clock?.minutes ?? 0, 0, 0);
     addSession({
       id: sessionId,
       title,
-      type: meeting ? 'Meeting' : 'Event',
+      type: meeting || participants.length ? 'Meeting' : 'Event',
       time: when.toISOString(),
       duration: '30m',
-      location: meeting ? 'Video call' : 'Workspace',
-      participants: [],
+      location: meeting || participants.length ? 'Video call' : 'Workspace',
+      participants,
       priority: 'Medium',
     });
     logged = { kind: 'session', title: `Scheduled ${title}`, titleEl: `Προγραμματίστηκε: ${title}`, href: '/calendar' };
     logActivity({ ...logged, byAssistant: true });
     return {
       tool: 'session-add',
-      en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} 10:00. Same list the Calendar page reads.`,
-      el: `Μπήκε το «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} 10:00. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
+      en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} ${timeLabel}. Same list the Calendar page reads.`,
+      el: `Μπήκε το «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} ${timeLabel}. Η ίδια λίστα με τη σελίδα Ημερολόγιο.`,
       href: '/calendar',
       links: [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }],
     };
@@ -1622,7 +1640,7 @@ function sessionAddResult(query: string, propose: boolean): AssistantResult {
   if (!propose) return apply();
   return proposalResult(
     {
-      summary: { en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} 10:00?`, el: `Προσθήκη «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} 10:00;` },
+      summary: { en: `Put “${title}” on Calendar for ${dayLabel ?? 'tomorrow'} ${timeLabel}?`, el: `Προσθήκη «${title}» στο Ημερολόγιο για ${dayLabel ?? 'αύριο'} ${timeLabel};` },
       reversal: 'full',
       apply,
       undo: () => { removeSession(sessionId); logUndo(logged); },
@@ -1810,17 +1828,21 @@ function recordInvestmentResult(query: string, propose: boolean): AssistantResul
 function addTaskResult(query: string, propose: boolean): AssistantResult {
   // Matched on the folded text (same length as the original) so «Πρόσθεσε εργασία …» strips like "add task …".
   const lead = fold(query).match(/^(please\s+)?(add|create|new|προσθεσε|δημιουργησε|νεα)\s+(a\s+|μια\s+)?(task|todo|εργασια|καθηκον)\s*(called|named|με τιτλο|:)?\s*/i)?.[0] ?? '';
-  const title = query.slice(lead.length).trim() || 'New task';
+  const day = parseDay(fold(query));
+  // Cut the named day out of the title, like stepText does for investors.
+  const title = (day ? (query.slice(lead.length, day.start - lead.length) + ' ' + query.slice(day.end)).trim() : query.slice(lead.length).trim()) || 'New task';
+  const dueLabel = day ? ` due ${day.day}` : '';
   let created: StudioTask | null = null;
   let logged: LoggedWrite | null = null;
   const apply = (): AssistantResult => {
     created = addStudioTask(title);
+    if (day) updateStudioTask(created.id, { due: day.day });
     logged = { kind: 'milestone', title: `Added task ${title}`, titleEl: `Προστέθηκε εργασία: ${title}`, href: '/workspace' };
     logActivity({ ...logged, byAssistant: true });
     return {
       tool: 'task-add',
-      en: `Added “${title}” to Workspace → Dashboard. Same board the Task button writes.`,
-      el: `Προστέθηκε το «${title}» στο Workspace → Dashboard. Ο ίδιος πίνακας με το κουμπί Task.`,
+      en: `Added “${title}”${dueLabel} to Workspace → Dashboard. Same board the Task button writes.`,
+      el: `Προστέθηκε το «${title}»${dueLabel} στο Workspace → Dashboard. Ο ίδιος πίνακας με το κουμπί Task.`,
       href: '/workspace',
       links: [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }],
     };
@@ -1828,7 +1850,7 @@ function addTaskResult(query: string, propose: boolean): AssistantResult {
   if (!propose) return apply();
   return proposalResult(
     {
-      summary: { en: `Add “${title}” to Workspace → Dashboard?`, el: `Προσθήκη «${title}» στο Workspace → Dashboard;` },
+      summary: { en: `Add “${title}”${dueLabel} to Workspace → Dashboard?`, el: `Προσθήκη «${title}»${dueLabel} στο Workspace → Dashboard;` },
       reversal: 'full',
       apply,
       undo: () => { if (created) removeStudioTask(created.id); logUndo(logged); },
@@ -2912,6 +2934,425 @@ function attachSources(result: AssistantResult): AssistantResult {
   return result;
 }
 
+// ── Close the loop: task / milestone / session / event updates ───────────────
+
+type TaskStatus = StudioTask['status'];
+const TASK_STATUS_ROWS: [RegExp, TaskStatus][] = [
+  [/done|completed|complete|finished|ολοκληρωμεν|ολοκληρωθ|ολοκληρωσ|τελειωσ/, 'Done'],
+  [/in progress|σε εξελιξη|εξελιξη/, 'In Progress'],
+  [/review|σε ελεγχο|ελεγχο/, 'Review'],
+  [/todo|to do|προς υλοποιηση|υλοποιηση/, 'Todo'],
+];
+
+function taskStatusFor(folded: string): TaskStatus | null {
+  for (const [rx, status] of TASK_STATUS_ROWS) if (rx.test(folded)) return status;
+  return null;
+}
+
+/** The open task a sentence names: longest folded-title containment wins. */
+function matchTask(folded: string): { task: StudioTask; ambiguous: boolean } | null {
+  const open = readTasks().filter((task) => task.status !== 'Done');
+  const scored: { task: StudioTask; len: number }[] = [];
+  for (const task of open) {
+    const title = fold(task.title);
+    if (!title) continue;
+    if (folded.includes(title)) scored.push({ task, len: title.length });
+    else {
+      const words = title.split(/\s+/).filter((word) => word.length >= 4 && folded.includes(word));
+      if (words.length === title.split(/\s+/).filter((word) => word.length >= 4).length && words.length > 0) scored.push({ task, len: words.join(' ').length });
+    }
+  }
+  if (!scored.length) return null;
+  scored.sort((a, b) => b.len - a.len);
+  return { task: scored[0]!.task, ambiguous: scored.length > 1 && scored[0]!.len === scored[1]!.len };
+}
+
+function taskAsk(open: StudioTask[]): AssistantResult {
+  const titles = open.slice(0, 5).map((task) => task.title);
+  return {
+    tool: 'update_task',
+    en: `Which task did you mean? Open tasks: ${titles.join(' · ') || 'none'}.`,
+    el: `Ποια εργασία εννοείς; Ανοιχτές: ${titles.join(' · ') || 'καμία'}.`,
+    href: '/workspace',
+    links: [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }],
+  };
+}
+
+function updateTaskResult(query: string, propose: boolean): AssistantResult | null {
+  const folded = fold(query);
+  const links: AssistantLink[] = [{ href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' }];
+  const isTaskTalk = /\b(task|to-?do)\b/.test(folded) || hasStem(folded, 'εργασια', 'καθηκον');
+  const removing = /\b(delete|remove|drop)\b/.test(folded) || hasStem(folded, 'διαγραψ', 'αφαιρεσ');
+  const status = taskStatusFor(folded);
+  const day = parseDay(folded);
+  const isDueTalk = /\bdue\b|deadline|μεχρι|εως|προθεσμ/.test(folded);
+  const isCompleteVerb = /\b(mark|complete|finish|close)\b/.test(folded) || hasStem(folded, 'ολοκληρωσ', 'τελειωσ');
+  const isMoveVerb = /\b(move|set|put)\b/.test(folded) || hasStem(folded, 'μετακινησ', 'μεταφερ', 'ορισε');
+  if (!isTaskTalk && !isCompleteVerb && !isMoveVerb && !removing && !(day && isDueTalk)) return null;
+  if (!removing && !status && !(day && isDueTalk)) return null;
+  const open = readTasks().filter((task) => task.status !== 'Done');
+  const hit = matchTask(folded);
+  // Claim only on a real title match — a bare verb like "close"/"remove" may
+  // belong to the round, profile or legal routers downstream.
+  if (!hit) return isTaskTalk ? taskAsk(open) : null;
+  if (hit.ambiguous) return taskAsk(open);
+  const task = hit.task;
+  const previous = { ...task };
+  const index = readTasks().findIndex((item) => item.id === task.id);
+  let patch: Partial<StudioTask>;
+  let actionEn: string;
+  let actionEl: string;
+  if (removing) {
+    patch = {};
+    actionEn = `delete task “${task.title}”`;
+    actionEl = `διαγραφή της εργασίας «${task.title}»`;
+  } else if (status) {
+    patch = { status };
+    actionEn = `set “${task.title}” to ${status}`;
+    actionEl = `«${task.title}» σε κατάσταση ${status}`;
+  } else {
+    patch = { due: day!.day };
+    actionEn = `set “${task.title}” due ${day!.day}`;
+    actionEl = `«${task.title}» με προθεσμία ${day!.day}`;
+  }
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    if (removing) removeStudioTask(task.id); else updateStudioTask(task.id, patch);
+    logged = { kind: 'task', title: `Task: ${actionEn}`, titleEl: `Εργασία: ${actionEl}`, href: '/workspace' };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'update_task',
+      en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}. Same board Workspace reads.`,
+      el: `Έγινε ${actionEl}. Ο ίδιος πίνακας με το Workspace.`,
+      href: '/workspace', links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}?`, el: `${actionEl};` },
+      reversal: 'full',
+      apply,
+      undo: () => {
+        if (removing) insertStudioTask(previous, index); else updateStudioTask(task.id, previous);
+        logUndo(logged);
+      },
+    },
+    { tool: 'update_task', href: '/workspace', links },
+  );
+}
+
+function matchMilestone(folded: string): { milestone: Milestone; ambiguous: boolean } | null {
+  const open = readMilestones().filter((m) => effectiveStatus(m) !== 'Completed');
+  const scored: { milestone: Milestone; len: number }[] = [];
+  for (const m of open) {
+    const title = fold(m.title);
+    if (title && folded.includes(title)) scored.push({ milestone: m, len: title.length });
+  }
+  if (!scored.length) return null;
+  scored.sort((a, b) => b.len - a.len);
+  return { milestone: scored[0]!.milestone, ambiguous: scored.length > 1 && scored[0]!.len === scored[1]!.len };
+}
+
+function updateMilestoneResult(query: string, propose: boolean): AssistantResult | null {
+  const folded = fold(query);
+  const links: AssistantLink[] = [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }];
+  const isMsTalk = /\bmilestone\b/.test(folded) || hasStem(folded, 'οροσημ');
+  const pct = folded.match(/(\d{1,3})\s*%|(\d{1,3})\s*percent|(\d{1,3})\s*τοις εκατο/)?.filter(Boolean).slice(1)[0];
+  const day = parseDay(folded);
+  const completing = /\b(mark|complete|finish)\b.{0,30}\b(done|completed|complete|finished)\b|done\b.{0,30}\bmilestone\b/.test(folded) || hasStem(folded, 'ολοκληρωσ', 'τελειωσ');
+  const moving = (/\b(move|push|postpone|reschedule|set)\b/.test(folded) && day) || (hasStem(folded, 'μετακινησ', 'μεταφερ', 'ορισε') && day);
+  if (!isMsTalk && !completing && !pct && !moving) return null;
+  if (!completing && !pct && !moving) return null;
+  const hit = matchMilestone(folded);
+  if (!hit) {
+    if (!isMsTalk) return null;
+    const titles = readMilestones().filter((m) => effectiveStatus(m) !== 'Completed').slice(0, 5).map((m) => m.title);
+    return { tool: 'update_milestone', en: `Which milestone? Open: ${titles.join(' · ') || 'none'}.`, el: `Ποιο ορόσημο; Ανοιχτά: ${titles.join(' · ') || 'κανένα'}.`, href: '/milestones', links };
+  }
+  if (hit.ambiguous) {
+    const titles = readMilestones().filter((m) => effectiveStatus(m) !== 'Completed').slice(0, 5).map((m) => m.title);
+    return { tool: 'update_milestone', en: `Which milestone? Open: ${titles.join(' · ') || 'none'}.`, el: `Ποιο ορόσημο; Ανοιχτά: ${titles.join(' · ') || 'κανένα'}.`, href: '/milestones', links };
+  }
+  const m = hit.milestone;
+  const previous = { ...m };
+  let patch: Partial<Milestone>;
+  let actionEn: string;
+  let actionEl: string;
+  if (completing) {
+    patch = { status: 'Completed', progress: 100 };
+    actionEn = `complete “${m.title}”`;
+    actionEl = `ολοκλήρωση «${m.title}»`;
+  } else if (pct != null) {
+    const value = Math.min(100, Math.max(0, Number(pct)));
+    patch = { progress: value };
+    actionEn = `set “${m.title}” to ${value}%`;
+    actionEl = `«${m.title}» στο ${value}%`;
+  } else {
+    patch = { targetDate: day!.day };
+    actionEn = `move “${m.title}” to ${day!.day}`;
+    actionEl = `«${m.title}» στις ${day!.day}`;
+  }
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    upsertMilestone({ ...m, ...patch });
+    logged = { kind: 'milestone', title: `Milestone: ${actionEn}`, titleEl: `Ορόσημο: ${actionEl}`, href: '/milestones' };
+    logActivity({ ...logged, byAssistant: true });
+    return { tool: 'update_milestone', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}. Same list Milestones reads.`, el: `Έγινε ${actionEl}. Η ίδια λίστα με τα Ορόσημα.`, href: '/milestones', links };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}?`, el: `${actionEl};` },
+      reversal: 'full',
+      apply,
+      undo: () => { upsertMilestone(previous); logUndo(logged); },
+    },
+    { tool: 'update_milestone', href: '/milestones', links },
+  );
+}
+
+function agendaResult(query: string): AssistantResult {
+  const folded = fold(query);
+  const range: 'today' | 'tomorrow' | 'week' = /tomorrow|αυριο/.test(folded) ? 'tomorrow' : /week|εβδομαδ/.test(folded) ? 'week' : 'today';
+  const items = agendaFor(range);
+  const links: AssistantLink[] = [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }];
+  if (!items.length) {
+    const label = { today: ['today', 'σήμερα'], tomorrow: ['tomorrow', 'αύριο'], week: ['this week', 'αυτή την εβδομάδα'] }[range];
+    return {
+      tool: 'read_agenda',
+      en: `Nothing on ${label[0]}. Calendar has the full week — want me to schedule something?`,
+      el: `Τίποτα για ${label[1]}. Το Ημερολόγιο έχει όλη την εβδομάδα — να προγραμματίσω κάτι;`,
+      href: '/calendar', links,
+    };
+  }
+  const kindEn: Record<AgendaItem['kind'], string> = { session: 'session', milestone: 'milestone', followup: 'follow-up', task: 'task' };
+  const kindEl: Record<AgendaItem['kind'], string> = { session: 'συνάντηση', milestone: 'ορόσημο', followup: 'παρακολούθηση', task: 'εργασία' };
+  const line = (item: AgendaItem, el: boolean) => {
+    const when = item.allDay ? (el ? 'όλη μέρα' : 'all day') : item.at.slice(11, 16);
+    return `${when} · ${el ? kindEl[item.kind] : kindEn[item.kind]} · ${item.title}`;
+  };
+  return {
+    tool: 'read_agenda',
+    en: `Agenda:\n${items.map((item) => line(item, false)).join('\n')}`,
+    el: `Πρόγραμμα:\n${items.map((item) => line(item, true)).join('\n')}`,
+    href: '/calendar', links,
+  };
+}
+
+function updateSessionResult(query: string, propose: boolean): AssistantResult | null {
+  const folded = fold(query);
+  const links: AssistantLink[] = [{ href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' }];
+  const cancel = /\bcancel/.test(folded) || hasStem(folded, 'ακυρωσ');
+  const day = parseDay(folded);
+  const time = parseTime(folded);
+  const move = (/\b(move|reschedule|push)\b/.test(folded) || hasStem(folded, 'μετακινησ', 'μεταφερ', 'αλλαξ')) && (day || time);
+  if (!cancel && !move) return null;
+  if (!/\b(meeting|session|call|event)\b/.test(folded) && !hasStem(folded, 'συναντησ', 'ραντεβου', 'συνεδρ', 'ατζεντ') && !/investor meeting|studio event|mentorship/.test(folded)) {
+    // A name + cancel/move with no session word is likely a person op, not a session.
+    const hasName = readSessions().some((s) => s.participants.some((p) => fold(p) && folded.includes(fold(p))));
+    if (!hasName) return null;
+  }
+  const hits = readSessions().filter((s) => {
+    const hay = `${fold(s.title)} ${s.participants.map((p) => fold(p)).join(' ')}`;
+    const words = folded.split(/[^a-zα-ω0-9]+/).filter((w) => w.length >= 4);
+    return words.some((w) => hay.includes(w)) && (folded.includes(fold(s.title)) || s.participants.some((p) => fold(p).length >= 3 && folded.includes(fold(p))));
+  });
+  if (!hits.length) {
+    return { tool: 'update_session', en: 'I cannot find that session on the calendar — tell me its title or a participant.', el: 'Δεν βρίσκω αυτή τη συνάντηση στο ημερολόγιο — πες μου τον τίτλο ή έναν συμμετέχοντα.', href: '/calendar', links };
+  }
+  if (hits.length > 1) {
+    const titles = hits.slice(0, 5).map((s) => s.title);
+    return { tool: 'update_session', en: `Which session? On the calendar: ${titles.join(' · ')}.`, el: `Ποια συνάντηση; Στο ημερολόγιο: ${titles.join(' · ')}.`, href: '/calendar', links };
+  }
+  const session = hits[0]!;
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    if (cancel) {
+      if (session.id.startsWith('evt-')) {
+        setEventRegistration({ id: session.id.slice(4), title: session.title, date: '', time: '', location: session.location, organizer: '' }, false, { byAssistant: true });
+      } else {
+        removeSession(session.id);
+      }
+    } else {
+      const at = new Date(session.time);
+      if (day) { const [y, m, d] = day.day.split('-').map(Number); at.setFullYear(y!, (m ?? 1) - 1, d); }
+      if (time) at.setHours(time.hours, time.minutes, 0, 0);
+      if (Number.isNaN(at.getTime())) at.setTime(Date.now());
+      addSession({ ...session, time: at.toISOString() });
+    }
+    const actionEn = cancel ? `cancelled “${session.title}”` : `moved “${session.title}” to ${day?.day ?? session.time.slice(0, 10)} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
+    const actionEl = cancel ? `ακυρώθηκε «${session.title}»` : `μεταφέρθηκε «${session.title}» στις ${day?.day ?? session.time.slice(0, 10)} ${time ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : session.time.slice(11, 16)}`;
+    logged = { kind: 'session', title: `Session ${actionEn}`, titleEl: `Συνάντηση ${actionEl}`, href: '/calendar' };
+    logActivity({ ...logged, byAssistant: true });
+    return { tool: 'update_session', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}. Same list Calendar reads.`, el: `${actionEl}. Η ίδια λίστα με το Ημερολόγιο.`, href: '/calendar', links };
+  };
+  const sumEn = cancel ? `Cancel “${session.title}”?` : `Move “${session.title}” to ${day?.day ?? session.time.slice(0, 10)}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''}?`;
+  const sumEl = cancel ? `Ακύρωση «${session.title}»;` : `Μεταφορά «${session.title}» στις ${day?.day ?? session.time.slice(0, 10)}${time ? ` ${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}` : ''};`;
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: sumEn, el: sumEl },
+      reversal: 'full',
+      apply,
+      undo: () => {
+        if (cancel) {
+          if (session.id.startsWith('evt-')) {
+            setEventRegistration({ id: session.id.slice(4), title: session.title, date: '', time: '', location: session.location, organizer: '' }, true, { byAssistant: true });
+          }
+          addSession(session);
+        } else {
+          addSession(session);
+        }
+        logUndo(logged);
+      },
+    },
+    { tool: 'update_session', href: '/calendar', links },
+  );
+}
+
+const demoEventList = () => DEMO_EVENTS.map((e) => ({
+  id: e.id,
+  title: e.title,
+  startsAt: atDaysFromToday(e.inDays, e.startHour).getTime(),
+  date: daysFromToday(e.inDays),
+  time: `${e.startHour}:00`,
+  location: e.place.en,
+  organizer: 'CoFounderBay',
+}));
+
+function registerEventResult(query: string, propose: boolean): AssistantResult | null {
+  const folded = fold(query);
+  const links: AssistantLink[] = [{ href: '/events', en: 'Open events', el: 'Άνοιγμα εκδηλώσεων' }];
+  const wantsUnregister = /\b(un-?register|cancel\s+(my\s+)?registration|leave)\b/.test(folded) || hasStem(folded, 'ακυρωσ') && hasStem(folded, 'εγγραφ');
+  const wantsRegister = /\b(register|sign\s?up|rsvp)\b/.test(folded) || hasStem(folded, 'εγγραφ');
+  if (!wantsUnregister && !wantsRegister) return null;
+  if (!isDemoData()) {
+    const hit = readIds(eventListKeys.registered);
+    void hit;
+    return { tool: 'register_event', en: 'Tell me the event title and I will match it against the Events list.', el: 'Πες μου τον τίτλο της εκδήλωσης για να την βρω στη λίστα Εκδηλώσεων.', href: '/events', links };
+  }
+  const events = demoEventList();
+  const hit = events
+    .map((e) => ({ e, len: fold(e.title).length }))
+    .filter(({ e }) => folded.includes(fold(e.title)) || fold(e.title).split(/\s+/).every((w) => w.length < 4 || folded.includes(w)))
+    .sort((a, b) => b.len - a.len)[0]?.e;
+  if (!hit) {
+    const titles = events.map((e) => e.title).join(' · ');
+    return { tool: 'register_event', en: `Which event? Coming up: ${titles}.`, el: `Ποια εκδήλωση; Έρχονται: ${titles}.`, href: '/events', links };
+  }
+  const was = readIds(eventListKeys.registered).includes(hit.id);
+  const on = !wantsUnregister;
+  if (on === was) {
+    return { tool: 'register_event', en: `You are ${on ? 'already registered' : 'not registered'} for ${hit.title}.`, el: `${on ? 'Είσαι ήδη εγγεγραμμένος' : 'Δεν είσαι εγγεγραμμένος'} στο ${hit.title}.`, href: '/events', links };
+  }
+  let logged: LoggedWrite | null = null;
+  const actionEn = on ? `register for ${hit.title}` : `unregister from ${hit.title}`;
+  const actionEl = on ? `εγγραφή στο ${hit.title}` : `ακύρωση εγγραφής στο ${hit.title}`;
+  const apply = (): AssistantResult => {
+    setEventRegistration(hit, on, { byAssistant: true });
+    logged = { kind: 'event', title: `Event: ${actionEn}`, titleEl: `Εκδήλωση: ${actionEl}`, href: '/events' };
+    if (!on) logActivity({ ...logged, byAssistant: true });
+    return { tool: 'register_event', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)} — same toggle as Events.`, el: `Έγινε ${actionEl} — ο ίδιος διακόπτης με τις Εκδηλώσεις.`, href: '/events', links };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}?`, el: `${actionEl};` },
+      reversal: 'full',
+      apply,
+      undo: () => { setEventRegistration(hit, was, { byAssistant: true }); logUndo(logged); },
+    },
+    { tool: 'register_event', href: '/events', links },
+  );
+}
+
+function incomingRequests(): { record: ReturnType<typeof connectionRecords>[number]; name: string }[] {
+  const uid = dataScope() || null;
+  if (!uid) return [];
+  return connectionRecords()
+    .filter((record) => record.status === 'Pending' && record.receiverId === uid)
+    .map((record) => ({ record, name: record.senderName || record.senderId }));
+}
+
+function readRequestsResult(): AssistantResult {
+  const incoming = incomingRequests();
+  const links: AssistantLink[] = [{ href: '/network?tab=requests', en: 'Open requests', el: 'Άνοιγμα αιτημάτων' }];
+  if (!incoming.length) {
+    return { tool: 'read_requests', en: 'No incoming connection requests right now. Requests land under Network → Requests.', el: 'Δεν υπάρχουν εισερχόμενα αιτήματα σύνδεσης τώρα. Τα αιτήματα φαίνονται στο Δίκτυο → Αιτήματα.', href: '/network?tab=requests', links };
+  }
+  return {
+    tool: 'read_requests',
+    en: `Waiting on you:\n${incoming.map((item) => item.name).join('\n')}`,
+    el: `Σε αναμονή:\n${incoming.map((item) => item.name).join('\n')}`,
+    href: '/network?tab=requests', links,
+  };
+}
+
+function answerRequestResult(query: string, propose: boolean): AssistantResult | null {
+  const folded = fold(query);
+  const accept = /\b(accept|approve|yes to)\b/.test(folded) || hasStem(folded, 'αποδεχ', 'αποδεξ');
+  const decline = /\b(decline|reject|ignore)\b/.test(folded) || hasStem(folded, 'απορριψ', 'αγνοησ');
+  if (!accept && !decline) return null;
+  const incoming = incomingRequests();
+  const hit = incoming.find((item) => item.name && folded.includes(fold(item.name.split(' ')[0] ?? item.name))) ?? incoming.find((item) => folded.includes(fold(item.name)));
+  // Only claim the sentence when it talks about requests or names someone waiting —
+  // "accept mentor requests" must keep routing to the open-to switch.
+  const aboutRequests = /\b(request|invite|invitation)\b/.test(folded) || hasStem(folded, 'αιτημ', 'προσκλησ');
+  if (!hit && !aboutRequests) return null;
+  if (!incoming.length) {
+    return { tool: 'answer_request', en: 'No incoming requests to answer. They appear under Network → Requests.', el: 'Δεν υπάρχουν εισερχόμενα αιτήματα. Φαίνονται στο Δίκτυο → Αιτήματα.', href: '/network?tab=requests', links: [{ href: '/network?tab=requests', en: 'Open requests', el: 'Άνοιγμα αιτημάτων' }] };
+  }
+  if (!hit) {
+    const names = incoming.slice(0, 5).map((item) => item.name).join(' · ');
+    return { tool: 'answer_request', en: `Whose request? Waiting: ${names}.`, el: `Τίνος το αίτημα; Σε αναμονή: ${names}.`, href: '/network?tab=requests', links: [{ href: '/network?tab=requests', en: 'Open requests', el: 'Άνοιγμα αιτημάτων' }] };
+  }
+  const links: AssistantLink[] = [{ href: '/network?tab=requests', en: 'Open requests', el: 'Άνοιγμα αιτημάτων' }];
+  const actionEn = accept ? `accept ${hit.name}'s request` : `decline ${hit.name}'s request`;
+  const actionEl = accept ? `αποδοχή του αιτήματος: ${hit.name}` : `απόρριψη του αιτήματος: ${hit.name}`;
+  const apply = async (): Promise<AssistantResult> => {
+    const { respondToConnection } = await import('../lib/social');
+    await respondToConnection(hit.record, accept);
+    logActivity({ kind: 'connection', title: `Request: ${actionEn}`, titleEl: `Αίτημα: ${actionEl}`, href: '/network', byAssistant: true });
+    return { tool: 'answer_request', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)} — same as Network → Requests.${accept ? ' They were notified; either of you can remove the connection from Network.' : ''}`, el: `Έγινε ${actionEl} — όπως στο Δίκτυο → Αιτήματα.${accept ? ' Ενημερώθηκε· η σύνδεση αφαιρείται από το Δίκτυο.' : ''}`, href: '/network?tab=requests', links };
+  };
+  if (!propose) { void apply(); return { tool: 'answer_request', en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}.`, el: `Έγινε ${actionEl}.`, href: '/network?tab=requests', links }; }
+  return proposalResult(
+    {
+      summary: { en: `${actionEn[0]!.toUpperCase()}${actionEn.slice(1)}?`, el: `${actionEl};` },
+      reversal: 'none',
+      reversalNote: accept
+        ? { en: 'Accept notifies the other person; the connection can still be removed from Network', el: 'Η αποδοχή ενημερώνει το άλλο μέλος· η σύνδεση μπορεί να αφαιρεθεί από το Δίκτυο' }
+        : { en: 'The other person is not notified of a decline, but the request cannot be un-declined', el: 'Το άλλο μέλος δεν ενημερώνεται για την απόρριψη, αλλά το αίτημα δεν επανέρχεται' },
+      apply,
+    },
+    { tool: 'answer_request', href: '/network?tab=requests', links },
+  );
+}
+
+function exportDataResult(propose: boolean, profile: AssistantProfile | null): AssistantResult {
+  const links: AssistantLink[] = [{ href: '/settings', en: 'Open settings', el: 'Άνοιγμα ρυθμίσεων' }];
+  const guests = !dataScope() && !isDemoData();
+  if (guests) {
+    return { tool: 'export_data', en: 'Sign in first — there is nothing saved under a guest session to export.', el: 'Συνδέσου πρώτα — δεν υπάρχουν δεδομένα σε συνεδρία επισκέπτη για εξαγωγή.', href: '/settings', links };
+  }
+  const apply = (): AssistantResult => {
+    exportMyData(profile);
+    logActivity({ kind: 'settings', title: 'Exported account data', titleEl: 'Εξαγωγή δεδομένων λογαριασμού', href: '/settings', byAssistant: true });
+    return { tool: 'export_data', en: 'Downloaded a JSON file of your data — the same export Settings → Account writes.', el: 'Κατέβηκε αρχείο JSON με τα δεδομένα σου — η ίδια εξαγωγή με Ρυθμίσεις → Λογαριασμός.', href: '/settings', links };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: 'Export your data as a JSON file?', el: 'Εξαγωγή των δεδομένων σου ως αρχείο JSON;' },
+      reversal: 'none',
+      reversalNote: { en: 'Nothing changes — the card only downloads a JSON file of your data', el: 'Τίποτα δεν αλλάζει — η κάρτα απλώς κατεβάζει ένα αρχείο JSON με τα δεδομένα σου' },
+      apply,
+    },
+    { tool: 'export_data', href: '/settings', links },
+  );
+}
+
 export function runAssistant(text: string, profile: AssistantProfile | null, options?: { propose?: boolean }): AssistantResult {
   return attachSources(attachFollowUps(resolveAssistant(text, profile, options?.propose === true)));
 }
@@ -2952,6 +3393,20 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue', propose);
     if (cmd === 'help') return helpResult();
   }
+
+  const taskUpdate = updateTaskResult(query, propose);
+  if (taskUpdate) return taskUpdate;
+  const milestoneUpdate = updateMilestoneResult(query, propose);
+  if (milestoneUpdate) return milestoneUpdate;
+  const sessionUpdate = updateSessionResult(query, propose);
+  if (sessionUpdate) return sessionUpdate;
+  const eventReg = registerEventResult(query, propose);
+  if (eventReg) return eventReg;
+  const answer = answerRequestResult(query, propose);
+  if (answer) return answer;
+  if (/\b(what's on|whats on|agenda|on today|on tomorrow|τι εχω|τι εχω σημερα|τι εχω αυριο|προγραμμα)\b/.test(folded) || hasStem(folded, 'τι εχω', 'ατζεντα')) return agendaResult(query);
+  if (/\bwho wants to connect|incoming requests|connection requests\b/.test(folded) || hasStem(folded, 'ποιος θελει να συνδεθ', 'εισερχομεν')) return readRequestsResult();
+  if (/\bexport my data|download my data|export (the )?data\b/.test(folded) || hasStem(folded, 'εξαγωγη των δεδομενων', 'κατεβασε τα δεδομενα')) return exportDataResult(propose, profile);
 
   // "Where do I export the pitch?" — the exact page, tab and control (ai/whereIs).
   const where = whereIsResult(query);
