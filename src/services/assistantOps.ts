@@ -2425,6 +2425,42 @@ function builderResult(query: string, propose: boolean): AssistantResult {
   };
 }
 
+/**
+ * How complete the profile is — the one measure (lib/profileCompleteness) the
+ * dashboard card, the profile page, Settings and the banner show — with the
+ * fields that add the most first, and the next steps the assistant can do.
+ */
+function completenessResult(profile: AssistantProfile | null): AssistantResult {
+  const { score, missing } = profileCompleteness(mergeFitIntoViewer(profile as Parameters<typeof mergeFitIntoViewer>[0]) as Parameters<typeof profileCompleteness>[0]);
+  const top = missing.slice(0, 3);
+  const links: AssistantLink[] = [{ href: '/profile', en: 'Open your profile', el: 'Άνοιγμα προφίλ' }];
+  if (top.some((field) => field.href === '/settings')) links.push({ href: '/settings', en: 'Open Settings (links)', el: 'Άνοιγμα Ρυθμίσεων (σύνδεσμοι)' });
+  const followUps: AssistantFollowUp[] = [];
+  // The fit check fills what matching reads (skills, looking-for, stage, commitment).
+  if (top.some((field) => ['skills', 'lookingFor', 'stage', 'commitment'].includes(field.key))) followUps.push({ en: 'What is my fit check?', el: 'Ποιο είναι το fit check μου;' });
+  if (top.some((field) => field.key === 'skills' || field.key === 'lookingFor')) followUps.push({ en: 'What does my founding team still lack?', el: 'Τι λείπει ακόμη από την ιδρυτική ομάδα;' });
+  if (score >= 100) {
+    return {
+      tool: 'profile-completeness',
+      en: 'Your profile is complete (100%) — matching reads every field it uses.',
+      el: 'Το προφίλ σου είναι πλήρες (100%) — η αντιστοίχιση διαβάζει όλα τα πεδία που χρησιμοποιεί.',
+      href: '/profile',
+      links,
+    };
+  }
+  const listEn = top.map((field) => `${field.label.en.toLowerCase()} (+${field.weight})`).join(', ');
+  const listEl = top.map((field) => `${field.label.el.toLowerCase()} (+${field.weight})`).join(', ');
+  return {
+    tool: 'profile-completeness',
+    en: `Your profile is ${score}% complete. Add ${listEn} first — the same measure the dashboard, your profile page and the bar at the top show. Matching reads skills, looking-for, industry, stage, commitment and location; you can say “set my location to …” or “add the skill …”.`,
+    el: `Το προφίλ σου είναι ${score}% πλήρες. Πρόσθεσε πρώτα ${listEl} — η ίδια μέτρηση με τον πίνακα ελέγχου, τη σελίδα προφίλ και τη μπάρα στην κορυφή. Η αντιστοίχιση διαβάζει δεξιότητες, τι ψάχνεις, κλάδο, στάδιο, δέσμευση και τοποθεσία· μπορείς να πεις «όρισε την τοποθεσία μου σε …» ή «πρόσθεσε τη δεξιότητα …».`,
+    href: top[0]?.href ?? '/profile',
+    links,
+    ...(followUps.length ? { followUps } : {}),
+    sources: [{ kind: 'profile', en: 'Profile completeness', el: 'Πληρότητα προφίλ', href: '/profile' }],
+  };
+}
+
 function readinessResult(query: string, propose: boolean, profile: AssistantProfile | null = null): AssistantResult {
   const saved = startupRecord.read();
   const name = ventureName() || 'Your Venture';
@@ -3397,6 +3433,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'canvas') return canvasResult(rest ? `/canvas ${rest}` : query, propose);
     if (cmd === 'builder') return builderResult(rest ? `/builder ${rest}` : query, propose);
     if (cmd === 'readiness') return readinessResult(rest || query, propose, profile);
+    if (cmd === 'completeness' || cmd === 'profile-check') return completenessResult(profile);
     if (cmd === '6axis') return studioModalResult('6axis', rest || query, profile);
     if (cmd === 'dealroom') return studioModalResult('dealroom', rest || query, profile);
     if (cmd === 'needwall') return studioModalResult('needwall', rest || query, profile);
@@ -3431,6 +3468,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (/\b(what's on|whats on|agenda|on today|on tomorrow|τι εχω|τι εχω σημερα|τι εχω αυριο|προγραμμα)\b/.test(folded) || hasStem(folded, 'τι εχω', 'ατζεντα')) return agendaResult(query);
   if (/\bwho wants to connect|incoming requests|connection requests\b/.test(folded) || hasStem(folded, 'ποιος θελει να συνδεθ', 'εισερχομεν')) return readRequestsResult();
   if (/\bexport my data|download my data|export (the )?data\b/.test(folded) || hasStem(folded, 'εξαγωγη των δεδομενων', 'κατεβασε τα δεδομενα')) return exportDataResult(propose, profile);
+  if (/\b(how complete|profile complete(ness)?|profile completion|complete is my profile|finish my profile)\b/.test(folded) || /ποσο πληρες|πληροτητα.{0,12}προφιλ|ολοκληρωσ.{0,12}προφιλ/.test(folded)) return completenessResult(profile);
 
   // "Where do I export the pitch?" — the exact page, tab and control (ai/whereIs).
   const where = whereIsResult(query);

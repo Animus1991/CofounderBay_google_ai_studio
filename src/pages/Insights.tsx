@@ -156,13 +156,13 @@ export default function Insights({ user }: InsightsProps) {
 
  const kpis = isDemoMode
   ? [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: `+${demoReadinessDelta()}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: `+${demoReadinessDelta()} ${t('pts', 'μον.')}`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
    { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: signedPct(demoActivityDelta('views')), icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, viewSum), href: '/network' },
    { label: t("Connections", "Συνδέσεις"), value: String(connectSum), change: signedPct(demoActivityDelta('connections')), icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, connectSum * 8), href: '/network' },
    { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: signedPct(demoActivityDelta('messages')), icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
   ]
   : [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta}pts`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/founder-tools', hint: t(`Profile ${completeness}% complete · ${readiness.known} of 5 dimensions scored`, `Προφίλ ${completeness}% πλήρες · ${readiness.known} από 5 διαστάσεις`) },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta} ${t('pts', 'μον.')}`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/founder-tools', hint: t(`Profile ${completeness}% complete · ${readiness.known} of 5 dimensions scored`, `Προφίλ ${completeness}% πλήρες · ${readiness.known} από 5 διαστάσεις`) },
    { label: t("Saved people", "Αποθηκευμένοι"), value: String(saved.length), change: null, icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, saved.length * 10), href: '/network' },
    { label: t("Requests sent", "Αιτήματα"), value: String(requests.length), change: null, icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, requests.length * 12), href: '/network' },
    { label: t("Applications", "Αιτήσεις"), value: String(tracked.length), change: null, icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(100, tracked.length * 20), href: '/fundraising' },

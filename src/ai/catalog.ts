@@ -983,6 +983,17 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
 
   // ── Profile & settings ─────────────────────────────────────────────────
   {
+    id: 'profile_completeness',
+    tool: 'profile-completeness',
+    kind: 'read',
+    area: 'account',
+    label: { en: 'Profile completeness', el: 'Πληρότητα προφίλ' },
+    description: 'Read how complete the viewer’s profile is (the same % as the dashboard, the profile page and the banner) and which fields to add first.',
+    params: [],
+    example: { en: 'How complete is my profile?', el: 'Πόσο πλήρες είναι το προφίλ μου;' },
+    command: () => 'How complete is my profile?',
+  },
+  {
     id: 'set_profile_field',
     tool: 'profile-set',
     kind: 'write',

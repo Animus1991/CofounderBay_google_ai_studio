@@ -43,6 +43,17 @@ describe('runAssistant', () => {
     expect(result.en).toMatch(/Weakest: Financial Planning/);
   });
 
+  it('answers profile completeness with the measure every page shows', () => {
+    // The test profile has no bio, role or links: 100 − 10 − 5 − 5 = 80.
+    const result = runAssistant('How complete is my profile?', demo);
+    expect(result.tool).toBe('profile-completeness');
+    expect(result.en).toContain('80% complete');
+    expect(result.en).toContain('bio (+10)');
+    const greek = runAssistant('Πόσο πλήρες είναι το προφίλ μου;', demo);
+    expect(greek.tool).toBe('profile-completeness');
+    expect(greek.el).toContain('80% πλήρες');
+  });
+
   it('ranks matches from the shared cast', () => {
     const result = runAssistant('who is my best match', demo);
     expect(result.tool).toBe('matches');

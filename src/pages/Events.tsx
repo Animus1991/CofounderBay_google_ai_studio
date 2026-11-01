@@ -116,6 +116,10 @@ export default function Events(_props: EventsProps = {}) {
   { id: 'show-bookmarked', en: 'Show bookmarked', el: 'Αποθηκευμένες', run: () => setActiveTab('Bookmarked') },
   { id: 'all-events', en: 'All events', el: 'Όλες οι εκδηλώσεις', run: () => { setActiveTab('Upcoming'); setTypeFilter('All'); } },
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowTypes(true) },
+  // The quick chips, for the assistant ("show online events", "events this week").
+  { id: 'events-this-week', en: 'Show events this week', el: 'Εκδηλώσεις αυτή την εβδομάδα', run: () => { setActiveTab('Upcoming'); setQuick('week'); } },
+  { id: 'events-online', en: 'Show online events', el: 'Διαδικτυακές εκδηλώσεις', run: () => { setActiveTab('Upcoming'); setQuick('online'); } },
+  { id: 'events-any-place', en: 'Show events everywhere', el: 'Εκδηλώσεις παντού', run: () => setQuick('all') },
  ], []);
 
  const toggleRegistration = (eventId: string) => {

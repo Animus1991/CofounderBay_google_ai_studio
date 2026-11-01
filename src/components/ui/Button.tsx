@@ -50,7 +50,9 @@ export default function Button({
    className={cn(
     "inline-flex max-w-full items-center justify-center gap-2 whitespace-normal break-words text-center transition-all duration-200 [&>svg]:shrink-0",
     "active:scale-[0.97] active:duration-75",
-    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:ring-offset-1",
+    // A 2px ring in the theme's strong ring colour (the accent in accent themes) — GitHub's
+    // focus logic; the 1px grey ring was hard to see on light surfaces.
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2",
     "disabled:opacity-50 disabled:pointer-events-none disabled:scale-100",
     variants[variant],
     sizes[size],
