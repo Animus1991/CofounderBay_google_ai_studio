@@ -55,6 +55,7 @@ import EmptyHint, { ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePageControls } from "../lib/pageControls";
 import { User, Startup, FounderStage } from "../types";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { labelOf } from "../lib/labels";
 import { useT } from "../lib/language";
 import { keys, readTracked, writeTracked, readValue, writeValue, logActivity, readMilestones, effectiveStatus, type TrackedApplication } from "../lib/localLists";
@@ -753,7 +754,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
     )}
    </AnimatePresence>
 
-   <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+   <div className={SEGMENT_TRACK}>
     {(["dashboard", "builder", "pitch", "applications", "tools", "templates"] as const).map((tab) => (
      <button
       key={tab}
@@ -762,7 +763,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
       onClick={() => setActiveTab(tab)}
       className={cn(
        "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all capitalize tracking-wide",
-       activeTab === tab ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200" : "text-stone-500 hover:text-stone-700"
+       segmentItem(activeTab === tab)
       )}
      >
       {tabLabel(tab)}

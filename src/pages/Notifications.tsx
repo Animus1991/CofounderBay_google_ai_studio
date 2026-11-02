@@ -11,7 +11,7 @@ import Tabs from '../components/ui/Tabs';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { useAuth } from '../App';
-import { useNotificationFeed, type FeedNote, type FeedNoteType } from '../lib/notificationFeed';
+import { useNotificationFeed, type FeedNote, type FeedNoteType, noteGroup } from '../lib/notificationFeed';
 import { usePageControls } from '../lib/pageControls';
 import { useToast } from '../context/ToastContext';
 
@@ -28,6 +28,8 @@ export default function Notifications() {
   usePageControls(() => [
     { id: 'show-unread', en: 'Show unread only', el: 'Μόνο αδιάβαστες', run: () => setFilter('unread') },
     { id: 'show-all', en: 'Show all', el: 'Εμφάνιση όλων', run: () => setFilter('all') },
+    { id: 'show-people', en: 'Show what members sent', el: 'Μόνο από μέλη', run: () => setFilter('people') },
+    { id: 'show-activity', en: 'Show my activity', el: 'Μόνο η δραστηριότητά μου', run: () => setFilter('activity') },
     { id: 'mark-all-read', en: 'Mark all read', el: 'Σήμανση όλων ως αναγνωσμένων', run: feed.markAllRead },
   ], [feed.markAllRead]);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
@@ -37,12 +39,12 @@ export default function Notifications() {
   const unreadCount = feed.unread;
   const notifications = feed.items.filter((item) => {
     if (filter === 'unread') return !item.read;
-    if (filter === 'people') return item.source === 'cloud';
-    if (filter === 'activity') return item.source === 'local';
+    if (filter === 'people') return noteGroup(item) === 'people';
+    if (filter === 'activity') return noteGroup(item) === 'activity';
     return true;
   });
-  const cloudCount = useMemo(() => feed.items.filter((item) => item.origin === 'cloud').length, [feed.items]);
-  const localCount = useMemo(() => feed.items.filter((item) => item.origin !== 'cloud').length, [feed.items]);
+  const cloudCount = useMemo(() => feed.items.filter((item) => noteGroup(item) === 'people').length, [feed.items]);
+  const localCount = useMemo(() => feed.items.filter((item) => noteGroup(item) === 'activity').length, [feed.items]);
 
   const openNote = (notification: FeedNote) => {
     feed.markRead(notification.id);
@@ -175,7 +177,8 @@ export default function Notifications() {
                     ) : null}
                   </div>
 
-                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+                  {/* Fixed width: unread rows have two buttons, read rows one — the time column used to shift by one button. */}
+                  <div className="flex items-center justify-end gap-1 sm:w-[4.75rem] shrink-0 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
                     {!notification.read && (
                       <Button type="button" variant="ghost" size="icon" aria-label={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} title={t('Mark as read', 'Σήμανση ως αναγνωσμένη')} className="h-9 w-9 text-stone-400 hover:text-stone-900" data-testid={`notification-mark-read-${notification.id}`} onClick={() => feed.markRead(notification.id)}>
                         <Check className="w-4 h-4" />
@@ -210,13 +213,15 @@ export default function Notifications() {
           </div>
         </Card>
 
-        <Card className="bg-stone-900 text-white border-none p-5 sm:p-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center md:text-left">
-              <h4 className="text-base font-semibold">{t('Manage your alerts', 'Διαχείριση ειδοποιήσεων')}</h4>
-              <p className="text-sm text-white/60">{t('Choose which events notify you and how often.', 'Διάλεξε για ποια γεγονότα θα ειδοποιείσαι και πόσο συχνά.')}</p>
+        {/* A settings link is secondary: a neutral card with an outlined button, not a solid black banner
+            (Primer: the dark fill is for the one primary action). */}
+        <Card className="border-stone-200 p-4 sm:p-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-stone-900">{t('Manage your alerts', 'Διαχείριση ειδοποιήσεων')}</h4>
+              <p className="text-sm text-stone-500">{t('Choose which events notify you and how often.', 'Διάλεξε για ποια γεγονότα θα ειδοποιείσαι και πόσο συχνά.')}</p>
             </div>
-            <Button type="button" variant="secondary" onClick={() => navigate('/settings?tab=notifications')}>{t('Notification settings', 'Ρυθμίσεις ειδοποιήσεων')}</Button>
+            <Button type="button" variant="outline" className="shrink-0" onClick={() => navigate('/settings?tab=notifications')}>{t('Notification settings', 'Ρυθμίσεις ειδοποιήσεων')}</Button>
           </div>
         </Card>
       </div>

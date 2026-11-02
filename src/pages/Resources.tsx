@@ -25,6 +25,7 @@ import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHi
 import { usePageControls } from "../lib/pageControls";
 import { User } from "../types";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { motion } from "motion/react";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
@@ -165,7 +166,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
  return (
   <PageShell title={t("Resources", "Πόροι")} description={t('Learning, services and tools.', 'Μάθηση, υπηρεσίες και εργαλεία.')}>
    <div className="space-y-6">
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className={SEGMENT_TRACK}>
      {(['learning', 'services', 'jobs', 'support'] as const).map((tab) => (
       <button
        key={tab}
@@ -174,9 +175,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
        onClick={() => setActiveTab(tab)}
        className={cn(
         "px-4 py-2 text-sm font-medium rounded-lg transition-all capitalize",
-        activeTab === tab 
-         ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200"
-         : "text-stone-500 hover:text-stone-900 hover:bg-white"
+        segmentItem(activeTab === tab)
        )}
       >
        {t(tab, RESOURCE_TAB_EL[tab] ?? tab)}

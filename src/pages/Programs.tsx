@@ -11,7 +11,6 @@ import {
  Rocket,
  Star,
  Users,
- Zap,
  Target,
  TrendingUp,
  Award,
@@ -21,6 +20,7 @@ import Card from "../components/ui/Card";
 import CoverImage from "../components/ui/CoverImage";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { User } from "../types";
 import { motion } from "framer-motion";
 import { useT } from "../lib/language";
@@ -204,7 +204,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
     {/* Main Programs List */}
     <div className="lg:col-span-8 space-y-4">
      {/* Tab Switcher */}
-     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+     <div className={SEGMENT_TRACK}>
       {['All', 'Accelerators', 'Grants', 'Bootcamps'].map((tab) => (
        <button
         key={tab}
@@ -213,7 +213,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
         onClick={() => setActiveTab(tab)}
         className={cn(
          "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
-         activeTab === tab ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
+         segmentItem(activeTab === tab)
         )}
        >
         {t(tab, TAB_EL[tab] ?? tab)}
@@ -275,22 +275,8 @@ export default function Programs({ user: _user }: ProgramsProps) {
 
     {/* Sidebar */}
     <aside className="lg:col-span-4 space-y-4">
-     <Card className="rounded-2xl border-stone-100 p-4" contentClassName="space-y-3">
-      <div>
-       <h4 className="text-sm font-semibold text-stone-900">{t('Program Finder', 'Εύρεση προγραμμάτων')}</h4>
-       <p className="text-xs text-stone-400 mt-0.5">{t('Matched to your stage and goals', 'Με βάση το στάδιο και τους στόχους σου')}</p>
-      </div>
-      <div className="p-3 bg-stone-50 rounded-xl border border-stone-100 flex items-center gap-2.5">
-       <div className="w-7 h-7 rounded-lg bg-stone-900 flex items-center justify-center text-white shrink-0">
-        <Zap className="w-3.5 h-3.5" />
-       </div>
-       <span className="text-sm font-semibold text-stone-700">{t('AI-Powered Matching', 'Αντιστοίχιση με AI')}</span>
-      </div>
-      <Button type="button" variant="outline" className="w-full h-8 rounded-xl text-sm border-stone-200 hover:bg-white transition-all" onClick={() => askAssistant('What programs can I apply to?')}>
-       {t('Start Finder', 'Έναρξη εύρεσης')}
-      </Button>
-     </Card>
-
+     {/* The "Program Finder" card repeated the header's "Find programs" button (same assistant question,
+         same words) — one entry point, at the top, is enough. */}
      <Card className="rounded-2xl border-stone-100 p-4" contentClassName="space-y-3">
       <div className="flex items-center justify-between">
        <h4 className="text-sm font-semibold text-stone-900">{t('Ecosystem Stats', 'Στατιστικά οικοσυστήματος')}</h4>
