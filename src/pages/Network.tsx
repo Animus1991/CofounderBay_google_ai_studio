@@ -52,6 +52,7 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../App';
 import { useToast } from '../context/ToastContext';
 import { avatarOf, findPerson, isOnline, type Person } from '../lib/peopleSource';
+import { DEMO_CONNECTIONS } from '../data/demoNetwork';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { teamGaps, TEAM_AREAS } from '../lib/teamGaps';
@@ -106,13 +107,8 @@ function isTab(value: string | null): value is NetworkTab {
 }
 
 function sampleConnections(): NetworkConnection[] {
-  const rows: { id: string; status: ConnectionStatus }[] = [
-    { id: 'sarah-chen', status: 'Connected' },
-    { id: 'alex-rivera', status: 'Connected' },
-    { id: 'james-wilson', status: 'Pending' },
-    { id: 'elena-rodriguez', status: 'Connected' },
-  ];
-  return rows.flatMap(({ id, status }, index) => {
+  // The same list Insights counts (data/demoNetwork).
+  return DEMO_CONNECTIONS.flatMap(({ id, status }, index) => {
     const person = findPerson(id);
     if (!person) return [];
     return [{ id, fullName: person.fullName, headline: person.headline, headlineEl: person.headlineEl, role: person.role, industry: person.industry, location: person.city, avatar: avatarOf(person), status, since: Date.now() - (index + 1) * 86_400_000 * 3, person }];
@@ -244,6 +240,7 @@ export default function Network({ user }: NetworkProps) {
   });
   const connectedCount = connectionPool.filter((conn) => conn.status === 'Connected').length;
   const incomingCount = connectionPool.filter((conn) => conn.status === 'Incoming').length;
+  const sentCount = connectionPool.filter((conn) => conn.status === 'Pending').length;
 
   const statusLabel = (status: ConnectionStatus) =>
     status === 'Connected' ? t('Connected', 'Συνδεδεμένοι') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
@@ -354,7 +351,7 @@ export default function Network({ user }: NetworkProps) {
               >
                 <SlidersHorizontal className="w-3 h-3 mr-1.5" /> {statusFilter === 'All' ? t('All statuses', 'Όλες οι καταστάσεις') : statusLabel(statusFilter)}
               </Button>
-              <span className="text-sm text-stone-400 sm:ml-auto">{t(`${connectedCount} connected`, connectedCount === 1 ? '1 συνδεδεμένος' : `${connectedCount} συνδεδεμένοι`)}{incomingCount ? ` · ${t(`${incomingCount} waiting`, `${incomingCount} σε αναμονή`)}` : ''}</span>
+              <span className="text-sm text-stone-400 sm:ml-auto">{t(`${connectedCount} connected`, connectedCount === 1 ? '1 συνδεδεμένος' : `${connectedCount} συνδεδεμένοι`)}{incomingCount ? ` · ${t(`${incomingCount} waiting`, `${incomingCount} σε αναμονή`)}` : ''}{/* The tab counts sent requests too (4 = 3 connected + 1 sent); say so here. */}{sentCount ? ` · ${t(`${sentCount} request${sentCount === 1 ? '' : 's'} sent`, sentCount === 1 ? '1 αίτημα σταλμένο' : `${sentCount} αιτήματα σταλμένα`)}` : ''}</span>
             </div>
 
             {real && !connections.loaded ? (

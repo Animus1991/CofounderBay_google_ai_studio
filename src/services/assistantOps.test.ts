@@ -96,6 +96,13 @@ describe('runAssistant', () => {
     expect(runAssistant('What did I do wrong in my pitch?', demo).tool).not.toBe('weekly-recap');
   });
 
+  it('answers the prompts the page shortcuts send (Legal progress, Dashboard controls)', () => {
+    // The "Ask" link on the Legal progress strip and the Dashboard's page controls send these sentences.
+    expect(runAssistant('What is left on my legal checklist?', demo).tool).toBe('legal-checklist');
+    expect(runAssistant('What did I do this week?', demo).tool).toBe('weekly-recap');
+    expect(runAssistant('Give me a 7-day match plan', demo).tool).not.toBe('briefing');
+  });
+
   it('ranks matches from the shared cast', () => {
     const result = runAssistant('who is my best match', demo);
     expect(result.tool).toBe('matches');

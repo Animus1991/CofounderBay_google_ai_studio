@@ -20,6 +20,7 @@ import {
 import PageShell from "../components/ui/PageShell";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentCount, segmentItem } from "../lib/segmented";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { eventListKeys, readIds, toggleId } from "../lib/localLists";
@@ -270,7 +271,7 @@ export default function Events(_props: EventsProps = {}) {
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     {/* Main Events List */}
     <div className="lg:col-span-8 space-y-4">
-     <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+     <div className={SEGMENT_TRACK}>
       {['Upcoming', 'My Events', 'Past', 'Bookmarked'].map((tab) => (
        <button
         key={tab}
@@ -279,13 +280,11 @@ export default function Events(_props: EventsProps = {}) {
         onClick={() => setActiveTab(tab)}
         className={cn(
          "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
-         activeTab === tab 
-          ? "bg-stone-900 text-white shadow-sm" 
-          : "text-stone-400 hover:text-stone-900 hover:bg-white"
+         segmentItem(activeTab === tab)
         )}
        >
         {t(tab, TAB_EL[tab])}
-        <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", activeTab === tab ? "bg-white/20 text-white" : "bg-stone-200/70 text-stone-600")}>
+        <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", segmentCount(activeTab === tab))}>
          {tabCounts[tab] ?? 0}
         </span>
        </button>

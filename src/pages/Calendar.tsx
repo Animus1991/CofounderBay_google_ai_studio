@@ -10,6 +10,7 @@ import PageShell from "../components/ui/PageShell";
 import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { keys, readSessions, readValue, removeSession, writeValue } from "../lib/localLists";
 import { usePageControls } from "../lib/pageControls";
 import { useStored } from "../lib/useStored";
@@ -292,7 +293,7 @@ export default function Calendar() {
          </Button>
         </div>
        </div>
-       <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+       <div className={SEGMENT_TRACK}>
         {['Month', 'Week', 'Day'].map((v) => (
          <button
           key={v}
@@ -301,9 +302,7 @@ export default function Calendar() {
           onClick={() => setView(v)}
           className={cn(
            "px-3 py-1.5 text-sm font-medium rounded-lg transition-all",
-           view === v
-            ? "bg-white text-stone-900 shadow-sm border border-stone-200"
-            : "text-stone-400 hover:text-stone-600"
+           segmentItem(view === v)
           )}
          >
           {viewLabel(v)}

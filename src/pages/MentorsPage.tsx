@@ -12,7 +12,6 @@ import {
  Star,
  MessageSquare,
  Search,
- Zap,
  CheckCircle2,
  ArrowRight,
  ShieldCheck,
@@ -148,116 +147,103 @@ export default function MentorsPage() {
  return (
   <PageShell title={t('Mentors', 'Μέντορες')} description={t('Founders who have built and scaled.', 'Ιδρυτές που έχουν χτίσει και αναπτύξει.')}>
   <div className="space-y-6">
-   {/* Hero Section */}
-   <section aria-labelledby="mentor-hero-title" className="bg-stone-900 rounded-xl p-5 sm:p-6 relative overflow-hidden">
-    <div className="relative z-10 space-y-4">
-     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white rounded-full text-xs font-medium">
-       <Zap className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
-       {t('Expert Guidance', 'Καθοδήγηση από ειδικούς')}
-      </span>
-      <h2 id="mentor-hero-title" className="text-base font-semibold text-white tracking-tight leading-tight">
-       {t('Learn from the', 'Μάθε από')} <span className="text-white/80">{t('Best in the World.', 'τα καλύτερα μυαλά του κόσμου.')}</span>
-      </h2>
-     </div>
-     <p className="text-sm text-white/85 leading-relaxed max-w-2xl">
-      {t('Connect with world-class mentors who have built, scaled, and exited successful startups.', 'Συνδέσου με μέντορες κορυφαίου επιπέδου που έχουν χτίσει, αναπτύξει και πουλήσει επιτυχημένες startups.')}
-     </p>
-
-     {/* Search and its action share one row and one height; the action states what it will show. */}
-     <form
-      role="search"
-      onSubmit={(e) => { e.preventDefault(); document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' }); }}
-      className="flex flex-col sm:flex-row gap-2"
+   {/* Search and filters first, on the page's own surface (round 10). A dark hero with a slogan and a
+       four-number stats bar used to fill the first screen — on a phone, all of it — so no mentor was visible
+       without scrolling. The figures now sit in one line above the list. */}
+   <section aria-label={t('Find a mentor', 'Βρες μέντορα')} className="space-y-3">
+    <form
+     role="search"
+     onSubmit={(e) => { e.preventDefault(); document.getElementById('mentor-grid')?.scrollIntoView({ behavior: 'smooth' }); }}
+     className="flex flex-col sm:flex-row gap-2"
+    >
+     <label className="flex-1 relative min-w-0">
+      <span className="sr-only">{t('Search mentors', 'Αναζήτηση μεντόρων')}</span>
+      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" aria-hidden="true" />
+      <input
+       type="search"
+       placeholder={t('Search by expertise, company, or name...', 'Αναζήτηση με εξειδίκευση, εταιρεία ή όνομα…')}
+       value={searchQuery}
+       onChange={(e) => setSearchQuery(e.target.value)}
+       className="w-full min-h-11 pl-10 pr-4 bg-white border border-stone-200 rounded-xl text-sm text-stone-900 outline-none focus:border-stone-400 focus:ring-2 focus:ring-stone-200 transition-colors"
+      />
+     </label>
+     <button
+      type="submit"
+      className="min-h-11 px-5 bg-white border border-stone-200 text-stone-900 rounded-xl text-sm font-semibold hover:border-stone-400 transition-colors whitespace-nowrap shrink-0"
      >
-      <label className="flex-1 relative min-w-0">
-       <span className="sr-only">{t('Search mentors', 'Αναζήτηση μεντόρων')}</span>
-       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/80 pointer-events-none" aria-hidden="true" />
-       <input
-        type="search"
-        placeholder={t('Search by expertise, company, or name...', 'Αναζήτηση με εξειδίκευση, εταιρεία ή όνομα…')}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full min-h-11 pl-10 pr-4 bg-white/10 border border-white/25 rounded-xl text-sm text-white outline-none focus:border-white/60 focus:ring-2 focus:ring-white/30 transition-colors font-medium"
-       />
-      </label>
-      <button
-       type="submit"
-       className="min-h-11 px-5 bg-white text-stone-900 rounded-xl text-sm font-semibold hover:bg-stone-50 transition-colors whitespace-nowrap shrink-0"
-      >
-       {t(`Show ${filteredMentors.length} mentor${filteredMentors.length === 1 ? '' : 's'}`, `Εμφάνιση ${filteredMentors.length} ${filteredMentors.length === 1 ? 'μέντορα' : 'μεντόρων'}`)}
-      </button>
-     </form>
+      {t(`Show ${filteredMentors.length} mentor${filteredMentors.length === 1 ? '' : 's'}`, `Εμφάνιση ${filteredMentors.length} ${filteredMentors.length === 1 ? 'μέντορα' : 'μεντόρων'}`)}
+     </button>
+    </form>
 
-     <div id="mentor-filters" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-6">
-      <div role="group" aria-labelledby="mentor-filter-expertise" className="space-y-1.5 min-w-0">
-       <span id="mentor-filter-expertise" className="text-xs font-semibold text-white/85 block">{t('Expertise', 'Εξειδίκευση')}</span>
-       <div className="flex flex-wrap gap-1.5">
-        {expertiseFilters.map(filter => (
-         <button
-          key={filter}
-          type="button"
-          aria-pressed={expertiseFilter === filter}
-          onClick={() => setExpertiseFilter(filter)}
-          className={cn(
-           "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
-           expertiseFilter === filter
-            ? "bg-white text-stone-900 border-white"
-            : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-          )}
-         >
-          {filter === 'All' ? t('All', 'Όλα') : labelOf(filter)}
-         </button>
-        ))}
-       </div>
+    <div id="mentor-filters" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-6">
+     <div role="group" aria-labelledby="mentor-filter-expertise" className="space-y-1.5 min-w-0">
+      <span id="mentor-filter-expertise" className="text-xs font-semibold text-stone-500 block">{t('Expertise', 'Εξειδίκευση')}</span>
+      <div className="flex flex-wrap gap-1.5">
+       {expertiseFilters.map(filter => (
+        <button
+         key={filter}
+         type="button"
+         aria-pressed={expertiseFilter === filter}
+         onClick={() => setExpertiseFilter(filter)}
+         className={cn(
+          "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
+          expertiseFilter === filter
+           ? "bg-stone-900 text-white border-stone-900"
+           : "bg-white text-stone-600 border-stone-200 hover:border-stone-400 hover:text-stone-900"
+         )}
+        >
+         {filter === 'All' ? t('All', 'Όλα') : labelOf(filter)}
+        </button>
+       ))}
       </div>
+     </div>
 
-      <div role="group" aria-labelledby="mentor-filter-availability" className="space-y-1.5 min-w-0">
-       <span id="mentor-filter-availability" className="text-xs font-semibold text-white/85 block">{t('Availability', 'Διαθεσιμότητα')}</span>
-       <div className="flex flex-wrap gap-1.5">
-        {availableFilters.map(filter => (
-         <button
-          key={filter}
-          type="button"
-          aria-pressed={availabilityFilter === filter}
-          onClick={() => setAvailabilityFilter(filter)}
-          className={cn(
-           "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
-           availabilityFilter === filter
-            ? "bg-white text-stone-900 border-white"
-            : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-          )}
-         >
-          {filter === 'All' ? t('Any Time', 'Οποτεδήποτε') : t(filter, AVAILABILITY_EL[filter] ?? filter)}
-         </button>
-        ))}
-       </div>
+     <div role="group" aria-labelledby="mentor-filter-availability" className="space-y-1.5 min-w-0">
+      <span id="mentor-filter-availability" className="text-xs font-semibold text-stone-500 block">{t('Availability', 'Διαθεσιμότητα')}</span>
+      <div className="flex flex-wrap gap-1.5">
+       {availableFilters.map(filter => (
+        <button
+         key={filter}
+         type="button"
+         aria-pressed={availabilityFilter === filter}
+         onClick={() => setAvailabilityFilter(filter)}
+         className={cn(
+          "min-h-8 px-3 rounded-lg text-xs font-semibold border transition-colors",
+          availabilityFilter === filter
+           ? "bg-stone-900 text-white border-stone-900"
+           : "bg-white text-stone-600 border-stone-200 hover:border-stone-400 hover:text-stone-900"
+         )}
+        >
+         {filter === 'All' ? t('Any Time', 'Οποτεδήποτε') : t(filter, AVAILABILITY_EL[filter] ?? filter)}
+        </button>
+       ))}
       </div>
      </div>
     </div>
    </section>
 
-   {/* Stats Bar — every figure read from the list on screen or the reader's own sessions. */}
-   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-5 border-y border-stone-100">
-    {[
-     { label: 'Mentors', labelEl: 'Μέντορες', value: `${mentors.length}` },
-     { label: 'Verified Mentors', labelEl: 'Μέντορες με επαλήθευση', value: `${mentors.filter((m) => m.verified).length}` },
-     { label: 'Sessions Booked', labelEl: 'Συνεδρίες που κλείστηκαν', value: `${sessions.filter((s) => s.type === 'Mentorship').length}` },
-     ...(mentors.some((m) => m.rating > 0)
-      ? [{ label: 'Avg. Rating', labelEl: 'Μέση βαθμολογία', value: `${(mentors.reduce((sum, m) => sum + m.rating, 0) / mentors.filter((m) => m.rating > 0).length).toFixed(1)}/5` }]
-      : []),
-    ].map((stat) => (
-     <div key={stat.label} className="text-center space-y-1">
-      <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-      <div className="text-xs font-medium text-stone-400 tracking-wider">{t(stat.label, stat.labelEl)}</div>
-     </div>
-    ))}
-   </div>
-
    {/* Mentor Grid */}
    <div id="mentor-grid" className="space-y-4">
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-     <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Top Rated Mentors', 'Μέντορες με την υψηλότερη βαθμολογία')}</p>
+     <div className="min-w-0">
+      <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Top Rated Mentors', 'Μέντορες με την υψηλότερη βαθμολογία')}</p>
+      {/* Every figure read from the list on screen or the reader's own sessions (the former stats bar). */}
+      <FactLine
+       className="mt-1 text-xs"
+       label={t('Mentor figures', 'Στοιχεία μεντόρων')}
+       items={[
+        t(`${mentors.length} mentor${mentors.length === 1 ? '' : 's'}`, `${mentors.length} ${mentors.length === 1 ? 'μέντορας' : 'μέντορες'}`),
+        t(`${mentors.filter((m) => m.verified).length} verified`, `${mentors.filter((m) => m.verified).length} με επαλήθευση`),
+        (() => {
+         const booked = sessions.filter((s) => s.type === 'Mentorship').length;
+         return t(`${booked} session${booked === 1 ? '' : 's'} booked`, booked === 1 ? '1 συνεδρία κλεισμένη' : `${booked} συνεδρίες κλεισμένες`);
+        })(),
+        ...(mentors.some((m) => m.rating > 0)
+         ? [t(`${(mentors.reduce((sum, m) => sum + m.rating, 0) / mentors.filter((m) => m.rating > 0).length).toFixed(1)}/5 average rating`, `μέση βαθμολογία ${(mentors.reduce((sum, m) => sum + m.rating, 0) / mentors.filter((m) => m.rating > 0).length).toFixed(1)}/5`)]
+         : []),
+       ]}
+      />
+     </div>
      <div className="flex items-center gap-4">
       <button
        type="button"
@@ -281,7 +267,7 @@ export default function MentorsPage() {
        className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
       >
        <div className="relative">
-        <CoverImage src={mentor.avatar} alt={mentor.name} className="w-full h-44" fallback={<span className="text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</span>} />
+        <CoverImage src={mentor.avatar} alt={mentor.name} className="w-full h-32" fallback={<span className="text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</span>} />
         {mentor.verified && (
          <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-md border-2 border-white shadow">
           <ShieldCheck className="w-3 h-3" />

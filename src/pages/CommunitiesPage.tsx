@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { SEGMENT_TRACK, segmentItem } from '../lib/segmented';
 import CoverImage from '../components/ui/CoverImage';
 import { useT } from '../lib/language';
 import { useAuth } from '../App';
@@ -242,7 +243,7 @@ export default function CommunitiesPage() {
 
    {/* Search & Tabs */}
    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-4 border-b border-stone-100">
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className={SEGMENT_TRACK}>
      {['all', 'joined', 'trending', 'new'].map((tab) => (
       <button
        key={tab}
@@ -251,9 +252,7 @@ export default function CommunitiesPage() {
        onClick={() => setActiveTab(tab)}
        className={cn(
         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all",
-        activeTab === tab
-         ? "bg-white text-stone-900 shadow-sm border border-stone-100"
-         : "text-stone-500 hover:text-stone-900"
+        segmentItem(activeTab === tab)
        )}
       >
        {t(tab, TAB_EL[tab])}

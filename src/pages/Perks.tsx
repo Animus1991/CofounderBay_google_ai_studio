@@ -18,6 +18,7 @@ import FactLine from "../components/ui/FactLine";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePageControls } from "../lib/pageControls";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentCount, segmentItem } from "../lib/segmented";
 import { keys, listKeys, readIds } from "../lib/localLists";
 import { perkDollarTotal } from "../lib/perks";
 import { useStored } from "../lib/useStored";
@@ -148,7 +149,7 @@ export default function Perks() {
    ? t('Discounts and credits from partners.', 'Εκπτώσεις και πιστώσεις από συνεργάτες.')
    : t('Founder programs — apply on each provider\'s site.', 'Προγράμματα ιδρυτών — αίτηση στο site του παρόχου.')}>
    <div className="space-y-6">
-    <div className="scroll-tabs gap-2 bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className={cn(SEGMENT_TRACK, "gap-2")}>
      {categories.map((cat) => (
       <button
        key={cat.id}
@@ -157,14 +158,12 @@ export default function Perks() {
        onClick={() => setActiveCategory(cat.id)}
        className={cn(
         "px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
-        activeCategory === cat.id
-         ? "bg-stone-900 text-white shadow-md"
-         : "text-stone-400 hover:text-stone-900 hover:bg-stone-50"
+        segmentItem(activeCategory === cat.id)
        )}
       >
        <cat.icon className="w-3.5 h-3.5" />
        {cat.label}
-       <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", activeCategory === cat.id ? "bg-white/20 text-white" : "bg-stone-200/70 text-stone-600")}>{categoryCount(cat.id)}</span>
+       <span className={cn("min-w-5 px-1.5 rounded-full text-xs tabular-nums leading-5", segmentCount(activeCategory === cat.id))}>{categoryCount(cat.id)}</span>
       </button>
      ))}
     </div>

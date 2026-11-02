@@ -26,6 +26,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { User } from "../types";
 import { keys, readActivity, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
 import { useStored } from "../lib/useStored";
@@ -36,6 +37,7 @@ import { useAuth } from "../App";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 import EmptyHint, { AskLink } from "../components/ui/EmptyHint";
 import { DEMO_ACTIVITY, DEMO_READINESS, demoActivityDelta, demoReadinessDelta } from "../data/demoStats";
+import { demoNetworkCounts } from '../data/demoNetwork';
 import { askAssistant } from "../lib/assistantBus";
 import { useReadiness } from "../lib/readiness";
 import { profileCompleteness } from "../lib/profileCompleteness";
@@ -154,18 +156,20 @@ export default function Insights({ user }: InsightsProps) {
  const you = t('You', 'Εσύ');
  const signedPct = (n: number | null) => (n == null ? null : `${n >= 0 ? '+' : ''}${n}%`);
 
+ const network = demoNetworkCounts();
  const kpis = isDemoMode
   ? [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: `+${demoReadinessDelta()} ${t('pts', 'μον.')}`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: lastScore, href: '/profile' },
-   { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: signedPct(demoActivityDelta('views')), icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, viewSum), href: '/network' },
-   { label: t("Connections", "Συνδέσεις"), value: String(connectSum), change: signedPct(demoActivityDelta('connections')), icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, connectSum * 8), href: '/network' },
-   { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: signedPct(demoActivityDelta('messages')), icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(99, 70 + connectSum), href: '/notifications' },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${lastScore}%`, change: `+${demoReadinessDelta()} ${t('pts', 'μον.')}`, icon: Target, pct: lastScore, href: '/profile' },
+   { label: t("Profile Views", "Προβολές προφίλ"), value: String(viewSum), change: signedPct(demoActivityDelta('views')), icon: Users, pct: Math.min(100, viewSum), href: '/network' },
+   // The same people Network lists (data/demoNetwork): 3 connected, 1 request sent — not the weekly activity series.
+   { label: t("Connections", "Συνδέσεις"), value: String(network.connected), change: null, icon: Zap, pct: Math.round((network.connected / Math.max(1, network.connected + network.sent)) * 100), href: '/network', hint: t(`${network.sent} request${network.sent === 1 ? '' : 's'} sent`, network.sent === 1 ? '1 αίτημα σταλμένο' : `${network.sent} αιτήματα σταλμένα`) },
+   { label: t("Activity Score", "Δείκτης δραστηριότητας"), value: `${Math.min(99, 70 + connectSum)}%`, change: signedPct(demoActivityDelta('messages')), icon: TrendingUp, pct: Math.min(99, 70 + connectSum), href: '/notifications' },
   ]
   : [
-   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta} ${t('pts', 'μον.')}`, icon: Target, dot: "bg-amber-400", bar: "bg-amber-400", pct: readinessScore, href: '/founder-tools', hint: t(`Profile ${completeness}% complete · ${readiness.known} of 5 dimensions scored`, `Προφίλ ${completeness}% πλήρες · ${readiness.known} από 5 διαστάσεις`) },
-   { label: t("Saved people", "Αποθηκευμένοι"), value: String(saved.length), change: null, icon: Users, dot: "bg-blue-400", bar: "bg-blue-400", pct: Math.min(100, saved.length * 10), href: '/network' },
-   { label: t("Requests sent", "Αιτήματα"), value: String(requests.length), change: null, icon: Zap, dot: "bg-violet-400", bar: "bg-violet-400", pct: Math.min(100, requests.length * 12), href: '/network' },
-   { label: t("Applications", "Αιτήσεις"), value: String(tracked.length), change: null, icon: TrendingUp, dot: "bg-emerald-400", bar: "bg-emerald-400", pct: Math.min(100, tracked.length * 20), href: '/fundraising' },
+   { label: t("Readiness Score", "Δείκτης ετοιμότητας"), value: `${readinessScore}%`, change: readinessDelta == null ? null : `${readinessDelta >= 0 ? '+' : ''}${readinessDelta} ${t('pts', 'μον.')}`, icon: Target, pct: readinessScore, href: '/founder-tools', hint: t(`Profile ${completeness}% complete · ${readiness.known} of 5 dimensions scored`, `Προφίλ ${completeness}% πλήρες · ${readiness.known} από 5 διαστάσεις`) },
+   { label: t("Saved people", "Αποθηκευμένοι"), value: String(saved.length), change: null, icon: Users, pct: Math.min(100, saved.length * 10), href: '/network' },
+   { label: t("Requests sent", "Αιτήματα"), value: String(requests.length), change: null, icon: Zap, pct: Math.min(100, requests.length * 12), href: '/network' },
+   { label: t("Applications", "Αιτήσεις"), value: String(tracked.length), change: null, icon: TrendingUp, pct: Math.min(100, tracked.length * 20), href: '/fundraising' },
   ];
 
  const feed = [
@@ -200,7 +204,7 @@ export default function Insights({ user }: InsightsProps) {
    <div className="space-y-5">
 
     {/* Time range tab bar */}
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className={SEGMENT_TRACK}>
      {['24H', '7D', '30D', 'ALL'].map((range) => (
       <button
        key={range}
@@ -209,7 +213,7 @@ export default function Insights({ user }: InsightsProps) {
        onClick={() => setActiveRange(range)}
        className={cn(
         "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all tracking-wide",
-        activeRange === range ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
+        segmentItem(activeRange === range)
        )}
       >
         {range === 'ALL' ? t('ALL', 'Όλα') : range}
@@ -246,7 +250,8 @@ export default function Insights({ user }: InsightsProps) {
          initial={{ width: 0 }}
          animate={{ width: `${stat.pct}%` }}
          transition={{ duration: 1.2, delay: i * 0.1, ease: "circOut" }}
-         className={cn("h-full rounded-full", stat.bar)}
+         // One neutral fill (Primer: colour only where it means something); four hues read as four warnings.
+         className="h-full rounded-full bg-stone-900"
         />
        </div>
       </div>
@@ -347,7 +352,7 @@ export default function Insights({ user }: InsightsProps) {
       <Card className="p-4 border-stone-100 bg-white" contentClassName="space-y-3">
        <div>
         <h3 className="text-sm font-semibold text-stone-900">{t('Activity Feed', 'Ροή δραστηριότητας')}</h3>
-        <p className="text-xs text-stone-400">{isDemoMode ? t('Sample ecosystem updates', 'Δειγματικές ενημερώσεις οικοσυστήματος') : t('Your recent activity', 'Η πρόσφατη δραστηριότητά σου')}</p>
+        <p className="text-xs text-stone-400">{isDemoMode && studioActivity.length === 0 ? t('Sample ecosystem updates', 'Δειγματικές ενημερώσεις οικοσυστήματος') : t('Your recent activity', 'Η πρόσφατη δραστηριότητά σου')}</p>
        </div>
        <div className="space-y-3">
         {feed.length === 0 && (

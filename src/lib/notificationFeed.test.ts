@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useNotificationFeed } from './notificationFeed';
+import { noteGroup, useNotificationFeed } from './notificationFeed';
 import { logActivity, resetAllLists, scopedKey, setDataScope } from './localLists';
 
 let cloudItems: { id: string; type: string; title: string; titleEl: string; body: string; bodyEl: string; read: boolean; createdAt: number }[] = [];
@@ -86,5 +86,20 @@ describe('notification feed', () => {
     act(() => result.current.clearAll());
     expect(result.current.items.length).toBe(0);
     expect(result.current.unread).toBe(0);
+  });
+});
+
+describe('note groups', () => {
+  it('puts what members sent under "From members", whatever store it came from', () => {
+    expect(noteGroup({ type: 'message', origin: 'seed' })).toBe('people');
+    expect(noteGroup({ type: 'match', origin: 'seed' })).toBe('people');
+    expect(noteGroup({ type: 'event', origin: 'cloud' })).toBe('people');
+    expect(noteGroup({ type: 'milestone', origin: 'seed' })).toBe('activity');
+    expect(noteGroup({ type: 'investor', origin: 'derived' })).toBe('activity');
+    expect(noteGroup({ type: 'milestone', origin: 'activity' })).toBe('activity');
+    expect(noteGroup({ type: 'system', origin: 'seed' })).toBe('platform');
+    // Own steps logged with a generic icon are still the account's activity.
+    expect(noteGroup({ type: 'system', origin: 'activity' })).toBe('activity');
+    expect(noteGroup({ type: 'message', origin: 'activity' })).toBe('activity');
   });
 });
