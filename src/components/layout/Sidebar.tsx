@@ -159,16 +159,20 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     onClick={(event) => { if ((event.target as HTMLElement).closest('a')) setMobileOpen?.(false); }}
     className={cn(
-     "h-full bg-white border-r border-stone-200/60 flex flex-col shrink-0 overflow-hidden relative z-[70]",
+     "sidebar-shell h-full bg-white border-r border-stone-200/60 flex flex-col shrink-0 overflow-hidden relative z-[70]",
      "fixed inset-y-0 left-0 lg:relative lg:translate-x-0 transition-all duration-300 ease-in-out",
      !mobileOpen && "-translate-x-full lg:translate-x-0"
     )}
    >
-    {/* Brand Section */}
-    <div className={cn(
-     "px-4 py-[0.85rem] flex items-center gap-3 border-b border-stone-100 min-h-[3.395rem]",
-     collapsed ? "justify-center" : "justify-between"
-    )}>
+    {/* Brand Section. From tablet up it uses the active theme, and on web it
+        shares the page header's height. The two lines keep a fixed 4px gap. */}
+    <div
+     data-sidebar-brand=""
+     className={cn(
+      "sidebar-brand studio-topbar px-4 py-[0.85rem] flex items-center gap-3 border-b border-stone-100 min-h-[3.395rem]",
+      collapsed ? "justify-center" : "justify-between"
+     )}
+    >
      <div className="flex items-center gap-2.5 overflow-hidden">
       {/* Mobile hamburger */}
       <button
@@ -176,7 +180,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        onClick={onMenuToggle}
        aria-label={bothText("Close menu", "Κλείσιμο μενού")}
        aria-controls="primary-navigation"
-       className="lg:hidden p-1.5 hover:bg-stone-100 rounded-lg text-stone-500"
+       className="sidebar-brand-menu lg:hidden p-1.5 hover:bg-stone-100 rounded-lg text-stone-500"
       >
        <Menu className="w-4 h-4" />
       </button>
@@ -188,7 +192,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        whileHover={{ scale: 1.05 }}
        whileTap={{ scale: 0.95 }}
        onClick={() => { if (isMobileViewport) setMobileOpen?.(false); else setCollapsed(!collapsed); }}
-       className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2"
+       className="sidebar-brand-mark w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center shrink-0 shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2"
        title={withEl(collapsed ? "Expand sidebar" : "Collapse sidebar")}
       >
        {tenant?.branding?.logoUrl ? (
@@ -201,10 +205,10 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        <motion.div 
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        className="flex flex-col whitespace-nowrap"
+        className="sidebar-brand-copy flex shrink-0 flex-col gap-1 whitespace-nowrap"
        >
-        <p className="text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</p>
-        <span className="text-xs font-medium text-stone-400 tracking-wide mt-1">{withEl("Ecosystem Hub")}</span>
+        <p className="sidebar-brand-title shrink-0 text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</p>
+        <span className="sidebar-brand-subtitle shrink-0 text-xs font-medium leading-4 tracking-wide text-stone-400">{withEl("Ecosystem Hub")}</span>
        </motion.div>
       )}
      </div>

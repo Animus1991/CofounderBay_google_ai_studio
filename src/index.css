@@ -764,6 +764,73 @@ input.h-8 {
 }
 
 /*
+ * Web and tablet: the sidebar brand (logo + name + “Ecosystem Hub”) uses the
+ * same accent as the page header. On web the two frames share one height.
+ * The two lines keep a fixed 4px gap and their own line heights, so matching
+ * the frame does not pull them together.
+ */
+@media (min-width: 768px) {
+  .sidebar-brand {
+    background-color: var(--cfb-accent);
+    border-bottom-color: var(--cfb-accent);
+    color: #fff;
+  }
+  .sidebar-brand .sidebar-brand-title,
+  .sidebar-brand .sidebar-brand-subtitle,
+  .sidebar-brand .sidebar-brand-menu {
+    color: #fff;
+  }
+  .sidebar-brand .sidebar-brand-menu:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+  .sidebar-brand .sidebar-brand-mark {
+    background-color: transparent;
+    border: 1px solid #fff;
+    box-shadow: none;
+    color: #fff;
+  }
+  .sidebar-brand .sidebar-brand-mark svg {
+    color: #fff;
+    stroke: #fff;
+  }
+  .sidebar-brand .sidebar-brand-copy {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .sidebar-brand .sidebar-brand-title {
+    line-height: 1;
+  }
+  .sidebar-brand .sidebar-brand-subtitle {
+    line-height: 1rem;
+    margin-top: 0;
+  }
+}
+/* Tablet: the drawer sits on the header, so the brand and the bar to its right
+   read as one strip. The phone header is already 3.395rem. */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .sidebar-shell {
+    z-index: 90;
+  }
+  .sidebar-brand {
+    height: 3.395rem;
+    min-height: 3.395rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    box-sizing: border-box;
+  }
+}
+/* Web: one bar across the sidebar and the rest of the page. */
+@media (min-width: 1024px) {
+  .studio-topbar {
+    height: 2.95rem;
+    min-height: 2.95rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    box-sizing: border-box;
+  }
+}
+
+/*
  * Page type, taken from cofoundersbay branch claude/project-audit-upgrade-y2ebnr
  * (the newest branch, 28 Oct 2026). That app paints every content heading on
  * one title step: 13.582px on a phone, 16.765px from the desktop root. Its

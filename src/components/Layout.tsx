@@ -281,7 +281,7 @@ export default function Layout() {
           onMenuToggle={toggleMobileSidebar}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="theme-chrome-frame hidden shrink-0 items-center justify-between gap-3 border-b px-6 py-[0.485rem] lg:flex">
+          <div className="theme-chrome-frame studio-topbar hidden shrink-0 items-center justify-between gap-3 border-b px-6 lg:flex">
             <div className="flex items-center gap-2 text-xs min-w-0 text-white">
               <span className="font-semibold shrink-0">CoFounderBay Studio</span>
               <span>·</span>
