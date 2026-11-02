@@ -119,4 +119,4 @@
 | typecheck, lint (0 warnings), links, νεκρά κουμπιά | ✅ |
 | Bundle entry | 506 / 560 KB |
 | Οπτικός έλεγχος | Dashboard (light, dark, 390px), Founder Tools (πίνακας, αιτήσεις), Ορόσημα, Ημερολόγιο (light, dark), Χώρος Εργασίας. Το cap table ανοίγει με τα νούμερα του assistant. |
-| E2E | βλ. PR |
+| E2E | 86/87 στο πλήρες τρέξιμο, μαζί με τα `a11y-themes` (6 θέματα) και `mobile-chrome`. Η μία αποτυχία (`a11y` στο `/dashboard`) ήταν πλοήγηση της σελίδας ενώ έτρεχε το axe, όχι παράβαση. Ξανατρέχοντας μόνο αυτό, πέρασε 3/3. |
