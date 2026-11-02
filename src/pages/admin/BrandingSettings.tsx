@@ -5,6 +5,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Palette, Layout, Globe, Check, RefreshCcw, Save, Zap } from 'lucide-react';
 import { useT } from '../../lib/language';
+import { SEGMENT_TRACK, segmentItem } from '../../lib/segmented';
 
 interface BrandingSettingsProps {
  user: User;
@@ -77,11 +78,11 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
     </div>
    </div>
 
-   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-lg">
+   <div className={SEGMENT_TRACK}>
     <button
      onClick={() => setActiveTab('theme')}
      className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-      activeTab === 'theme' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
+      segmentItem(activeTab === 'theme')
      }`}
     >
      <Palette className="w-3.5 h-3.5" />
@@ -90,7 +91,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
     <button
      onClick={() => setActiveTab('content')}
      className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-      activeTab === 'content' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
+      segmentItem(activeTab === 'content')
      }`}
     >
      <Layout className="w-3.5 h-3.5" />
@@ -99,7 +100,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
     <button
      onClick={() => setActiveTab('preview')}
      className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-      activeTab === 'preview' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
+      segmentItem(activeTab === 'preview')
      }`}
     >
      <Globe className="w-3.5 h-3.5" />

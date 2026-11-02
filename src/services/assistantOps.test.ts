@@ -4,6 +4,7 @@ import { readSwitches } from '../lib/privacySwitches';
 import { useUIStore } from '../stores/useUIStore';
 import { getLang } from '../lib/language';
 import { runAssistant } from './assistantOps';
+import { capTable } from '../lib/entities';
 import { readUxPrefs, writeUxPrefs } from '../lib/personalization';
 import { trackVisit } from '../lib/usage';
 
@@ -350,6 +351,22 @@ describe('proposals', () => {
     expect(readSaved().some((item) => item.id === 'marcus-thorne')).toBe(true);
     await result.proposal!.undo!();
     expect(readSaved()).toHaveLength(0);
+  });
+
+  it('proposes a shareholder for the cap table, writes on confirm, restores on undo', async () => {
+    const before = capTable.read();
+    const result = runAssistant('Add Maria Papadopoulou as a shareholder with 500k shares', demo, { propose: true });
+    expect(result.tool).toBe('cap-table-add');
+    expect(result.proposal?.reversal).toBe('full');
+    expect(capTable.read()).toEqual(before);
+    const final = await result.proposal!.apply();
+    expect(final.en).toContain('Added Maria Papadopoulou with 500,000 shares');
+    expect(capTable.read().at(-1)).toEqual({ name: 'Maria Papadopoulou', shares: 500_000 });
+    // The priced-round model now reads the new line too.
+    expect(runAssistant('Model raising 2M at 8M pre-money', demo).en).toContain('Founders and other common holders');
+    await result.proposal!.undo!();
+    expect(capTable.read()).toEqual(before);
+    expect(runAssistant('Πρόσθεσε μέτοχο τη Μαρία με 500 χιλ. μετοχές', demo, { propose: true }).tool).toBe('cap-table-add');
   });
 
   it('proposes a milestone add and removes it on undo', async () => {

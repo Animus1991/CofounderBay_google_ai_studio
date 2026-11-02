@@ -35,6 +35,7 @@ import { SkeletonList } from "../../components/ui/Skeleton";
 import { automationService } from "../../services/automationService";
 import { AutomationRule, AutomationExecution, AutomationLog, User, EmailTemplate, NotificationTemplate } from "../../types";
 import { cn } from "../../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../../lib/segmented";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDateTime, formatTime } from "../../lib/dates";
@@ -269,7 +270,7 @@ const logMessage = (message: string) => {
    </div>
 
    {/* Tabs */}
-   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-lg">
+   <div className={SEGMENT_TRACK}>
     {[
      { id: 'rules', label: t('Workflow Rules', 'Κανόνες ροών'), icon: Settings2 },
      { id: 'executions', label: t('Recent Executions', 'Πρόσφατες εκτελέσεις'), icon: Activity },
@@ -281,9 +282,7 @@ const logMessage = (message: string) => {
       onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={cn(
        "flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-medium transition-all",
-       activeTab === tab.id 
-        ? "bg-white text-stone-900 shadow-sm" 
-        : "text-stone-400 hover:text-stone-600"
+       segmentItem(activeTab === tab.id)
       )}
      >
       <tab.icon className="w-3.5 h-3.5" />

@@ -20,6 +20,8 @@ import AssistantReplyCard from "../components/AssistantReplyCard";
 import Button from "../components/ui/Button";
 import PageShell from "../components/ui/PageShell";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
+import CoverImage from "../components/ui/CoverImage";
 import { bothText, labelOf } from "../lib/labels";
 import { useLanguage, type LangMode } from "../lib/language";
 import { keys, readNotificationPrefs, readPlan, readValue, resetAllLists, writeNotificationPrefs, writePlan, writeProfileLocal, writeValue, type NotificationPrefs, type PlanId } from "../lib/localLists";
@@ -403,17 +405,18 @@ export default function Settings() {
     >
     <div className="space-y-6">
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {/* The same segmented strip as every other page (lib/segmented): the black, full-width buttons read as four
+          primary actions. */}
+      <div className={SEGMENT_TRACK}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            aria-pressed={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-colors",
-              activeTab === tab.id
-                ? "bg-stone-900 text-white"
-                : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50",
+              "flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all",
+              segmentItem(activeTab === tab.id),
             )}
           >
             <tab.icon className="h-4 w-4 shrink-0" />
@@ -455,13 +458,8 @@ export default function Settings() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <div className="h-20 w-20 overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
-                  {form.photo ? (
-                    <img src={form.photo} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-stone-400">
-                      <User className="h-6 w-6" />
-                    </div>
-                  )}
+                  {/* A photo that fails to load shows the placeholder, not a broken-image icon. */}
+                  <CoverImage src={form.photo || null} alt="" className="h-full w-full" icon={User} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-stone-900">{form.fullName || t("Your name", "Το όνομά σου")}</p>

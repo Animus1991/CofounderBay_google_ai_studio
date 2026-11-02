@@ -15,17 +15,31 @@ import { DEMO_ACTIVITY, demoWeeklyViews } from '../data/demoStats';
 import { DEMO_CONNECTIONS, demoNetworkCounts } from '../data/demoNetwork';
 
 const pages = path.resolve(__dirname, '../pages');
-const memberPages = fs
-  .readdirSync(pages)
-  .filter((name) => name.endsWith('.tsx') && !name.includes('.test.'))
-  .map((name) => ({ name, text: fs.readFileSync(path.join(pages, name), 'utf8') }));
+function pageFiles(dir: string, prefix = ''): { name: string; text: string }[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return pageFiles(path.join(dir, entry.name), `${prefix}${entry.name}/`);
+    if (!entry.name.endsWith('.tsx') || entry.name.includes('.test.')) return [];
+    return [{ name: `${prefix}${entry.name}`, text: fs.readFileSync(path.join(dir, entry.name), 'utf8') }];
+  });
+}
+
+// Member pages and the admin / settings / superadmin pages under them.
+const memberPages = pageFiles(pages);
+
+/** Pages that keep their own strip by the owner's choice: Insights' dark range picker (round 11). */
+const OWN_STYLE = new Set(['Insights.tsx']);
 
 describe('ui consistency', () => {
   it('draws member tab strips with the shared segmented style', () => {
-    const handRolled = memberPages.filter(({ text }) => text.includes('"scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100"'));
+    const handRolled = memberPages.filter(({ name }) => !OWN_STYLE.has(name)).filter(({ text }) => text.includes('"scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100"'));
     expect(handRolled.map(({ name }) => name)).toEqual([]);
-    // No selected tab painted as a primary button inside a segmented strip.
-    const blackTabs = memberPages.filter(({ text }) => /SEGMENT_TRACK[\s\S]{0,900}\? "bg-stone-900 text-white/.test(text));
+    const adminTracks = memberPages.filter(({ text }) => /"scroll-tabs p-1 bg-stone-100/.test(text));
+    expect(adminTracks.map(({ name }) => name)).toEqual([]);
+    // No selected tab painted as a primary button, inside a segmented strip or as a row of section buttons
+    // (Settings drew its four sections as four black/white buttons).
+    const blackTabs = memberPages
+      .filter(({ name }) => !OWN_STYLE.has(name))
+      .filter(({ text }) => /SEGMENT_TRACK[\s\S]{0,900}\? "bg-stone-900 text-white/.test(text) || /activeTab === [\w.'"]+\s*\n?\s*\? ["']bg-stone-900 text-white/.test(text));
     expect(blackTabs.map(({ name }) => name)).toEqual([]);
   });
 

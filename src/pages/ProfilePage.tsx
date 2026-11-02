@@ -676,10 +676,11 @@ export default function ProfilePage() {
    </button>
    {/* Profile Header */}
    <div className="relative">
-    <div className="h-24 sm:h-32 bg-stone-200 rounded-xl overflow-hidden relative" />
+    {/* No cover band: there is no cover image to show, and the empty grey strip pushed the name and
+        the main action 65–100px down on every profile (round 11). */}
 
     {/* Profile Info Card */}
-    <div className="bg-white rounded-2xl border border-stone-100 p-4 sm:p-8 lg:p-10 -mt-10 sm:-mt-16 relative z-10">
+    <div className="bg-white rounded-2xl border border-stone-100 p-4 sm:p-8 lg:p-10 relative z-10">
      <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start">
       <div className="relative">
        {(() => {

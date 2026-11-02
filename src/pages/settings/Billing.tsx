@@ -14,6 +14,7 @@ import { useStored } from "../../lib/useStored";
 import { useAuth } from "../../App";
 import Badge from "../../components/ui/Badge";
 import { statusTone } from "../../lib/statusTone";
+import { SEGMENT_TRACK, segmentItem } from "../../lib/segmented";
 
 type PayCard = { id: string; brand: string; last4: string; expiry: string };
 
@@ -126,7 +127,7 @@ export default function Billing({ user }: BillingProps) {
    </div>
 
    {/* Tabs */}
-   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
+   <div className={SEGMENT_TRACK}>
     {[
      { id: 'plan', label: t('Current Plan', 'Τρέχον πακέτο'), icon: Zap },
      { id: 'payment', label: t('Payment Method', 'Μέθοδος πληρωμής'), icon: CreditCard },
@@ -138,9 +139,7 @@ export default function Billing({ user }: BillingProps) {
       aria-pressed={activeTab === tab.id}
       onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
-       activeTab === tab.id 
-        ? "bg-white text-stone-900 shadow-sm" 
-        : "text-stone-400 hover:text-stone-600"
+       segmentItem(activeTab === tab.id)
       }`}
      >
       <tab.icon className="w-4 h-4" />
