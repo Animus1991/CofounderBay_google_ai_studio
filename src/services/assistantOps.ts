@@ -7,6 +7,7 @@ import { fold, hasStem } from './assistantText';
 import { routePipeline, parseDay } from './assistantPipeline';
 import { parseTime } from './assistantTime';
 import { agendaFor, type AgendaItem } from '../lib/agenda';
+import { RECAP_AREAS, weeklyRecap } from '../lib/weeklyRecap';
 import { setEventRegistration } from '../lib/eventRegistration';
 import { atDaysFromToday } from '../data/demoClock';
 import { updateStudioTask, insertStudioTask, readSessions, eventListKeys } from '../lib/localLists';
@@ -75,10 +76,11 @@ import {
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
-import { savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
+import { capTable, roundSafes, savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
 import { currentReadiness } from '../lib/readiness';
 import { profileCompleteness } from '../lib/profileCompleteness';
-import { formatMoney, formatPct, safeOwnershipAtCap } from '../lib/equity';
+import { formatMoney, formatPct, modelPricedRound, safeOwnershipAtCap } from '../lib/equity';
+import { parseRoundQuery, type RoundQuery } from '../lib/roundQuery';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
 import { setGlobalLang } from '../lib/language';
@@ -283,6 +285,7 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/next', en: 'What to do first', el: 'Τι να κάνεις πρώτα' },
   { cmd: '/canvas', en: 'Read or update Lean Canvas sections', el: 'Διάβασε ή ενημέρωσε το Lean Canvas' },
   { cmd: '/builder', en: 'Read or fill Startup Builder modules', el: 'Διάβασε ή συμπλήρωσε το Startup Builder' },
+  { cmd: '/completeness', en: 'How complete your profile is, and what to add first', el: 'Πόσο πλήρες είναι το προφίλ σου και τι να προσθέσεις πρώτα' },
   { cmd: '/readiness', en: 'Inspect or update Venture Readiness Index', el: 'Έλεγξε ή ενημέρωσε τον Δείκτη Ετοιμότητας' },
   { cmd: '/6axis', en: 'Open 6-Axis Match Breakdown (or /6axis Sarah)', el: 'Άνοιξε το modal Ανάλυσης 6 Αξόνων (ή /6axis Sarah)' },
   { cmd: '/dealroom', en: 'Open Startup Deal Room & Pitch Deck modal', el: 'Άνοιξε το modal Deal Room & Pitch Deck' },
@@ -299,7 +302,8 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον περιηγητή' },
   { cmd: '/plan', en: 'Write a 7-day match plan', el: 'Γράψε πλάνο 7 ημερών' },
   { cmd: '/invite', en: 'Prepare three founder invites', el: 'Ετοίμασε τρεις προσκλήσεις ιδρυτών' },
-  { cmd: '/round', en: 'Read the fundraising round', el: 'Διάβασε τον γύρο χρηματοδότησης' },
+  { cmd: '/round', en: 'Read the round, or model one: /round 2M at 8M pre, pool 10%', el: 'Διάβασε τον γύρο ή μοντελοποίησε: /round 2M at 8M pre, pool 10%' },
+  { cmd: '/recap', en: 'Your week: steps, active days, streak, what is next', el: 'Η εβδομάδα σου: βήματα, ενεργές ημέρες, σερί, τι ακολουθεί' },
   { cmd: '/quiz', en: 'Open or recall the fit check', el: 'Άνοιξε ή θυμήσου το fit check' },
   { cmd: '/overdue', en: 'List overdue milestones', el: 'Δείξε εκπρόθεσμα ορόσημα' },
   { cmd: '/pitch', en: 'Pitch deck status, or /pitch problem: text', el: 'Κατάσταση pitch deck, ή /pitch problem: κείμενο' },
@@ -1531,6 +1535,58 @@ function roundResult(): AssistantResult {
       { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
       { href: '/founder-tools?tab=tools&tool=captable', en: 'Model the next round', el: 'Μοντελοποίηση επόμενου γύρου' },
     ],
+    followUps: [{ en: 'Model raising 2M at 8M pre-money', el: 'Μοντελοποίησε γύρο 2M σε 8M pre-money' }],
+  };
+}
+
+/**
+ * "Model raising 2M at 8M pre (pool 10%)" — the priced round on the founder's
+ * own cap table, with the round's SAFEs converting: the same model
+ * (lib/equity modelPricedRound) and the same inputs as Founder Tools → Cap
+ * table, whose link opens with these numbers. A read: nothing is saved.
+ */
+function modelRoundResult(input: RoundQuery): AssistantResult {
+  const round = readRound();
+  const safes = roundSafes(round);
+  const poolPct = input.poolPct ?? 10;
+  const priced = modelPricedRound({ holders: capTable.read(), safes, preMoney: input.preMoney, investment: input.investment, targetPoolPost: poolPct / 100, investorName: 'New investors' });
+  const href = `/founder-tools?tab=tools&tool=captable&pre=${input.preMoney}&raise=${input.investment}&pool=${poolPct}`;
+  const links: AssistantLink[] = [
+    { href, en: 'Open the cap table with these numbers', el: 'Άνοιγμα του cap table με αυτά τα νούμερα' },
+    { href: '/fundraising', en: 'Open fundraising', el: 'Άνοιγμα χρηματοδότησης' },
+  ];
+  const sources: AssistantSource[] = [
+    { kind: 'cap-table', en: 'Your cap table (Founder Tools)', el: 'Το cap table σου (Founder Tools)', href: '/founder-tools?tab=tools&tool=captable' },
+    { kind: 'round', en: `${round.name} (Fundraising)`, el: `${round.name} (Χρηματοδότηση)`, href: '/fundraising' },
+  ];
+  if (!priced.ok) {
+    const why = {
+      'no-shares': ['Your cap table has no shares yet — add the founders’ shares first.', 'Το cap table σου δεν έχει ακόμη μετοχές — πρόσθεσε πρώτα τις μετοχές των ιδρυτών.'],
+      'no-valuation': ['That pre-money is not above zero.', 'Το pre-money δεν είναι πάνω από το μηδέν.'],
+      'safes-exceed-cap': ['Your round’s SAFEs already own 100% or more at their cap — check the committed amount and cap on Fundraising.', 'Τα SAFE του γύρου σου κατέχουν ήδη 100% ή περισσότερο στο cap τους — έλεγξε τα δεσμευμένα και το cap στη Χρηματοδότηση.'],
+    }[priced.problem ?? 'no-valuation'];
+    return { tool: 'model-round', en: `I can’t model that round: ${why[0]}`, el: `Δεν μπορώ να μοντελοποιήσω αυτόν τον γύρο: ${why[1]}`, href, links, sources };
+  }
+  const investor = priced.rows.find((row) => row.kind === 'investor');
+  const common = priced.rows.filter((row) => row.kind === 'common');
+  const commonBefore = common.reduce((sum, row) => sum + row.pctBefore, 0);
+  const commonAfter = common.reduce((sum, row) => sum + row.pctAfter, 0);
+  const safeRows = priced.rows.filter((row) => row.kind === 'safe');
+  const by = { cap: ['the cap', 'το cap'], discount: ['the discount', 'την έκπτωση'], 'round price': ['the round price', 'την τιμή του γύρου'] } as const;
+  const safeEn = safeRows.map((row) => ` ${row.name} convert at ${by[row.convertedBy ?? 'round price'][0]} ($${(row.pricePerShare ?? 0).toFixed(4)}/share) → ${formatPct(row.pctAfter)}.`).join('');
+  const safeEl = safeRows.map((row) => ` Τα ${row.name} μετατρέπονται με ${by[row.convertedBy ?? 'round price'][1]} ($${(row.pricePerShare ?? 0).toFixed(4)}/μετοχή) → ${formatPct(row.pctAfter)}.`).join('');
+  const poolEn = priced.poolIncrease > 0 ? ` The pool grows by ${Math.round(priced.poolIncrease).toLocaleString('en-US')} options before the money comes in (option pool shuffle), so existing holders carry it.` : '';
+  const poolEl = priced.poolIncrease > 0 ? ` Το pool μεγαλώνει κατά ${Math.round(priced.poolIncrease).toLocaleString('el-GR')} options πριν μπουν τα χρήματα (option pool shuffle), οπότε το επωμίζονται οι υπάρχοντες μέτοχοι.` : '';
+  const postNote = input.fromPost ? [' (from the post-money you gave)', ' (από το post-money που έδωσες)'] : ['', ''];
+  const poolAsk = input.poolPct == null ? [' Say “pool 15%” to change the pool.', ' Πες «pool 15%» για να αλλάξεις το pool.'] : ['', ''];
+  return {
+    tool: 'model-round',
+    en: `Priced round: ${formatMoney(input.investment)} at ${formatMoney(input.preMoney)} pre-money${postNote[0]} = ${formatMoney(priced.postMoney)} post, option pool ${poolPct}% after the round. Price per share $${priced.pricePerShare.toFixed(4)}; new investors own ${formatPct(investor?.pctAfter ?? 0)}.${safeEn}${poolEn} Founders and other common holders go from ${formatPct(commonBefore)} to ${formatPct(commonAfter)} (−${priced.founderDilutionPts.toFixed(2)} pts). Nothing is saved — the same model as Founder Tools → Cap table.${poolAsk[0]}`,
+    el: `Γύρος με τιμή: ${formatMoney(input.investment)} σε ${formatMoney(input.preMoney)} pre-money${postNote[1]} = ${formatMoney(priced.postMoney)} post, option pool ${poolPct}% μετά τον γύρο. Τιμή ανά μετοχή $${priced.pricePerShare.toFixed(4)}· οι νέοι επενδυτές κατέχουν ${formatPct(investor?.pctAfter ?? 0)}.${safeEl}${poolEl} Οι ιδρυτές και οι λοιποί κάτοχοι κοινών μετοχών πάνε από ${formatPct(commonBefore)} σε ${formatPct(commonAfter)} (−${priced.founderDilutionPts.toFixed(2)} μονάδες). Δεν αποθηκεύεται τίποτα — το ίδιο μοντέλο με το Founder Tools → Cap table.${poolAsk[1]}`,
+    href,
+    links,
+    followUps: [{ en: 'What is my round status?', el: 'Πώς πάει ο γύρος μου;' }],
+    sources,
   };
 }
 
@@ -1881,6 +1937,55 @@ function activityResult(): AssistantResult {
     el: `Το ίδιο feed με τις Ειδοποιήσεις (${unreadEl}):\n${items.map((item) => item.titleEl || item.title).join('\n')}`,
     href: '/notifications',
     links: [{ href: '/notifications', en: 'Open notifications', el: 'Άνοιγμα ειδοποιήσεων' }, { href: '/insights', en: 'Open insights', el: 'Άνοιγμα εικόνας' }],
+  };
+}
+
+/**
+ * "What did I do this week?" — the same recap as the dashboard's "Your week"
+ * card (lib/weeklyRecap: actions against last week, active days, streak,
+ * areas), the newest steps, and what is on the agenda for the next seven days.
+ */
+function weeklyRecapResult(): AssistantResult {
+  const recap = weeklyRecap(readActivity());
+  const upcoming = agendaFor('week');
+  const links: AssistantLink[] = [
+    { href: '/notifications', en: 'Open activity', el: 'Άνοιγμα δραστηριότητας' },
+    { href: '/calendar', en: 'Open calendar', el: 'Άνοιγμα ημερολογίου' },
+  ];
+  const sources: AssistantSource[] = [
+    { kind: 'activity', en: 'Activity feed (last 14 days)', el: 'Ροή δραστηριότητας (τελευταίες 14 ημέρες)', href: '/notifications' },
+    { kind: 'agenda', en: 'Agenda (next 7 days)', el: 'Πρόγραμμα (επόμενες 7 ημέρες)', href: '/calendar' },
+  ];
+  const nextEn = upcoming.length ? `Next 7 days: ${upcoming.length} on the agenda — first “${upcoming[0]!.title}”.` : 'Nothing on the agenda for the next 7 days yet.';
+  const nextEl = upcoming.length ? `Επόμενες 7 ημέρες: ${upcoming.length} στο πρόγραμμα — πρώτο «${upcoming[0]!.title}».` : 'Τίποτα ακόμη στο πρόγραμμα για τις επόμενες 7 ημέρες.';
+  if (recap.total === 0) {
+    return {
+      tool: 'weekly-recap',
+      en: `No steps logged this week yet${recap.previous ? ` (last week: ${recap.previous})` : ''}. Every task, milestone, connection, round update or profile edit counts — including the ones I make for you. ${nextEn}`,
+      el: `Δεν έχει καταγραφεί ακόμη κανένα βήμα αυτή την εβδομάδα${recap.previous ? ` (την προηγούμενη: ${recap.previous})` : ''}. Μετράει κάθε εργασία, ορόσημο, σύνδεση, ενημέρωση γύρου ή αλλαγή προφίλ — και όσα κάνω εγώ για σένα. ${nextEl}`,
+      href: '/notifications',
+      links,
+      followUps: [{ en: 'What should I do today?', el: 'Τι να κάνω σήμερα;' }],
+      sources,
+    };
+  }
+  const changeEn = recap.previous === 0 ? '' : recap.change === 0 ? ', the same as last week' : `, ${recap.change > 0 ? `${recap.change} more` : `${-recap.change} fewer`} than last week (${recap.previous})`;
+  const changeEl = recap.previous === 0 ? '' : recap.change === 0 ? ', όσα και την προηγούμενη' : `, ${recap.change > 0 ? `${recap.change} περισσότερα` : `${-recap.change} λιγότερα`} από την προηγούμενη (${recap.previous})`;
+  const areasEn = recap.areas.map((entry) => `${RECAP_AREAS[entry.area].en} ${entry.count}`).join(' · ');
+  const areasEl = recap.areas.map((entry) => `${RECAP_AREAS[entry.area].el} ${entry.count}`).join(' · ');
+  const streakEn = recap.streak > 1 ? ` Streak: ${recap.streak} days in a row.` : '';
+  const streakEl = recap.streak > 1 ? ` Σερί: ${recap.streak} συνεχόμενες ημέρες.` : '';
+  const assistantEn = recap.byAssistant ? ` ${recap.byAssistant} of them I proposed and you confirmed.` : '';
+  const assistantEl = recap.byAssistant ? ` ${recap.byAssistant} από αυτά τα πρότεινα εγώ και τα επιβεβαίωσες.` : '';
+  const steps = (el: boolean) => recap.highlights.map((item) => `• ${el ? item.titleEl || item.title : item.title}`).join('\n');
+  return {
+    tool: 'weekly-recap',
+    en: `This week: ${recap.total} ${recap.total === 1 ? 'step' : 'steps'} on ${recap.activeDays} of 7 days${changeEn}.${areasEn ? ` ${areasEn}.` : ''}${streakEn}${assistantEn}\nLatest:\n${steps(false)}\n${nextEn}`,
+    el: `Αυτή την εβδομάδα: ${recap.total} ${recap.total === 1 ? 'βήμα' : 'βήματα'} σε ${recap.activeDays} από 7 ημέρες${changeEl}.${areasEl ? ` ${areasEl}.` : ''}${streakEl}${assistantEl}\nΤελευταία:\n${steps(true)}\n${nextEl}`,
+    href: '/notifications',
+    links,
+    followUps: [{ en: 'What should I do today?', el: 'Τι να κάνω σήμερα;' }, { en: "What's on this week", el: 'Τι έχω αυτή την εβδομάδα' }],
+    sources,
   };
 }
 
@@ -3434,6 +3539,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'builder') return builderResult(rest ? `/builder ${rest}` : query, propose);
     if (cmd === 'readiness') return readinessResult(rest || query, propose, profile);
     if (cmd === 'completeness' || cmd === 'profile-check') return completenessResult(profile);
+    if (cmd === 'recap' || cmd === 'week') return weeklyRecapResult();
     if (cmd === '6axis') return studioModalResult('6axis', rest || query, profile);
     if (cmd === 'dealroom') return studioModalResult('dealroom', rest || query, profile);
     if (cmd === 'needwall') return studioModalResult('needwall', rest || query, profile);
@@ -3449,7 +3555,10 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'inbox') return inboxResult(rest || query);
     if (cmd === 'plan') return playbookResult(propose);
     if (cmd === 'invite') return inviteResult(propose);
-    if (cmd === 'round') return roundResult();
+    if (cmd === 'round') {
+      const priced = rest ? parseRoundQuery(fold(`round ${rest}`)) : null;
+      return priced ? modelRoundResult(priced) : roundResult();
+    }
     if (cmd === 'quiz') return fitCheckResult();
     if (cmd === 'overdue' || cmd === 'due') return milestonesResult(rest || 'what is overdue', propose);
     if (cmd === 'help') return helpResult();
@@ -3465,6 +3574,8 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (eventReg) return eventReg;
   const answer = answerRequestResult(query, propose);
   if (answer) return answer;
+  // "What did I do this week?" before the agenda: a look back, not ahead.
+  if (/\b(weekly (recap|summary|review|progress)|week in review|week recap|recap (of )?(my|this) week|this week'?s? (recap|summary|progress)|how was my week|my progress this week)\b/.test(folded) || /\bwhat (did|have) i (do|done|get done|accomplish(ed)?|ship(ped)?|finish(ed)?)\b.{0,20}\b(this week|week|lately|last 7 days)\b/.test(folded) || /τι (εκανα|εχω κανει).{0,25}(εβδομαδ|τελευται)|εβδομαδιαια (συνοψη|ανασκοπηση|προοδος)|(συνοψη|ανασκοπηση|προοδος) (της )?εβδομαδας|πως πηγε (η )?εβδομαδα/.test(folded)) return weeklyRecapResult();
   if (/\b(what's on|whats on|agenda|on today|on tomorrow|τι εχω|τι εχω σημερα|τι εχω αυριο|προγραμμα)\b/.test(folded) || hasStem(folded, 'τι εχω', 'ατζεντα')) return agendaResult(query);
   if (/\bwho wants to connect|incoming requests|connection requests\b/.test(folded) || hasStem(folded, 'ποιος θελει να συνδεθ', 'εισερχομεν')) return readRequestsResult();
   if (/\bexport my data|download my data|export (the )?data\b/.test(folded) || hasStem(folded, 'εξαγωγη των δεδομενων', 'κατεβασε τα δεδομενα')) return exportDataResult(propose, profile);
@@ -3506,6 +3617,9 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   const investorEmail = parseInvestorEmail(query);
   if (investorEmail) return investorEmailResult(investorEmail, emailContext(profile));
   if (isAuditQuery(folded)) return studioAuditResult(profile);
+  // "Model raising 2M at 8M pre": a priced round on the founder's cap table (lib/roundQuery).
+  const roundQuery = parseRoundQuery(folded);
+  if (roundQuery) return modelRoundResult(roundQuery);
   // Investor pipeline and follow-ups (services/assistantPipeline): before the pitch,
   // round and people routes, because investors are named like people and a next
   // step may mention "the pitch deck".

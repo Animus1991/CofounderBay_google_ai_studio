@@ -50,6 +50,7 @@ import FactLine from '../components/ui/FactLine';
 import { askAssistant } from '../lib/assistantBus';
 import { profileCompleteness } from '../lib/profileCompleteness';
 import SectionHeader from '../components/ui/SectionHeader';
+import { RECAP_AREAS, weeklyRecap } from '../lib/weeklyRecap';
 
 const ACTIVITY_DATA = [
   { name: 'Mon', views: 40, matches: 24 },
@@ -442,7 +443,11 @@ export default function DashboardPage() {
   const prospect = isDemoMode
     ? (rankedCircles[1] ?? rankedCircles[0] ?? null)
     : (rankedCircles[1] ?? rankedCircles[0] ?? live.prospect);
-  const streakDays = isDemoMode ? (streak?.currentStreak ?? 12) : (streak?.currentStreak ?? 0);
+  // "Your week": what was actually done (the activity feed), against last week (lib/weeklyRecap).
+  const recap = useMemo(() => weeklyRecap(activity), [activity]);
+  // The server streak (daily check-ins) or the streak of days with real work, whichever is longer;
+  // the demo keeps its seeded value.
+  const streakDays = isDemoMode ? Math.max(streak?.currentStreak ?? 12, recap.streak) : Math.max(streak?.currentStreak ?? 0, recap.streak);
   const profileViews = isDemoMode ? demoWeeklyViews() : (viewCount ?? live.profileViews);
   const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
   const unread = messaging?.totalUnread ?? 0;
@@ -862,13 +867,55 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between">
-            <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Current Streak', 'Τρέχον σερί')}</p>
+          {/* "Your week" (round 9): the streak card now also shows what moved this week, so a return visit
+              opens on visible progress. Same sizes as before; nothing estimated, all read from activity. */}
+          <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between" data-testid="dashboard-week">
+            <SectionHeader
+              className="mb-2"
+              title={<Both en="Your week" el="Η εβδομάδα σου" />}
+              actions={[{ label: <Both en="Activity" el="Δραστηριότητα" />, to: '/notifications' }]}
+            />
             <div>
-              <p className="text-sm font-semibold text-stone-900 tracking-tight mt-2">{streakDays}<span className="text-xs font-medium text-stone-400">{t(streakDays === 1 ? ' day' : ' days', streakDays === 1 ? ' ημέρα' : ' ημέρες')}</span></p>
-              <div className="flex items-center gap-1.5 mt-2">
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <p className="text-xs text-stone-400"><Both en="Keep the work moving today" el="Συνέχισε τη δουλειά σήμερα" /></p>
+              <p className="text-sm font-semibold text-stone-900 tracking-tight">
+                {recap.total}
+                <span className="text-xs font-medium text-stone-400">{t(recap.total === 1 ? ' action' : ' actions', recap.total === 1 ? ' ενέργεια' : ' ενέργειες')}</span>
+                {recap.previous > 0 && (
+                  <span className={cn('ml-2 text-xs font-medium', recap.change > 0 ? 'text-emerald-600' : 'text-stone-400')}>
+                    {recap.change === 0
+                      ? t('same as last week', 'όσες και την προηγούμενη')
+                      : t(`${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} vs last week`, `${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} από την προηγούμενη`)}
+                  </span>
+                )}
+              </p>
+              <div
+                className="mt-2 flex items-center gap-1"
+                role="img"
+                aria-label={t(`Active on ${recap.activeDays} of the last 7 days`, `Ενεργός ${recap.activeDays} από τις τελευταίες 7 ημέρες`)}
+              >
+                {recap.days.map((active, index) => (
+                  <span key={index} className={cn('h-1.5 flex-1 rounded-full', active ? 'bg-stone-900' : 'bg-stone-100')} />
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-stone-400">
+                {recap.areas.length > 0
+                  ? recap.areas.slice(0, 3).map((entry, index) => (
+                    <span key={entry.area}>
+                      {index > 0 ? ' · ' : ''}
+                      {t(RECAP_AREAS[entry.area].en, RECAP_AREAS[entry.area].el)} {entry.count}
+                    </span>
+                  ))
+                  : <Both en="Tasks, connections and updates you make show here." el="Εργασίες, συνδέσεις και ενημερώσεις που κάνεις εμφανίζονται εδώ." />}
+              </p>
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  <p className="text-xs text-stone-400">
+                    {streakDays > 0
+                      ? t(`${streakDays}-day streak · keep it going today`, `Σερί ${streakDays} ${streakDays === 1 ? 'ημέρας' : 'ημερών'} · συνέχισε σήμερα`)
+                      : t('One step today starts a streak', 'Ένα βήμα σήμερα ξεκινά σερί')}
+                  </p>
+                </div>
+                <AskLink prompt="What did I do this week?">{t('Recap', 'Σύνοψη')}</AskLink>
               </div>
             </div>
           </div>

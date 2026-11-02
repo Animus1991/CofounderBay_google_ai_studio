@@ -56,6 +56,8 @@ import { uploadFile, formatBytes, type UploadFolder } from "../lib/files";
 import { safeMediaUrl } from "../lib/webUrl";
 import type { Milestone } from "../types";
 import { askAssistant } from '../lib/assistantBus';
+import { TONE_CLASSES, eventTone, statusTone } from '../lib/statusTone';
+import Badge from '../components/ui/Badge';
 import { DEMO_CANVAS as SAMPLE_CANVAS } from '../data/demoVenture';
 
 interface WorkspaceProps {
@@ -357,12 +359,7 @@ export default function Workspace({ user }: WorkspaceProps) {
              <div className="min-w-0">
               <h4 className="text-sm font-semibold text-stone-900 break-words">{task.title}</h4>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-               <span className={cn(
-                "text-xs tracking-wider font-medium",
-                task.status === "In Progress" ? "text-violet-500" : 
-                task.status === "Review" ? "text-amber-700" : 
-                task.status === "Done" ? "text-emerald-500" : "text-stone-400"
-               )}>{labelOf(task.status)}</span>
+               <span className={cn("text-xs tracking-wider font-medium", TONE_CLASSES[statusTone(task.status)].text)}>{labelOf(task.status)}</span>
                <span className="w-1 h-1 bg-stone-200 rounded-full" />
                <span className="text-xs text-stone-400 flex items-center gap-1">
                 <Clock className="w-2.5 h-2.5" /> {taskDueLabel(task, t)}
@@ -402,12 +399,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           {["Todo", "In Progress", "Review", "Done"].map((status) => (
            <div key={status} className="space-y-2">
             <div className="flex items-center justify-between px-1">
-             <span className={cn(
-              "text-xs font-semibold tracking-wider",
-              status === "In Progress" ? "text-violet-500" : 
-              status === "Review" ? "text-amber-700" : 
-              status === "Done" ? "text-emerald-500" : "text-stone-400"
-             )}>{labelOf(status)}</span>
+             <span className={cn("text-xs font-semibold tracking-wider", TONE_CLASSES[statusTone(status)].text)}>{labelOf(status)}</span>
              <span className="text-xs text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
               {visibleTasks.filter((task) => task.status === status).length}
              </span>
@@ -771,14 +763,14 @@ export default function Workspace({ user }: WorkspaceProps) {
       {/* Milestones Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
        {[
-        { label: t("Total", "Σύνολο"), value: String(milestoneStats.total), color: "bg-stone-100 text-stone-700" },
-        { label: t("Completed", "Ολοκληρώθηκε"), value: String(milestoneStats.done), color: "bg-emerald-50 text-emerald-700" },
-        { label: t("In Progress", "Σε εξέλιξη"), value: String(milestoneStats.active), color: "bg-violet-50 text-violet-700" },
-        { label: t("Overdue", "Εκπρόθεσμο"), value: String(milestoneStats.overdue), color: "bg-red-50 text-red-700" },
+        { label: t("Total", "Σύνολο"), value: String(milestoneStats.total), tone: 'neutral' as const },
+        { label: t("Completed", "Ολοκληρώθηκε"), value: String(milestoneStats.done), tone: statusTone('Completed') },
+        { label: t("In Progress", "Σε εξέλιξη"), value: String(milestoneStats.active), tone: statusTone('In Progress') },
+        { label: t("Overdue", "Εκπρόθεσμο"), value: String(milestoneStats.overdue), tone: statusTone('Overdue') },
        ].map(stat => (
-        <div key={stat.label} className={cn("p-3 rounded-2xl border", stat.color.replace("text-", "border-").replace("700", "100").replace("900", "stone-100"))}>
-         <p className={cn("text-lg font-bold", stat.color.includes("white") ? "text-white" : stat.color.split(" ")[1])}>{stat.value}</p>
-         <p className={cn("text-xs", stat.color.includes("white") ? "text-stone-300" : "text-stone-500")}>{stat.label}</p>
+        <div key={stat.label} className={cn("p-3 rounded-2xl border", TONE_CLASSES[stat.tone].label)}>
+         <p className={cn("text-lg font-bold", stat.tone === 'neutral' ? "text-stone-700" : TONE_CLASSES[stat.tone].text)}>{stat.value}</p>
+         <p className="text-xs text-stone-500">{stat.label}</p>
         </div>
        ))}
       </div>
@@ -854,12 +846,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         return (
         <div key={m.id} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-2xl hover:border-stone-300 transition-all">
          <div className="flex items-center gap-3">
-          <div className={cn(
-           "w-8 h-8 rounded-xl flex items-center justify-center",
-           status === "completed" ? "bg-emerald-100 text-emerald-600" :
-           status === "in-progress" ? "bg-violet-100 text-violet-600" :
-           "bg-stone-100 text-stone-400"
-          )}>
+          <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center", TONE_CLASSES[statusTone(m.status)].tile)}>
            {status === "completed" ? <CheckCircle className="w-4 h-4" /> :
             status === "in-progress" ? <Clock className="w-4 h-4" /> :
             <CalendarIcon className="w-4 h-4" />}
@@ -958,13 +945,8 @@ export default function Workspace({ user }: WorkspaceProps) {
          {todaySessions.map((event) => (
           <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-stone-50 transition-colors">
            <span className="text-xs font-medium text-stone-400 w-10">{event.time.slice(11, 16) || '—'}</span>
-           <div className={cn(
-            "flex-1 p-2 rounded-lg text-sm font-medium",
-            event.type === 'Meeting' ? 'bg-violet-100 text-violet-700' :
-            event.type === 'Deadline' ? 'bg-red-100 text-red-700' :
-            event.type === 'Mentorship' ? 'bg-amber-100 text-amber-700' :
-            'bg-emerald-100 text-emerald-700'
-           )}>
+           {/* The same colour per type as Calendar (lib/statusTone eventTone). */}
+           <div className={cn("flex-1 p-2 rounded-lg border text-sm font-medium", TONE_CLASSES[eventTone(event.type)].label)}>
             {event.title}
            </div>
           </div>
@@ -1048,12 +1030,7 @@ export default function Workspace({ user }: WorkspaceProps) {
            <h4 className="text-sm font-semibold text-stone-900 truncate">{t(module.title, module.titleEl)}</h4>
            <p className="text-xs text-stone-400">{filled}/{total}</p>
           </div>
-          <span className={cn(
-           "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
-           status === "Completed" ? "text-emerald-600 border-transparent" :
-           status === "In-Progress" ? "text-amber-600 border-transparent" :
-           "text-stone-400 border-transparent"
-          )}>{labelOf(status)}</span>
+          <Badge variant={statusTone(status)}>{labelOf(status)}</Badge>
           <Link to={`/founder-tools?step=${module.id}`} className="text-xs font-medium text-stone-900 hover:underline shrink-0">{t('Continue', 'Συνέχεια')}</Link>
          </div>
         ))}

@@ -8,7 +8,7 @@
  * the explicit "Save to my round" / cap-table edits change stored data.
  */
 import { useId, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Copy, Download, Plus, Save, Trash2 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -227,9 +227,16 @@ function CapTableTool({ onToast }: { onToast: (message: string) => void }) {
   const holders = useEntity(capTable);
   const safes = roundSafes(round);
   const today = proFormaCapTable(holders, safes);
-  const [preMoney, setPreMoney] = useState(() => Math.max(4_000_000, (round.valuationCap || 6_000_000) * 1.5));
-  const [investment, setInvestment] = useState(() => Math.max(1_000_000, (round.targetAmount || 1_000_000) * 2));
-  const [poolPct, setPoolPct] = useState(10);
+  // The assistant's "model raising 2M at 8M pre" links here with ?pre=&raise=&pool=, so the tool opens on
+  // the same numbers it answered with; without them, a starting point from the round.
+  const [searchParams] = useSearchParams();
+  const fromUrl = (name: string, min: number, max: number) => {
+    const value = Number(searchParams.get(name));
+    return searchParams.has(name) && Number.isFinite(value) && value >= min && value <= max ? value : null;
+  };
+  const [preMoney, setPreMoney] = useState(() => fromUrl('pre', 1, 1e12) ?? Math.max(4_000_000, (round.valuationCap || 6_000_000) * 1.5));
+  const [investment, setInvestment] = useState(() => fromUrl('raise', 1, 1e12) ?? Math.max(1_000_000, (round.targetAmount || 1_000_000) * 2));
+  const [poolPct, setPoolPct] = useState(() => fromUrl('pool', 0, 40) ?? 10);
   const priced = modelPricedRound({ holders, safes, preMoney, investment, targetPoolPost: poolPct / 100, investorName: t('New investors', 'Νέοι επενδυτές') });
 
   const update = (index: number, patch: Partial<CapTableHolder>) => capTable.write(holders.map((row, i) => (i === index ? { ...row, ...patch } : row)));

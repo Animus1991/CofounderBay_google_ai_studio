@@ -35,6 +35,27 @@ describe('runAssistant', () => {
     expect(result.links.some((link) => link.href.includes('tool=captable'))).toBe(true);
   });
 
+  it('models a priced round on the cap table, the SAFEs converting, with a link that opens the tool on the same numbers', () => {
+    const result = runAssistant('Model raising 2M at 8M pre-money with a 10% pool', demo);
+    expect(result.tool).toBe('model-round');
+    // Demo cap table: founders 9M + pool 1M. The sample round's SAFEs ($450k, $12M cap, 20% discount)
+    // convert at the discount here: 80% of the round price is below the cap price.
+    expect(result.en).toContain('$2M at $8M pre-money = $10M post');
+    expect(result.en).toContain('new investors own 20%');
+    expect(result.en).toMatch(/SAFEs convert at the discount \(\$0\.\d{4}\/share\) → 5\.62%/);
+    expect(result.en).toContain('Founders and other common holders go from 90% to 64.38% (−25.62 pts)');
+    expect(result.href).toBe('/founder-tools?tab=tools&tool=captable&pre=8000000&raise=2000000&pool=10');
+    const greek = runAssistant('Μοντελοποίησε γύρο 2M σε 8M pre-money', demo);
+    expect(greek.tool).toBe('model-round');
+    expect(greek.el).toContain('$2M σε $8M pre-money = $10M post');
+    expect(greek.el).toContain('Πες «pool 15%»');
+    // /round alone still reads the round; with numbers it models one.
+    expect(runAssistant('/round', demo).tool).toBe('round');
+    expect(runAssistant('/round 1m at 5m pre', demo).tool).toBe('model-round');
+    // Nothing is written.
+    expect(readRound().committedAmount).toBe(450_000);
+  });
+
   it('answers readiness with the five-dimension index Founder Tools shows', () => {
     const result = runAssistant('/readiness', demo);
     expect(result.tool).toBe('readiness');
@@ -52,6 +73,27 @@ describe('runAssistant', () => {
     const greek = runAssistant('Πόσο πλήρες είναι το προφίλ μου;', demo);
     expect(greek.tool).toBe('profile-completeness');
     expect(greek.el).toContain('80% πλήρες');
+  });
+
+  it('recaps the week from the same activity feed as the dashboard card', () => {
+    const empty = runAssistant('What did I do this week?', demo);
+    expect(empty.tool).toBe('weekly-recap');
+    expect(empty.en).toMatch(/No steps logged this week/);
+    logActivity({ kind: 'task', title: 'Added task: Ship onboarding' });
+    logActivity({ kind: 'connection', title: 'Connected with Mia', byAssistant: true });
+    logActivity({ kind: 'task', title: 'Undid: Added task: Ship onboarding' });
+    const result = runAssistant('What did I do this week?', demo);
+    expect(result.tool).toBe('weekly-recap');
+    // The "Undid: …" entry is not itself counted as a step.
+    expect(result.en).toMatch(/This week: 2 steps on 1 of 7 days/);
+    expect(result.en).toContain('Building 1 · People 1');
+    expect(result.en).toContain('1 of them I proposed and you confirmed');
+    expect(result.en).toContain('Connected with Mia');
+    expect(runAssistant('Τι έκανα αυτή την εβδομάδα;', demo).tool).toBe('weekly-recap');
+    expect(runAssistant('/recap', demo).tool).toBe('weekly-recap');
+    // A look ahead is still the agenda, and "what did I do wrong" is not a recap.
+    expect(runAssistant("What's on this week", demo).tool).toBe('read_agenda');
+    expect(runAssistant('What did I do wrong in my pitch?', demo).tool).not.toBe('weekly-recap');
   });
 
   it('ranks matches from the shared cast', () => {

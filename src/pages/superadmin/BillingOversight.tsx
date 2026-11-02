@@ -27,6 +27,8 @@ import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useAuth } from "../../App";
 import { askAssistant } from "../../lib/assistantBus";
+import Badge from "../../components/ui/Badge";
+import { statusTone } from "../../lib/statusTone";
 
 const CHART_COLORS = ['#292524', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4'];
 
@@ -346,11 +348,7 @@ export default function BillingOversight() {
             <p className="text-xs text-stone-400 font-medium tracking-wide">{sub.billingCycle === 'Annual' ? t('Annual Billing', 'Ετήσια χρέωση') : t('Monthly Billing', 'Μηνιαία χρέωση')}</p>
            </td>
            <td className="px-4 py-2">
-            <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             sub.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'
-            }`}>
-             {labelOf(sub.status)}
-            </span>
+            <Badge variant={statusTone(sub.status)}>{labelOf(sub.status)}</Badge>
            </td>
            <td className="px-4 py-2 text-right">
             <button
@@ -405,11 +403,7 @@ export default function BillingOversight() {
            <td className="px-4 py-2 text-sm font-medium">{userNames[invoice.userId || ''] || invoice.userId || '—'}</td>
            <td className="px-4 py-2 text-sm font-medium">${(invoice.total ?? invoice.amount ?? 0).toFixed(2)}</td>
            <td className="px-4 py-2">
-            <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             invoice.status === 'Paid' ? 'text-emerald-700' : 'text-amber-700'
-            }`}>
-             {labelOf(invoice.status)}
-            </span>
+            <Badge variant={statusTone(invoice.status)}>{labelOf(invoice.status)}</Badge>
            </td>
            <td className="px-4 py-2 text-right">
             <button

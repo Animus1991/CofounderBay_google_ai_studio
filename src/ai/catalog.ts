@@ -501,6 +501,22 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     command: () => '/round',
   },
   {
+    id: 'model_round',
+    tool: 'model-round',
+    kind: 'read',
+    area: 'fundraising',
+    label: { en: 'Model a priced round', el: 'Μοντελοποίηση γύρου με τιμή' },
+    description: 'Model a priced round on the viewer’s own cap table: new money at a pre-money valuation with an option pool target, the round’s SAFEs converting. Returns price per share, post-money, the new investors’ stake, SAFE conversion and founder dilution — the same model as Founder Tools → Cap table. Nothing is saved.',
+    params: [
+      { name: 'investment', type: 'number', required: true, description: 'New money in the round, in dollars (e.g. 2000000).' },
+      { name: 'preMoney', type: 'number', required: true, description: 'Pre-money valuation in dollars (e.g. 8000000).' },
+      { name: 'poolPct', type: 'number', required: false, description: 'Option pool after the round, percent of fully diluted (0–40). Default 10.' },
+    ],
+    example: { en: 'Model raising 2M at 8M pre-money', el: 'Μοντελοποίησε γύρο 2M σε 8M pre-money' },
+    sampleArgs: { investment: '2000000', preMoney: '8000000', poolPct: '15' },
+    command: (args) => `Model raising $${arg(args, 'investment', '2000000')} at $${arg(args, 'preMoney', '8000000')} pre-money${arg(args, 'poolPct') ? ` with a ${arg(args, 'poolPct')}% pool` : ''}`,
+  },
+  {
     id: 'set_round',
     tool: 'round-set',
     kind: 'write',
@@ -979,6 +995,17 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     params: [],
     example: { en: 'Show my studio activity', el: 'Τι άλλαξε;' },
     command: () => 'show my studio activity',
+  },
+  {
+    id: 'weekly_recap',
+    tool: 'weekly-recap',
+    kind: 'read',
+    area: 'ecosystem',
+    label: { en: 'Weekly recap', el: 'Σύνοψη εβδομάδας' },
+    description: 'Recap this week from the activity feed (the same numbers as the dashboard’s “Your week”): actions against last week, active days, streak, areas, what the assistant did, and what is on next.',
+    params: [],
+    example: { en: 'What did I do this week?', el: 'Τι έκανα αυτή την εβδομάδα;' },
+    command: () => 'What did I do this week?',
   },
 
   // ── Profile & settings ─────────────────────────────────────────────────
