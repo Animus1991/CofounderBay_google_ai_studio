@@ -156,8 +156,7 @@ export default function Perks() {
        type="button"
        aria-pressed={activeCategory === cat.id}
        onClick={() => setActiveCategory(cat.id)}
-       className={cn(
-        "px-4 py-2 text-sm font-medium tracking-wide rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
+       className={cn("px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
         segmentItem(activeCategory === cat.id)
        )}
       >
@@ -189,7 +188,7 @@ export default function Perks() {
     </Card>
     <Card className="bg-stone-900 text-white border-none p-4 self-start" contentClassName="flex items-center justify-between gap-3">
      <div>
-      <p className="text-base font-medium text-white/80 tracking-wide">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
+      <p className="text-base font-medium text-white/80">{isDemoMode ? t('Potential Savings', 'Πιθανή εξοικονόμηση') : t('Published perks', 'Δημοσιευμένες παροχές')}</p>
       <h4 className="text-lg font-semibold text-white">{isDemoMode ? perkDollarTotal(DEMO_PERKS) : perks.length}</h4>
      </div>
      <Zap className="w-8 h-8 text-amber-300 fill-current shrink-0" />
@@ -249,7 +248,7 @@ export default function Perks() {
          </Button>
         )
        ) : perkUrl ? (
-        <a href={perkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 transition-all">
+        <a href={perkUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white hover:bg-stone-800 transition-all tap-area">
          {t('Apply on site', 'Άνοιγμα στον πάροχο')} <ExternalLink className="w-3 h-3 ml-1" />
         </a>
        ) : (

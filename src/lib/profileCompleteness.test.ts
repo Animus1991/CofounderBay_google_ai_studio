@@ -35,4 +35,10 @@ describe('profile completeness', () => {
     expect(profileCompleteness({ fullName: '  ', skills: [''], roles: [] }).score).toBe(0);
     expect(profileCompleteness(null)).toMatchObject({ score: 0, filled: 0 });
   });
+  
+  it('provides grammatical add-labels for Greek copy', () => {
+    const missing = profileCompleteness({}).missing;
+    expect(missing.find((field) => field.key === 'links')?.addLabel.el).toBe('συνδέσμους');
+    expect(missing.find((field) => field.key === 'role')?.addLabel.el).toBe('ρόλο');
+});
 });

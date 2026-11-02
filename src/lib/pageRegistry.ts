@@ -147,5 +147,17 @@ export function pageContext(pathname: string): { href: string; en: string; el: s
   if (exact) return { href: exact.href, en: exact.en, el: exact.el };
   const nested = pages.find((page) => page.href !== '/' && path.startsWith(`${page.href}/`));
   if (nested) return { href: nested.href, en: nested.en, el: nested.el };
+  const exactEntry = PAGE_REGISTRY.find((entry) => entry.path === path);
+  if (exactEntry) {
+    const name = exactEntry.title ?? exactEntry.label;
+    return { href: exactEntry.path, en: name.en, el: name.el };
+  }
+  const nestedEntry = PAGE_REGISTRY
+    .filter((entry) => entry.path !== '/' && path.startsWith(`${entry.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  if (nestedEntry) {
+    const name = nestedEntry.title ?? nestedEntry.label;
+    return { href: nestedEntry.path, en: name.en, el: name.el };
+  }
   return { href: '/dashboard', en: 'Dashboard', el: 'Πίνακας' };
 }

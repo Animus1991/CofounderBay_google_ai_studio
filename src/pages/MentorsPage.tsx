@@ -226,7 +226,7 @@ export default function MentorsPage() {
    <div id="mentor-grid" className="space-y-4">
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
      <div className="min-w-0">
-      <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Top Rated Mentors', 'Μέντορες με την υψηλότερη βαθμολογία')}</p>
+      <p className="text-xs font-semibold text-stone-400">{t('Top Rated Mentors', 'Μέντορες με την υψηλότερη βαθμολογία')}</p>
       {/* Every figure read from the list on screen or the reader's own sessions (the former stats bar). */}
       <FactLine
        className="mt-1 text-xs"
@@ -264,12 +264,12 @@ export default function MentorsPage() {
        animate={{ opacity: 1, y: 0 }}
        transition={{ delay: idx * 0.1 }}
        onClick={() => setSelectedMentor(mentor)}
-       className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md  transition-all group cursor-pointer flex flex-col"
+       className="bg-white rounded-2xl border border-stone-100 overflow-hidden shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col"
       >
        <div className="relative">
         <CoverImage src={mentor.avatar} alt={mentor.name} className="w-full h-32" fallback={<span className="text-2xl font-semibold text-stone-400">{initialsOf(mentor.name)}</span>} />
         {mentor.verified && (
-         <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-md border-2 border-white shadow">
+         <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1 rounded-md border-2 border-white shadow-sm">
           <ShieldCheck className="w-3 h-3" />
          </div>
         )}
@@ -290,7 +290,7 @@ export default function MentorsPage() {
           <span className="text-xs font-semibold text-stone-900">{mentor.rating}</span>
           <span className="text-xs text-stone-400">({mentor.reviews})</span>
          </div>
-         <div className="flex items-center gap-1 text-xs font-semibold text-stone-400 tracking-wider">
+         <div className="flex items-center gap-1 text-xs font-semibold text-stone-400">
           <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           {t(mentor.availability, AVAILABILITY_EL[mentor.availability] ?? mentor.availability)}
          </div>
@@ -362,7 +362,7 @@ export default function MentorsPage() {
       key={mentor.id}
       src={mentor.avatar}
       alt={mentor.name}
-      className={cn("w-20 h-20 rounded-2xl shadow border-2 border-white", i % 2 === 0 ? "translate-y-3" : "")}
+      className={cn("w-20 h-20 rounded-2xl shadow-sm border-2 border-white", i % 2 === 0 ? "translate-y-3" : "")}
       fallback={<span className="text-base font-semibold text-stone-400">{initialsOf(mentor.name)}</span>}
      />
     ))}
@@ -428,7 +428,7 @@ export default function MentorsPage() {
 
        {/* Expertise */}
        <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('Expertise', 'Εξειδίκευση')}</h3>
+        <h3 className="text-sm font-semibold text-stone-400">{t('Expertise', 'Εξειδίκευση')}</h3>
         <div className="flex flex-wrap gap-2">
          {selectedMentor.expertise.map((skill: string) => (
           <span key={skill} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-xl text-sm font-medium border border-stone-200">
@@ -440,7 +440,7 @@ export default function MentorsPage() {
 
        {/* Bio */}
        <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('About', 'Σχετικά')}</h3>
+        <h3 className="text-sm font-semibold text-stone-400">{t('About', 'Σχετικά')}</h3>
         <p className="text-stone-600 leading-relaxed">
          {selectedMentor.detailedBio ? t(selectedMentor.detailedBio, selectedMentor.detailedBioEl ?? selectedMentor.detailedBio) : t("No detailed bio available.", "Δεν υπάρχει αναλυτικό βιογραφικό.")}
         </p>
@@ -449,7 +449,7 @@ export default function MentorsPage() {
        {/* Achievements */}
        {selectedMentor.achievements && selectedMentor.achievements.length > 0 && (
         <div className="space-y-3">
-         <h3 className="text-sm font-semibold text-stone-400 tracking-wide">{t('Achievements', 'Επιτεύγματα')}</h3>
+         <h3 className="text-sm font-semibold text-stone-400">{t('Achievements', 'Επιτεύγματα')}</h3>
          <ul className="space-y-3">
           {selectedMentor.achievements.map((achievement: string, idx: number) => (
            <li key={idx} className="flex items-start gap-3">

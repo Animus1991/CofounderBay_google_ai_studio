@@ -201,7 +201,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
          className="bg-stone-50 border border-stone-200/60 rounded-2xl py-3 pl-12 pr-6 text-base focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:bg-white transition-all w-full md:w-[300px] font-light"
         />
        </div>
-       <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide" onClick={() => {
+       <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium" onClick={() => {
         const levels = ['All', 'Beginner', 'Intermediate', 'Advanced'] as const;
         const index = levels.indexOf(courseLevel);
         setCourseLevel(levels[(index + 1) % levels.length] ?? 'All');
@@ -246,7 +246,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
             <PlayCircle className="w-6 h-6" />
            </div>
           </div>
-          <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-sm font-medium tracking-wide shadow-sm border border-white/20">
+          <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-sm font-medium shadow-sm border border-white/20">
            {labelOf(course.level)}
           </div>
          </div>
@@ -254,20 +254,20 @@ export default function Resources({ user: _user }: ResourcesProps) {
           <div className="space-y-1">
            <h4 className="font-medium text-base leading-tight text-stone-900 group-hover:text-stone-900 transition-colors">{t(course.title, COURSE_TITLE_EL[course.title] ?? course.title)}</h4>
            <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-stone-400 tracking-wide">{t('Instructor', 'Εισηγητής')}</span>
+            <span className="text-sm font-medium text-stone-400">{t('Instructor', 'Εισηγητής')}</span>
             <span className="text-sm text-stone-600 font-medium">{course.instructor}</span>
            </div>
           </div>
           <div className="flex items-center gap-4 pt-2 border-t border-stone-50">
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-stone-400 tracking-wide">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-stone-400">
             <Clock className="w-3.5 h-3.5" /> {course.duration}
            </div>
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-wide">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500">
             <Star className="w-3.5 h-3.5 fill-amber-500" /> {course.rating}
            </div>
           </div>
          </div>
-         <Button type="button" variant="outline" className="w-full mt-8 h-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => ask(`Tell me about ${course.title}`)}>
+         <Button type="button" variant="outline" className="w-full mt-8 h-10 rounded-2xl text-sm font-medium border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => ask(`Tell me about ${course.title}`)}>
           {t('Start Learning', 'Ξεκίνα τη μάθηση')}
          </Button>
         </Card>
@@ -286,7 +286,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
        <h3 className="text-base font-semibold tracking-tight text-stone-900">{t('Partner Services', 'Υπηρεσίες συνεργατών')}</h3>
        <p className="text-base text-stone-400 font-light">{t('Exclusive deals and vetted services for our ecosystem members.', 'Αποκλειστικές προσφορές και ελεγμένες υπηρεσίες για τα μέλη του οικοσυστήματος.')}</p>
       </div>
-      <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium tracking-wide" onClick={() => ask('How do I list a partner service?')}>
+      <Button type="button" variant="outline" className="h-10 px-6 rounded-2xl border-stone-200/60 hover:bg-stone-50 text-sm font-medium" onClick={() => ask('How do I list a partner service?')}>
        <Plus className="w-4 h-4 mr-2" /> {t('List Your Service', 'Καταχώρισε την υπηρεσία σου')}
       </Button>
      </div>
@@ -317,7 +317,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
           </div>
           <div className="text-right">
            <p className="text-lg font-semibold text-stone-900 tracking-tight">{service.price}</p>
-           <p className="text-sm text-stone-400 font-medium tracking-wider">{t('Starting at', 'Από')}</p>
+           <p className="text-sm text-stone-400 font-medium">{t('Starting at', 'Από')}</p>
           </div>
          </div>
          <div className="space-y-4 relative z-10">
@@ -327,12 +327,12 @@ export default function Resources({ user: _user }: ResourcesProps) {
           </div>
           <div className="flex items-center gap-4 pt-4 border-t border-stone-50">
            <FactLine className="text-sm" items={[labelOf(service.type)]} label={t('Service type', 'Είδος υπηρεσίας')} />
-           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500 tracking-wide">
+           <div className="flex items-center gap-1.5 text-sm font-mono font-medium text-amber-500">
             <Star className="w-4 h-4 fill-amber-500" /> {service.rating}
            </div>
           </div>
          </div>
-         <Button type="button" variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium tracking-wider shadow-sm" onClick={() => ask(`Tell me about ${service.name}`)}>
+         <Button type="button" variant="primary" className="w-full mt-10 h-11 rounded-2xl text-sm font-medium shadow-sm" onClick={() => ask(`Tell me about ${service.name}`)}>
           {t('View Details', 'Λεπτομέρειες')}
          </Button>
         </Card>
@@ -349,7 +349,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
        <h3 className="text-base font-semibold tracking-tight text-stone-900">{t('Jobs & Roles', 'Θέσεις και ρόλοι')}</h3>
        <p className="text-base text-stone-400 font-light">{t('Find your next co-founder or early-stage hire.', 'Βρες συνιδρυτή ή πρόσληψη σε πρώιμο στάδιο.')}</p>
       </div>
-      <Button type="button" variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium tracking-wide shadow-lg shadow-stone-900/10" onClick={() => (isDemoMode ? ask('How do I post a job?') : setJobModalOpen(true))}>
+      <Button type="button" variant="primary" className="h-10 px-8 rounded-2xl text-sm font-medium shadow-lg shadow-stone-900/10" onClick={() => (isDemoMode ? ask('How do I post a job?') : setJobModalOpen(true))}>
        <Plus className="w-4 h-4 mr-2" /> {t('Post a Job', 'Καταχώριση θέσης')}
       </Button>
      </div>
@@ -390,12 +390,12 @@ export default function Resources({ user: _user }: ResourcesProps) {
           <div className="flex items-center gap-10">
            <div className="text-right hidden md:block space-y-1">
             <p className="text-base font-medium text-stone-900 tracking-tight">{job.salary}</p>
-            <p className="text-sm text-stone-400 font-medium tracking-wider">{labelOf(job.type)}</p>
+            <p className="text-sm text-stone-400 font-medium">{labelOf(job.type)}</p>
            </div>
            {job.mine ? (
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg">{t('Your listing', 'Δική σου αγγελία')}</span>
            ) : (
-            <Button type="button" variant="outline" className="h-11 px-10 rounded-2xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => void applyForJob(job)}>
+            <Button type="button" variant="outline" className="h-11 px-10 rounded-2xl text-sm font-medium border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => void applyForJob(job)}>
              {t('Apply Now', 'Κάνε αίτηση')}
             </Button>
            )}
@@ -438,7 +438,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
         </motion.div>
        ))}
       </div>
-      <Button type="button" variant="outline" className="w-full h-16 rounded-xl text-sm font-medium tracking-wider border-stone-200 hover:bg-stone-50" onClick={() => ask('what can you do')}>
+      <Button type="button" variant="outline" className="w-full h-16 rounded-xl text-sm font-medium border-stone-200 hover:bg-stone-50" onClick={() => ask('what can you do')}>
        {t('Visit Full Help Center', 'Πλήρες κέντρο βοήθειας')}
       </Button>
      </div>
@@ -474,7 +474,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
            </div>
            <div className="space-y-1">
             <p className="text-base font-medium">{isDemoMode ? 'Sarah Chen' : coach?.fullName}</p>
-            <p className="text-sm text-stone-600 font-medium tracking-wide">{isDemoMode ? t('Fundraising Expert', 'Ειδικός στη χρηματοδότηση') : (coach?.headline || t('Mentor', 'Μέντορας'))}</p>
+            <p className="text-sm text-stone-600 font-medium">{isDemoMode ? t('Fundraising Expert', 'Ειδικός στη χρηματοδότηση') : (coach?.headline || t('Mentor', 'Μέντορας'))}</p>
            </div>
           </div>
           <p className="text-base text-stone-700 italic serif leading-relaxed">
@@ -485,15 +485,15 @@ export default function Resources({ user: _user }: ResourcesProps) {
           <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-stone-200">
            <div className="space-y-0.5">
             <p className="text-lg font-semibold text-stone-900">{isDemoMode ? '$150' : t('1:1', '1:1')}</p>
-            <p className="text-sm text-stone-600 font-medium tracking-wide">{t('per session', 'ανά συνεδρία')}</p>
+            <p className="text-sm text-stone-600 font-medium">{t('per session', 'ανά συνεδρία')}</p>
            </div>
-           <Button type="button" className="h-10 px-8 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-all font-medium text-sm tracking-wider" onClick={() => ask(isDemoMode ? 'book Sarah Chen' : `Book a mentoring session with ${coach?.fullName}`)}>
+           <Button type="button" className="h-10 px-8 rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-all font-medium text-sm" onClick={() => ask(isDemoMode ? 'book Sarah Chen' : `Book a mentoring session with ${coach?.fullName}`)}>
             {t('Book Now', 'Κράτηση')}
            </Button>
           </div>
          </div>
          )}
-         <Button type="button" variant="ghost" className="w-full h-11 rounded-2xl text-sm font-medium tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all" onClick={() => navigate('/mentors')}>
+         <Button type="button" variant="ghost" className="w-full h-11 rounded-2xl text-sm font-medium text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all" onClick={() => navigate('/mentors')}>
           {t('View All Coaches', 'Όλοι οι σύμβουλοι')}
          </Button>
         </div>
@@ -507,12 +507,12 @@ export default function Resources({ user: _user }: ResourcesProps) {
        <div className="space-y-6 relative z-10">
         <div className="flex items-center gap-3 text-stone-900">
          <HelpCircle className="w-5 h-5" />
-         <h4 className="font-medium text-base tracking-wider">{t('Live Support', 'Ζωντανή υποστήριξη')}</h4>
+         <h4 className="font-medium text-base">{t('Live Support', 'Ζωντανή υποστήριξη')}</h4>
         </div>
         <p className="text-base text-stone-500 leading-relaxed font-light">
          {t('Need immediate assistance? Our support team is available 24/7 for premium members.', 'Χρειάζεσαι άμεση βοήθεια; Η ομάδα υποστήριξης είναι διαθέσιμη όλο το 24ωρο για μέλη premium.')}
         </p>
-        <Button type="button" variant="outline" className="w-full h-11 rounded-2xl border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all font-medium text-sm tracking-wider" onClick={() => ask('what can you do')}>
+        <Button type="button" variant="outline" className="w-full h-11 rounded-2xl border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all font-medium text-sm" onClick={() => ask('what can you do')}>
          {t('Start Chat', 'Έναρξη συνομιλίας')}
         </Button>
        </div>
@@ -586,7 +586,7 @@ function PostJobModal({ open, uid, authorName, onClose }: { open: boolean; uid: 
     </div>
     {error && <p className="text-xs text-red-600">{error}</p>}
     <div className="flex justify-end gap-2">
-     <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50 transition-all">{t('Cancel', 'Άκυρο')}</button>
+     <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50 transition-all tap-area">{t('Cancel', 'Άκυρο')}</button>
      <button type="button" onClick={() => void submit()} disabled={!title.trim() || saving} className="px-4 py-2 rounded-xl bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800 transition-all disabled:opacity-50">
       {saving ? t('Posting…', 'Καταχώρηση…') : t('Post', 'Καταχώρηση')}
      </button>

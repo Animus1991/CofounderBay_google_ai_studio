@@ -133,7 +133,7 @@ function Stat({ label, value, tone, hint, testId }: { label: string; value: stri
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold text-stone-500 tracking-wide">{title}</h3>
+      <h3 className="text-xs font-semibold text-stone-500">{title}</h3>
       {children}
     </section>
   );

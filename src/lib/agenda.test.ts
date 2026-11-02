@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { agendaFor } from './agenda';
+import { agendaFor, byWhen } from './agenda';
 import { addSession, upsertMilestone, writeTasks, type StudioTask } from './localLists';
 
 const NOW = new Date(2026, 0, 15, 9, 0, 0); // Thu 15 Jan 2026
@@ -52,5 +52,21 @@ describe('agendaFor', () => {
     // Demo seeds are relative to real today — not the fixed NOW above.
     const items = agendaFor('today');
     expect(items.map((i) => i.title)).toContain('Co-founder Sync');
+  });
+});
+
+describe('byWhen', () => {
+  it('puts the soonest dated entry first, whatever order the list came in', () => {
+    const list = [
+      { id: 'sat', time: '2026-11-07T09:00:00.000Z' },
+      { id: 'fri', time: '2026-11-06T17:00:00.000Z' },
+      { id: 'tue', time: '2026-11-03T07:00:00.000Z' },
+    ];
+    expect(byWhen(list).map((item) => item.id)).toEqual(['tue', 'fri', 'sat']);
+    expect(list[0]?.id).toBe('sat');
+  });
+  it('keeps free-text times in their order after the dated ones', () => {
+    const list = [{ id: 'a', time: 'Next Tuesday' }, { id: 'b', time: '2026-11-06' }, { id: 'c', time: 'TBA' }, { id: 'd', time: '2026-11-04' }];
+    expect(byWhen(list).map((item) => item.id)).toEqual(['d', 'b', 'a', 'c']);
   });
 });

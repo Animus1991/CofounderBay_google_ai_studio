@@ -208,7 +208,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              <div className="flex items-center gap-2">
               <h4 className="text-xs font-medium text-stone-900">{t('Mandatory SSO', 'Υποχρεωτικό SSO')}</h4>
               {ssoMandatory && (
-               <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[8px] font-medium tracking-wider">{t('Strict Security', 'Αυστηρή ασφάλεια')}</span>
+               <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded-md text-[8px] font-medium">{t('Strict Security', 'Αυστηρή ασφάλεια')}</span>
               )}
              </div>
              <p className="text-xs text-stone-400 font-medium">{t('Require all members with your domain to use SSO. Standard login will be disabled for them.', 'Υποχρέωσε όλα τα μέλη του τομέα σου να χρησιμοποιούν SSO. Η κανονική είσοδος θα απενεργοποιηθεί για αυτά.')}</p>
@@ -251,7 +251,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              <p className="text-micro mb-0.5">{t('Organization Context', 'Πλαίσιο οργανισμού')}</p>
              <p className="text-xs font-medium text-stone-900">{tenantName}</p>
             </div>
-            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-medium tracking-wider">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
+            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-xs font-medium">{t('Active Tenant', 'Ενεργός οργανισμός')}</span>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -321,7 +321,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                  <input id="ssosettings-field-5"
                   type="text"
                   placeholder="your-client-id"
-                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                  className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
                 </div>
                 <div className="space-y-1.5">
@@ -331,7 +331,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                   <input
                    aria-label={t('Client Secret', 'Client Secret')} type="password"
                    placeholder="••••••••••••••••"
-                   className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                   className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                   />
                  </div>
                 </div>
@@ -341,7 +341,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <input id="ssosettings-field-6"
                  type="text"
                  placeholder="https://accounts.google.com"
-                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
                </div>
                <div className="space-y-1.5">
@@ -351,7 +351,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                  <input
                   aria-label={t('Authorization endpoint URL', 'URL endpoint εξουσιοδότησης')} type="url"
                   placeholder="https://your-idp.com/oauth/authorize"
-                  className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                  className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
                 </div>
                </div>
@@ -366,7 +366,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <input id="ssosettings-field-7"
                  type="text"
                  placeholder="urn:example:idp"
-                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
                </div>
 
@@ -377,7 +377,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                  <input
                   id="sso-endpoint-url" type="url"
                   placeholder="https://your-idp.com/sso/saml"
-                  className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                  className="w-full pl-9 pr-4 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                  />
                 </div>
                </div>
@@ -387,7 +387,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <input id="ssosettings-field-8"
                  type="url"
                  placeholder="https://your-idp.com/saml/metadata"
-                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
+                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all text-xs font-medium"
                 />
                </div>
 
@@ -396,7 +396,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                 <textarea id="ssosettings-field-9"
                  rows={4}
                  placeholder="-----BEGIN CERTIFICATE-----"
-                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-lg outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all font-mono text-xs"
+                 className="w-full px-3.5 py-2 bg-stone-50/50 border border-stone-200 rounded-xl outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all font-mono text-xs"
                 ></textarea>
                </div>
               </>
@@ -430,7 +430,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
               placeholder="org.edu"
               className="h-7 px-2.5 bg-stone-50/50 border border-stone-200 rounded-lg text-xs font-medium outline-none focus:border-stone-400 w-32"
              />
-             <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium tracking-wide" onClick={addDomain}>
+             <Button variant="outline" size="sm" className="h-7 py-0 px-3 border-dashed text-xs font-medium" onClick={addDomain}>
               <Plus className="w-3 h-3 mr-1" /> {t('Add Domain', 'Προσθήκη τομέα')}
              </Button>
             </div>
@@ -470,7 +470,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
                <td className="px-5 py-3 text-xs font-mono text-stone-500">{rule.claim}</td>
                <td className="px-5 py-3 text-xs font-medium text-stone-900">{rule.value}</td>
                <td className="px-5 py-3">
-                <span className="px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-medium tracking-wider">{labelOf(rule.role)}</span>
+                <span className="px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded-md text-xs font-medium">{labelOf(rule.role)}</span>
                </td>
                <td className="px-5 py-3 text-right">
                 <button type="button" aria-label={t('Remove rule', 'Αφαίρεση κανόνα')} onClick={() => setMappingRules(mappingRules.filter((_, j) => j !== i))} className="text-stone-400 hover:text-red-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -555,7 +555,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
              <div>
               <div className="flex items-center gap-2">
                <span className="text-xs font-medium text-stone-900">{log.user}</span>
-               <span className="text-xs font-medium text-stone-400 tracking-wide">{log.event}</span>
+               <span className="text-xs font-medium text-stone-400">{log.event}</span>
               </div>
               <p className="text-xs text-stone-500 font-medium">
                {t('via', 'μέσω')} {log.provider} • {log.createdAt ? formatDate(log.createdAt) : ''}

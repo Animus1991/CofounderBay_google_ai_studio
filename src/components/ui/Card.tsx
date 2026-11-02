@@ -49,7 +49,7 @@ export default function Card({
     // against the left and top outline (Legal alerts). Only a card padded by its caller (p-*) skips the inset.
     <div className={cn("border-b", inverse ? "border-white/15" : "border-stone-200/60", callerSetsPadding(className) ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
      {title && <h3 className={cn("text-sm font-medium tracking-tight leading-snug", inverse ? "text-white" : "text-stone-900")}>{title}</h3>}
-     {subtitle && <p className={cn("text-xs font-medium tracking-wider mt-0.5 leading-normal", inverse ? "text-white/85" : "text-stone-400")}>{subtitle}</p>}
+     {subtitle && <p className={cn("text-xs mt-0.5 leading-normal", inverse ? "text-white/85" : "text-stone-400")}>{subtitle}</p>}
     </div>
    )}
    <div data-ui="card-content" className={cn(
@@ -62,7 +62,7 @@ export default function Card({
     {children}
    </div>
    {footer && (
-    <div className={cn("bg-stone-50/50 border-t border-stone-200/60 rounded-b-xl", paddedByCaller ? "pt-4" : "px-4 py-3 sm:px-5 sm:py-4")}>
+    <div className={cn("bg-stone-50/50 border-t border-stone-200/60 rounded-b-2xl", paddedByCaller ? "pt-4" : "px-4 py-3 sm:px-5 sm:py-4")}>
      {footer}
     </div>
    )}

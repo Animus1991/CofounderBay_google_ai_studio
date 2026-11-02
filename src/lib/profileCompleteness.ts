@@ -36,6 +36,7 @@ export type ProfileField = {
   key: 'fullName' | 'bio' | 'role' | 'industry' | 'skills' | 'lookingFor' | 'stage' | 'commitment' | 'location' | 'links';
   weight: number;
   label: Bilingual;
+  addLabel: Bilingual;
   /** Where the field is edited. */
   href: string;
 };
@@ -44,19 +45,20 @@ const filled = (value: unknown) => (typeof value === 'string' ? value.trim().len
 const nonEmpty = (list: readonly unknown[] | null | undefined) => Array.isArray(list) && list.some(filled);
 
 export const PROFILE_FIELDS: readonly (ProfileField & { has: (profile: ProfileLike) => boolean })[] = [
-  { key: 'fullName', weight: 10, label: { en: 'Full Name', el: 'Ονοματεπώνυμο' }, href: '/profile', has: (p) => filled(p.fullName) },
-  { key: 'bio', weight: 10, label: { en: 'Bio', el: 'Βιογραφικό' }, href: '/profile', has: (p) => filled(p.bio) },
-  { key: 'role', weight: 5, label: { en: 'Role', el: 'Ρόλος' }, href: '/profile', has: (p) => filled(p.role) || nonEmpty(p.roles) },
-  { key: 'industry', weight: 10, label: { en: 'Industry', el: 'Κλάδος' }, href: '/profile', has: (p) => (Array.isArray(p.industry) ? nonEmpty(p.industry) : filled(p.industry)) },
-  { key: 'skills', weight: 15, label: { en: 'Skills', el: 'Δεξιότητες' }, href: '/profile', has: (p) => nonEmpty(p.skills) },
-  { key: 'lookingFor', weight: 15, label: { en: 'Looking for', el: 'Τι ψάχνεις' }, href: '/profile', has: (p) => nonEmpty(p.lookingFor) },
-  { key: 'stage', weight: 10, label: { en: 'Stage', el: 'Στάδιο' }, href: '/profile', has: (p) => filled(p.stage) },
-  { key: 'commitment', weight: 10, label: { en: 'Commitment', el: 'Δέσμευση' }, href: '/profile', has: (p) => filled(p.commitment) },
-  { key: 'location', weight: 10, label: { en: 'Location', el: 'Τοποθεσία' }, href: '/profile', has: (p) => filled(p.location) },
+  { key: 'fullName', weight: 10, label: { en: 'Full Name', el: 'Ονοματεπώνυμο' }, addLabel: { en: 'full name', el: 'ονοματεπώνυμο' }, href: '/profile', has: (p) => filled(p.fullName) },
+  { key: 'bio', weight: 10, label: { en: 'Bio', el: 'Βιογραφικό' }, addLabel: { en: 'bio', el: 'βιογραφικό' }, href: '/profile', has: (p) => filled(p.bio) },
+  { key: 'role', weight: 5, label: { en: 'Role', el: 'Ρόλος' }, addLabel: { en: 'role', el: 'ρόλο' }, href: '/profile', has: (p) => filled(p.role) || nonEmpty(p.roles) },
+  { key: 'industry', weight: 10, label: { en: 'Industry', el: 'Κλάδος' }, addLabel: { en: 'industry', el: 'κλάδο' }, href: '/profile', has: (p) => (Array.isArray(p.industry) ? nonEmpty(p.industry) : filled(p.industry)) },
+  { key: 'skills', weight: 15, label: { en: 'Skills', el: 'Δεξιότητες' }, addLabel: { en: 'skills', el: 'δεξιότητες' }, href: '/profile', has: (p) => nonEmpty(p.skills) },
+  { key: 'lookingFor', weight: 15, label: { en: 'Looking for', el: 'Τι ψάχνεις' }, addLabel: { en: 'what you are looking for', el: 'τι ψάχνεις' }, href: '/profile', has: (p) => nonEmpty(p.lookingFor) },
+  { key: 'stage', weight: 10, label: { en: 'Stage', el: 'Στάδιο' }, addLabel: { en: 'stage', el: 'στάδιο' }, href: '/profile', has: (p) => filled(p.stage) },
+  { key: 'commitment', weight: 10, label: { en: 'Commitment', el: 'Δέσμευση' }, addLabel: { en: 'commitment', el: 'δέσμευση' }, href: '/profile', has: (p) => filled(p.commitment) },
+  { key: 'location', weight: 10, label: { en: 'Location', el: 'Τοποθεσία' }, addLabel: { en: 'location', el: 'τοποθεσία' }, href: '/profile', has: (p) => filled(p.location) },
   {
     key: 'links',
     weight: 5,
     label: { en: 'Social Links', el: 'Σύνδεσμοι' },
+    addLabel: { en: 'social links', el: 'συνδέσμους' },
     href: '/settings',
     has: (p) =>
       Object.values(p.socialLinks ?? {}).some(filled) || [p.linkedinUrl, p.githubUrl, p.twitterUrl, p.portfolioUrl].some(filled),
@@ -86,7 +88,7 @@ export function profileCompleteness(profile: ProfileLike | null | undefined): Co
 }
 
 function strip(field: ProfileField & { has: unknown }): ProfileField {
-  return { key: field.key, weight: field.weight, label: field.label, href: field.href };
+  return { key: field.key, weight: field.weight, label: field.label, addLabel: field.addLabel, href: field.href };
 }
 
 const byWeight = (a: ProfileField, b: ProfileField) => b.weight - a.weight;

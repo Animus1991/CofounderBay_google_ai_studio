@@ -91,7 +91,7 @@ function ThemePalettePicker({
         <div
           role="menu"
           aria-label={t('Themes', 'Θέματα')}
-          className="absolute right-0 top-full mt-1.5 z-[120] w-56 rounded-xl border border-stone-200 bg-white p-2.5 shadow-xl"
+          className="absolute right-0 top-full mt-1.5 z-[120] w-56 rounded-xl border border-stone-200 bg-white p-2.5 shadow-lg"
         >
           <div className="px-1.5 pb-1.5 text-xs font-medium text-stone-500">
             {t('Theme', 'Θέμα')}
@@ -222,10 +222,11 @@ export default function Layout() {
         data-chrome="ai"
         onClick={() => openAssistant()}
         className="inline-flex min-h-9 items-center rounded-lg border border-stone-300 bg-stone-100/80 px-2 sm:px-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200/80 transition-colors"
+        aria-label={t('Open the AI Co-Pilot', 'Άνοιγμα του AI Co-Pilot')}
         title={t('Open Studio AI Co-Pilot (Reads & edits every module)', 'Άνοιγμα Studio AI Co-Pilot (Διαβάζει & ενημερώνει κάθε ενότητα)')}
       >
-        <span className="hidden min-[380px]:inline">AI</span>
-        <span className="hidden sm:inline">Co-Pilot</span>
+        <span>AI</span>
+        <span className="hidden sm:inline">&nbsp;Co-Pilot</span>
       </button>
       <ThemePalettePicker paletteTheme={paletteTheme} setPaletteTheme={setPaletteTheme} />
       <LanguageToggle />
@@ -233,7 +234,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-stone-50 selection:bg-stone-900 selection:text-white lg:flex-row">
+    <div className="flex h-dvh min-h-0 flex-col bg-stone-50 lg:flex-row">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[110] focus:px-4 focus:py-2 focus:bg-stone-900 focus:text-white focus:rounded-lg focus:text-xs focus:font-medium"

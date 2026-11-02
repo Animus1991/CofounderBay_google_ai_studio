@@ -48,6 +48,7 @@ export default function Modal({ open, onClose, title, description, children, siz
      <motion.div
       ref={dialogRef}
       role="dialog"
+      data-type-scale="app"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
       aria-label={title ? undefined : t('Dialog', 'Παράθυρο διαλόγου')}
@@ -58,14 +59,14 @@ export default function Modal({ open, onClose, title, description, children, siz
       exit={{ opacity: 0, scale: 0.95, y: 10 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-h-[min(92dvh,100%)] overflow-y-auto overscroll-contain bg-white rounded-2xl shadow-sm border border-stone-100 z-[151] outline-none",
+       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] max-h-[min(92dvh,100%)] overflow-y-auto overscroll-contain bg-white rounded-3xl shadow-xl border border-stone-100 z-[151] outline-none",
        sizeClasses[size]
       )}
      >
       {(title || showClose) && (
        <div className="flex items-start justify-between gap-3 p-4 sm:p-6 pb-0">
         <div className="min-w-0">
-         {title && <h2 id={titleId} className="text-xl font-medium text-stone-900 break-words">{title}</h2>}
+         {title && <h2 id={titleId} className="text-xl font-semibold text-stone-900 break-words">{title}</h2>}
          {description && <p id={descriptionId} className="text-sm text-stone-500 mt-1">{description}</p>}
         </div>
         {showClose && (

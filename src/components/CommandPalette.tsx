@@ -15,6 +15,7 @@ import { labelOf } from '../lib/labels';
 import { directoryPeople, onPeopleChange } from '../lib/peopleSource';
 import { useUIStore } from '../stores/useUIStore';
 import { askAssistant, openAssistant } from '../lib/assistantBus';
+import { useDialogFocus } from '../lib/useDialogFocus';
 
 const COMMAND_PATH: Record<string, string> = {
   dashboard: '/dashboard',
@@ -81,6 +82,9 @@ export default function CommandPalette() {
   useEffect(() => onPeopleChange(() => setPeopleTick((value) => value + 1)), []);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), [setOpen]);
+  useDialogFocus(open, panelRef, close);
   const listRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { isAdmin, isDemoMode } = useAuth();
@@ -309,19 +313,27 @@ export default function CommandPalette() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(false)}
+            aria-hidden="true"
             className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[200]"
           />
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('Search pages, people and tools', 'Αναζήτηση σελίδων, ατόμων και εργαλείων')}
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.96, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -20 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-[10%] sm:top-[15%] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-lg max-h-[min(80dvh,100%)] bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden z-[201] flex flex-col"
+            data-type-scale="app"
+            className="fixed top-[10%] sm:top-[15%] left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-lg max-h-[min(80dvh,100%)] bg-white rounded-3xl shadow-xl border border-stone-200 overflow-hidden z-[201] flex flex-col outline-none"
           >
             <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-100">
               <Search className="w-5 h-5 text-stone-400 shrink-0" />
               <input
                 ref={inputRef}
+                aria-label={t('Search pages, people and tools', 'Αναζήτηση σελίδων, ατόμων και εργαλείων')}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -329,7 +341,7 @@ export default function CommandPalette() {
                 placeholder={placeholder}
                 className="flex-1 text-sm text-stone-900 placeholder:text-stone-400 outline-none bg-transparent"
               />
-              <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-stone-400 bg-stone-50 border border-stone-200 rounded-md tracking-wider">
+              <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-stone-400 bg-stone-50 border border-stone-200 rounded-md">
                 Esc
               </kbd>
             </div>
@@ -337,7 +349,7 @@ export default function CommandPalette() {
             <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2">
               {people.length > 0 && (
                 <div>
-                  <p className="px-5 pt-3 pb-1.5 text-xs font-semibold text-stone-400 tracking-wider">{t('People', 'Πρόσωπα')}</p>
+                  <p className="px-5 pt-3 pb-1.5 text-xs font-semibold text-stone-400">{t('People', 'Πρόσωπα')}</p>
                   {people.map((person) => {
                     globalIndex++;
                     const idx = globalIndex;
@@ -399,7 +411,7 @@ export default function CommandPalette() {
               ) : (
                 Array.from(sections.entries()).map(([section, items]) => (
                   <div key={section}>
-                    <p className="px-5 pt-3 pb-1.5 text-xs font-semibold text-stone-400 tracking-wider">{section}</p>
+                    <p className="px-5 pt-3 pb-1.5 text-xs font-semibold text-stone-400">{section}</p>
                     {items.map((item) => {
                       globalIndex++;
                       const idx = globalIndex;
@@ -428,9 +440,9 @@ export default function CommandPalette() {
 
             <div className="px-5 py-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-xs">↑↓</kbd> {t('Navigate', 'Μετακίνηση')}</span>
-                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded text-xs">↵</kbd> {t('Open', 'Άνοιγμα')}</span>
-                <span className="hidden sm:flex items-center gap-2 text-xs tracking-wide">
+                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded-md text-xs">↑↓</kbd> {t('Navigate', 'Μετακίνηση')}</span>
+                <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-stone-50 border border-stone-200 rounded-md text-xs">↵</kbd> {t('Open', 'Άνοιγμα')}</span>
+                <span className="hidden sm:flex items-center gap-2 text-xs">
                   <span>&gt; {t('commands', 'εντολές')}</span>
                   <span>@ {t('people', 'πρόσωπα')}</span>
                   <span>/ {t('pages', 'σελίδες')}</span>

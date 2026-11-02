@@ -143,7 +143,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
        <Card className="lg:col-span-2 p-4 sm:p-6 border-2 border-stone-900 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4">
-         <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
+         <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium rounded-full">
           {currentPlan?.name}
          </div>
         </div>
@@ -156,15 +156,15 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t('Monthly Cost', 'Μηνιαίο κόστος')}</p>
+           <p className="text-xs font-medium text-stone-400 mb-1">{t('Monthly Cost', 'Μηνιαίο κόστος')}</p>
            <p className="text-lg font-semibold">${subscription?.billingCycle === 'Annual' ? (currentPlan?.priceAnnual ?? 0) / 12 : currentPlan?.priceMonthly}</p>
           </div>
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t('Renewal Date', 'Ημερομηνία ανανέωσης')}</p>
+           <p className="text-xs font-medium text-stone-400 mb-1">{t('Renewal Date', 'Ημερομηνία ανανέωσης')}</p>
            <p className="text-lg font-semibold">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : ''}</p>
           </div>
           <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-           <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t('Billing Cycle', 'Κύκλος χρέωσης')}</p>
+           <p className="text-xs font-medium text-stone-400 mb-1">{t('Billing Cycle', 'Κύκλος χρέωσης')}</p>
            <p className="text-lg font-semibold">{cycleLabel(subscription?.billingCycle)}</p>
           </div>
          </div>
@@ -289,10 +289,10 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
        <table className="w-full text-left">
         <thead>
          <tr className="bg-stone-50 border-b border-stone-100">
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('User', 'Μέλος')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Role', 'Ρόλος')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Assigned At', 'Ανάθεση')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">{t('Action', 'Ενέργεια')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('User', 'Μέλος')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Role', 'Ρόλος')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Assigned At', 'Ανάθεση')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 text-right">{t('Action', 'Ενέργεια')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
@@ -308,7 +308,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
             </div>
            </td>
            <td className="px-4 py-2">
-            <span className="px-2 py-1 bg-stone-100 text-stone-600 rounded text-xs font-medium tracking-wider">
+            <span className="px-2 py-1 bg-stone-100 text-stone-600 rounded-md text-xs font-medium">
              {labelOf(member.roles?.[0] || 'Member')}
             </span>
            </td>
@@ -317,7 +317,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
             <button
              type="button"
              onClick={() => ask(`How do I revoke ${member.fullName || member.email}'s seat on ${tenant.name}?`)}
-             className="text-xs font-medium text-red-500 hover:text-red-600 tracking-wide"
+             className="text-xs font-medium text-red-500 hover:text-red-600"
             >
              {t('Revoke Seat', 'Ανάκληση θέσης')}
             </button>
@@ -354,11 +354,11 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
        <table className="w-full text-left">
         <thead>
          <tr className="bg-stone-50 border-b border-stone-100">
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Date', 'Ημερομηνία')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Invoice #', 'Τιμολόγιο #')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Amount', 'Ποσό')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Status', 'Κατάσταση')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">{t('Action', 'Ενέργεια')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Date', 'Ημερομηνία')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Invoice #', 'Τιμολόγιο #')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Amount', 'Ποσό')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 text-right">{t('Action', 'Ενέργεια')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">

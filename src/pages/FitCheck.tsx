@@ -155,7 +155,7 @@ export default function FitCheck() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col">
+    <div data-type-scale="app" className="min-h-screen bg-stone-50 flex flex-col">
       <header className="flex items-center justify-between gap-2 sm:gap-3 px-2.5 sm:px-6 py-3.5 border-b border-stone-200/70 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
         <div className="flex items-center gap-2 sm:gap-3">
           <button
@@ -318,7 +318,7 @@ export default function FitCheck() {
             </button>
           </div>
 
-          <p className="text-xs font-medium text-stone-400 tracking-wide">
+          <p className="text-xs font-medium text-stone-400">
             <Both en="Same fields Matches already scores" el="Τα ίδια πεδία που ήδη βαθμολογεί η Αντιστοίχιση" />
           </p>
           <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">
@@ -385,7 +385,7 @@ export default function FitCheck() {
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-200/60">
-            <NavLink to="/signup" className="text-sm font-medium text-stone-500 hover:text-stone-900">
+            <NavLink to="/signup" className="text-sm font-medium text-stone-500 hover:text-stone-900 tap-area">
               <Both
                 en="Or create an account — this fit check is kept on this browser."
                 el="Ή φτιάξε λογαριασμό — αυτό το fit check μένει σε αυτόν τον περιηγητή."
@@ -394,7 +394,7 @@ export default function FitCheck() {
             <button
               type="button"
               onClick={handleExit}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-900"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 tap-area"
             >
               <ArrowLeft className="w-4 h-4" />
               <Both en="Return to previous page" el="Επιστροφή στην προηγούμενη σελίδα" />

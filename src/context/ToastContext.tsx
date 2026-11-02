@@ -82,7 +82,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
    {/* Announced politely to screen readers; each toast can be closed by keyboard. */}
    {/* Phones (round 12): toasts drop in under the header, like system banners — at the bottom they covered the
        tab bar, the assistant button and, on AI Studio, the message box. Tablets and desktops keep the corner. */}
-   <div data-toasts aria-live="polite" className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] sm:top-auto sm:left-auto sm:right-6 sm:bottom-[calc(var(--bottom-nav-offset,0px)+6rem)] sm:w-full z-[100] flex flex-col gap-3 pointer-events-none max-w-sm mx-auto sm:mx-0">
+   <div data-toasts data-type-scale="app" aria-live="polite" className="fixed left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+4.25rem)] sm:top-auto sm:left-auto sm:right-6 sm:bottom-[calc(var(--bottom-nav-offset,0px)+6rem)] sm:w-full z-[100] flex flex-col gap-3 pointer-events-none max-w-sm mx-auto sm:mx-0">
     <AnimatePresence mode="popLayout">
      {toasts.map(t => (
       <motion.div
@@ -93,7 +93,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
        exit={isPhone ? { opacity: 0, y: -16, scale: 0.95 } : { opacity: 0, x: 80, scale: 0.95 }}
        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
        className={cn(
-        "pointer-events-auto bg-white rounded-xl shadow-sm shadow-stone-900/10 border border-stone-100 border-l-4 p-4 flex items-start gap-3",
+        "pointer-events-auto bg-white rounded-xl shadow-lg shadow-stone-900/10 border border-stone-100 border-l-4 p-4 flex items-start gap-3",
         borderColors[t.type]
        )}
       >

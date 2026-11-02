@@ -84,7 +84,7 @@ export function StatCard({ label, value, sub, icon: Icon, trend, trendValue }: S
  return (
   <div className="bg-white rounded-2xl border border-stone-100 px-5 py-[1.2125rem]">
    <div className="flex items-start justify-between">
-    <p className="text-xs font-medium text-stone-400 tracking-wider">{label}</p>
+    <p className="text-xs font-medium text-stone-400">{label}</p>
     {Icon && <Icon className="w-4 h-4 text-stone-300" />}
    </div>
    <p className="text-lg font-semibold text-stone-900 mt-2 tracking-tight tabular-nums">{value}</p>

@@ -125,10 +125,10 @@ export default function DomainSettings() {
             <h3 className="text-base font-medium flex items-center gap-2">
              {domain.domainName}
              {domain.isPrimary && (
-              <span className="px-2 py-0.5 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">{t('Primary', 'Κύριος')}</span>
+              <span className="px-2 py-0.5 bg-stone-900 text-white text-xs font-medium rounded-full">{t('Primary', 'Κύριος')}</span>
              )}
             </h3>
-            <p className="text-xs text-stone-400 font-medium tracking-wide">{domain.domainType === 'Subdomain' ? t('Subdomain domain', 'Υποτομέας') : t('Custom domain', 'Προσαρμοσμένος τομέας')}</p>
+            <p className="text-xs text-stone-400 font-medium">{domain.domainType === 'Subdomain' ? t('Subdomain domain', 'Υποτομέας') : t('Custom domain', 'Προσαρμοσμένος τομέας')}</p>
            </div>
           </div>
           <div className="flex items-center gap-4">
@@ -166,11 +166,11 @@ export default function DomainSettings() {
             </button>
            </div>
            <div className="flex gap-2">
-            <Button onClick={() => handleVerify(domain.id)} variant="primary" size="sm" className="text-xs h-8 font-medium tracking-wider">{t('Mark Verified (manual)', 'Σήμανση επαληθευμένου (χειροκίνητα)')}</Button>
+            <Button onClick={() => handleVerify(domain.id)} variant="primary" size="sm" className="text-xs h-8 font-medium">{t('Mark Verified (manual)', 'Σήμανση επαληθευμένου (χειροκίνητα)')}</Button>
             <Button
              variant="outline"
              size="sm"
-             className="text-xs h-8 font-medium tracking-wider"
+             className="text-xs h-8 font-medium"
              onClick={() => copyToken(`instr-${domain.id}`, `TXT @ ${domain.domainName} → ${domain.verificationToken}`)}
             >
              {copiedId === `instr-${domain.id}` ? t('Copied!', 'Αντιγράφηκε!') : t('Copy DNS Instructions', 'Αντιγραφή οδηγιών DNS')}
@@ -180,14 +180,14 @@ export default function DomainSettings() {
          )}
 
          <div className="flex items-center gap-3 pt-2">
-          <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider gap-1.5" onClick={() => window.open(`https://${domain.domainName}?tenant_preview=${tenant?.slug || tenant?.id}`, '_blank')}>
+          <Button variant="outline" size="sm" className="text-xs h-8 font-medium gap-1.5" onClick={() => window.open(`https://${domain.domainName}?tenant_preview=${tenant?.slug || tenant?.id}`, '_blank')}>
            <ExternalLink className="w-3 h-3" /> {t('Preview Routing', 'Προεπισκόπηση δρομολόγησης')}
           </Button>
           {!domain.isPrimary && domain.verificationStatus === 'Verified' && (
-           <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider" onClick={() => handleSetPrimary(domain.id)}>{t('Set as Primary', 'Ορισμός ως κύριου')}</Button>
+           <Button variant="outline" size="sm" className="text-xs h-8 font-medium" onClick={() => handleSetPrimary(domain.id)}>{t('Set as Primary', 'Ορισμός ως κύριου')}</Button>
           )}
           {!domain.isPrimary && (
-           <Button variant="outline" size="sm" className="text-xs h-8 font-medium tracking-wider text-red-500 hover:text-red-600 border-red-50 hover:border-red-100" onClick={() => handleDelete(domain.id)}>
+           <Button variant="outline" size="sm" className="text-xs h-8 font-medium text-red-500 hover:text-red-600 border-red-50 hover:border-red-100" onClick={() => handleDelete(domain.id)}>
             <Trash2 className="w-3 h-3 mr-1" /> {t('Remove', 'Αφαίρεση')}
            </Button>
           )}

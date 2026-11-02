@@ -169,7 +169,7 @@ function InvestorCard({ item, lang }: { item: RoundInvestor; lang: 'en' | 'el' }
           <button type="button" data-testid={`investor-card-ask-${testId}`} onClick={() => askAssistant(`Draft a follow-up email to ${item.name}`)} className="whitespace-nowrap rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-900">
             {t('Draft email', 'Email')}
           </button>
-          <button type="button" aria-label={t('Remove', 'Αφαίρεση')} data-testid={`investor-card-remove-${testId}`} onClick={remove} className="rounded-md p-1 text-stone-400 transition-colors hover:text-red-600">
+          <button type="button" aria-label={t('Remove', 'Αφαίρεση')} data-testid={`investor-card-remove-${testId}`} onClick={remove} className="rounded-md p-1 text-stone-400 transition-colors hover:text-red-600 tap-area">
             <Trash2 className="h-3 w-3" />
           </button>
         </div>

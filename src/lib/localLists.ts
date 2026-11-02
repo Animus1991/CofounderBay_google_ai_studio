@@ -276,6 +276,8 @@ export const keys = {
   assistantPrefs: 'cfb.assistantPrefs',
   /** The completeness at which the "finish your profile" bar was closed (components/layout/ProfileProgressBar). */
   profileNudge: 'cfb.profileNudge',
+  /** Whether "More on your dashboard" was left open on a phone or tablet (pages/DashboardPage). */
+  dashboardMore: 'cfb.dashboardMore',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */

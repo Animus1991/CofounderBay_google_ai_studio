@@ -49,3 +49,19 @@ export function agendaFor(range: 'today' | 'tomorrow' | 'week', now: Date = new 
   items.sort((a, b) => a.at.localeCompare(b.at));
   return items;
 }
+
+/**
+ * A schedule soonest first (the Dashboard's "Upcoming"). Entries whose time is
+ * a date sort by it; free-text times ("Next Tuesday") keep their order after them.
+ */
+export function byWhen<T extends { time: string }>(list: readonly T[]): T[] {
+  const at = (time: string) => (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith('Z') ? Date.parse(time) : NaN);
+  return list
+    .map((item, index) => ({ item, index, when: at(item.time) }))
+    .sort((a, b) => {
+      const undatedA = Number.isNaN(a.when), undatedB = Number.isNaN(b.when);
+      if (undatedA || undatedB) return undatedA === undatedB ? a.index - b.index : undatedA ? 1 : -1;
+      return a.when - b.when;
+    })
+    .map(({ item }) => item);
+}

@@ -127,9 +127,10 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
     >
       <div
         role="dialog"
+        data-type-scale="app"
         aria-modal="true"
         aria-label={tr(`Why ${totalScore}% with ${founder.name}`, `Γιατί ${totalScore}% με ${founder.name}`)}
-        className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="relative w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
       >
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 sm:px-6 py-[0.92rem] bg-background/60">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -140,7 +141,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
               fallback={<span className="text-xs font-semibold text-stone-500">{founder.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}
             />
             <div className="min-w-0">
-              <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+              <h3 className="text-xs sm:text-sm font-semibold text-foreground truncate">
                 {tr(`Score breakdown: ${founder.name}`, `Ανάλυση σκορ: ${founder.name}`)}
               </h3>
               <p className="text-xs text-muted-foreground truncate">{founder.role}</p>
@@ -149,7 +150,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="text-right">
-              <div className="text-base sm:text-lg font-extrabold font-mono tabular-nums text-primary">
+              <div className="text-base sm:text-lg font-semibold font-mono tabular-nums text-primary">
                 {totalScore}%
               </div>
               <div className="text-[10px] text-muted-foreground">
@@ -160,7 +161,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label={lang === 'en' ? 'Close' : 'Κλείσιμο'}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground tap-area"
             >
               <X className="h-5 w-5" />
             </button>
@@ -188,7 +189,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
                       {tr(dim.label.en, dim.label.el)}
                       <span className="ml-1.5 font-normal text-muted-foreground">· {tr('weight', 'βάρος')} {Math.round(dim.weight * 100)}%</span>
                     </span>
-                    <span className="font-mono tabular-nums font-bold text-foreground shrink-0">
+                    <span className="font-mono tabular-nums font-semibold text-foreground shrink-0">
                       {dim.score == null ? tr('no data', 'χωρίς στοιχεία') : `${dim.score}%`}
                     </span>
                   </div>
@@ -223,7 +224,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
                       <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="truncate">{lang === 'en' ? dim.labelEn : dim.labelEl}</span>
                     </span>
-                    <span className="font-mono tabular-nums font-bold text-foreground shrink-0">
+                    <span className="font-mono tabular-nums font-semibold text-foreground shrink-0">
                       {dim.value} / {dim.max} pts ({pct}%)
                     </span>
                   </div>
@@ -242,7 +243,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
           </div>
 
           <div className="rounded-xl border border-border bg-background/40 px-4 py-[0.92rem] space-y-2">
-            <div className="text-xs font-bold text-foreground">
+            <div className="text-xs font-semibold text-foreground">
               {tr('Why you match', 'Γιατί ταιριάζετε')}
             </div>
             <div className="space-y-1.5">

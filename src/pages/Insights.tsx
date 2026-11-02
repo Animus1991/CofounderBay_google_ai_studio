@@ -212,8 +212,8 @@ export default function Insights({ user }: InsightsProps) {
        aria-pressed={activeRange === range}
        onClick={() => setActiveRange(range)}
        className={cn(
-        "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all tracking-wide",
-        activeRange === range ? "bg-stone-900 text-white shadow" : "text-stone-400 hover:text-stone-700"
+        "px-3 py-1.5 text-sm font-semibold rounded-lg transition-all ",
+        activeRange === range ? "bg-stone-900 text-white shadow-sm" : "text-stone-400 hover:text-stone-700"
        )}
       >
         {range === 'ALL' ? t('ALL', 'Όλα') : range}
@@ -242,8 +242,8 @@ export default function Insights({ user }: InsightsProps) {
          )
         ) : null}
        </div>
-       <p className="text-base font-bold text-stone-900">{stat.value}</p>
-       <p className="text-xs text-stone-400 tracking-wider mt-0.5">{stat.label}</p>
+       <p className="text-base font-semibold text-stone-900">{stat.value}</p>
+       <p className="text-xs text-stone-400 mt-0.5">{stat.label}</p>
        {'hint' in stat && stat.hint ? <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">{stat.hint}</p> : null}
        <div className="mt-2.5 h-1 bg-stone-100 rounded-full overflow-hidden">
         <motion.div
@@ -272,7 +272,7 @@ export default function Insights({ user }: InsightsProps) {
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-stone-50 rounded-lg border border-stone-100">
          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-         <span className="text-xs font-semibold text-stone-500 tracking-wider">{t('Live', 'Ζωντανά')}</span>
+         <span className="text-xs font-semibold text-stone-500">{t('Live', 'Ζωντανά')}</span>
         </div>
        </div>
        {readinessChart.length === 0 ? (
@@ -318,7 +318,7 @@ export default function Insights({ user }: InsightsProps) {
          {[{ label: t("Connect", "Σύνδεση"), color: "bg-stone-900" }, { label: t("Message", "Μήνυμα"), color: "bg-stone-400" }, { label: isDemoMode ? t("View", "Προβολή") : t("Other", "Άλλες"), color: "bg-stone-200" }].map(({ label, color }) => (
           <div key={label} className="flex items-center gap-1">
            <div className={cn("w-2 h-2 rounded-full", color)} />
-           <span className="text-xs text-stone-400 tracking-wider">{label}</span>
+           <span className="text-xs text-stone-400">{label}</span>
           </div>
          ))}
         </div>
@@ -372,7 +372,7 @@ export default function Insights({ user }: InsightsProps) {
          </div>
         ))}
        </div>
-       <Button type="button" variant="ghost" className="w-full h-7 rounded-xl text-xs font-semibold tracking-wider text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-stone-100 transition-all" onClick={() => navigate('/notifications')}>
+       <Button type="button" variant="ghost" className="w-full h-7 rounded-xl text-xs font-semibold text-stone-400 hover:text-stone-900 hover:bg-stone-50 border border-stone-100 transition-all" onClick={() => navigate('/notifications')}>
         {t('View Full History', 'Πλήρες ιστορικό')}
        </Button>
       </Card>
@@ -395,7 +395,7 @@ export default function Insights({ user }: InsightsProps) {
           )}>
            <badge.icon className="w-4 h-4" />
           </div>
-          <p className="text-xs font-semibold text-stone-700 tracking-wider text-center">{badge.name}</p>
+          <p className="text-xs font-semibold text-stone-700 text-center">{badge.name}</p>
          </div>
         ))}
        </div>
@@ -403,7 +403,7 @@ export default function Insights({ user }: InsightsProps) {
 
       {/* Strategic Insight — honest, no fabricated stats */}
       <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
-       <p className="text-xs font-semibold text-stone-500 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
+       <p className="text-xs font-semibold text-stone-500">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
         {t('Readiness = share of profile fields matching reads.', 'Ετοιμότητα = ποσοστό πεδίων προφίλ που διαβάζει η αντιστοίχιση.')}
        </p>

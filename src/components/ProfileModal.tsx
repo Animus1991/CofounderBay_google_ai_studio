@@ -105,9 +105,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     >
       <div
         role="dialog"
+        data-type-scale="app"
         aria-modal="true"
         aria-label={profile.name}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
       >
         <div className="relative h-28 w-full bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border-b border-border">
           <button
@@ -335,7 +336,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <>
               <div className="mt-4">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-foreground">{profile.name}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{profile.name}</h2>
                   <span className="text-xs font-medium text-primary-accessible">
                     · {profile.role}
                   </span>
@@ -350,14 +351,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               {!isOwnProfile && (
                 <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <BarChart2 className="h-4 w-4 text-primary" />
                       {lang === 'en'
                         ? '6-Axis Compatibility Breakdown'
                         : 'Συμβατότητα Αλγορίθμου 6 Αξόνων'}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono tabular-nums text-xs font-extrabold text-primary">
+                      <span className="font-mono tabular-nums text-xs font-semibold text-primary">
                         {profile.matchScore}% Match
                       </span>
                       {onOpenMatchBreakdown && (
@@ -389,26 +390,26 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Commitment' : 'Δέσμευση'}
                   </span>
-                  <div className="font-bold text-foreground mt-1">{profile.commitment}</div>
+                  <div className="font-semibold text-foreground mt-1">{profile.commitment}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/60 p-3">
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Venture Stage' : 'Στάδιο'}
                   </span>
-                  <div className="font-bold text-foreground mt-1">{profile.stage}</div>
+                  <div className="font-semibold text-foreground mt-1">{profile.stage}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/60 p-3">
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Equity Target' : 'Στόχος Equity'}
                   </span>
-                  <div className="font-bold font-mono tabular-nums text-primary mt-1">
+                  <div className="font-semibold font-mono tabular-nums text-primary mt-1">
                     {profile.equityExpectation}
                   </div>
                 </div>
               </div>
 
               <div className="mt-5">
-                <h4 className="text-xs font-bold text-muted-foreground mb-1.5">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Founder Vision & Background' : 'Βιογραφικό & Όραμα Συνιδρυτή'}
                 </h4>
                 <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line bg-background/40 rounded-xl border border-border p-3.5">
@@ -417,7 +418,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
 
               <div className="mt-5">
-                <h4 className="text-xs font-bold text-muted-foreground mb-1.5">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Core Superpowers & Stack' : 'Κύριες Δεξιότητες & Τεχνολογίες'}
                 </h4>
                 <p className="text-xs text-foreground font-medium">
@@ -426,7 +427,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
 
               <div className="mt-5">
-                <h4 className="text-xs font-bold text-muted-foreground mb-1.5">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Seeking in a Co-Founder' : 'Αναζητά σε Συνιδρυτή'}
                 </h4>
                 <div className="rounded-xl border border-border bg-background/50 p-3 space-y-1">

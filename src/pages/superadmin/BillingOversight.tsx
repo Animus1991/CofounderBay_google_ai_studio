@@ -194,7 +194,7 @@ export default function BillingOversight() {
            <kpi.icon className="w-5 h-5" />
           </div>
          </div>
-         <p className="text-xs font-medium text-stone-400 tracking-wide mb-1">{kpi.label}</p>
+         <p className="text-xs font-medium text-stone-400 mb-1">{kpi.label}</p>
          <p className="text-sm font-semibold tracking-tight tabular-nums">{kpi.value}</p>
         </Card>
        ))}
@@ -254,7 +254,7 @@ export default function BillingOversight() {
            <h3 className="text-sm font-semibold">{plan.name}</h3>
            <p className="text-xs text-stone-500">{plan.customerType === 'Individual' ? t('Individual Plan', 'Ατομικό πλάνο') : plan.customerType === 'Tenant' ? t('Organization Plan', 'Πλάνο οργανισμού') : `${plan.customerType} ${t('Plan', 'πλάνο')}`}</p>
           </div>
-          <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
+          <span className={`px-2 py-1 rounded-md text-xs font-medium  ${
            plan.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'
           }`}>
            {plan.isActive ? labelOf('Active') : labelOf('Inactive')}
@@ -265,12 +265,12 @@ export default function BillingOversight() {
           <span className="text-xs text-stone-400"> {t('/ mo', '/ μήνα')}</span>
          </div>
          <div className="space-y-2">
-          <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Key Limits', 'Βασικά όρια')}</p>
+          <p className="text-xs font-medium text-stone-400">{t('Key Limits', 'Βασικά όρια')}</p>
           <div className="flex flex-wrap gap-2">
-           <span className="px-2 py-1 bg-stone-50 border border-stone-100 rounded text-xs font-medium">
+           <span className="px-2 py-1 bg-stone-50 border border-stone-100 rounded-md text-xs font-medium">
             {t('Seats:', 'Θέσεις:')} {plan.limits?.seats === -1 ? '∞' : plan.limits?.seats}
            </span>
-           <span className="px-2 py-1 bg-stone-50 border border-stone-100 rounded text-xs font-medium">
+           <span className="px-2 py-1 bg-stone-50 border border-stone-100 rounded-md text-xs font-medium">
             {t('Communities:', 'Κοινότητες:')} {plan.limits?.communities === -1 ? '∞' : plan.limits?.communities}
            </span>
           </div>
@@ -295,7 +295,7 @@ export default function BillingOversight() {
        <div className="p-3 bg-stone-50 rounded-2xl group-hover:bg-stone-100 transition-colors">
         <Plus className="w-6 h-6" />
        </div>
-       <span className="text-sm font-medium tracking-wide">{t('Create New Plan', 'Δημιουργία νέου πλάνου')}</span>
+       <span className="text-sm font-medium">{t('Create New Plan', 'Δημιουργία νέου πλάνου')}</span>
       </button>
      </motion.div>
     )}
@@ -324,10 +324,10 @@ export default function BillingOversight() {
        <table className="w-full text-left">
         <thead>
          <tr className="bg-stone-50 border-b border-stone-100">
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Customer', 'Πελάτης')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Plan', 'Πλάνο')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Status', 'Κατάσταση')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">{t('Action', 'Ενέργεια')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Customer', 'Πελάτης')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Plan', 'Πλάνο')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 text-right">{t('Action', 'Ενέργεια')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
@@ -344,7 +344,7 @@ export default function BillingOversight() {
            </td>
            <td className="px-4 py-2">
             <p className="text-sm font-medium">{plans.find((p) => p.id === sub.planId)?.name || sub.planId}</p>
-            <p className="text-xs text-stone-400 font-medium tracking-wide">{sub.billingCycle === 'Annual' ? t('Annual Billing', 'Ετήσια χρέωση') : t('Monthly Billing', 'Μηνιαία χρέωση')}</p>
+            <p className="text-xs text-stone-400 font-medium">{sub.billingCycle === 'Annual' ? t('Annual Billing', 'Ετήσια χρέωση') : t('Monthly Billing', 'Μηνιαία χρέωση')}</p>
            </td>
            <td className="px-4 py-2">
             <Badge variant={statusTone(sub.status)}>{labelOf(sub.status)}</Badge>
@@ -386,12 +386,12 @@ export default function BillingOversight() {
        <table className="w-full text-left">
         <thead>
          <tr className="bg-stone-50 border-b border-stone-100">
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Date', 'Ημερομηνία')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Invoice #', 'Τιμολόγιο #')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Customer', 'Πελάτης')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Amount', 'Ποσό')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Status', 'Κατάσταση')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">{t('Action', 'Ενέργεια')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Date', 'Ημερομηνία')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Invoice #', 'Τιμολόγιο #')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Customer', 'Πελάτης')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Amount', 'Ποσό')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 text-right">{t('Action', 'Ενέργεια')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">

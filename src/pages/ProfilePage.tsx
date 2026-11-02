@@ -857,7 +857,7 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6">
      {/* About Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('About Me', 'Σχετικά με μένα')}</h3>
+      <h3 className="text-sm font-semibold text-stone-900">{t('About Me', 'Σχετικά με μένα')}</h3>
       {isEditing ? (
        <div className="space-y-4">
         {isOwnProfile && (
@@ -936,7 +936,7 @@ export default function ProfilePage() {
 
      {/* Experience / Projects */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Experience & Projects', 'Εμπειρία και έργα')}</h3>
+      <h3 className="text-sm font-semibold text-stone-900">{t('Experience & Projects', 'Εμπειρία και έργα')}</h3>
       <div className="space-y-8">
        {[
         { title: 'Co-founder & CTO', company: 'EcoFlow Systems', period: '2025 - Present', periodEl: '2025 - Σήμερα', desc: 'IoT bio-filters that let apartment buildings reuse their grey water; Athens pilot running.' },
@@ -966,7 +966,7 @@ export default function ProfilePage() {
      {/* Activity Feed */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+       <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
         <Activity className="w-4 h-4 text-stone-400" />
         {t('Recent Activity', 'Πρόσφατη δραστηριότητα')}
        </h3>
@@ -1010,7 +1010,7 @@ export default function ProfilePage() {
     <div className="min-w-0 space-y-6">
 {/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>
+      <h3 className="text-sm font-semibold text-stone-900">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>
 
       <div className="flex flex-wrap gap-2">
        {Array.isArray(profile.skills) && profile.skills.length === 0 && (
@@ -1098,7 +1098,7 @@ export default function ProfilePage() {
       {/* Recent Endorsements Feed — Enhanced */}
        <div className="pt-6 border-t border-stone-50 space-y-4">
         <div className="flex items-center justify-between">
-         <h4 className="text-sm font-medium text-stone-400 tracking-wide flex items-center gap-2">
+         <h4 className="text-sm font-medium text-stone-400 flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-400" />
           {t('Recent Endorsements', 'Πρόσφατες συστάσεις')}
          </h4>
@@ -1158,7 +1158,7 @@ export default function ProfilePage() {
 {/* Achievements / Badges */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+       <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
         <Trophy className="w-4 h-4 text-amber-500" />
         {t('Achievements', 'Επιτεύγματα')}
        </h3>
@@ -1184,8 +1184,8 @@ export default function ProfilePage() {
           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
          </div>
          <div>
-          <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-600")}>{t(badge.name, badge.nameEl)}</p>
-          <p className="text-xs text-stone-500 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
+          <p className={cn("text-xs font-semibold leading-snug", badge.earned ? "text-stone-900" : "text-stone-600")}>{t(badge.name, badge.nameEl)}</p>
+          <p className="text-xs text-stone-500 mt-0.5 leading-snug">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
           {!badge.earned && <p className="text-[11px] font-medium text-stone-500 mt-1">{t('Locked', 'Κλειδωμένο')}</p>}
          </div>
          {badge.earned && (
@@ -1200,7 +1200,7 @@ export default function ProfilePage() {
 {/* Open To / Availability */}
      {isOwnProfile && (
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+       <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
         <Heart className="w-4 h-4 text-red-400" />
         {t('Open To', 'Ενδιαφέρομαι για')}
        </h3>
@@ -1237,28 +1237,28 @@ export default function ProfilePage() {
      )}
 {/* Social Links */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Connect', 'Σύνδεση')}</h3>
+      <h3 className="text-sm font-semibold text-stone-900">{t('Connect', 'Σύνδεση')}</h3>
       <div className="space-y-4">
        {linkedinSafe && (
-        <a href={linkedinSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+        <a href={linkedinSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium tap-area">
          <Linkedin className="w-5 h-5" />
          {t('LinkedIn Profile', 'Προφίλ LinkedIn')}
         </a>
        )}
        {githubSafe && (
-        <a href={githubSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+        <a href={githubSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium tap-area">
          <Github className="w-5 h-5" />
          {t('GitHub Portfolio', 'Προφίλ GitHub')}
         </a>
        )}
        {twitterSafe && (
-        <a href={twitterSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+        <a href={twitterSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium tap-area">
          <Twitter className="w-5 h-5" />
          Twitter / X
         </a>
        )}
        {portfolioSafe && (
-        <a href={portfolioSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium">
+        <a href={portfolioSafe} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-all font-medium tap-area">
          <Globe className="w-5 h-5" />
          {t('Personal Website', 'Προσωπικός ιστότοπος')}
         </a>
@@ -1277,7 +1277,7 @@ export default function ProfilePage() {
       <div className="bg-stone-50 border border-stone-200 p-5 rounded-xl space-y-4">
        <div>
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
+          <h3 className="text-sm font-semibold text-stone-900">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
@@ -1339,7 +1339,7 @@ export default function ProfilePage() {
 {/* Readiness Score Section */}
       {displayReadiness && <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
        <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
+        <h3 className="text-sm font-semibold text-stone-900">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
         <TrendingUp className="w-5 h-5 text-stone-400" />
        </div>
 
@@ -1386,7 +1386,7 @@ export default function ProfilePage() {
          { label: 'Product', labelEl: 'Προϊόν', value: displayReadiness.dimensionScores.solutionClarity, color: 'purple' },
         ].map((dim) => (
          <div key={dim.label} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-          <div className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t(dim.label, dim.labelEl)}</div>
+          <div className="text-xs font-medium text-stone-400 mb-1">{t(dim.label, dim.labelEl)}</div>
           <div className="text-sm font-medium text-stone-900">{dim.value}/100</div>
          </div>
         ))}
@@ -1394,7 +1394,7 @@ export default function ProfilePage() {
       </div>}
 {/* Profile Stats — Enhanced */}
      <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
        <TrendingUp className="w-4 h-4 text-stone-400" />
        {t('Profile Analytics', 'Στατιστικά προφίλ')}
       </h3>
@@ -1415,7 +1415,7 @@ export default function ProfilePage() {
         return rows.map((stat) => (
          <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
           <div className="text-lg font-semibold text-stone-900 tabular-nums">{stat.value}</div>
-          <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
+          <div className="text-xs text-stone-500 font-medium">{t(stat.label, stat.labelEl)}</div>
           <div className="text-xs font-semibold text-stone-400">{stat.sub}</div>
          </div>
         ));
@@ -1440,7 +1440,7 @@ export default function ProfilePage() {
      </div>
 {/* Connections / Mutual Connections */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+       <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
         <Handshake className="w-4 h-4 text-stone-400" />
         {isOwnProfile ? t('Your connections', 'Οι συνδέσεις σου') : t('Connections you share', 'Κοινές συνδέσεις')}
        </h3>
@@ -1475,7 +1475,7 @@ export default function ProfilePage() {
       </div>
 {/* People Also Viewed */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
        <Eye className="w-4 h-4 text-stone-400" />
        {isOwnProfile ? t('Members who fit you', 'Μέλη που σου ταιριάζουν') : t('Similar members', 'Παρόμοια μέλη')}
       </h3>

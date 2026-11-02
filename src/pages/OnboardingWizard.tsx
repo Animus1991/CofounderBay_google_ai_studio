@@ -565,7 +565,7 @@ export default function OnboardingWizard() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
        <div className="space-y-4">
-        <label className="block text-sm font-medium text-stone-900 tracking-wider">{t('Current Stage', 'Τρέχον στάδιο')}</label>
+        <label className="block text-sm font-medium text-stone-900">{t('Current Stage', 'Τρέχον στάδιο')}</label>
         <div className="space-y-2">
          {[
           { id: FounderStage.IDEA, label: t('Idea Stage', 'Στάδιο ιδέας'), desc: t('Just a concept', 'Μόνο μια ιδέα') },
@@ -591,7 +591,7 @@ export default function OnboardingWizard() {
         </div>
        </div>
        <div className="space-y-4">
-        <label className="block text-sm font-medium text-stone-900 tracking-wider">{t('Commitment', 'Δέσμευση')}</label>
+        <label className="block text-sm font-medium text-stone-900">{t('Commitment', 'Δέσμευση')}</label>
         <div className="space-y-2">
          {[
           { id: CommitmentLevel.FULL_TIME, label: labelOf(CommitmentLevel.FULL_TIME), desc: t('100% dedicated', 'Αφοσίωση 100%') },
@@ -618,7 +618,7 @@ export default function OnboardingWizard() {
        </div>
       </div>
       <div>
-       <label className="block text-sm font-medium text-stone-900 tracking-wider mb-2">{t('Looking for', 'Ψάχνω για')}</label>
+       <label className="block text-sm font-medium text-stone-900 mb-2">{t('Looking for', 'Ψάχνω για')}</label>
        <div className="flex flex-wrap gap-2">
         {['Co-founder', 'Investor', 'Mentor', 'Sales', 'Growth', 'Technical help'].map((item) => {
          const on = formData.lookingFor.includes(item);
@@ -684,7 +684,7 @@ export default function OnboardingWizard() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-2 sm:p-6 lg:p-8">
+  <div data-type-scale="app" className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-2 sm:p-6 lg:p-8">
    <div className="w-full max-w-3xl">
     {/* Progress Bar */}
     <div className="mb-8 sm:mb-12">
@@ -711,7 +711,7 @@ export default function OnboardingWizard() {
          {idx < currentStep ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
         </div>
         <span className={cn(
-         "text-xs font-medium tracking-wider",
+         "text-xs font-medium ",
          idx <= currentStep ? "text-stone-900" : "text-stone-400"
         )}>
          {t(step.title, STEP_EL[step.title] || step.title)}

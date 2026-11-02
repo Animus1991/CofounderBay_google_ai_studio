@@ -211,8 +211,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
         type="button"
         aria-pressed={activeTab === tab}
         onClick={() => setActiveTab(tab)}
-        className={cn(
-         "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
+        className={cn("px-3 py-1.5 text-sm font-semibold rounded-lg transition-all",
          segmentItem(activeTab === tab)
         )}
        >
@@ -239,7 +238,7 @@ export default function Programs({ user: _user }: ProgramsProps) {
          <div className="flex flex-col md:flex-row">
           <div className="md:w-48 h-40 md:h-auto overflow-hidden relative shrink-0">
            <CoverImage src={program.image} alt="" icon={Rocket} className="h-full w-full" imgClassName="group-hover:scale-105 transition-transform duration-200" />
-           <div className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-white/95 backdrop-blur-sm rounded-md text-xs font-semibold tracking-wider border border-stone-100 shadow-sm">
+           <div className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-white/95 backdrop-blur-sm rounded-md text-xs font-semibold border border-stone-100 shadow-sm">
             {labelOf(program.type)}
            </div>
           </div>
@@ -285,10 +284,10 @@ export default function Programs({ user: _user }: ProgramsProps) {
       <div className="grid grid-cols-2 gap-2">
        {ecosystemStats.map((stat, idx) => (
         <div key={idx} className="p-2.5 bg-stone-50 border border-stone-100 rounded-xl space-y-1">
-         <div className="flex items-center gap-1 text-xs text-stone-400 tracking-wider">
+         <div className="flex items-center gap-1 text-xs text-stone-400">
           <stat.icon className="w-2.5 h-2.5" />{stat.label}
          </div>
-         <p className="text-base font-bold text-stone-900">{stat.value}</p>
+         <p className="text-base font-semibold text-stone-900">{stat.value}</p>
         </div>
        ))}
       </div>

@@ -11,9 +11,9 @@ export default function Skeleton({ className, variant = 'text', width, height }:
  return (
   <div
    className={cn(
-    "animate-pulse bg-stone-200/60 rounded",
+    "animate-pulse bg-stone-200/60 rounded-md",
     variant === 'circular' && 'rounded-full',
-    variant === 'text' && 'rounded h-4 w-full',
+    variant === 'text' && 'rounded-md h-4 w-full',
     variant === 'rectangular' && 'rounded-xl',
     className
    )}

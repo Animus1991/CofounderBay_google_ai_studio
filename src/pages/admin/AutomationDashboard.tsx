@@ -423,7 +423,7 @@ const logMessage = (message: string) => {
                <p className="text-micro">{t('Conditions', 'Συνθήκες')}</p>
                <div className="flex flex-wrap gap-1.5">
                 {rule.conditions.length > 0 ? rule.conditions.map((c, idx) => (
-                 <span key={idx} className="px-2 py-1 bg-stone-50 border border-stone-100 rounded text-xs font-mono text-stone-600">
+                 <span key={idx} className="px-2 py-1 bg-stone-50 border border-stone-100 rounded-md text-xs font-mono text-stone-600">
                   {c.field} {c.operator} {c.value}
                  </span>
                 )) : (
@@ -435,7 +435,7 @@ const logMessage = (message: string) => {
                <p className="text-micro">{t('Actions', 'Ενέργειες')}</p>
                <div className="flex flex-wrap gap-2">
                 {rule.actions.map((a, idx) => (
-                 <div key={idx} className="flex items-center gap-1.5 px-2 py-1 bg-stone-900 text-white rounded text-xs font-medium tracking-wider">
+                 <div key={idx} className="flex items-center gap-1.5 px-2 py-1 bg-stone-900 text-white rounded-md text-xs font-medium">
                   {getActionIcon(a.type)}
                   {actionName(a.type)}
                  </div>
@@ -458,7 +458,7 @@ const logMessage = (message: string) => {
               <Button
                variant="ghost"
                size="sm"
-               className="text-xs font-medium tracking-wider gap-1.5 h-8 px-3"
+               className="text-xs font-medium gap-1.5 h-8 px-3"
                onClick={() => setActiveTab('logs')}
               >
                {t('View Logs', 'Προβολή καταγραφών')} <ChevronRight className="w-3 h-3" />
@@ -509,7 +509,7 @@ const logMessage = (message: string) => {
               <td className="px-5 py-3 text-xs text-stone-600">{exec.triggerEntityId}</td>
               <td className="px-5 py-3">
                <span className={cn(
-                "px-2 py-0.5 rounded text-xs font-medium tracking-wider",
+                "px-2 py-0.5 rounded-md text-xs font-medium ",
                 exec.status === 'Success' ? "text-emerald-700" : 
                 exec.status === 'Failure' ? "text-red-700" : "text-blue-700"
                )}>
@@ -568,11 +568,11 @@ const logMessage = (message: string) => {
           <div className="flex-1 space-y-1">
            <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-stone-900">{logMessage(log.message)}</p>
-            <span className="text-xs font-medium text-stone-400 tracking-wide">
+            <span className="text-xs font-medium text-stone-400">
              {formatTime(log.createdAt ?? 0)}
             </span>
            </div>
-           <div className="flex items-center gap-4 text-xs font-medium text-stone-400 tracking-wide">
+           <div className="flex items-center gap-4 text-xs font-medium text-stone-400">
             <span>{t('Rule:', 'Κανόνας:')} {workflowName(rules.find(r => r.id === log.ruleId)?.name || '')}</span>
             <span>{t('Execution:', 'Εκτέλεση:')} {log.executionId}</span>
            </div>
@@ -580,7 +580,7 @@ const logMessage = (message: string) => {
             <div className="mt-4 space-y-4">
              {log.metadata.trigger && (
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
-               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">{t('Trigger Details', 'Στοιχεία εκδήλωσης')}</p>
+               <p className="text-xs font-medium text-stone-400 mb-2">{t('Trigger Details', 'Στοιχεία εκδήλωσης')}</p>
                <div className="flex items-center gap-4 text-xs">
                 <span className="font-medium text-stone-700">{triggerName(log.metadata.trigger.type)}</span>
                 <span className="text-stone-500">{t('Entity:', 'Οντότητα:')} {log.metadata.trigger.entityId}</span>
@@ -590,7 +590,7 @@ const logMessage = (message: string) => {
 
              {log.metadata.conditionsMet && (
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
-               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">{t('Conditions Met', 'Συνθήκες που πληρούνται')}</p>
+               <p className="text-xs font-medium text-stone-400 mb-2">{t('Conditions Met', 'Συνθήκες που πληρούνται')}</p>
                <div className="space-y-1">
                 {log.metadata.conditionsMet.map((c, i) => (
                  <div key={i} className="flex items-center gap-2 text-xs">
@@ -605,7 +605,7 @@ const logMessage = (message: string) => {
 
              {log.metadata.actionsTaken && (
               <div className="p-3 bg-stone-50 rounded-lg border border-stone-100">
-               <p className="text-xs font-medium text-stone-400 tracking-wide mb-2">{t('Actions Performed', 'Ενέργειες που έγιναν')}</p>
+               <p className="text-xs font-medium text-stone-400 mb-2">{t('Actions Performed', 'Ενέργειες που έγιναν')}</p>
                <div className="space-y-2">
                 {log.metadata.actionsTaken.map((a, i) => (
                  <div key={i} className="flex items-center justify-between text-xs">
@@ -615,7 +615,7 @@ const logMessage = (message: string) => {
                    {a.templateId && <span className="text-stone-500">{t('Template:', 'Πρότυπο:')} {a.templateId}</span>}
                   </div>
                   <span className={cn(
-                   "px-1.5 py-0.5 rounded text-xs font-medium tracking-wider",
+                   "px-1.5 py-0.5 rounded-md text-xs font-medium ",
                    a.status === 'success' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
                   )}>
                    {a.status === 'success' ? t('success', 'επιτυχία') : a.status === 'failed' ? t('failed', 'αποτυχία') : a.status}
@@ -628,10 +628,10 @@ const logMessage = (message: string) => {
 
              {log.metadata.error && (
               <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-               <p className="text-xs font-medium text-red-400 tracking-wide mb-2">{t('Error Details', 'Στοιχεία σφάλματος')}</p>
+               <p className="text-xs font-medium text-red-400 mb-2">{t('Error Details', 'Στοιχεία σφάλματος')}</p>
                <p className="text-xs text-red-700 font-medium">{log.metadata.error}</p>
                {log.metadata.stackTrace && (
-                <pre className="mt-2 p-2 bg-red-900/10 text-red-800 rounded text-xs overflow-x-auto font-mono">
+                <pre className="mt-2 p-2 bg-red-900/10 text-red-800 rounded-md text-xs overflow-x-auto font-mono">
                  {log.metadata.stackTrace}
                 </pre>
                )}
@@ -639,7 +639,7 @@ const logMessage = (message: string) => {
              )}
 
              <details className="group">
-              <summary className="text-xs font-medium text-stone-400 tracking-wide cursor-pointer hover:text-stone-600 transition-colors flex items-center gap-1">
+              <summary className="text-xs font-medium text-stone-400 cursor-pointer hover:text-stone-600 transition-colors flex items-center gap-1">
                <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
                {t('Raw Payload', 'Ακατέργαστο payload')}
               </summary>
@@ -676,7 +676,7 @@ const logMessage = (message: string) => {
                <h4 className="font-medium text-stone-900">{templateName(template.name)}</h4>
                <p className="text-xs text-stone-500 mt-1">{templateLine(template.subject)}</p>
               </div>
-              <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-xs font-medium tracking-wider">
+              <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded-md text-xs font-medium">
                {labelOf(template.category) || templateLine(template.category ?? '')}
               </span>
              </div>
@@ -701,7 +701,7 @@ const logMessage = (message: string) => {
                <h4 className="font-medium text-stone-900">{templateName(template.name)}</h4>
                <p className="text-xs text-stone-500 mt-1">{templateLine(template.title)}</p>
               </div>
-              <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-xs font-medium tracking-wider">
+              <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded-md text-xs font-medium">
                {labelOf(template.category) || templateLine(template.category ?? '')}
               </span>
              </div>
@@ -758,12 +758,12 @@ const logMessage = (message: string) => {
           <input 
            type="text" 
            placeholder={t('e.g. Welcome Series', 'π.χ. Σειρά καλωσορίσματος')}
-           className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-lg text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all"
+           className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-xl text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all"
           />
          </div>
          <div className="space-y-1.5">
           <label className="text-micro">{t('Trigger Type', 'Τύπος εκδήλωσης')}</label>
-          <select className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-lg text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all font-medium">
+          <select className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-xl text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all font-medium">
            <option value="UserSignup">{triggerName('UserSignup')}</option>
            <option value="ProfileCompleted">{triggerName('ProfileCompleted')}</option>
            <option value="InactivityDetected">{triggerName('InactivityDetected')}</option>
@@ -777,14 +777,14 @@ const logMessage = (message: string) => {
          <textarea 
           placeholder={t('What does this workflow do?', 'Τι κάνει αυτή η ροή;')}
           rows={3}
-          className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-lg text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all"
+          className="w-full px-3 py-2.5 bg-stone-50/50 border border-stone-200 rounded-xl text-sm outline-none focus:ring-2 ring-stone-900/5 focus:border-stone-400 transition-all"
          />
         </div>
 
         <div className="space-y-3">
          <div className="flex items-center justify-between">
           <label className="text-micro">{t('Actions', 'Ενέργειες')}</label>
-          <Button variant="ghost" size="sm" className="h-7 text-xs font-medium tracking-wider gap-1 px-2">
+          <Button variant="ghost" size="sm" className="h-7 text-xs font-medium gap-1 px-2">
            <Plus className="w-3 h-3" /> {t('Add Action', 'Προσθήκη ενέργειας')}
           </Button>
          </div>

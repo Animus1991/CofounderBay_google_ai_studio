@@ -145,7 +145,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
             type="color"
             value={brandingForm.primaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, primaryColor: e.target.value })}
-            className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
+            className="w-9 h-9 rounded-md border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
             aria-label={t('Primary color hex value', 'Κωδικός hex κύριου χρώματος')}
@@ -164,7 +164,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
             type="color"
             value={brandingForm.secondaryColor}
             onChange={e => setBrandingForm({ ...brandingForm, secondaryColor: e.target.value })}
-            className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
+            className="w-9 h-9 rounded-md border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
             aria-label={t('Secondary color hex value', 'Κωδικός hex δευτερεύοντος χρώματος')}
@@ -183,7 +183,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
             type="color"
             value={brandingForm.accentColor}
             onChange={e => setBrandingForm({ ...brandingForm, accentColor: e.target.value })}
-            className="w-9 h-9 rounded border border-stone-200 cursor-pointer p-0.5 bg-white"
+            className="w-9 h-9 rounded-md border border-stone-200 cursor-pointer p-0.5 bg-white"
            />
            <input
             aria-label={t('Accent color hex value', 'Κωδικός hex χρώματος έμφασης')}
@@ -300,19 +300,19 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
         <div className="flex h-64 border border-stone-100 rounded-lg overflow-hidden">
          <div className="w-40 bg-white border-r border-stone-100 p-4 space-y-4">
           <div className="flex items-center gap-2 mb-4">
-           <div className="w-5 h-5 bg-stone-900 rounded flex items-center justify-center">
+           <div className="w-5 h-5 bg-stone-900 rounded-md flex items-center justify-center">
             <Zap className="w-2.5 h-2.5 text-white fill-current" />
            </div>
-           <span className="text-xs font-medium tracking-wider">{tenant.displayName}</span>
+           <span className="text-xs font-medium">{tenant.displayName}</span>
           </div>
           <div className="space-y-1">
-           <div className="bg-stone-900 text-white px-3 py-1.5 rounded-md text-xs font-medium tracking-wider">{t('Dashboard', 'Πίνακας')}</div>
-           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium tracking-wider">{t('Matches', 'Αντιστοιχίσεις')}</div>
-           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium tracking-wider">{contentForm.communityNamingConvention}</div>
+           <div className="bg-stone-900 text-white px-3 py-1.5 rounded-md text-xs font-medium">{t('Dashboard', 'Πίνακας')}</div>
+           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium">{t('Matches', 'Αντιστοιχίσεις')}</div>
+           <div className="text-stone-400 px-3 py-1.5 text-xs font-medium">{contentForm.communityNamingConvention}</div>
           </div>
          </div>
          <div className="flex-1 bg-stone-50/50 p-6">
-          <div className="h-3 w-24 bg-stone-200 rounded mb-4"></div>
+          <div className="h-3 w-24 bg-stone-200 rounded-md mb-4"></div>
           <div className="grid grid-cols-2 gap-4">
            <div className="h-20 bg-white rounded-lg border border-stone-100 shadow-sm"></div>
            <div className="h-20 bg-white rounded-lg border border-stone-100 shadow-sm"></div>
@@ -328,15 +328,15 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
      <Card title={t('Current Theme', 'Τρέχον θέμα')}>
       <div className="space-y-4">
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Primary', 'Κύριο')}</span>
+        <span className="text-xs font-medium text-stone-500">{t('Primary', 'Κύριο')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.primaryColor }}></div>
        </div>
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Secondary', 'Δευτερεύον')}</span>
+        <span className="text-xs font-medium text-stone-500">{t('Secondary', 'Δευτερεύον')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.secondaryColor }}></div>
        </div>
        <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 tracking-wider">{t('Accent', 'Έμφαση')}</span>
+        <span className="text-xs font-medium text-stone-500">{t('Accent', 'Έμφαση')}</span>
         <div className="w-10 h-5 rounded-full shadow-inner border border-stone-200/50" style={{ backgroundColor: brandingForm.accentColor }}></div>
        </div>
        <div className="pt-4 border-t border-stone-100">
@@ -351,7 +351,7 @@ export default function BrandingSettings({ user: _user }: BrandingSettingsProps)
       <div className="space-y-4">
        <div>
         <label className="text-micro">{t('Slug', 'Αναγνωριστικό')}</label>
-        <p className="text-sm font-mono text-stone-900 bg-stone-50 p-2 rounded border border-stone-100 mt-1">{tenant.slug}</p>
+        <p className="text-sm font-mono text-stone-900 bg-stone-50 p-2 rounded-md border border-stone-100 mt-1">{tenant.slug}</p>
        </div>
        <div>
         <label className="text-micro">{t('Support Email', 'Email υποστήριξης')}</label>

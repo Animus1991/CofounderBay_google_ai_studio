@@ -366,7 +366,7 @@ export default function Events(_props: EventsProps = {}) {
            className="h-full w-full"
            imgClassName="group-hover:scale-105 transition-transform duration-200"
           />
-          <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold tracking-wider shadow border border-white/20">
+          <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold shadow-sm border border-white/20">
            {labelOf(event.type)}
           </div>
          </div>
@@ -375,7 +375,7 @@ export default function Events(_props: EventsProps = {}) {
            <div className="flex items-start justify-between gap-3 mb-2">
             <div>
              <h3 className="text-base font-semibold text-stone-900 leading-snug">{t(event.title, event.titleEl ?? event.title)}</h3>
-             <p className="text-xs text-stone-400 mt-0.5 tracking-wider">{t(`by ${event.organizer}`, `Διοργάνωση: ${event.organizer}`)}</p>
+             <p className="text-xs text-stone-400 mt-0.5">{t(`by ${event.organizer}`, `Διοργάνωση: ${event.organizer}`)}</p>
             </div>
             <div className="flex gap-1 shrink-0">
              <button type="button" aria-pressed={bookmarkedEvents.includes(event.id)} aria-label={bookmarkedEvents.includes(event.id) ? t("Remove saved event", "Αφαίρεση αποθηκευμένης εκδήλωσης") : t("Save event", "Αποθήκευση εκδήλωσης")} title={bookmarkedEvents.includes(event.id) ? t("Remove saved event", "Αφαίρεση αποθηκευμένης εκδήλωσης") : t("Save event", "Αποθήκευση εκδήλωσης")} onClick={() => toggleBookmark(event.id)} className={cn("p-1.5 hover:bg-stone-50 rounded-lg transition-all", bookmarkedEvents.includes(event.id) ? "text-stone-900" : "text-stone-300 hover:text-stone-700")}>
@@ -449,13 +449,13 @@ export default function Events(_props: EventsProps = {}) {
      {/* Featured Event — the next real event, or the demo pick in demo mode */}
      {featured && (
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
-      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
+      <p className="text-xs font-semibold text-stone-400 mb-3">{t('Featured Event', 'Επιλεγμένη εκδήλωση')}</p>
       <div className="h-40 rounded-xl overflow-hidden relative group cursor-pointer mb-3 bg-stone-900">
        <CoverImage src={featured.image} alt="" icon={CalendarIcon} tone="dark" className="h-full w-full" imgClassName="group-hover:scale-105 transition-transform duration-200" />
        <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent"></div>
        <div className="absolute bottom-3 left-3 right-3">
-        <span className="text-xs font-semibold text-amber-950 tracking-wider bg-amber-300 px-2 py-0.5 rounded mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
-        <p className="text-white text-sm font-semibold leading-tight">{t(featured.title, featured.titleEl ?? featured.title)}</p>
+        <span className="text-xs font-semibold text-amber-950 bg-amber-300 px-2 py-0.5 rounded-md mb-1 inline-block">{t('Recommended', 'Προτείνεται')}</span>
+        <p className="text-white text-sm font-semibold leading-snug">{t(featured.title, featured.titleEl ?? featured.title)}</p>
        </div>
       </div>
       <p className="text-sm text-stone-500 leading-relaxed mb-3">
@@ -473,7 +473,7 @@ export default function Events(_props: EventsProps = {}) {
 
      {/* Categories */}
      <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
-      <p className="text-xs font-semibold text-stone-400 tracking-wider mb-3">{t('Event Categories', 'Κατηγορίες εκδηλώσεων')}</p>
+      <p className="text-xs font-semibold text-stone-400 mb-3">{t('Event Categories', 'Κατηγορίες εκδηλώσεων')}</p>
       <div className="space-y-1">
        {[
         { name: "Workshops", nameEl: "Εργαστήρια", type: 'Workshop' as const, icon: Rocket },

@@ -72,7 +72,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white selection:bg-stone-900 selection:text-white">
+    <div data-type-scale="app" className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
         <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
@@ -89,31 +89,31 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-6 lg:gap-8">
               <a
                 href="#features"
-                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area"
               >
                 {t("Features", "Λειτουργίες")}
               </a>
               <NavLink
                 to="/quiz"
-                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area"
               >
                 {t("Fit check", "Fit check")}
               </NavLink>
               <a
                 href="#how-it-works"
-                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area"
               >
                 {t("How it Works", "Πώς λειτουργεί")}
               </a>
               <a
                 href="#communities"
-                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area"
               >
                 {t("Communities", "Κοινότητες")}
               </a>
               <NavLink
                 to="/pricing"
-                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-sm font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area"
               >
                 {t("Pricing", "Πλάνα")}
               </NavLink>
@@ -194,7 +194,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide mb-6">
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium mb-6">
                 {t("60 seconds · no account needed", "60 δευτερόλεπτα · χωρίς λογαριασμό")}
               </span>
               <h1 className="text-xl sm:text-2xl lg:text-2xl font-medium text-stone-900 tracking-tight leading-snug mb-8">
@@ -253,7 +253,7 @@ export default function LandingPage() {
                 <div className="text-lg font-semibold text-stone-900">
                   {stat.value}
                 </div>
-                <div className="text-[10px] text-stone-500 font-semibold tracking-[0.1em] shrink-0">
+                <div className="text-[10px] text-stone-500 font-semibold shrink-0">
                   {stat.label}
                 </div>
               </div>
@@ -265,7 +265,7 @@ export default function LandingPage() {
       {/* This week: person, session, operator — one glance */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <p className="text-xs font-medium text-stone-400 tracking-wide mb-4">
+          <p className="text-xs font-medium text-stone-400 mb-4">
             <Both en="How it works, in three steps" el="Πώς λειτουργεί, σε τρία βήματα" />
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -313,7 +313,7 @@ export default function LandingPage() {
                 )}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <span className={cn("text-[10px] font-semibold tracking-wider", step.dark ? "text-stone-400" : "text-stone-400")}>
+                  <span className={cn("text-[10px] font-semibold ", step.dark ? "text-stone-400" : "text-stone-400")}>
                     {t(`Step ${step.n}`, `Βήμα ${step.n}`)}
                   </span>
                   <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", step.dark ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-700")}>
@@ -332,7 +332,7 @@ export default function LandingPage() {
       <section id="features" className="py-16 md:py-24 lg:py-32">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-4">
+            <h2 className="text-base font-medium text-stone-900 tracking-tight mb-4">
               {t("Not just another social network.", "Όχι άλλο ένα κοινωνικό δίκτυο.")}
             </h2>
             <p className="text-sm sm:text-base lg:text-lg text-stone-500">
@@ -358,7 +358,7 @@ export default function LandingPage() {
                 >
                   <feature.icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-base sm:text-lg md:text-xl font-medium text-stone-900 mb-3">
+                <h3 className="text-sm sm:text-base text-sm sm:text-base text-sm sm:text-base font-medium text-stone-900 mb-3">
                   {feature.title}
                 </h3>
                 <p className="text-stone-500 text-xs sm:text-sm leading-relaxed">
@@ -375,11 +375,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16">
             <div className="lg:w-1/2 space-y-8">
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-medium text-stone-900 tracking-tight">
+              <h2 className="text-base text-base text-base font-medium text-stone-900 tracking-tight">
                 {t("Industry-specific", "Κόμβοι startup")} <br />
                 <span className="text-stone-400">{t("Startup Hubs.", "ανά κλάδο.")}</span>
               </h2>
-              <p className="text-sm sm:text-lg lg:text-xl text-stone-500 leading-relaxed">
+              <p className="text-sm sm:text-base text-stone-500 leading-relaxed">
                 {t(
                   "Join deep-tech, fintech, or sustainability communities to find partners who share your domain expertise and passion.",
                   "Μπες σε κοινότητες deep-tech, fintech ή βιωσιμότητας για να βρεις συνεργάτες με την ίδια εξειδίκευση και πάθος.",
@@ -404,7 +404,7 @@ export default function LandingPage() {
               </div>
               <NavLink
                 to="/communities"
-                className="inline-flex items-center gap-2 text-stone-900 font-medium hover:gap-3 transition-all"
+                className="inline-flex items-center gap-2 text-stone-900 font-medium hover:gap-3 transition-all tap-area"
               >
                 {t("Explore all communities", "Εξερεύνηση όλων των κοινοτήτων")}
                 <ArrowRight className="w-5 h-5" />
@@ -417,7 +417,7 @@ export default function LandingPage() {
                 { icon: Zap, color: "bg-amber-50 text-amber-600", title: t("AI Builders", "Δημιουργοί AI"), body: t("Models, evaluation, costs and what actually ships to customers.", "Μοντέλα, αξιολόγηση, κόστη και τι φτάνει πραγματικά στους πελάτες.") },
                 { icon: Globe, color: "bg-emerald-50 text-emerald-600", title: t("Global Scale", "Διεθνής επέκταση"), body: t("Entering new markets, remote teams and working across time zones.", "Είσοδος σε νέες αγορές, απομακρυσμένες ομάδες και δουλειά σε διαφορετικές ζώνες ώρας.") },
               ].map((hub) => (
-                <NavLink key={hub.title} to="/communities" className="block text-left bg-white rounded-2xl border border-stone-100 p-6 shadow-sm hover:border-stone-300 transition-all">
+                <NavLink key={hub.title} to="/communities" className="block text-left bg-white rounded-2xl border border-stone-100 p-6 shadow-sm hover:border-stone-300 transition-all tap-area">
                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4", hub.color)}>
                     <hub.icon className="w-6 h-6" />
                   </div>
@@ -438,7 +438,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-16 items-center">
             <div>
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-medium tracking-tight mb-6">
+              <h2 className="text-base text-base text-base font-medium tracking-tight mb-6">
                 {t("The ecosystem for", "Το οικοσύστημα για")}{" "}
                 <span className="text-stone-400 italic">{t("serious", "σοβαρούς")}</span> {t("builders.", "δημιουργούς.")}
               </h2>
@@ -498,7 +498,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8 text-center">
           <div className="p-8 md:p-12 lg:p-20 rounded-xl sm:rounded-xl bg-stone-50 border border-stone-100 relative overflow-hidden">
             <div className="relative z-10">
-              <h2 className="text-lg font-medium text-stone-900 tracking-tight mb-6">
+              <h2 className="text-base font-medium text-stone-900 tracking-tight mb-6">
                 {t("Ready to find your", "Ώρα να βρεις τον")} <br />
                 {t("next co-founder?", "συνιδρυτή σου;")}
               </h2>
@@ -544,14 +544,14 @@ export default function LandingPage() {
               </p>
             </div>
             <div>
-              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
+              <h4 className="font-medium text-stone-900 mb-6 text-xs">
                 {t("Platform", "Πλατφόρμα")}
               </h4>
               <ul className="space-y-4 text-sm text-stone-500">
                 <li>
                   <NavLink
                     to="/quiz"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Fit check", "Fit check")}
                   </NavLink>
@@ -559,7 +559,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/matches"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Matching Engine", "Μηχανή αντιστοίχισης")}
                   </NavLink>
@@ -567,7 +567,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/mentors"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Mentor Network", "Δίκτυο μεντόρων")}
                   </NavLink>
@@ -575,7 +575,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/communities"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Communities", "Κοινότητες")}
                   </NavLink>
@@ -583,7 +583,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/discovery"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Discovery", "Εξερεύνηση")}
                   </NavLink>
@@ -591,14 +591,14 @@ export default function LandingPage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-medium text-stone-900 mb-6 text-xs tracking-wide">
+              <h4 className="font-medium text-stone-900 mb-6 text-xs">
                 {t("Company", "Εταιρεία")}
               </h4>
               <ul className="space-y-4 text-sm text-stone-500">
                 <li>
                   <a
                     href="#how-it-works"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("About Us", "Σχετικά")}
                   </a>
@@ -606,7 +606,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/legal"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Privacy Policy", "Πολιτική απορρήτου")}
                   </NavLink>
@@ -614,7 +614,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/legal"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Terms of Service", "Όροι χρήσης")}
                   </NavLink>
@@ -622,7 +622,7 @@ export default function LandingPage() {
                 <li>
                   <NavLink
                     to="/pricing"
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Pricing", "Πλάνα")}
                   </NavLink>
@@ -630,7 +630,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     href={`mailto:${appEnv.legal.supportEmail}`}
-                    className="hover:text-stone-900 transition-colors"
+                    className="hover:text-stone-900 transition-colors tap-area"
                   >
                     {t("Contact", "Επικοινωνία")}
                   </a>
@@ -644,7 +644,7 @@ export default function LandingPage() {
             </p>
             <div className="flex items-center gap-4 text-xs text-stone-400">
               <LanguageToggle className="min-h-9" />
-              <a href={`mailto:${appEnv.legal.supportEmail}`} className="hover:text-stone-900 transition-colors">{appEnv.legal.supportEmail}</a>
+              <a href={`mailto:${appEnv.legal.supportEmail}`} className="hover:text-stone-900 transition-colors tap-area">{appEnv.legal.supportEmail}</a>
             </div>
           </div>
         </div>

@@ -34,7 +34,7 @@ export function ClearFiltersButton({
 }) {
   const t = useT();
   return (
-    <button type="button" onClick={onClick} className="text-xs font-medium text-stone-900 hover:underline">
+    <button type="button" onClick={onClick} className="text-xs font-medium text-stone-900 hover:underline tap-area">
       {children ?? t('Clear filters', 'Καθάρισε τα φίλτρα')}
     </button>
   );
@@ -52,7 +52,7 @@ export function AskLink({
   return (
     <button
       type="button"
-      className="inline-flex items-center text-xs font-medium text-stone-900 hover:underline"
+      className="inline-flex items-center text-xs font-medium text-stone-900 hover:underline tap-area"
       onClick={() => askAssistant(prompt)}
     >
       {label}

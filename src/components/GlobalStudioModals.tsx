@@ -600,7 +600,7 @@ export const GlobalStudioModals: React.FC = () => {
 
       {dealRoomModalOpen && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/95 border border-blue-500/40 shadow-xl backdrop-blur-md max-w-[95vw] overflow-x-auto">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1 px-2 shrink-0">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-300 flex items-center gap-1 px-2 shrink-0">
             <Briefcase className="w-3.5 h-3.5" />
             {lang === 'el' ? 'Deal Rooms:' : 'Deal Rooms:'}
           </span>
@@ -653,9 +653,10 @@ export const GlobalStudioModals: React.FC = () => {
         >
           <div
             role="dialog"
+            data-type-scale="app"
             aria-modal="true"
             aria-label={lang === 'el' ? 'Πίνακας Αναγκών & Ρόλων Startup' : 'Startup Role Needs & Co-Founder Bounties'}
-            className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl bg-card text-foreground border border-border shadow-2xl p-4 sm:p-6"
+            className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-card text-foreground border border-border shadow-2xl p-4 sm:p-6"
           >
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
               <div className="flex items-center gap-2.5">
@@ -663,7 +664,7 @@ export const GlobalStudioModals: React.FC = () => {
                   <Layers className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-foreground">
+                  <h2 className="text-base font-semibold text-foreground">
                     {lang === 'el'
                       ? 'Πίνακας Αναγκών & Ρόλων Startup (Need Cards Wall)'
                       : 'Startup Role Needs & Co-Founder Bounties (Need Cards Wall)'}

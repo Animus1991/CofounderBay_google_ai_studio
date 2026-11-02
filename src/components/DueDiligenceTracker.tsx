@@ -89,7 +89,7 @@ export function DueDiligenceTracker({ roomFileNames, ventureName }: { roomFileNa
                       </p>
                       <input
                         data-testid={`dd-note-${item.id}`}
-                        className="mt-1 w-full rounded-md border border-transparent bg-stone-50 px-2 py-1 text-[11px] text-stone-700 hover:border-stone-200 focus:border-stone-300 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-transparent bg-stone-50 px-2 py-1 text-[11px] text-stone-700 hover:border-stone-200 focus:border-stone-300 focus:outline-none"
                         defaultValue={item.note ?? ''}
                         placeholder={t('Note (owner, link, what is missing)…', 'Σημείωση (υπεύθυνος, σύνδεσμος, τι λείπει)…')}
                         onBlur={(e) => { if (e.target.value.trim() !== (item.note ?? '')) setDDNote(item.id, e.target.value); }}
@@ -244,7 +244,7 @@ function DDSharePanel({ ventureName }: { ventureName: string }) {
               <button type="button" data-testid={`dd-share-refresh-${share.token}`} disabled={busy === share.token} onClick={() => { void act(share.token, 'refresh'); }} className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-600 hover:text-stone-900">
                 <RefreshCw className="h-3 w-3" />{t('Update', 'Ενημέρωση')}
               </button>
-              <a href={`/dd/${share.token}`} target="_blank" rel="noreferrer" data-testid={`dd-share-open-${share.token}`} className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-600 hover:text-stone-900">
+              <a href={`/dd/${share.token}`} target="_blank" rel="noreferrer" data-testid={`dd-share-open-${share.token}`} className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-stone-600 hover:text-stone-900 tap-area">
                 <Eye className="h-3 w-3" />{t('Preview', 'Προβολή')}
               </a>
               {confirming === share.token ? (

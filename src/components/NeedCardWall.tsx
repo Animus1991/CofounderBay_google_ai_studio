@@ -320,7 +320,7 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   {lang === 'en' ? 'Need Card Alerts' : 'Ειδοποιήσεις Νέων Καρτών'}
                 </h3>
               </div>
@@ -393,7 +393,7 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-bold text-foreground">
+                <h3 className="text-base font-semibold text-foreground">
                   {lang === 'en' ? 'Post a Venture Need Card' : 'Δημοσίευση Κάρτας Ανάγκης'}
                 </h3>
               </div>

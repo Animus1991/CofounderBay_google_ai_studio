@@ -23,14 +23,14 @@ type SectionHeaderProps = {
 export default function SectionHeader({ title, detail, actions, className }: SectionHeaderProps) {
   return (
     <div className={cn('mb-3 flex items-baseline justify-between gap-3', className)}>
-      <p className="min-w-0 text-xs font-semibold text-stone-400 tracking-wider">
+      <p className="min-w-0 text-xs font-semibold text-stone-400">
         {title}
-        {detail ? <span className="ml-1.5 font-normal tracking-normal text-stone-400">· {detail}</span> : null}
+        {detail ? <span className="ml-1.5 font-normal text-stone-400">· {detail}</span> : null}
       </p>
       {actions && actions.length > 0 && (
         <div className="flex shrink-0 items-center gap-3">
           {actions.map((action) => (
-            <NavLink key={action.to} to={action.to} className="text-xs text-stone-500 transition-colors hover:text-stone-900">
+            <NavLink key={action.to} to={action.to} className="text-xs text-stone-500 transition-colors hover:text-stone-900 tap-area">
               {action.label} <span aria-hidden="true">→</span>
             </NavLink>
           ))}

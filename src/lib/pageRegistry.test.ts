@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PAGE_ALIASES, PAGE_REGISTRY, assistantPages, memberPages, pageEntry, pageTitle } from './pageRegistry';
+import { PAGE_ALIASES, PAGE_REGISTRY, assistantPages, memberPages, pageContext, pageEntry, pageTitle } from './pageRegistry';
 import { NAV_ENTRIES, navLabel } from './navMap';
 import { pageHelp } from './navHelp';
 
@@ -49,5 +49,12 @@ describe('page registry', () => {
       '/dashboard', '/matches', '/discovery', '/mentors', '/messages', '/milestones', '/fundraising', '/calendar',
     ]);
     expect(assistantPages().some((page) => page.href === '/assistant')).toBe(true);
+  });
+
+  it('uses the full registry for pages without assistant keys', () => {
+    expect(pageContext('/admin/automation')).toMatchObject({ en: 'Automation', el: 'Αυτοματισμοί' });
+    expect(pageContext('/admin/users').en).toBe('User Management');
+    expect(pageContext('/profile/sarah-chen').href).toBe('/profile');
+    expect(pageContext('/').href).toBe('/dashboard');
   });
 });

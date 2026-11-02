@@ -318,7 +318,7 @@ export default function Network({ user }: NetworkProps) {
           type="button"
           data-ui="button"
           title={t('The assistant prepares the fit-check link for three founders you choose', 'Ο βοηθός ετοιμάζει τον σύνδεσμο fit check για τρεις ιδρυτές της επιλογής σου')}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors tap-area"
           onClick={() => askAssistant('Invite 3 founders')}
         >
           <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -374,7 +374,7 @@ export default function Network({ user }: NetworkProps) {
                 <motion.div key={conn.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05, duration: 0.4 }}>
                   <Card className={cn('group hover:border-stone-300 hover:shadow-md transition-all p-5 border-stone-100 h-full', conn.status === 'Incoming' && 'border-stone-900/20 bg-stone-50/40')}>
                     <div className="flex flex-col items-center text-center space-y-4 h-full">
-                      <button type="button" className="relative flex flex-col items-center mb-3 shrink-0" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
+                      <button type="button" className="relative flex flex-col items-center mb-3 shrink-0 tap-area" onClick={() => { rememberPerson({ id: conn.id, fullName: conn.fullName, headline: conn.headline, headlineEl: conn.headlineEl, role: conn.role, industry: conn.industry, location: conn.location }); navigate(`/profile/${conn.id}`); }} aria-label={t('View profile', 'Προβολή προφίλ')}>
                         <Avatar src={conn.avatar} fallback={conn.fullName} size="xl" className="rounded-2xl" />
                         <div className={cn('absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white', conn.status === 'Connected' ? (isOnline(conn.person) ? 'bg-emerald-500' : 'bg-stone-300') : 'bg-amber-400')} />
                       </button>
@@ -493,7 +493,7 @@ export default function Network({ user }: NetworkProps) {
 
               {given.length > 0 && (
                 <div className="space-y-2 pt-2">
-                  <h3 className="text-xs font-semibold text-stone-500 tracking-wider">{t('Endorsements you gave', 'Συστάσεις που έδωσες')}</h3>
+                  <h3 className="text-xs font-semibold text-stone-500">{t('Endorsements you gave', 'Συστάσεις που έδωσες')}</h3>
                   {given.map((e) => (
                     <div key={e.id} className="flex items-center gap-3 p-3 rounded-xl border border-stone-100 bg-white">
                       <div className="flex-1 min-w-0 text-sm text-stone-700">
@@ -508,7 +508,7 @@ export default function Network({ user }: NetworkProps) {
 
             <div className="lg:col-span-5 space-y-4">
               <Card className="p-4 border-stone-100">
-                <h3 className="text-xs font-semibold text-stone-500 tracking-wider mb-3">{t('Endorsed skills', 'Δεξιότητες με σύσταση')}</h3>
+                <h3 className="text-xs font-semibold text-stone-500 mb-3">{t('Endorsed skills', 'Δεξιότητες με σύσταση')}</h3>
                 {skillCounts.length === 0 ? (
                   <p className="text-sm text-stone-400">{t('The distribution appears once you receive endorsements.', 'Η κατανομή εμφανίζεται μόλις λάβεις συστάσεις.')}</p>
                 ) : (

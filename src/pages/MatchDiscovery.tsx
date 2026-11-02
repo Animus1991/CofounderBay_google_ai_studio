@@ -31,6 +31,7 @@ import { usePageControls } from '../lib/pageControls';
 import PersonHovercard from '../components/ui/PersonHovercard';
 import { useToast } from '../context/ToastContext';
 import { parseQualifiers, QUALIFIER_HINT_EL, QUALIFIER_HINT_EN } from '../lib/searchQualifiers';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePeople } from '../lib/directory';
 import { avatarOf, cofounderPool, isOnline, type Person } from '../lib/peopleSource';
 import { connectionStateWith, respondToConnection, sendConnectionRequest, useConnections, withdrawConnection } from '../lib/social';
@@ -45,6 +46,8 @@ const PAGE = 24;
 export default function MatchDiscovery() {
  useLanguage();
  const t = useT();
+ // Phones: a placeholder that fits; the shortcuts line under the box still lists the qualifiers while searching.
+ const phone = useMediaQuery('(max-width: 639px)');
  const { user: currentUser, profile: viewerProfile, isDemoMode } = useAuth();
  const setMatchBreakdownModalOpen = useUIStore((s) => s.setMatchBreakdownModalOpen);
  const setNeedWallModalOpen = useUIStore((s) => s.setNeedWallModalOpen);
@@ -224,7 +227,7 @@ export default function MatchDiscovery() {
       <input
        type="search"
        aria-label={t('Search members', 'Αναζήτηση μελών')}
-       placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, τίτλος ή ${QUALIFIER_HINT_EL}`)}
+       placeholder={phone ? t('Skills or headline', 'Δεξιότητες ή τίτλος') : t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, τίτλος ή ${QUALIFIER_HINT_EL}`)}
        value={searchQuery}
        onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); setVisibleCount(PAGE); }}
        className="w-full min-h-11 pl-9 pr-4 py-[0.606rem] bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
@@ -243,7 +246,7 @@ export default function MatchDiscovery() {
       <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
       <span>{t('Filters', 'Φίλτρα')}</span>
       {Object.values(filters).filter(Boolean).length > 0 && (
-       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded text-xs font-semibold">{Object.values(filters).filter(Boolean).length}</span>
+       <span className="ml-1 px-1.5 py-0.5 bg-stone-100 text-stone-900 rounded-md text-xs font-semibold">{Object.values(filters).filter(Boolean).length}</span>
       )}
      </button>
      <button
@@ -267,7 +270,7 @@ export default function MatchDiscovery() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="bg-white p-4 rounded-2xl border border-stone-200 grid grid-cols-2 lg:grid-cols-4 gap-3">
        {[{ label: t('Stage', 'Στάδιο'), key: 'stage' as const, opts: STAGES }, { label: t('Role', 'Ρόλος'), key: 'role' as const, opts: ROLES }, { label: t('Commitment', 'Δέσμευση'), key: 'commitment' as const, opts: COMMITMENTS }].map(({ label, key, opts }) => (
         <div key={key} className="space-y-1.5">
-         <label className="text-xs font-semibold text-stone-400 tracking-wider" htmlFor={`filter-${key}`}>{label}</label>
+         <label className="text-xs font-semibold text-stone-400" htmlFor={`filter-${key}`}>{label}</label>
          <select
           id={`filter-${key}`}
           value={filters[key]}
@@ -280,7 +283,7 @@ export default function MatchDiscovery() {
         </div>
        ))}
        <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-stone-400 tracking-wider" htmlFor="filter-location">{t('Location', 'Τοποθεσία')}</label>
+        <label className="text-xs font-semibold text-stone-400" htmlFor="filter-location">{t('Location', 'Τοποθεσία')}</label>
         <input
          id="filter-location"
          type="text"
@@ -315,13 +318,13 @@ export default function MatchDiscovery() {
        <div className="flex items-center gap-3">
         <div className="w-12 h-12 bg-stone-100 rounded-xl shrink-0" />
         <div className="space-y-2 flex-1">
-         <div className="h-3 bg-stone-100 rounded w-3/4" />
-         <div className="h-2.5 bg-stone-100 rounded w-1/2" />
+         <div className="h-3 bg-stone-100 rounded-md w-3/4" />
+         <div className="h-2.5 bg-stone-100 rounded-md w-1/2" />
         </div>
        </div>
        <div className="space-y-2">
-        <div className="h-2.5 bg-stone-100 rounded w-full" />
-        <div className="h-2.5 bg-stone-100 rounded w-5/6" />
+        <div className="h-2.5 bg-stone-100 rounded-md w-full" />
+        <div className="h-2.5 bg-stone-100 rounded-md w-5/6" />
        </div>
        <div className="h-8 bg-stone-100 rounded-xl w-full" />
       </div>

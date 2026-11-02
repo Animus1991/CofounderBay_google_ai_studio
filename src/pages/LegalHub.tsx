@@ -255,7 +255,7 @@ export default function LegalHub() {
 
      {isDemoMode ? (
      <section>
-      <h3 className="text-base font-medium text-stone-400 tracking-wide mb-4">{t('Partner Law Firms', 'Συνεργαζόμενα δικηγορικά γραφεία')}</h3>
+      <h3 className="text-base font-medium text-stone-400 mb-4">{t('Partner Law Firms', 'Συνεργαζόμενα δικηγορικά γραφεία')}</h3>
       <div className="space-y-4">
        {[
         { name: "Wilson Sonsini", specialty: t("Tech & Venture", "Τεχνολογία και venture"), location: "Palo Alto" },
@@ -289,14 +289,14 @@ export default function LegalHub() {
         <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
         <div className="space-y-1">
          <p className="text-sm font-medium text-stone-900">{t('New Delaware Tax Filing', 'Νέα φορολογική δήλωση Delaware')}</p>
-         <p className="text-sm text-stone-500 leading-tight">{t('Annual franchise tax reports are due by June 1st.', 'Οι ετήσιες δηλώσεις franchise tax υποβάλλονται έως την 1η Ιουνίου.')}</p>
+         <p className="text-sm text-stone-500 leading-snug">{t('Annual franchise tax reports are due by June 1st.', 'Οι ετήσιες δηλώσεις franchise tax υποβάλλονται έως την 1η Ιουνίου.')}</p>
         </div>
        </div>
        <div className="p-4 flex items-start gap-3">
         <Lock className="w-4 h-4 text-stone-400 mt-0.5 shrink-0" />
         <div className="space-y-1">
          <p className="text-sm font-medium text-stone-900">{t('GDPR Compliance Update', 'Ενημέρωση συμμόρφωσης GDPR')}</p>
-         <p className="text-sm text-stone-500 leading-tight">{t('New guidelines for data processing in the EU.', 'Νέες οδηγίες για την επεξεργασία δεδομένων στην ΕΕ.')}</p>
+         <p className="text-sm text-stone-500 leading-snug">{t('New guidelines for data processing in the EU.', 'Νέες οδηγίες για την επεξεργασία δεδομένων στην ΕΕ.')}</p>
         </div>
        </div>
       </div>

@@ -107,7 +107,7 @@ export function FollowUpEditor({ investor, onSaved }: { investor: RoundInvestor;
   if (!investor.nextStep) {
     if (closed) return null;
     return (
-      <button type="button" onClick={open} className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-900">
+      <button type="button" onClick={open} className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-900 tap-area">
         <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
         {t('Set a next step', 'Όρισε επόμενο βήμα')}
       </button>
@@ -118,7 +118,7 @@ export function FollowUpEditor({ investor, onSaved }: { investor: RoundInvestor;
     <div className="mt-1 flex flex-wrap items-center gap-1.5" data-testid="followup">
       <span className="text-sm text-stone-800">{investor.nextStep}</span>
       {investor.nextDate && !closed && <FollowUpChip day={investor.nextDate} />}
-      <button type="button" onClick={open} aria-label={t(`Edit the next step with ${investor.name}`, `Επεξεργασία επόμενου βήματος με ${investor.name}`)} className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+      <button type="button" onClick={open} aria-label={t(`Edit the next step with ${investor.name}`, `Επεξεργασία επόμενου βήματος με ${investor.name}`)} className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-900 tap-area">
         <Pencil className="h-3.5 w-3.5" />
       </button>
     </div>

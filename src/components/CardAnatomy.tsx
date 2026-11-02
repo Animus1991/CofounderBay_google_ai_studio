@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 /**
  * The head of a card, set the way the Endorsements, Connections and
  * Opportunities cards set it: a mark (a person's circle, an organisation's
- * rounded square), and beside it the title with the line under it. A state
+ * rounded-md square), and beside it the title with the line under it. A state
  * or a time sits at the right of the head and never wraps under it.
  */
 export function CardHead({

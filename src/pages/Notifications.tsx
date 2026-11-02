@@ -168,7 +168,7 @@ export default function Notifications() {
                           {t(notification.title, notification.titleEl || notification.title)}
                         </h4>
                       )}
-                      <RelTime iso={notification.time} className="text-xs font-medium text-stone-400 tracking-wide shrink-0" />
+                      <RelTime iso={notification.time} className="text-xs font-medium text-stone-400 shrink-0" />
                     </div>
                     {notification.description ? (
                       <p className="text-xs text-stone-500 leading-relaxed max-w-2xl">

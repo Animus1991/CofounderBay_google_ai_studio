@@ -160,7 +160,7 @@ export default function Billing({ user }: BillingProps) {
       {/* Active Plan Card */}
      <Card className="p-4 sm:p-6 border-2 border-stone-900 relative overflow-hidden">
        <div className="absolute top-0 right-0 p-4">
-        <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium tracking-wide rounded-full">
+        <div className="px-3 py-1 bg-stone-900 text-white text-xs font-medium rounded-full">
          {t('Active Plan', 'Ενεργό πακέτο')}
         </div>
        </div>
@@ -176,17 +176,17 @@ export default function Billing({ user }: BillingProps) {
           <span className="text-lg font-semibold">${subscription?.billingCycle === 'Annual' ? (currentPlan?.priceAnnual ?? 0) / 12 : currentPlan?.priceMonthly}</span>
           <span className="text-stone-400 text-sm font-medium">{t('/ month', '/ μήνα')}</span>
           {subscription?.billingCycle === 'Annual' && (
-           <span className="text-xs text-emerald-600 font-medium tracking-wider ml-2">{t('Billed Annually', 'Ετήσια χρέωση')}</span>
+           <span className="text-xs text-emerald-600 font-medium ml-2">{t('Billed Annually', 'Ετήσια χρέωση')}</span>
           )}
          </div>
 
          <div className="pt-4 flex flex-wrap gap-4">
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
-           <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Next Renewal', 'Επόμενη ανανέωση')}</p>
+           <p className="text-xs font-medium text-stone-400">{t('Next Renewal', 'Επόμενη ανανέωση')}</p>
            <p className="text-sm font-medium">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : '—'}</p>
           </div>
           <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
-           <p className="text-xs font-medium text-stone-400 tracking-wide">{t('Payment Status', 'Κατάσταση πληρωμής')}</p>
+           <p className="text-xs font-medium text-stone-400">{t('Payment Status', 'Κατάσταση πληρωμής')}</p>
            <p className="text-sm font-medium text-emerald-600">{subscription?.status ? labelOf(subscription.status) : '—'}</p>
           </div>
           {requestNote && (
@@ -207,7 +207,7 @@ export default function Billing({ user }: BillingProps) {
          <button
           type="button"
           onClick={() => requestBilling('cancel', t('Cancellation request sent.', 'Το αίτημα ακύρωσης στάλθηκε.'))}
-          className="w-full text-center text-xs text-stone-400 font-medium tracking-wide hover:text-red-500 transition-colors pt-2"
+          className="w-full text-center text-xs text-stone-400 font-medium hover:text-red-500 transition-colors pt-2"
          >
           {t('Cancel Subscription', 'Ακύρωση συνδρομής')}
          </button>
@@ -285,7 +285,7 @@ export default function Billing({ user }: BillingProps) {
          <h3 className="text-base font-semibold">{t('Default Payment Method', 'Προεπιλεγμένη μέθοδος πληρωμής')}</h3>
          <p className="text-sm text-stone-500">{t('This card will be used for all recurring charges.', 'Αυτή η κάρτα θα χρησιμοποιείται για όλες τις επαναλαμβανόμενες χρεώσεις.')}</p>
         </div>
-        <Link to="/settings" className="inline-flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors">
+        <Link to="/settings" className="inline-flex items-center gap-2 px-4 py-2 border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors tap-area">
           <Plus className="w-4 h-4" /> {t('Add Method', 'Προσθήκη μεθόδου')}
          </Link>
        </div>
@@ -293,7 +293,7 @@ export default function Billing({ user }: BillingProps) {
        {cards.length === 0 ? (
         <div className="p-8 text-center border-2 border-dashed border-stone-200 rounded-2xl">
          <p className="text-sm text-stone-500 mb-3">{t('No payment method saved yet.', 'Δεν έχει αποθηκευτεί μέθοδος πληρωμής ακόμη.')}</p>
-         <Link to="/settings" className="text-sm font-medium text-stone-900 underline underline-offset-2">
+         <Link to="/settings" className="text-sm font-medium text-stone-900 underline underline-offset-2 tap-area">
           {t('Add a card in Account Settings', 'Πρόσθεσε κάρτα στις ρυθμίσεις λογαριασμού')}
          </Link>
         </div>
@@ -306,7 +306,7 @@ export default function Billing({ user }: BillingProps) {
            </div>
            <div className="flex-1">
             <p className="font-medium text-stone-900">•••• •••• •••• {card.last4}</p>
-            <p className="text-xs text-stone-500 tracking-wide font-medium">{t('Expires', 'Λήξη')} {card.expiry}</p>
+            <p className="text-xs text-stone-500 font-medium">{t('Expires', 'Λήξη')} {card.expiry}</p>
            </div>
            <div className="flex gap-2">
             {idx === 0 && <span className="self-center text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg font-medium">{t('Default', 'Προεπιλογή')}</span>}
@@ -334,7 +334,7 @@ export default function Billing({ user }: BillingProps) {
        </div>
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-         <label className="text-xs font-medium text-stone-400 tracking-wide">{t('Legal Name', 'Νομική επωνυμία')}</label>
+         <label className="text-xs font-medium text-stone-400">{t('Legal Name', 'Νομική επωνυμία')}</label>
          <input
           type="text"
           value={billingInfo.name}
@@ -343,7 +343,7 @@ export default function Billing({ user }: BillingProps) {
          />
         </div>
         <div className="space-y-2">
-         <label htmlFor="billing-country" className="text-xs font-medium text-stone-400 tracking-wide">{t('Country', 'Χώρα')}</label>
+         <label htmlFor="billing-country" className="text-xs font-medium text-stone-400">{t('Country', 'Χώρα')}</label>
          <select id="billing-country"
           value={billingInfo.country}
           onChange={(e) => setBillingInfo((prev) => ({ ...prev, country: e.target.value }))}
@@ -385,11 +385,11 @@ export default function Billing({ user }: BillingProps) {
        <table className="w-full text-left">
         <thead>
          <tr className="bg-stone-50 border-b border-stone-100">
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Date', 'Ημερομηνία')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Invoice #', 'Τιμολόγιο #')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Amount', 'Ποσό')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide">{t('Status', 'Κατάσταση')}</th>
-          <th className="px-4 py-2 text-xs font-medium text-stone-400 tracking-wide text-right">{t('Action', 'Ενέργεια')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Date', 'Ημερομηνία')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Invoice #', 'Τιμολόγιο #')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Amount', 'Ποσό')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-4 py-2 text-xs font-medium text-stone-400 text-right">{t('Action', 'Ενέργεια')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">

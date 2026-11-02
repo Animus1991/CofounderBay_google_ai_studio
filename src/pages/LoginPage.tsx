@@ -86,12 +86,12 @@ export default function LoginPage() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative">
+  <div data-type-scale="app" className="min-h-screen bg-stone-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative">
    <div className="absolute top-4 right-4">
     <LanguageToggle />
    </div>
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
-    <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
+    <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group tap-area">
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
@@ -105,11 +105,11 @@ export default function LoginPage() {
     </p>
     <p className="mt-2 text-center text-sm text-stone-500">
      <Both en="Don't have an account?" el="Δεν έχεις λογαριασμό;" />{' '}
-     <NavLink to="/signup" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
+     <NavLink to="/signup" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4 tap-area">
       <Both en="Sign up for free" el="Εγγραφή δωρεάν" />
      </NavLink>
      {' · '}
-     <NavLink to="/quiz" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
+     <NavLink to="/quiz" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4 tap-area">
       <Both en="60s fit check" el="Fit check 60 δευτ." />
      </NavLink>
     </p>
@@ -187,7 +187,7 @@ export default function LoginPage() {
          type="checkbox"
          checked={rememberMe}
          onChange={(e) => setRememberMe(e.target.checked)}
-         className="h-5 w-5 text-stone-900 focus:ring-stone-900 border-stone-300 rounded"
+         className="h-5 w-5 text-stone-900 focus:ring-stone-900 border-stone-300 rounded-md"
         />
         <Both en="Remember me" el="Να με θυμάσαι" />
        </label>

@@ -88,12 +88,12 @@ export default function SignUpPage() {
  };
 
  return (
-  <div className="min-h-screen bg-stone-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative">
+  <div data-type-scale="app" className="min-h-screen bg-stone-50 flex flex-col justify-center py-16 sm:px-6 lg:px-8 relative">
    <div className="absolute top-4 right-4">
     <LanguageToggle />
    </div>
    <div className="sm:mx-auto sm:w-full sm:max-w-md">
-    <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group">
+    <NavLink to="/" className="flex justify-center items-center gap-2 mb-6 group tap-area">
      <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
       <Zap className="w-6 h-6 text-white" />
      </div>
@@ -104,7 +104,7 @@ export default function SignUpPage() {
     </h1>
     <p className="mt-2 text-center text-sm text-stone-500">
      {t('Already have an account?', 'Έχεις ήδη λογαριασμό;')}{' '}
-     <NavLink to="/login" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4">
+     <NavLink to="/login" className="font-semibold text-stone-900 hover:text-stone-700 underline underline-offset-4 tap-area">
       {t('Sign in', 'Είσοδος')}
      </NavLink>
     </p>
@@ -233,8 +233,8 @@ export default function SignUpPage() {
      <div className="mt-4">
       <p className="text-xs text-stone-400 text-center leading-relaxed">
        {t('By creating an account, you agree to our', 'Με τη δημιουργία λογαριασμού αποδέχεσαι τους')}{' '}
-       <NavLink to="/legal#terms" className="underline hover:text-stone-600">{t('Terms of Service', 'Όρους χρήσης')}</NavLink> {t('and', 'και την')}{' '}
-       <NavLink to="/legal#privacy" className="underline hover:text-stone-600">{t('Privacy Policy', 'Πολιτική απορρήτου')}</NavLink>.
+       <NavLink to="/legal#terms" className="underline hover:text-stone-600 tap-area">{t('Terms of Service', 'Όρους χρήσης')}</NavLink> {t('and', 'και την')}{' '}
+       <NavLink to="/legal#privacy" className="underline hover:text-stone-600 tap-area">{t('Privacy Policy', 'Πολιτική απορρήτου')}</NavLink>.
       </p>
      </div>
     </div>

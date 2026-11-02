@@ -20,7 +20,7 @@ import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
-import { followUps, keys, readActivity, readRequests, readRound, saveRequest } from '../lib/localLists';
+import { followUps, keys, readActivity, readRequests, readRound, readValue, saveRequest, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
@@ -35,6 +35,7 @@ import { fromProfile, rankPeople } from '../lib/compatibility';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { greetingFor, formatWhen, localizeAxisLabel } from '../lib/dates';
+import { byWhen } from '../lib/agenda';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { useNotificationFeed } from '../lib/notificationFeed';
 import { useLanguage, useT } from '../lib/language';
@@ -101,6 +102,7 @@ const DEMO_EVENTS = [
 // ISO timestamps (demo entries, stored sessions) render via formatWhen; free
 // text from the events collection stays as written.
 const dashTime = (time: string) => (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith('Z') ? formatWhen(time) : time);
+
 
 const DEMO_POSTS = [
   {
@@ -409,7 +411,9 @@ export default function DashboardPage() {
   // 1024 to 1279px the sidebar leaves the content ~720px, which squeezed the three-card rows. Below 1280px the
   // essentials stay and the rest opens under "More"; wider screens show everything.
   const compact = useMediaQuery('(max-width: 1279px)');
-  const [moreOpen, setMoreOpen] = useState(false);
+  // The choice is remembered on this device, so a founder who reads everything does not tap again each visit.
+  const moreOpen = useStored(() => readValue<boolean>(keys.dashboardMore, false), [keys.dashboardMore]);
+  const setMoreOpen = (next: boolean | ((open: boolean) => boolean)) => writeValue<boolean>(keys.dashboardMore, typeof next === 'function' ? next(moreOpen) : next);
 
   // What the assistant can run on this page ("open my next step", "what is waiting on me"); the Dashboard
   // was the one member page with none.
@@ -436,6 +440,9 @@ export default function DashboardPage() {
   const circles = isDemoMode ? rankedCircles : (rankedCircles.length ? rankedCircles : (live.recentMatches ?? []));
   const leadMatch = circles[0];
   const firstName = user?.displayName?.split(' ')[0] || 'Founder';
+  // The Greek headline when the person has one (the cast does), the label dictionary otherwise.
+  const roleText = (person: { role?: string | null; roleEl?: string | null }) =>
+    person.roleEl ? t(String(person.role ?? ''), person.roleEl) : labelOf(person.role ?? '');
   const activityPosts: FeedPost[] = activity.slice(0, 8).map((item) => ({
     id: item.id,
     authorId: item.byAssistant ? 'assistant' : user?.uid || 'you',
@@ -448,7 +455,9 @@ export default function DashboardPage() {
     likedBy: [],
   }));
   const posts = isDemoMode ? [...activityPosts, ...DEMO_POSTS] : (activityPosts.length > 0 ? [...activityPosts, ...feed] : feed);
-  const schedule = isDemoMode ? DEMO_EVENTS : events;
+  // Soonest first: the demo's fixed list put Saturday before Friday on some weekdays. Entries whose time is
+  // free text (not a date) keep their order after the dated ones.
+  const schedule = byWhen(isDemoMode ? DEMO_EVENTS : events);
   const rawSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
   // Series keep English day keys so the numbers stay comparable; only the tick is translated.
   const chartSeries = rawSeries?.map((point) => ({ ...point, name: localizeAxisLabel(point.name, mode) })) ?? null;
@@ -459,8 +468,8 @@ export default function DashboardPage() {
   // "Your week": what was actually done (the activity feed), against last week (lib/weeklyRecap).
   const recap = useMemo(() => weeklyRecap(activity), [activity]);
   // The server streak (daily check-ins) or the streak of days with real work, whichever is longer;
-  // the demo keeps its seeded value.
-  const streakDays = isDemoMode ? Math.max(streak?.currentStreak ?? 12, recap.streak) : Math.max(streak?.currentStreak ?? 0, recap.streak);
+  // the demo used a seeded 12 next to "0 actions this week"; it now counts the same activity the week shows.
+  const streakDays = isDemoMode ? recap.streak : Math.max(streak?.currentStreak ?? 0, recap.streak);
   const profileViews = isDemoMode ? demoWeeklyViews() : (viewCount ?? live.profileViews);
   const matchScore = isDemoMode ? rankedCircles[0]?.match : (rankedCircles[0]?.match ?? live.topMatchScore);
   const unread = messaging?.totalUnread ?? 0;
@@ -673,7 +682,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
-              <FactLine className="text-xs" items={[labelOf(prospect.role)]} label={t('Role', 'Ρόλος')} />
+              <FactLine className="text-xs" items={[roleText(prospect)]} label={t('Role', 'Ρόλος')} />
             </div>
             {prospect.match > 0 && (
               <button
@@ -767,13 +776,13 @@ export default function DashboardPage() {
   const blockThisWeek = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-        <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
+        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
         {leadMatch ? (
           <div className="flex items-center gap-3">
             <Avatar src={leadMatch.avatar} fallback={leadMatch.name} size="md" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-stone-900 truncate"><PersonHovercard person={leadMatch.id}>{leadMatch.name}</PersonHovercard></p>
-              <p className="text-xs text-stone-500 truncate">{'roleEl' in leadMatch && leadMatch.roleEl ? t(String(leadMatch.role), String(leadMatch.roleEl)) : labelOf(leadMatch.role ?? '')}</p>
+              <p className="text-xs text-stone-500 truncate">{roleText(leadMatch)}</p>
             </div>
           </div>
         ) : (
@@ -781,7 +790,7 @@ export default function DashboardPage() {
         )}
       </button>
       <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-        <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
+        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
         {!isDemoMode && schedule.length === 0 ? (
           <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
         ) : (
@@ -792,7 +801,7 @@ export default function DashboardPage() {
         )}
       </button>
       <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
-        <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
+        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
         <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
         <p className="text-xs text-stone-400 mt-1"><Both en="Adds Workspace tasks." el="Προσθέτει εργασίες στον Χώρο εργασίας." /></p>
       </button>
@@ -868,7 +877,7 @@ export default function DashboardPage() {
         },
       ].map((stat) => (
         <button type="button" key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
-          <p className="text-xs font-semibold text-stone-400 tracking-wider">{stat.label}</p>
+          <p className="text-xs font-semibold text-stone-400">{stat.label}</p>
           <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
           {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
         </button>
@@ -900,7 +909,7 @@ export default function DashboardPage() {
               <span className="flex items-center gap-2 mt-1">
                 <Clock className="w-3 h-3 text-stone-400" />
                 <span className="text-xs text-stone-400">{dashTime(ev.time)}</span>
-                {ev.type && <span className="text-xs font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
+                {ev.type && <span className="text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded-md">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
                 {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
               </span>
             </button>
@@ -913,7 +922,7 @@ export default function DashboardPage() {
   const blockFeed = (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-xs font-semibold text-stone-400 tracking-wider">
+        <p className="text-xs font-semibold text-stone-400">
           <Both en="What changed" el="Τι άλλαξε" />
         </p>
         <div className="flex flex-wrap items-center gap-3">

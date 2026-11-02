@@ -62,7 +62,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             </div>
           )}
 
-          <Heading className="page-title text-xl font-bold tracking-tight text-foreground sm:text-2xl leading-snug">
+          <Heading className="page-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl leading-snug">
             {displayTitle}
           </Heading>
 
@@ -90,7 +90,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground leading-snug">
                 {lang === 'el' && m.labelEl ? m.labelEl : m.label}
               </div>
-              <div className={`mt-1 text-base sm:text-lg font-bold leading-snug ${m.color || 'text-foreground'}`}>
+              <div className={`mt-1 text-base sm:text-lg font-semibold leading-snug ${m.color || 'text-foreground'}`}>
                 {m.value}
               </div>
               {(m.subtext || m.subtextEl) && (

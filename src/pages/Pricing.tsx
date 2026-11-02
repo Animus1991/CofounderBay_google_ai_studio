@@ -48,7 +48,7 @@ export default function Pricing() {
     <motion.div
      initial={{ opacity: 0, y: 20 }}
      animate={{ opacity: 1, y: 0 }}
-     className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium tracking-wide"
+     className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium"
     >
      {t('Pricing Plans', 'Πακέτα τιμών')}
     </motion.div>
@@ -77,7 +77,7 @@ export default function Pricing() {
      </button>
      <div className="flex items-center gap-2">
       <span className={`text-sm font-medium ${billingCycle === 'Annual' ? 'text-stone-900' : 'text-stone-400'}`}>{t('Annual', 'Ετήσια')}</span>
-      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium tracking-wider rounded">{t('Save 20%', 'Εξοικονόμηση 20%')}</span>
+      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-md">{t('Save 20%', 'Εξοικονόμηση 20%')}</span>
      </div>
     </div>
    </div>
@@ -93,7 +93,7 @@ export default function Pricing() {
      >
       <Card className={`h-full p-4 sm:p-6 relative overflow-hidden ${plan.id === 'organization-standard' ? 'border-2 border-stone-900 ring-4 ring-stone-900/5' : ''}`} contentClassName="flex flex-col">
        {plan.id === 'organization-standard' && (
-        <div className="absolute top-0 right-0 bg-stone-900 text-white px-4 py-1 text-xs font-medium tracking-wide rounded-bl-xl">
+        <div className="absolute top-0 right-0 bg-stone-900 text-white px-4 py-1 text-xs font-medium rounded-bl-xl">
          {t('Most Popular', 'Το πιο δημοφιλές')}
         </div>
        )}
@@ -113,7 +113,7 @@ export default function Pricing() {
        </div>
 
        <div className="flex-1 space-y-3 mb-5">
-        <p className="text-xs font-medium text-stone-400 tracking-wide">{t("What's included", 'Τι περιλαμβάνεται')}</p>
+        <p className="text-xs font-medium text-stone-400">{t("What's included", 'Τι περιλαμβάνεται')}</p>
         <ul className="space-y-3">
          <li className="flex items-start gap-3 text-sm">
           <Check className="w-4 h-4 text-emerald-500 mt-0.5" />
@@ -162,7 +162,7 @@ export default function Pricing() {
       </div>
 
       <div className="flex-1 space-y-3 mb-5">
-       <p className="text-xs font-medium text-stone-500 tracking-wide">{t('Everything in Multi-Seat, plus', 'Όλα του Multi-Seat, συν')}</p>
+       <p className="text-xs font-medium text-stone-500">{t('Everything in Multi-Seat, plus', 'Όλα του Multi-Seat, συν')}</p>
        <ul className="space-y-3">
         {[
          t('Unlimited Seats & Communities', 'Απεριόριστες θέσεις και κοινότητες'),
@@ -202,7 +202,7 @@ export default function Pricing() {
      <table className="w-full min-w-[56rem] text-left border-collapse">
       <thead>
        <tr className="border-b border-stone-200">
-        <th scope="col" className="sticky left-0 z-20 w-48 bg-stone-50 py-6 px-4 text-sm font-medium text-stone-600 tracking-wide">{t('Feature', 'Δυνατότητα')}</th>
+        <th scope="col" className="sticky left-0 z-20 w-48 bg-stone-50 py-6 px-4 text-sm font-medium text-stone-600">{t('Feature', 'Δυνατότητα')}</th>
         {plans.map(p => (
          <th scope="col" key={p.id} className="py-6 px-4 text-sm font-medium text-center">{planName(p.id, p.name)}</th>
         ))}

@@ -50,7 +50,7 @@ export default function ProfileProgressBar() {
         <p className="min-w-0 flex-1 truncate text-xs text-stone-600">
           <span className="font-semibold text-stone-900">{t(`Profile ${score}%`, `Προφίλ ${score}%`)}</span>
           {' · '}
-          {t(`add ${next.label.en.toLowerCase()}`, `πρόσθεσε ${next.label.el.toLowerCase()}`)}
+          {t(`add ${next.addLabel.en}`, `πρόσθεσε ${next.addLabel.el}`)}
           {others > 0 ? t(` and ${others} more`, ` και ${others} ακόμη`) : ''}
           <span className="hidden sm:inline">{t(' — matching reads these fields.', ' — η αντιστοίχιση διαβάζει αυτά τα πεδία.')}</span>
         </p>

@@ -105,12 +105,12 @@ export default function AdminDashboard() {
    {/* Header */}
    <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
     <div className="space-y-2">
-     <div className="flex items-center gap-2 text-stone-400 font-medium tracking-wide text-xs">
+     <div className="flex items-center gap-2 text-stone-400 font-medium text-xs">
       <ShieldCheck className="w-4 h-4" />
       {t('Admin Control Center', 'Κέντρο διαχείρισης')}
      </div>
      <h1 className="text-xl sm:text-2xl font-semibold text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h1>
-     <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => askAssistant('What is overdue?')}>
+     <button type="button" className="text-xs font-medium text-stone-900 hover:underline tap-area" onClick={() => askAssistant('What is overdue?')}>
       {t('Ask the studio assistant', 'Ρώτα τον βοηθό του studio')}
      </button>
     </div>
@@ -169,15 +169,15 @@ export default function AdminDashboard() {
          </div>
         </div>
         <div className="text-lg font-semibold text-stone-900">{stat.value}</div>
-        <div className="text-sm text-stone-400 font-medium tracking-wide mt-1">{stat.label}</div>
+        <div className="text-sm text-stone-400 font-medium mt-1">{stat.label}</div>
        </motion.div>
       ))}
      </div>
 
      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Event Distribution */}
-      <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider mb-8">{t('Behavioral Event Distribution', 'Κατανομή συμβάντων συμπεριφοράς')}</h3>
+      <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-stone-100 shadow-sm">
+       <h3 className="text-sm font-semibold text-stone-900 mb-8">{t('Behavioral Event Distribution', 'Κατανομή συμβάντων συμπεριφοράς')}</h3>
        <div className="h-[400px] w-full">
         <ResponsiveContainer width="100%" height="100%">
          <BarChart data={distributionData} layout="vertical">
@@ -207,8 +207,8 @@ export default function AdminDashboard() {
 
       {/* Momentum Insights */}
       <div className="space-y-8">
-       <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm space-y-6">
-        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Derived metrics', 'Παράγωγες μετρικές')}</h3>
+       <div className="bg-white p-8 rounded-3xl border border-stone-100 shadow-sm space-y-6">
+        <h3 className="text-sm font-semibold text-stone-900">{t('Derived metrics', 'Παράγωγες μετρικές')}</h3>
         <div className="space-y-4">
          {[
           { title: t('Events per user', 'Συμβάντα ανά χρήστη'), value: analytics?.totalUsers ? (analytics.xpEventsCount / analytics.totalUsers).toFixed(1) : '—', desc: t('XP events recorded per registered user.', 'Καταγεγραμμένα συμβάντα XP ανά εγγεγραμμένο λογαριασμό.') },
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
         </div>
        </div>
 
-       <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-sm space-y-6">
+       <div className="bg-stone-900 text-white p-8 rounded-3xl shadow-sm space-y-6">
         <div className="flex items-center justify-between">
          <h3 className="text-base font-semibold text-white">{t('System Health', 'Υγεία συστήματος')}</h3>
          <Activity className="w-6 h-6 text-emerald-400" />
@@ -255,21 +255,21 @@ export default function AdminDashboard() {
    )}
 
    {activeTab === 'abuse' && (
-    <div className="bg-white rounded-[32px] border border-stone-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
      <div className="p-8 border-b border-stone-50 flex justify-between items-center">
       <div>
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Anti-Abuse Monitor', 'Παρακολούθηση κατάχρησης')}</h3>
+       <h3 className="text-sm font-semibold text-stone-900">{t('Anti-Abuse Monitor', 'Παρακολούθηση κατάχρησης')}</h3>
        <p className="text-sm text-stone-400 font-medium">{t('Flags for suspicious XP farming or bot-like behavior.', 'Επισημάνσεις για ύποπτη συλλογή XP ή συμπεριφορά bot.')}</p>
       </div>
       <div className="flex items-center gap-2">
-       <span className="px-4 py-1.5 text-red-600 rounded-xl text-xs font-medium tracking-wide">
+       <span className="px-4 py-1.5 text-red-600 rounded-xl text-xs font-medium">
         {abuseFlags.length} {t('Active Flags', 'ενεργές επισημάνσεις')}
        </span>
       </div>
      </div>
      <div className="overflow-x-auto">
       <table className="w-full text-left">
-       <thead className="bg-stone-50/50 text-stone-400 text-xs font-medium tracking-wide">
+       <thead className="bg-stone-50/50 text-stone-400 text-xs font-medium">
         <tr>
          <th className="px-5 py-2.5">{t('User ID', 'ID χρήστη')}</th>
          <th className="px-5 py-2.5">{t('Violation Type', 'Τύπος παράβασης')}</th>
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
          <tr key={idx} className="hover:bg-stone-50/30 transition-colors group">
           <td className="px-8 py-5 font-mono text-xs text-stone-600">{flag.userId}</td>
           <td className="px-8 py-5">
-           <span className="px-2 py-1 text-amber-700 rounded-lg text-xs font-medium tracking-wider">
+           <span className="px-2 py-1 text-amber-700 rounded-lg text-xs font-medium">
             {flag.type}
            </span>
           </td>
@@ -332,8 +332,8 @@ export default function AdminDashboard() {
 
    {activeTab === 'config' && (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-     <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm space-y-8">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Scoring Weights', 'Βάρη βαθμολόγησης')}</h3>
+     <div className="bg-white p-8 rounded-3xl border border-stone-100 shadow-sm space-y-8">
+      <h3 className="text-sm font-semibold text-stone-900">{t('Scoring Weights', 'Βάρη βαθμολόγησης')}</h3>
       <div className="space-y-8">
        {[
         { label: t('Artifact Completion XP', 'XP ολοκλήρωσης τεκμηρίου'), value: 100, key: 'xp_artifact_complete' },
@@ -363,7 +363,7 @@ export default function AdminDashboard() {
        })}
        <button
         type="button"
-        className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm"
+        className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm tap-area"
         onClick={async () => {
          const entries = Object.entries(configDrafts);
          if (entries.length === 0) return;
@@ -376,7 +376,7 @@ export default function AdminDashboard() {
       </div>
      </div>
 
-     <div className="bg-stone-50 p-8 rounded-[32px] border border-stone-100 border-dashed flex flex-col items-center justify-center text-center space-y-4">
+     <div className="bg-stone-50 p-8 rounded-3xl border border-stone-100 border-dashed flex flex-col items-center justify-center text-center space-y-4">
       <div className="p-4 bg-white rounded-2xl shadow-sm">
        <Settings className="w-8 h-8 text-stone-400" />
       </div>

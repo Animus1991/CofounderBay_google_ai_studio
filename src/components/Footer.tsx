@@ -49,7 +49,7 @@ export default function Footer() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
      {/* Brand */}
      <div className="lg:col-span-2">
-      <NavLink to="/" className="flex items-center gap-2 mb-6 group">
+      <NavLink to="/" className="flex items-center gap-2 mb-6 group tap-area">
        <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center transition-transform">
         <Zap className="w-6 h-6 text-white" />
        </div>
@@ -80,7 +80,7 @@ export default function Footer() {
      {footerLinks.map((section) => (
       <div key={section.title}>
        <h3 className={cn(
-        "font-medium text-stone-900 tracking-wide mb-6",
+        "font-medium text-stone-900 mb-6",
         user ? "text-xs" : "text-sm"
        )}>
         <Both en={section.title} el={section.el} />
@@ -94,14 +94,14 @@ export default function Footer() {
           {link.href.startsWith('mailto:') ? (
            <a
             href={link.href}
-            className="text-stone-500 hover:text-stone-900 transition-colors font-medium"
+            className="text-stone-500 hover:text-stone-900 transition-colors font-medium tap-area"
            >
             <Both en={link.name} el={link.el} />
            </a>
           ) : (
            <NavLink 
             to={link.href} 
-            className="text-stone-500 hover:text-stone-900 transition-colors font-medium"
+            className="text-stone-500 hover:text-stone-900 transition-colors font-medium tap-area"
            >
             <Both en={link.name} el={link.el} />
            </NavLink>
@@ -119,7 +119,7 @@ export default function Footer() {
      </p>
      <div className="flex items-center gap-2">
       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-      <span className="text-stone-400 text-sm font-medium tracking-wider">{t('System Operational', 'Σύστημα σε λειτουργία')}</span>
+      <span className="text-stone-400 text-sm font-medium">{t('System Operational', 'Σύστημα σε λειτουργία')}</span>
      </div>
     </div>
    </div>

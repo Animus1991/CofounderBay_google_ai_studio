@@ -178,7 +178,7 @@ const DateSeparator = ({ at }: { at: number }) => {
  return (
   <div className="flex items-center gap-3 py-4">
    <div className="flex-1 h-px bg-stone-200" />
-   <span className="text-xs font-semibold text-stone-400 tracking-wider">{label}</span>
+   <span className="text-xs font-semibold text-stone-400">{label}</span>
    <div className="flex-1 h-px bg-stone-200" />
   </div>
  );
@@ -757,7 +757,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {mine ? <span className="text-stone-400">{t("You: ", "Εσύ: ")}</span> : null}{preview}
       </p>
       {conv.unread > 0 && (
-       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-xs font-bold rounded-full flex items-center justify-center">{conv.unread > 99 ? '99+' : conv.unread}</span>
+       <span className="shrink-0 min-w-[20px] h-5 px-1 bg-stone-900 text-white text-xs font-semibold rounded-full flex items-center justify-center">{conv.unread > 99 ? '99+' : conv.unread}</span>
       )}
      </div>
     </div>
@@ -787,8 +787,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <MessageSquare className="w-5 h-5 text-stone-900" />
       </div>
       <div>
-       <h1 className="text-base font-bold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
-       <p className="text-xs text-stone-400 font-medium tracking-wider">{t("Private conversations", "Ιδιωτικές συνομιλίες")}</p>
+       <h1 className="text-base font-semibold text-stone-900 tracking-tight">{t("Messages", "Μηνύματα")}</h1>
+       <p className="text-xs text-stone-400 font-medium">{t("Private conversations", "Ιδιωτικές συνομιλίες")}</p>
       </div>
      </div>
      <IconButton icon={Plus} variant="filled" tooltip={t("New message", "Νέο μήνυμα")} onClick={() => setPicker({ open: true, mode: 'new' })} />
@@ -805,7 +805,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       className={cn("flex-1 min-h-11 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all", sidebarTab === "intros" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}>
       <UserPlus className="w-3.5 h-3.5" />
       {t("Requests", "Αιτήματα")}
-      {intros.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-xs font-bold rounded-full">{intros.length}</span>}
+      {intros.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-stone-800 text-white text-xs font-semibold rounded-full">{intros.length}</span>}
      </button>
     </div>
 
@@ -899,7 +899,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100 }}
          className="p-4 bg-white border border-stone-200 rounded-xl space-y-3 hover:shadow-md transition-shadow">
          <div className="flex items-start gap-3">
-          <button type="button" className="block" onClick={() => navigate(`/profile/${req.from.id}`)} aria-label={t("View profile", "Προβολή προφίλ")}>
+          <button type="button" className="block tap-area" onClick={() => navigate(`/profile/${req.from.id}`)} aria-label={t("View profile", "Προβολή προφίλ")}>
            <Avatar src={req.from.avatar} alt={req.from.fullName} size="md" />
           </button>
           <div className="flex-1 min-w-0">
@@ -965,7 +965,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   const url = safeMediaUrl(att.url);
   if (isImage(att) && url) {
    return (
-    <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-stone-200/60 max-w-[260px]">
+    <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-stone-200/60 max-w-[260px] tap-area">
      <img src={url} alt={att.name} className="w-full h-auto max-h-64 object-cover" loading="lazy" />
     </a>
    );
@@ -1028,7 +1028,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       )}>
        {msg.isAI && activeAgent && (
         <div className="mb-1.5 pb-1.5 border-b border-stone-200/50">
-         <span className="text-xs font-semibold text-stone-600 tracking-wider">{agentName(activeAgent)}</span>
+         <span className="text-xs font-semibold text-stone-600">{agentName(activeAgent)}</span>
         </div>
        )}
        {msg.replyTo && (
@@ -1144,8 +1144,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       <div key={label} className="flex items-center gap-2.5 px-4 py-2.5 bg-white border border-stone-200 rounded-xl shadow-sm">
        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", color)}><Icon className="w-3.5 h-3.5" /></div>
        <div className="text-left">
-        <p className="text-base font-bold text-stone-900 leading-none tabular-nums">{value}</p>
-        <p className="text-xs text-stone-400 font-medium tracking-wider">{label}</p>
+        <p className="text-base font-semibold text-stone-900 leading-snug tabular-nums">{value}</p>
+        <p className="text-xs text-stone-400 font-medium">{label}</p>
        </div>
       </div>
      ))}
@@ -1200,8 +1200,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        <Avatar src={active.other.avatar} alt={active.other.fullName} size="md" status={isAIChat ? undefined : otherOnline ? "online" : "offline"} isAI={isAIChat} icon={activeAgent?.icon} />
        <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0">
-         <h2 className="font-bold text-stone-900 text-sm tracking-tight truncate">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h2>
-         {!isAIChat && active.other.role && <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-xs rounded-full font-semibold tracking-wider shrink-0">{labelOf(active.other.role)}</span>}
+         <h2 className="font-semibold text-stone-900 text-sm tracking-tight truncate">{activeAgent ? agentName(activeAgent) : active.other.fullName}</h2>
+         {!isAIChat && active.other.role && <span className="hidden sm:inline px-2 py-0.5 bg-stone-100 text-stone-500 text-xs rounded-full font-semibold shrink-0">{labelOf(active.other.role)}</span>}
         </div>
         <p className="text-xs text-stone-500 truncate">
          {otherTyping ? <span className="text-emerald-600 font-medium animate-pulse">{t("typing…", "πληκτρολογεί…")}</span>
@@ -1282,7 +1282,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <input type="search" placeholder={t("Search in this conversation…", "Αναζήτηση σε αυτή τη συνομιλία…")} value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} autoFocus
          className="flex-1 text-sm bg-transparent focus:outline-none placeholder:text-stone-400 min-h-11" />
         <span className="text-xs text-stone-400 tabular-nums">{chatSearchQuery ? t(`${searchHits} found`, `${searchHits} βρέθηκαν`) : ""}</span>
-        <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded"><X className="w-4 h-4" /></button>
+        <button type="button" aria-label={t("Close search", "Κλείσιμο αναζήτησης")} onClick={() => { setShowSearchPanel(false); setChatSearchQuery(""); }} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-md"><X className="w-4 h-4" /></button>
        </div>
       </motion.div>
      )}
@@ -1375,7 +1375,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <div className="flex flex-wrap gap-2">
          {pendingFiles.map(({ file, preview }, i) => (
           <div key={i} className="flex items-center gap-2 pl-1.5 pr-1 py-1 bg-stone-100 rounded-lg">
-           {preview ? <img src={preview} alt="" className="w-7 h-7 rounded object-cover" /> : file.type.startsWith("audio/") ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
+           {preview ? <img src={preview} alt="" className="w-7 h-7 rounded-md object-cover" /> : file.type.startsWith("audio/") ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
            <span className="text-xs text-stone-600 truncate max-w-[140px]">{file.name}</span>
            <span className="text-xs text-stone-400">{formatBytes(file.size)}</span>
            <button type="button" aria-label={t("Remove attachment", "Αφαίρεση συνημμένου")} onClick={() => { if (preview) URL.revokeObjectURL(preview); setPendingFiles((prev) => prev.filter((_, idx) => idx !== i)); }} className="min-h-7 min-w-7 inline-flex items-center justify-center text-stone-400 hover:text-red-500"><X className="w-3 h-3" /></button>
@@ -1507,7 +1507,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
          const mediaUrl = safeMediaUrl(attachment.url);
          if (!mediaUrl) return null;
          return (
-          <a key={`${message.id}-${attachment.name}`} href={mediaUrl} target="_blank" rel="noopener noreferrer" className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+          <a key={`${message.id}-${attachment.name}`} href={mediaUrl} target="_blank" rel="noopener noreferrer" className="aspect-square bg-stone-100 rounded-lg overflow-hidden hover:opacity-80 transition-opacity tap-area">
            <img src={mediaUrl} alt={attachment.name} className="w-full h-full object-cover" loading="lazy" />
           </a>
          );
@@ -1521,7 +1521,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       {sharedFiles.length === 0 ? <p className="text-xs text-stone-400">{t("No files yet. Attach a document in the message box to share one.", "Κανένα αρχείο ακόμη. Επισύναψε έγγραφο στο πλαίσιο μηνύματος για να το μοιραστείς.")}</p> : (
        <div className="space-y-1.5">
         {sharedFiles.slice(-8).reverse().map(({ attachment, message }) => (
-         <a key={`${message.id}-${attachment.name}`} href={safeMediaUrl(attachment.url) || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group">
+         <a key={`${message.id}-${attachment.name}`} href={safeMediaUrl(attachment.url) || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-stone-50 group tap-area">
           <div className="w-9 h-9 bg-stone-100 rounded-lg flex items-center justify-center group-hover:bg-stone-200 transition-colors shrink-0">
            {isAudio(attachment) ? <Mic className="w-3.5 h-3.5 text-stone-500" /> : <FileText className="w-3.5 h-3.5 text-stone-500" />}
           </div>
@@ -1552,7 +1552,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        {validation.hash && (
         <div className="flex items-center gap-2 p-2 rounded-lg border border-stone-200 bg-stone-50 mb-2">
          <span className="text-xs text-stone-500 font-mono truncate flex-1" title={validation.hash}>sha256:{validation.hash}</span>
-         <button type="button" onClick={() => void copyValidationHash()} aria-label={t("Copy hash", "Αντιγραφή αποτυπώματος")} className="min-h-8 min-w-8 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 rounded shrink-0">
+         <button type="button" onClick={() => void copyValidationHash()} aria-label={t("Copy hash", "Αντιγραφή αποτυπώματος")} className="min-h-8 min-w-8 inline-flex items-center justify-center text-stone-400 hover:text-stone-900 rounded-md shrink-0">
           {hashCopied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
          </button>
         </div>
@@ -1618,8 +1618,8 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
      <button type="button" aria-label={t("Back to conversations", "Πίσω στις συνομιλίες")} onClick={() => setActiveView("chat")} className="md:hidden inline-flex min-h-11 min-w-11 items-center justify-center text-stone-600 hover:bg-stone-100 rounded-xl shrink-0"><ChevronLeft className="w-5 h-5" /></button>
      <div className="w-10 h-10 bg-stone-900 rounded-2xl flex items-center justify-center"><BrainCircuit className="w-5 h-5 text-white" /></div>
      <div>
-      <h1 className="font-bold text-stone-900 tracking-tight">{t("AI specialists", "Ειδικοί AI")}</h1>
-      <p className="text-xs text-stone-400 font-medium tracking-wider">{t("Each one keeps its own conversation with you", "Ο καθένας κρατά τη δική του συνομιλία μαζί σου")}</p>
+      <h1 className="font-semibold text-stone-900 tracking-tight">{t("AI specialists", "Ειδικοί AI")}</h1>
+      <p className="text-xs text-stone-400 font-medium">{t("Each one keeps its own conversation with you", "Ο καθένας κρατά τη δική του συνομιλία μαζί σου")}</p>
      </div>
     </div>
     <div className="flex p-1 bg-stone-100 rounded-xl" role="tablist">

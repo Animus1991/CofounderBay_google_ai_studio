@@ -51,7 +51,7 @@ export default function NextMove({
           : cn(
             'studio-nudge rounded-2xl border',
             next
-              ? 'border-stone-200/80 bg-white text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
+              ? 'border-stone-200/80 bg-white text-stone-900 shadow-xs'
               : 'border-amber-200/70 bg-amber-50/50 text-stone-900',
           ),
       )}

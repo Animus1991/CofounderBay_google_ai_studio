@@ -209,7 +209,7 @@ export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps)
     <div className="overflow-x-auto">
      <table className="w-full text-left">
       <thead>
-       <tr className="bg-stone-50/50 text-xs font-medium text-stone-400 tracking-wide border-b border-stone-100">
+       <tr className="bg-stone-50/50 text-xs font-medium text-stone-400 border-b border-stone-100">
         <th className="px-4 py-2">{t('Name', 'Όνομα')}</th>
         <th className="px-4 py-2">{t('Category', 'Κατηγορία')}</th>
         <th className="px-4 py-2">{t('Description', 'Περιγραφή')}</th>
@@ -224,7 +224,7 @@ export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps)
           <span className="font-medium text-stone-900">{item.name}</span>
          </td>
          <td className="px-4 py-2">
-          <span className="px-2 py-1 bg-stone-100 text-stone-600 rounded text-xs font-medium tracking-wider">
+          <span className="px-2 py-1 bg-stone-100 text-stone-600 rounded-md text-xs font-medium">
            {item.category ? labelOf(item.category) : '—'}
           </span>
          </td>

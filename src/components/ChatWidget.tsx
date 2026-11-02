@@ -543,7 +543,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const panel = (
     <>
       {emailDraft !== null && <SendEmailModal open onClose={() => setEmailDraft(null)} draft={emailDraft} />}
-      <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-2xl')}>
+      <div className={cn('p-4 bg-stone-900 text-white flex items-center justify-between shrink-0', isPage && 'rounded-t-3xl')}>
         <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
             <h3 className="text-xs font-medium truncate">
@@ -555,7 +555,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button type="button" onClick={resetStudio} className="p-1.5 hover:bg-white/10 rounded-md" aria-label={t('New conversation', 'Νέα συνομιλία')} title={t('New conversation', 'Νέα συνομιλία')}>
+          <button type="button" onClick={resetStudio} className="p-1.5 hover:bg-white/10 rounded-md tap-area" aria-label={t('New conversation', 'Νέα συνομιλία')} title={t('New conversation', 'Νέα συνομιλία')}>
             <SquarePen className="w-3.5 h-3.5" />
           </button>
           {!isPage && (
@@ -1038,8 +1038,9 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             role="dialog"
+            data-type-scale="app"
             aria-label={t('Studio assistant', 'Βοηθός studio')}
-            className="pointer-events-auto w-full sm:w-[380px] h-[min(560px,72dvh)] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
+            className="pointer-events-auto w-full sm:w-[380px] h-[min(560px,72dvh)] bg-white rounded-3xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
           >
             {panel}
           </motion.div>

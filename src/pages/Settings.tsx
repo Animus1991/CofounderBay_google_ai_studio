@@ -474,7 +474,7 @@ export default function Settings() {
                 <Button type="button" variant="outline" onClick={() => photoRef.current?.click()}>{t("Upload new", "Νέα φωτογραφία")}</Button>
                 <Button type="button" variant="ghost" className="text-red-600" onClick={() => setField("photo", "")}>{t("Remove", "Αφαίρεση")}</Button>
               </div>
-              <NavLink to="/profile" className="text-sm font-medium text-stone-900 underline-offset-4 hover:underline">
+              <NavLink to="/profile" className="text-sm font-medium text-stone-900 underline-offset-4 hover:underline tap-area">
                 {t("Open public profile", "Άνοιγμα δημόσιου προφίλ")}
               </NavLink>
             </div>
@@ -969,8 +969,8 @@ export default function Settings() {
                 ))}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
-                <NavLink to="/settings/billing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-stone-100 text-stone-900 text-sm font-medium hover:bg-stone-200 transition-colors">{t("Billing history", "Ιστορικό χρέωσης")}</NavLink>
-                <NavLink to="/pricing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-white text-sm font-medium hover:bg-white/10 transition-colors">{t("Compare plans", "Σύγκριση πλάνων")}</NavLink>
+                <NavLink to="/settings/billing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-stone-100 text-stone-900 text-sm font-medium hover:bg-stone-200 transition-colors tap-area">{t("Billing history", "Ιστορικό χρέωσης")}</NavLink>
+                <NavLink to="/pricing" data-ui="button" className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-white text-sm font-medium hover:bg-white/10 transition-colors tap-area">{t("Compare plans", "Σύγκριση πλάνων")}</NavLink>
               </div>
             </div>
           </Card>

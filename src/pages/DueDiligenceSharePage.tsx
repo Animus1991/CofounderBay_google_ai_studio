@@ -20,7 +20,7 @@ export default function DueDiligenceSharePage() {
 
   if (missing) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-6" data-testid="dd-public-missing">
+      <main data-type-scale="app" className="flex min-h-dvh items-center justify-center bg-stone-50 p-6" data-testid="dd-public-missing">
         <div className="max-w-sm space-y-2 text-center">
           <h1 className="text-lg font-semibold text-stone-900">{t('This link is no longer available', 'Ο σύνδεσμος δεν είναι πλέον διαθέσιμος')}</h1>
           <p className="text-sm text-stone-500">{t('The founder may have revoked it. Ask them for a fresh link.', 'Ο ιδρυτής μπορεί να τον ανάκλησε. Ζήτα του νέο σύνδεσμο.')}</p>
@@ -29,14 +29,14 @@ export default function DueDiligenceSharePage() {
     );
   }
   if (!data) {
-    return <main className="flex min-h-dvh items-center justify-center bg-stone-50"><Loader2 className="h-5 w-5 animate-spin text-stone-400" /></main>;
+    return <main data-type-scale="app" className="flex min-h-dvh items-center justify-center bg-stone-50"><Loader2 className="h-5 w-5 animate-spin text-stone-400" /></main>;
   }
 
   const done = data.items.filter((item) => item.status === 'done').length;
   const pct = data.items.length ? Math.round((done / data.items.length) * 100) : 0;
 
   return (
-    <main className="min-h-dvh bg-stone-50 px-4 py-10" data-testid="dd-public-page">
+    <main data-type-scale="app" className="min-h-dvh bg-stone-50 px-4 py-10" data-testid="dd-public-page">
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Due diligence status · CoFounderBay</p>
@@ -81,7 +81,7 @@ export default function DueDiligenceSharePage() {
                   <FileText className="h-4 w-4 shrink-0 text-stone-400" />
                   <span className="min-w-0 flex-1 truncate text-sm text-stone-900">{file.name}</span>
                   <span className="text-xs text-stone-400">{file.size}</span>
-                  <a href={file.url} download={file.name} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900" data-testid={`dd-public-file-${file.name.replace(/[^a-z0-9]/gi, '-')}`}>
+                  <a href={file.url} download={file.name} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900 tap-area" data-testid={`dd-public-file-${file.name.replace(/[^a-z0-9]/gi, '-')}`}>
                     <Download className="h-3.5 w-3.5" />Download
                   </a>
                 </li>

@@ -248,7 +248,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
        </div>
        <div>
         <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">{t('User Management', 'Μέλη')}</h1>
-        <p className="text-stone-400 text-xs font-medium tracking-wider mt-1">{t("Orchestrate your ecosystem's member base", 'Οργάνωσε τη βάση μελών του οικοσυστήματος')}</p>
+        <p className="text-stone-400 text-xs font-medium mt-1">{t("Orchestrate your ecosystem's member base", 'Οργάνωσε τη βάση μελών του οικοσυστήματος')}</p>
         {isDemoMode && <p className="text-xs text-stone-500 mt-1">{t('Sample account — member data appears for real accounts.', 'Δοκιμαστικός λογαριασμός — τα δεδομένα μελών εμφανίζονται σε πραγματικούς λογαριασμούς.')}</p>}
        </div>
       </motion.div>
@@ -256,17 +256,17 @@ export default function UserManagement({ user: _user }: AdminProps) {
 
      <div className="flex flex-wrap items-center gap-4">
       <div className="hidden lg:flex items-center gap-3 mr-4">
-       <Link to="/admin/branding" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs tracking-wider transition-all">
+       <Link to="/admin/branding" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs transition-all">
         <Palette className="w-4 h-4 mr-2.5" /> {t('Branding', 'Ταυτότητα')}
        </Link>
-       <Link to="/admin/taxonomies" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs tracking-wider transition-all">
+       <Link to="/admin/taxonomies" className="inline-flex items-center h-11 px-6 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-50 font-medium text-xs transition-all">
         <Tag className="w-4 h-4 mr-2.5" /> {t('Taxonomies', 'Ταξινομίες')}
        </Link>
       </div>
-      <Button variant="outline" onClick={exportCsv} className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium tracking-wide transition-all shadow-sm">
+      <Button variant="outline" onClick={exportCsv} className="bg-white border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 rounded-xl h-11 px-6 text-xs font-medium transition-all shadow-sm">
        <Download className="w-3.5 h-3.5 mr-2.5" /> {t('Export', 'Εξαγωγή')}
       </Button>
-      <Button onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/signup`)} className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium tracking-wide shadow-xl shadow-stone-200 transition-all">
+      <Button onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/signup`)} className="bg-stone-900 hover:bg-stone-800 text-white border-none rounded-xl h-11 px-8 text-xs font-medium shadow-xl shadow-stone-200 transition-all">
        <UserPlus className="w-3.5 h-3.5 mr-2.5" /> {t('Copy Invite Link', 'Αντιγραφή συνδέσμου πρόσκλησης')}
       </Button>
      </div>
@@ -283,10 +283,10 @@ export default function UserManagement({ user: _user }: AdminProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.05, type: "spring", stiffness: 400, damping: 25 }}
      >
-      <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] transition-all overflow-hidden group rounded-xl">
+      <Card noPadding className="border-stone-100 shadow-sm hover:shadow-lg transition-all overflow-hidden group rounded-xl">
        <div className="p-8 flex items-center justify-between">
         <div className="space-y-3">
-         <p className="text-xs font-medium text-stone-400 tracking-wider">{stat.label}</p>
+         <p className="text-xs font-medium text-stone-400">{stat.label}</p>
          <h4 className="text-lg font-semibold tracking-tight text-stone-900">{stat.value}</h4>
         </div>
         <div className={cn("w-14 h-11 rounded-2xl flex items-center justify-center transition-all shadow-inner border border-stone-100/50", stat.bg, stat.color)}>
@@ -294,7 +294,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
         </div>
        </div>
        <div className={cn(
-        "stat-change-strip px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium tracking-wider",
+        "stat-change-strip px-5 py-2.5 bg-stone-50/30 border-t border-stone-50 flex items-center gap-3 text-xs font-medium ",
         stat.color
        )}>
         <TrendingUp className="w-3.5 h-3.5" /> {stat.change ? (stat.change === 'Stable' || stat.change === 'Critical' ? labelOf(stat.change) : stat.change) : t('Live', 'Ζωντανά')}
@@ -309,7 +309,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
     <div className="lg:col-span-2 space-y-6">
      <Card 
       noPadding 
-      className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] overflow-hidden rounded-xl"
+      className="border-stone-100 shadow-sm overflow-hidden rounded-xl"
      >
       <div className="p-8 border-b border-stone-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
        <div className="flex items-center gap-8">
@@ -318,7 +318,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
           key={tab}
           onClick={() => setSelectedTab(tab)}
           className={cn(
-           "text-xs font-medium tracking-wider pb-3 border-b-2 transition-all relative",
+           "text-xs font-medium pb-3 border-b-2 transition-all relative",
            selectedTab === tab 
             ? "border-stone-900 text-stone-900" 
             : "border-transparent text-stone-400 hover:text-stone-600"
@@ -335,7 +335,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
          placeholder={t('Search members...', 'Αναζήτηση μελών...')}
          value={searchQuery}
          onChange={(e) => setSearchQuery(e.target.value)}
-         className="input-minimal pl-12 text-xs font-medium tracking-wide"
+         className="input-minimal pl-12 text-xs font-medium"
         />
        </div>
       </div>
@@ -344,11 +344,11 @@ export default function UserManagement({ user: _user }: AdminProps) {
        <table className="w-full text-left border-collapse">
         <thead>
          <tr className="bg-stone-50/20 border-b border-stone-50">
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Member', 'Μέλος')}</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Role & Hub', 'Ρόλος και κόμβος')}</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Status', 'Κατάσταση')}</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider">{t('Activity', 'Δραστηριότητα')}</th>
-          <th className="px-8 py-5 text-xs font-medium text-stone-400 tracking-wider text-right">{t('Actions', 'Ενέργειες')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400">{t('Member', 'Μέλος')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400">{t('Role & Hub', 'Ρόλος και κόμβος')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400">{t('Status', 'Κατάσταση')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400">{t('Activity', 'Δραστηριότητα')}</th>
+          <th className="px-8 py-5 text-xs font-medium text-stone-400 text-right">{t('Actions', 'Ενέργειες')}</th>
          </tr>
         </thead>
         <tbody className="divide-y divide-stone-50">
@@ -372,7 +372,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
               </div>
               <div className="space-y-1">
                <p className="text-base font-medium text-stone-900 group-hover:text-stone-600 transition-colors tracking-tight">{u.fullName}</p>
-               <p className="text-xs text-stone-400 font-medium tracking-wide">{u.email}</p>
+               <p className="text-xs text-stone-400 font-medium">{u.email}</p>
               </div>
              </div>
             </td>
@@ -380,17 +380,17 @@ export default function UserManagement({ user: _user }: AdminProps) {
              <div className="flex flex-col gap-2">
               <div className="flex flex-wrap gap-2">
                {u.roles.map((role: string) => (
-                <span key={role} className="text-xs font-medium px-2.5 py-1 bg-stone-50 text-stone-500 rounded-md tracking-wide border border-stone-100">
+                <span key={role} className="text-xs font-medium px-2.5 py-1 bg-stone-50 text-stone-500 rounded-md border border-stone-100">
                  {labelOf(role)}
                 </span>
                ))}
               </div>
-              {u.company ? <span className="text-xs text-stone-300 font-medium tracking-wider">{u.company}</span> : null}
+              {u.company ? <span className="text-xs text-stone-300 font-medium">{u.company}</span> : null}
              </div>
             </td>
             <td className="px-8 py-7">
              <span className={cn(
-              "text-xs font-medium px-3.5 py-1.5 rounded-xl tracking-wide inline-flex items-center gap-2.5 border",
+              "text-xs font-medium px-3.5 py-1.5 rounded-xl inline-flex items-center gap-2.5 border",
               u.accountStatus === "Active" 
                ? "text-emerald-600 border-transparent" 
                : "text-red-600 border-transparent"
@@ -402,7 +402,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
             <td className="px-8 py-7">
              <div className="space-y-1.5">
               <p className="text-xs font-medium text-stone-700 tracking-tight">{u.lastActiveAt ? t(`Last active ${new Date(u.lastActiveAt).toLocaleDateString()}`, `Τελευταία δραστηριότητα ${new Date(u.lastActiveAt).toLocaleDateString('el-GR')}`) : t('No recent activity', 'Χωρίς πρόσφατη δραστηριότητα')}</p>
-              <p className="text-xs text-stone-300 font-medium tracking-wider">{t('Joined', 'Εγγραφή')} {formatDate(u.createdAt)}</p>
+              <p className="text-xs text-stone-300 font-medium">{t('Joined', 'Εγγραφή')} {formatDate(u.createdAt)}</p>
              </div>
             </td>
             <td className="px-8 py-7 text-right">
@@ -425,7 +425,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
        </table>
       </div>
       <div className="p-8 bg-stone-50/20 border-t border-stone-50 flex flex-col md:flex-row items-center justify-between gap-8">
-       <p className="text-xs text-stone-400 font-medium tracking-wider">
+       <p className="text-xs text-stone-400 font-medium">
         {t('Showing', 'Εμφάνιση')} <span className="text-stone-900">{filteredUsers.length}</span> {t('of', 'από')} <span className="text-stone-900">{users.length}</span> {t('members', 'μέλη')}
        </p>
       </div>
@@ -439,11 +439,11 @@ export default function UserManagement({ user: _user }: AdminProps) {
          <ShieldAlert className="w-7 h-7 text-red-500" />
         </div>
         <div className="space-y-1">
-         <h2 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Moderation Queue', 'Ουρά εποπτείας')}</h2>
-         <p className="text-stone-400 font-medium text-xs tracking-wider mt-1">{t('Items requiring administrative review', 'Στοιχεία που χρειάζονται έλεγχο από τη διαχείριση')}</p>
+         <h2 className="text-sm font-semibold text-stone-900">{t('Moderation Queue', 'Ουρά εποπτείας')}</h2>
+         <p className="text-stone-400 font-medium text-xs mt-1">{t('Items requiring administrative review', 'Στοιχεία που χρειάζονται έλεγχο από τη διαχείριση')}</p>
         </div>
        </div>
-       <span className="text-xs font-medium tracking-wider text-stone-400">
+       <span className="text-xs font-medium text-stone-400">
         {openReports.length === 0 ? t('No open reports', 'Καμία ανοιχτή αναφορά') : t(`${openReports.length} open`, `${openReports.length} ανοιχτές`)}
        </span>
       </div>
@@ -462,7 +462,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
          animate={{ opacity: 1, x: 0 }}
          transition={{ delay: i * 0.1, type: "spring", stiffness: 400, damping: 25 }}
         >
-         <Card noPadding className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_15px_40px_rgb(0,0,0,0.08)] transition-all group rounded-xl overflow-hidden">
+         <Card noPadding className="border-stone-100 shadow-sm hover:shadow-lg transition-all group rounded-xl overflow-hidden">
           <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-10">
            <div className="flex items-center gap-8 w-full md:w-auto">
             <div className="w-20 h-20 rounded-xl flex items-center justify-center shadow-inner shrink-0 border border-stone-100/50 transition-all group-hover:scale-105 bg-amber-50 text-amber-500">
@@ -473,23 +473,23 @@ export default function UserManagement({ user: _user }: AdminProps) {
             <div className="space-y-3">
              <div className="flex items-center gap-5">
               <span className="text-sm font-semibold text-stone-900">{item.targetName || t('Unnamed item', 'Ανώνυμο στοιχείο')}</span>
-              <span className="px-3 py-1 bg-stone-100 text-stone-500 rounded-md text-xs font-medium tracking-wider border border-stone-200/50">
+              <span className="px-3 py-1 bg-stone-100 text-stone-500 rounded-md text-xs font-medium border border-stone-200/50">
                {typeLabel(item.targetType)}
               </span>
              </div>
              <p className="text-sm text-stone-500 font-medium flex items-center gap-4">
-              <span className="text-red-500 font-medium text-xs tracking-wider">{item.reason || t('Report', 'Αναφορά')}</span>
+              <span className="text-red-500 font-medium text-xs">{item.reason || t('Report', 'Αναφορά')}</span>
               <span className="w-1 h-1 rounded-full bg-stone-200"></span>
-              <span className="text-stone-400 font-medium text-xs tracking-[0.15em]">{item.reporterName ? `${t('by', 'από')} ${item.reporterName}` : ''} {item.createdAt ? `· ${formatDate(new Date(item.createdAt).toISOString())}` : ''}</span>
+              <span className="text-stone-400 font-medium text-xs">{item.reporterName ? `${t('by', 'από')} ${item.reporterName}` : ''} {item.createdAt ? `· ${formatDate(new Date(item.createdAt).toISOString())}` : ''}</span>
              </p>
              {item.details && <p className="text-xs text-stone-400 font-medium max-w-md">{item.details}</p>}
             </div>
            </div>
            <div className="flex items-center gap-4 w-full md:w-auto">
-            <Button variant="ghost" disabled={busy === item.id} onClick={() => void setReportStatus(item.id, 'dismissed')} className="flex-1 md:flex-none h-10 px-10 text-xs font-medium tracking-wide text-stone-400 hover:text-stone-900 rounded-xl transition-all">
+            <Button variant="ghost" disabled={busy === item.id} onClick={() => void setReportStatus(item.id, 'dismissed')} className="flex-1 md:flex-none h-10 px-10 text-xs font-medium text-stone-400 hover:text-stone-900 rounded-xl transition-all">
              {t('Dismiss', 'Απόρριψη')}
             </Button>
-            <Button disabled={busy === item.id} onClick={() => { void setReportStatus(item.id, 'reviewing'); if (item.href) navigate(item.href); else if (item.targetOwnerId) navigate(`/profile/${item.targetOwnerId}`); }} className="flex-1 md:flex-none h-10 px-12 text-xs font-medium tracking-wide bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
+            <Button disabled={busy === item.id} onClick={() => { void setReportStatus(item.id, 'reviewing'); if (item.href) navigate(item.href); else if (item.targetOwnerId) navigate(`/profile/${item.targetOwnerId}`); }} className="flex-1 md:flex-none h-10 px-12 text-xs font-medium bg-red-600 hover:bg-red-700 text-white border-none shadow-xl shadow-red-900/10 rounded-xl transition-all">
              {t('Review & Action', 'Έλεγχος και ενέργεια')}
             </Button>
            </div>
@@ -510,7 +510,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
       <h2 className="text-base font-semibold text-stone-900 tracking-tight">{t('Ecosystem Health', 'Υγεία οικοσυστήματος')}</h2>
      </div>
 
-     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
+     <Card className="border-stone-100 shadow-sm p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
       <div className="space-y-8">
        {[
         { label: t('Profile Completion', 'Ολοκλήρωση προφίλ'), value: users.length ? Math.round((users.filter((u) => u.company || u.avatarUrl).length / users.length) * 100) : 0, color: "bg-blue-500" },
@@ -519,7 +519,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
        ].map((metric, i) => (
         <div key={i} className="space-y-4">
          <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-stone-400 tracking-wider">{metric.label}</span>
+          <span className="text-xs font-medium text-stone-400">{metric.label}</span>
           <span className="text-sm font-medium text-stone-900">{metric.value}%</span>
          </div>
          <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden shadow-inner border border-stone-200/20">
@@ -540,8 +540,8 @@ export default function UserManagement({ user: _user }: AdminProps) {
          <CheckCircle2 className="w-6 h-6" />
         </div>
         <div>
-         <p className="text-xs font-medium text-emerald-900 tracking-wider">{t('Data live from Firestore', 'Δεδομένα ζωντανά από το Firestore')}</p>
-         <p className="text-xs text-emerald-600 font-medium tracking-wide mt-0.5">{openReports.length ? t(`${openReports.length} report(s) pending`, `${openReports.length} αναφορές σε εκκρεμότητα`) : t('No pending reports', 'Καμία εκκρεμής αναφορά')}</p>
+         <p className="text-xs font-medium text-emerald-900">{t('Data live from Firestore', 'Δεδομένα ζωντανά από το Firestore')}</p>
+         <p className="text-xs text-emerald-600 font-medium mt-0.5">{openReports.length ? t(`${openReports.length} report(s) pending`, `${openReports.length} αναφορές σε εκκρεμότητα`) : t('No pending reports', 'Καμία εκκρεμής αναφορά')}</p>
         </div>
        </div>
       </div>
@@ -549,8 +549,8 @@ export default function UserManagement({ user: _user }: AdminProps) {
 
      {/* Ecosystem Distribution */}
      <div className="space-y-4">
-      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Member Distribution', 'Κατανομή μελών')}</h3>
-     <Card className="border-stone-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
+      <h3 className="text-xs font-medium text-stone-400 ml-2">{t('Member Distribution', 'Κατανομή μελών')}</h3>
+     <Card className="border-stone-100 shadow-sm p-4 sm:p-6 rounded-xl" contentClassName="space-y-6">
        {(() => {
         const count = (re: RegExp) => users.filter((u) => u.roles.some((r) => re.test(r))).length;
         const pct = (n: number) => (users.length ? Math.round((n / users.length) * 100) : 0);
@@ -567,7 +567,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
            <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-100 shadow-sm">
             <item.icon className="w-3.5 h-3.5 text-stone-400" />
            </div>
-           <span className="text-xs font-medium text-stone-500 tracking-wide">{item.label}</span>
+           <span className="text-xs font-medium text-stone-500">{item.label}</span>
           </div>
           <span className="text-xs font-medium text-stone-900">{item.value}%</span>
          </div>
@@ -585,12 +585,12 @@ export default function UserManagement({ user: _user }: AdminProps) {
 
      {/* Quick Actions */}
      <div className="space-y-4">
-      <h3 className="text-xs font-medium text-stone-400 tracking-wider ml-2">{t('Administrative Actions', 'Ενέργειες διαχείρισης')}</h3>
+      <h3 className="text-xs font-medium text-stone-400 ml-2">{t('Administrative Actions', 'Ενέργειες διαχείρισης')}</h3>
       <div className="grid grid-cols-1 gap-4">
        <motion.button
         whileHover={{ x: 6, scale: 1.01 }}
         onClick={() => navigate('/admin/branding')}
-        className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-[1.75rem] hover:border-stone-900 hover:shadow-[0_10px_40px_rgb(0,0,0,0.06)] transition-all text-left group shadow-[0_4px_20px_rgb(0,0,0,0.02)]"
+        className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-3xl hover:border-stone-900 hover:shadow-lg transition-all text-left group shadow-sm"
        >
         <div className="w-14 h-11 bg-stone-50 rounded-2xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all shadow-inner border border-stone-100/50">
          <Globe className="w-7 h-7" />
@@ -607,7 +607,7 @@ export default function UserManagement({ user: _user }: AdminProps) {
        <motion.button
         whileHover={{ x: 6, scale: 1.01 }}
         onClick={exportCsv}
-        className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-[1.75rem] hover:border-stone-900 hover:shadow-[0_10px_40px_rgb(0,0,0,0.06)] transition-all text-left group shadow-[0_4px_20px_rgb(0,0,0,0.02)]"
+        className="w-full flex items-center gap-6 p-6 bg-white border border-stone-100 rounded-3xl hover:border-stone-900 hover:shadow-lg transition-all text-left group shadow-sm"
        >
         <div className="w-14 h-11 bg-stone-50 rounded-2xl flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all shadow-inner border border-stone-100/50">
          <Briefcase className="w-7 h-7" />

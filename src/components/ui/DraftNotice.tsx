@@ -18,7 +18,7 @@ export default function DraftNotice({ dirty, durable, restored, onDiscard }: {
        ? t('Draft restored from this device · not submitted', 'Επαναφέρθηκε πρόχειρο από τη συσκευή · δεν έχει υποβληθεί')
        : t('Draft kept on this device · not submitted', 'Το πρόχειρο διατηρείται στη συσκευή · δεν έχει υποβληθεί')}
     </span>
-    <button type="button" className="underline underline-offset-2 text-stone-600" onClick={() => setConfirming(true)}>{t('Discard draft', 'Διαγραφή πρόχειρου')}</button>
+    <button type="button" className="underline underline-offset-2 text-stone-600 tap-area" onClick={() => setConfirming(true)}>{t('Discard draft', 'Διαγραφή πρόχειρου')}</button>
    </div>
    <ConfirmDialog open={confirming} onClose={() => setConfirming(false)} onConfirm={() => { setConfirming(false); onDiscard(); }}
     title={t('Discard these changes?', 'Να διαγραφούν αυτές οι αλλαγές;')}

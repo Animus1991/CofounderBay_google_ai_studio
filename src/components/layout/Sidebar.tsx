@@ -180,7 +180,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        onClick={onMenuToggle}
        aria-label={bothText("Close menu", "Κλείσιμο μενού")}
        aria-controls="primary-navigation"
-       className="sidebar-brand-menu lg:hidden p-1.5 hover:bg-stone-100 rounded-lg text-stone-500"
+       className="sidebar-brand-menu lg:hidden p-1.5 hover:bg-stone-100 rounded-lg text-stone-500 tap-area"
       >
        <Menu className="w-4 h-4" />
       </button>
@@ -208,7 +208,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
         className="sidebar-brand-copy flex shrink-0 flex-col gap-1 whitespace-nowrap"
        >
         <p className="sidebar-brand-title shrink-0 text-xs font-semibold tracking-tight text-stone-900 leading-none">{tenant?.displayName || "CoFounderBay"}</p>
-        <span className="sidebar-brand-subtitle shrink-0 text-xs font-medium leading-4 tracking-wide text-stone-400">{withEl("Ecosystem Hub")}</span>
+        <span className="sidebar-brand-subtitle shrink-0 text-xs font-medium leading-4 text-stone-400">{withEl("Ecosystem Hub")}</span>
        </motion.div>
       )}
      </div>
@@ -273,7 +273,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
     {favorites.length > 0 && (
     <div className="space-y-1">
      {!collapsed ? (
-      <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+      <p className="px-3 text-xs font-semibold text-stone-400 mb-2">
        {bothText("Pinned", "Καρφιτσωμένα")}
       </p>
      ) : (
@@ -323,7 +323,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
    {sections.map((section) => (
      <div key={section.title} className="space-y-1.5">
       {!collapsed ? (
-       <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+       <p className="px-3 text-xs font-semibold text-stone-400 mb-2">
         {withEl(section.title)}
        </p>
       ) : (
@@ -371,7 +371,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
     {isAdmin && (
      <div className="space-y-1.5 pt-4 border-t border-stone-100">
       {!collapsed ? (
-       <p className="px-3 text-xs font-semibold text-stone-400 tracking-[0.12em] mb-2">
+       <p className="px-3 text-xs font-semibold text-stone-400 mb-2">
         {withEl("Administration")}
        </p>
       ) : (
@@ -466,7 +466,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
       <NavLink
        to="/login"
        title={bothText("Sign in", "Είσοδος")}
-       className="mt-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-stone-900 text-white text-xs font-medium tracking-wider hover:bg-stone-700 transition-all"
+       className="mt-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-stone-900 text-white text-xs font-medium hover:bg-stone-700 transition-all tap-area"
       >
        <LogIn className="w-3 h-3" />
        {bothText("Sign in", "Είσοδος")}
@@ -476,7 +476,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
       <NavLink 
        to="/notifications"
        title={navTitle("Alerts", "/notifications")}
-       className="relative flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
+       className="relative flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200 tap-area"
       >
        <Bell className="w-3 h-3" />
        {withEl("Alerts")}
@@ -490,7 +490,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        type="button"
        onClick={handleLogout}
        title={navTitle("Logout", "/logout")}
-       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium tracking-wider text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100"
+       className="flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50/50 transition-all border border-transparent hover:border-red-100 tap-area"
       >
        <LogOut className="w-3 h-3" />
        {withEl("Logout")}
@@ -503,7 +503,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
        <NavLink
         to="/login"
         title={bothText("Sign in", "Είσοδος")}
-        className="p-2 rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-all"
+        className="p-2 rounded-lg bg-stone-900 text-white hover:bg-stone-700 transition-all tap-area"
        >
         <LogIn className="w-4.5 h-4.5" />
        </NavLink>
@@ -511,7 +511,7 @@ export default function Sidebar({ user, guest = false, collapsed: desktopCollaps
       <NavLink 
        to="/notifications"
        title={navTitle("Alerts", "/notifications")}
-       className="relative p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200"
+       className="relative p-2 rounded-lg text-stone-500 hover:bg-white hover:text-stone-900 transition-all border border-transparent hover:border-stone-200 tap-area"
       >
        <Bell className="w-4.5 h-4.5" />
        {unread > 0 && (

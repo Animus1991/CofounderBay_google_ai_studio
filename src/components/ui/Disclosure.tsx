@@ -23,7 +23,7 @@ export default function Disclosure({ title, hint, defaultOpen = false, children,
     aria-labelledby={labelId}
     aria-describedby={hint ? hintId : undefined}
     onClick={() => setOpen((v) => !v)}
-    className="flex w-full items-start gap-1.5 py-1 text-left text-sm font-semibold text-stone-700 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 rounded"
+    className="flex w-full items-start gap-1.5 py-1 text-left text-sm font-semibold text-stone-700 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-stone-400 rounded-md"
    >
     <ChevronRight aria-hidden="true" className={cn('mt-0.5 w-3.5 h-3.5 shrink-0 transition-transform', open && 'rotate-90')} />
     <span className="min-w-0">

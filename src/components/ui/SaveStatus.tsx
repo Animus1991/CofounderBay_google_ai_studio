@@ -18,7 +18,7 @@ export default function SaveStatus({ listKey }: { listKey: string }) {
  return (
   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
    <span role="status" aria-live="polite" className={phase === 'error' || phase === 'temporary' ? 'text-amber-700' : ''}>{copy}</span>
-   {phase === 'error' && <button type="button" className="underline underline-offset-2 text-stone-700" onClick={() => void retryListSync(listKey)}>{t('Retry sync', 'Νέος συγχρονισμός')}</button>}
+   {phase === 'error' && <button type="button" className="underline underline-offset-2 text-stone-700 tap-area" onClick={() => void retryListSync(listKey)}>{t('Retry sync', 'Νέος συγχρονισμός')}</button>}
   </div>
  );
 }

@@ -302,7 +302,7 @@ export default function CommunitiesPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
       transition={{ delay: Math.min(idx, 8) * 0.05 }}
-      className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm hover:shadow-md  transition-all group flex flex-col"
+      className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm hover:shadow-md transition-all group flex flex-col"
      >
       {/* Top row: avatar + actions */}
       <div className="flex items-start justify-between mb-5">
@@ -313,10 +313,10 @@ export default function CommunitiesPage() {
         fallback={<span className="flex h-full w-full items-center justify-center bg-stone-900 text-base font-semibold text-white">{community.name.slice(0, 2).toUpperCase()}</span>}
        />
        <div className="flex items-center gap-1">
-        <button type="button" aria-label={t('Share community', 'Κοινοποίηση κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all" onClick={() => void navigator.clipboard?.writeText(community.name)}>
+        <button type="button" aria-label={t('Share community', 'Κοινοποίηση κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all tap-area" onClick={() => void navigator.clipboard?.writeText(community.name)}>
          <Share2 className="w-4 h-4" />
         </button>
-        <button type="button" aria-label={t('Community options', 'Επιλογές κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all" onClick={() => ask(`What can I do in ${community.name}?`)}>
+        <button type="button" aria-label={t('Community options', 'Επιλογές κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all tap-area" onClick={() => ask(`What can I do in ${community.name}?`)}>
          <MoreVertical className="w-4 h-4" />
         </button>
        </div>
@@ -325,10 +325,10 @@ export default function CommunitiesPage() {
       <div className="flex items-center gap-2 mb-3">
        <FactLine items={[community.categoryEl ? t(community.category, community.categoryEl) : community.category]} />
        {community.official && (
-        <span className="text-xs font-semibold text-stone-400 tracking-wide">{t('Official', 'Επίσημη')}</span>
+        <span className="text-xs font-semibold text-stone-400">{t('Official', 'Επίσημη')}</span>
        )}
        {(community.posts ?? 0) > 80 && (
-        <span className="flex items-center gap-1 text-xs font-semibold text-amber-500 tracking-wide">
+        <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
          <TrendingUp className="w-3 h-3" />{t('Trending', 'Δημοφιλή')}
         </span>
        )}
@@ -389,8 +389,8 @@ export default function CommunitiesPage() {
    {/* Trending Topics */}
    <div className="space-y-3">
     <div className="flex items-center justify-between">
-     <p className="text-xs font-semibold text-stone-400 tracking-wider">{t('Trending Topics', 'Δημοφιλή θέματα')}</p>
-     <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors" onClick={() => ask('what events are coming')}>{t('View all topics', 'Όλα τα θέματα')}</button>
+     <p className="text-xs font-semibold text-stone-400">{t('Trending Topics', 'Δημοφιλή θέματα')}</p>
+     <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 transition-colors tap-area" onClick={() => ask('what events are coming')}>{t('View all topics', 'Όλα τα θέματα')}</button>
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
      {[
@@ -402,10 +402,10 @@ export default function CommunitiesPage() {
       <div
        key={topic.tag}
        onClick={() => ask(`Tell me about ${topic.tag}`)}
-       className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm hover:shadow-md  transition-all cursor-pointer group"
+       className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
       >
        <p className="text-xs font-semibold text-stone-900 group-hover:text-stone-600 transition-colors">{topic.tag}</p>
-       {isDemoMode && <p className="text-xs text-stone-400 font-medium tracking-wider mt-1.5">{t(`${topic.posts} discussions`, `${topic.posts} συζητήσεις`)}</p>}
+       {isDemoMode && <p className="text-xs text-stone-400 font-medium mt-1.5">{t(`${topic.posts} discussions`, `${topic.posts} συζητήσεις`)}</p>}
       </div>
      ))}
     </div>
@@ -485,7 +485,7 @@ function CreateCommunityModal({ open, uid, onClose, onCreated }: { open: boolean
     </div>
     {error && <p className="text-xs text-red-600">{error}</p>}
     <div className="flex justify-end gap-2">
-     <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50 transition-all">{t('Cancel', 'Άκυρο')}</button>
+     <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-50 transition-all tap-area">{t('Cancel', 'Άκυρο')}</button>
      <button
       type="button"
       onClick={() => void submit()}

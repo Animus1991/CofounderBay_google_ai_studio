@@ -359,7 +359,7 @@ export default function Workspace({ user }: WorkspaceProps) {
              <div className="min-w-0">
               <h4 className="text-sm font-semibold text-stone-900 break-words">{task.title}</h4>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-               <span className={cn("text-xs tracking-wider font-medium", TONE_CLASSES[statusTone(task.status)].text)}>{labelOf(task.status)}</span>
+               <span className={cn("text-xs font-medium", TONE_CLASSES[statusTone(task.status)].text)}>{labelOf(task.status)}</span>
                <span className="w-1 h-1 bg-stone-200 rounded-full" />
                <span className="text-xs text-stone-400 flex items-center gap-1">
                 <Clock className="w-2.5 h-2.5" /> {taskDueLabel(task, t)}
@@ -380,7 +380,7 @@ export default function Workspace({ user }: WorkspaceProps) {
              {/* Tags */}
              <div className="flex flex-wrap justify-end gap-1 max-w-[7rem] sm:max-w-none">
               {task.tags.slice(0, 2).map(tag => (
-               <span key={tag} className="px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded text-xs">{labelOf(tag)}</span>
+               <span key={tag} className="px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded-md text-xs">{labelOf(tag)}</span>
               ))}
              </div>
              <ChevronRight className={cn(
@@ -399,7 +399,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           {["Todo", "In Progress", "Review", "Done"].map((status) => (
            <div key={status} className="space-y-2">
             <div className="flex items-center justify-between px-1">
-             <span className={cn("text-xs font-semibold tracking-wider", TONE_CLASSES[statusTone(status)].text)}>{labelOf(status)}</span>
+             <span className={cn("text-xs font-semibold", TONE_CLASSES[statusTone(status)].text)}>{labelOf(status)}</span>
              <span className="text-xs text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">
               {visibleTasks.filter((task) => task.status === status).length}
              </span>
@@ -424,7 +424,7 @@ export default function Workspace({ user }: WorkspaceProps) {
                <div className="flex items-center justify-between">
                 <div className="flex gap-1">
                  {task.tags.slice(0, 1).map(tag => (
-                  <span key={tag} className="px-1 py-0.5 bg-stone-50 text-stone-400 rounded text-xs">{labelOf(tag)}</span>
+                  <span key={tag} className="px-1 py-0.5 bg-stone-50 text-stone-400 rounded-md text-xs">{labelOf(tag)}</span>
                  ))}
                 </div>
                 {task.timeTracked > 0 && (
@@ -449,7 +449,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           <div className="w-8 h-8 rounded-lg bg-stone-50 text-stone-700 flex items-center justify-center border border-stone-100">
            <Zap className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t("Velocity", "Ταχύτητα")}</h3>
+          <h3 className="text-sm font-semibold text-stone-900">{t("Velocity", "Ταχύτητα")}</h3>
          </div>
          <div className="flex items-end justify-between">
           <span className="text-lg font-semibold text-stone-900">{tasks.filter((task) => task.status === 'Done').length}</span>
@@ -463,7 +463,7 @@ export default function Workspace({ user }: WorkspaceProps) {
           <div className="w-8 h-8 rounded-lg bg-stone-50 text-stone-700 flex items-center justify-center border border-stone-100">
            <Target className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t("Focus Score", "Σκορ εστίασης")}</h3>
+          <h3 className="text-sm font-semibold text-stone-900">{t("Focus Score", "Σκορ εστίασης")}</h3>
          </div>
          <div className="flex items-end justify-between">
           <span className="text-lg font-semibold text-stone-900">{Math.round(focusStats.seconds / 60)}m</span>
@@ -484,7 +484,7 @@ export default function Workspace({ user }: WorkspaceProps) {
          <h3 className="text-sm font-semibold text-stone-900">{t("AI Assistant", "Βοηθός AI")}</h3>
         </div>
         <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-2.5">
-         <p className="text-xs font-semibold text-stone-400 tracking-wider">{t("Next Best Action", "Επόμενη καλύτερη ενέργεια")}</p>
+         <p className="text-xs font-semibold text-stone-400">{t("Next Best Action", "Επόμενη καλύτερη ενέργεια")}</p>
          <p className="text-sm text-stone-600 leading-relaxed">
           {t(nextStep.en, nextStep.el)}
          </p>
@@ -538,7 +538,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         </div>
 
         <div className="text-center py-2">
-         <div className="text-lg font-bold tracking-tight font-mono text-stone-900">
+         <div className="text-lg font-semibold tracking-tight font-mono text-stone-900">
           {Math.floor(focusTimer / 60).toString().padStart(2, "0")}:{(focusTimer % 60).toString().padStart(2, "0")}
          </div>
          <p className={cn("text-xs mt-1", focusMode ? "text-stone-600 font-medium" : "text-stone-400")}>
@@ -572,11 +572,11 @@ export default function Workspace({ user }: WorkspaceProps) {
         {/* Session Stats */}
         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200/70">
          <div className="text-center">
-          <p className="text-lg font-bold text-stone-900">{focusStats.sessions}</p>
+          <p className="text-lg font-semibold text-stone-900">{focusStats.sessions}</p>
           <p className={cn("text-xs", focusMode ? "text-stone-600" : "text-stone-400")}>{t("Sessions Today", "Συνεδρίες σήμερα")}</p>
          </div>
          <div className="text-center">
-          <p className="text-lg font-bold text-stone-900">{(focusStats.seconds / 3600).toFixed(1)}h</p>
+          <p className="text-lg font-semibold text-stone-900">{(focusStats.seconds / 3600).toFixed(1)}h</p>
           <p className={cn("text-xs", focusMode ? "text-stone-600" : "text-stone-400")}>{t("Deep Work", "Deep work")}</p>
          </div>
         </div>
@@ -626,7 +626,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         <div className="pt-2 border-t border-stone-100">
          <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-stone-400">{t("Total Tracked", "Σύνολο")}</span>
-          <span className="text-base font-bold text-stone-900">
+          <span className="text-base font-semibold text-stone-900">
            {Math.floor(tasks.reduce((acc, task) => acc + task.timeTracked, 0) / 60)}h {tasks.reduce((acc, task) => acc + task.timeTracked, 0) % 60}m
           </span>
          </div>
@@ -655,7 +655,7 @@ export default function Workspace({ user }: WorkspaceProps) {
            href={url ?? undefined}
            target={url ? '_blank' : undefined}
            rel="noopener noreferrer"
-           className="flex items-center justify-between p-2.5 rounded-lg hover:bg-stone-50 transition-colors group"
+           className="flex items-center justify-between p-2.5 rounded-lg hover:bg-stone-50 transition-colors group tap-area"
           >
            <div className="flex items-center gap-2.5">
             <FileText className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 transition-colors shrink-0" />
@@ -738,7 +738,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
        {CANVAS_SECTIONS.map((section) => (
         <div key={section.key} className="card-minimal p-4 space-y-2 min-h-[180px] flex flex-col">
-         <h4 className="text-xs font-semibold tracking-wider text-stone-400">{canvasTitle(section.title)}</h4>
+         <h4 className="text-xs font-semibold text-stone-400">{canvasTitle(section.title)}</h4>
          <textarea
           value={canvasValue(section.key)}
           onChange={(e) => setCanvasField(section.key, e.target.value)}
@@ -769,7 +769,7 @@ export default function Workspace({ user }: WorkspaceProps) {
         { label: t("Overdue", "Εκπρόθεσμο"), value: String(milestoneStats.overdue), tone: statusTone('Overdue') },
        ].map(stat => (
         <div key={stat.label} className={cn("p-3 rounded-2xl border", TONE_CLASSES[stat.tone].label)}>
-         <p className={cn("text-lg font-bold", stat.tone === 'neutral' ? "text-stone-700" : TONE_CLASSES[stat.tone].text)}>{stat.value}</p>
+         <p className={cn("text-lg font-semibold", stat.tone === 'neutral' ? "text-stone-700" : TONE_CLASSES[stat.tone].text)}>{stat.value}</p>
          <p className="text-xs text-stone-500">{stat.label}</p>
         </div>
        ))}

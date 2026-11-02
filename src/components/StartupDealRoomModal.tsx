@@ -106,14 +106,15 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
       >
         <div
           role="dialog"
+          data-type-scale="app"
           aria-modal="true"
           aria-label={lang === 'en' ? 'Launch Startup Venture & Deal Room' : 'Δημοσίευση Νέου Startup Venture & Deal Room'}
-          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl"
         >
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="flex items-center gap-2">
               <PlusCircle className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-bold text-foreground">
+              <h3 className="text-base font-semibold text-foreground">
                 {lang === 'en'
                   ? 'Launch Startup Venture & Deal Room'
                   : 'Δημοσίευση Νέου Startup Venture & Deal Room'}
@@ -123,7 +124,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
               type="button"
               onClick={onClose}
               aria-label={lang === 'en' ? 'Close' : 'Κλείσιμο'}
-              className="rounded-lg p-1 text-muted-foreground hover:text-foreground"
+              className="rounded-lg p-1 text-muted-foreground hover:text-foreground tap-area"
             >
               <X className="h-5 w-5" />
             </button>
@@ -314,13 +315,14 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
     >
       <div
         role="dialog"
+        data-type-scale="app"
         aria-modal="true"
         aria-label={`${startup.name} — Deal Room`}
-        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
       >
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 sm:px-6 py-[0.92rem] bg-background/60">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm font-extrabold font-mono text-primary overflow-hidden">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold font-mono text-primary overflow-hidden">
               {startup.logo.startsWith('data:image') ? (
                 <img src={startup.logo} alt={startup.name} className="h-full w-full object-cover" />
               ) : (
@@ -329,7 +331,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{startup.name} — Deal Room</h3>
+                <h3 className="text-sm sm:text-base font-semibold text-foreground truncate">{startup.name} — Deal Room</h3>
                 <span className="text-xs text-muted-foreground">· {startup.stage}</span>
               </div>
               <FactLine items={[startup.industry, startup.location, `Equity: ${startup.equityOffer}`]} />
@@ -340,7 +342,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label={lang === 'en' ? 'Close' : 'Κλείσιμο'}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground shrink-0"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 tap-area"
           >
             <X className="h-5 w-5" />
           </button>
@@ -349,7 +351,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
         <div className="p-4 sm:p-[1.455rem] space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <Target className="h-3.5 w-3.5 text-primary" />
                 <span>01. {lang === 'en' ? 'Problem Statement' : 'Πρόβλημα Αγοράς'}</span>
               </div>
@@ -357,7 +359,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 <span>02. {lang === 'en' ? 'Product & Solution' : 'Λύση & Προϊόν'}</span>
               </div>
@@ -365,7 +367,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
                 <span>03. {lang === 'en' ? 'Verified Traction' : 'Επαληθευμένη Δυναμική'}</span>
               </div>
@@ -373,7 +375,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
-              <div className="font-bold text-foreground flex items-center gap-1.5">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <DollarSign className="h-3.5 w-3.5 text-amber-400" />
                 <span>04. {lang === 'en' ? 'Market & Business Model' : 'Αγορά & Μοντέλο Εσόδων'}</span>
               </div>
@@ -388,7 +390,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3"
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-foreground flex items-center gap-1.5">
+              <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <Briefcase className="h-4 w-4 text-primary" />
                 <span>
                   {lang === 'en'
