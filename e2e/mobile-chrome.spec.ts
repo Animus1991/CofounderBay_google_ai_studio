@@ -59,6 +59,19 @@ test('events filter by one chip and read by day', async ({ page }) => {
   await expect(page.locator('#event-list')).toContainText('Startup Founders Networking Night');
 });
 
+test('the last dashboard card scrolls clear of the tab bar', async ({ page }) => {
+  await sample(page, '/dashboard');
+  await page.locator('#main-content').evaluate((main) => { main.scrollTop = main.scrollHeight; });
+  const card = page.getByRole('button', { name: /AI & Machine Learning/ });
+  await expect(card).toBeVisible();
+  const overlap = await card.evaluate((el) => {
+    const bar = document.querySelector('[data-testid="mobile-tab-bar"]')!.getBoundingClientRect().top;
+    const chat = document.querySelector('button[aria-label="Open studio assistant"]')?.getBoundingClientRect().top ?? bar;
+    return el.getBoundingClientRect().bottom - Math.min(bar, chat);
+  });
+  expect(overlap).toBeLessThanOrEqual(0);
+});
+
 test('saved perks have their own view', async ({ page }) => {
   await sample(page, '/perks');
   await page.getByRole('button', { name: 'Save Stripe' }).click();

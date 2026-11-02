@@ -998,9 +998,9 @@ export default function DashboardPage() {
             <div className="space-y-1">
               {communities.map((community) => (
                 // Labelled numbers ("1.2k members · 12 new posts" used to read "1.2k · 12"), and the row opens the community list.
-                <button type="button" key={community.id} onClick={() => navigate('/communities')} className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50 transition-colors">
-                  <span className="text-sm font-medium text-stone-900">{community.name}</span>
-                  <span className="text-xs text-stone-400 tabular-nums">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
+                <button type="button" key={community.id} onClick={() => navigate('/communities')} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50 transition-colors sm:items-center">
+                  <span className="min-w-0 text-sm font-medium text-stone-900">{community.name}</span>
+                  <span className="shrink-0 text-right text-xs text-stone-400 tabular-nums">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
                 </button>
               ))}
             </div>
