@@ -48,6 +48,7 @@ import Button from '../components/ui/Button';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { cn } from '../lib/utils';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
@@ -248,6 +249,9 @@ export default function ProfilePage() {
  const [connecting, setConnecting] = useState(false);
  const [profile, setProfile] = useState<UserProfile | null>(null);
  const [endorsements, setEndorsements] = useState<Endorsement[]>([]);
+ // Phones and tablets show three endorsements, then "Show all" (round 12): five full quotes made the page seven screens long.
+ const compact = useMediaQuery('(max-width: 1023px)');
+ const [allEndorsements, setAllEndorsements] = useState(false);
  const [readiness, setReadiness] = useState<ReadinessScore | null>(null);
  const [isEditing, setIsEditing] = useState(false);
  const [isEndorsing, setIsEndorsing] = useState(false);
@@ -1103,7 +1107,7 @@ export default function ProfilePage() {
          </span>
         </div>
         <div className="space-y-3">
-         {displayEndorsements.slice(0, 5).map((endorsement, idx) => (
+         {displayEndorsements.slice(0, compact && !allEndorsements ? 3 : 5).map((endorsement, idx) => (
           <motion.div
            key={endorsement.id}
            initial={{ opacity: 0, y: 8 }}
@@ -1139,6 +1143,16 @@ export default function ProfilePage() {
           </motion.div>
          ))}
         </div>
+        {compact && displayEndorsements.length > 3 && (
+         <button
+          type="button"
+          aria-expanded={allEndorsements}
+          onClick={() => setAllEndorsements((open) => !open)}
+          className="w-full min-h-10 rounded-xl border border-stone-200 bg-white text-xs font-medium text-stone-700 hover:border-stone-400"
+         >
+          {allEndorsements ? t('Show fewer', 'Λιγότερες') : t(`Show all (${Math.min(5, displayEndorsements.length)})`, `Όλες (${Math.min(5, displayEndorsements.length)})`)}
+         </button>
+        )}
        </div>
      </div>
 {/* Achievements / Badges */}

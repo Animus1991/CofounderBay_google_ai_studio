@@ -59,6 +59,32 @@ test('events filter by one chip and read by day', async ({ page }) => {
   await expect(page.locator('#event-list')).toContainText('Startup Founders Networking Night');
 });
 
+test('the last dashboard card scrolls clear of the tab bar', async ({ page }) => {
+  await sample(page, '/dashboard');
+  // On a phone the secondary sections sit under "More" (round 12); open it so Communities is the last card.
+  await page.getByTestId('dashboard-more').getByRole('button').first().click();
+  await page.locator('#main-content').evaluate((main) => { main.scrollTop = main.scrollHeight; });
+  const card = page.getByRole('button', { name: /AI & Machine Learning/ });
+  await expect(card).toBeVisible();
+  const overlap = await card.evaluate((el) => {
+    const bar = document.querySelector('[data-testid="mobile-tab-bar"]')!.getBoundingClientRect().top;
+    const chat = document.querySelector('button[aria-label="Open studio assistant"]')?.getBoundingClientRect().top ?? bar;
+    return el.getBoundingClientRect().bottom - Math.min(bar, chat);
+  });
+  expect(overlap).toBeLessThanOrEqual(0);
+});
+
+test('the phone dashboard keeps the essentials on top and the rest one tap away', async ({ page }) => {
+  await sample(page, '/dashboard');
+  await expect(page.getByTestId('dashboard-today')).toBeVisible();
+  await expect(page.getByTestId('dashboard-week')).toBeVisible();
+  const more = page.getByTestId('dashboard-more').getByRole('button').first();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#dashboard-more-panel')).toBeVisible();
+});
+
 test('saved perks have their own view', async ({ page }) => {
   await sample(page, '/perks');
   await page.getByRole('button', { name: 'Save Stripe' }).click();

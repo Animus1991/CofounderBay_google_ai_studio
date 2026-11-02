@@ -449,8 +449,10 @@ export default function Discovery({ user }: DiscoveryProps) {
    </AnimatePresence>
 
    {/* Discovery Search Bar */}
-   <div className="flex flex-col sm:flex-row items-center gap-3">
-    <div className="relative group flex-1">
+   {/* Phones (round 12): the search takes the whole first row and the two buttons share the second. The column
+       layout used to centre a narrow input with each button stacked under it. */}
+   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3">
+    <div className="relative group col-span-2 min-w-0 sm:flex-1">
      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
      <input
       type="text"
@@ -485,7 +487,7 @@ export default function Discovery({ user }: DiscoveryProps) {
     <Button
      variant="outline"
      className={cn(
-      "h-8 px-3 rounded-xl border-stone-200 text-sm flex items-center gap-2",
+      "h-8 px-3 rounded-xl border-stone-200 text-sm flex w-full items-center justify-center gap-2 sm:w-auto",
       isFilterOpen && "bg-stone-200 text-stone-900 border-stone-400"
      )}
      onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -538,7 +540,8 @@ export default function Discovery({ user }: DiscoveryProps) {
       </button>
      ))}
     </div>
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
+    {/* Grid or list only differs from two columns up; a phone shows one column either way. */}
+    <div className="hidden sm:flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
      <button type="button" aria-label={t('Grid view', 'Προβολή πλέγματος')} onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", segmentItem(viewMode === "grid"))}>
       <Grid className="w-4 h-4" />
      </button>
@@ -678,7 +681,8 @@ export default function Discovery({ user }: DiscoveryProps) {
         >
          <div className={cn(
           "relative overflow-hidden shrink-0",
-          viewMode === "grid" ? "h-40 w-full" : "h-32 w-full md:w-48"
+          // A shorter placeholder on phones: a 160px dark block per opportunity pushed the names down.
+          viewMode === "grid" ? "h-28 sm:h-40 w-full" : "h-32 w-full md:w-48"
          )}>
           <CoverImage src={opp.photo} alt="" tone="dark" className="h-full w-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
@@ -856,8 +860,10 @@ export default function Discovery({ user }: DiscoveryProps) {
       </Button>
      </section>
 
-     {/* Upcoming Events */}
-     <section className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
+     {/* Upcoming Events — the side card. Below 1024px the columns stack and the main column already lists the same
+         sessions, so phones and tablets showed them twice (round 12); it stays on wide screens, where it sits beside
+         the founders while the main list is further down. */}
+     <section className="hidden lg:block bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between mb-1">
        <div>
         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
