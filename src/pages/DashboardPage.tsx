@@ -405,9 +405,10 @@ export default function DashboardPage() {
     navigate(href);
   };
 
-  // Phones and tablets get their own arrangement (round 12): below 1024px the side-by-side grids stack and the
-  // page ran to 13 sections; the essentials stay, the rest opens under "More".
-  const compact = useMediaQuery('(max-width: 1023px)');
+  // Phones and tablets get their own arrangement (round 12): the page ran to 13 sections on a phone, and from
+  // 1024 to 1279px the sidebar leaves the content ~720px, which squeezed the three-card rows. Below 1280px the
+  // essentials stay and the rest opens under "More"; wider screens show everything.
+  const compact = useMediaQuery('(max-width: 1279px)');
   const [moreOpen, setMoreOpen] = useState(false);
 
   // What the assistant can run on this page ("open my next step", "what is waiting on me"); the Dashboard
@@ -577,8 +578,8 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-      {/* One scrolling row on phones and tablets (it took eight rows on a phone); wraps on wide screens. */}
-      <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
+      {/* One scrolling row up to 1279px (it took eight rows on a phone, three beside the sidebar); wraps on wide screens. */}
+      <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] xl:mx-0 xl:flex-wrap xl:overflow-visible xl:px-0 xl:pb-0">
         {nowChips.filter((chip) => chip.count > 0).map((chip) => (
           <button
             key={chip.en}

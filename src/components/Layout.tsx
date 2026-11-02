@@ -147,8 +147,6 @@ export default function Layout() {
   const t = useT();
   const currentPage = pageContext(location.pathname);
   const onAssistantPage = location.pathname.replace(/\/+$/, '') === '/assistant';
-  // The messages hub is a full-height app surface: no bottom gutter under the thread.
-  const onMessagesPage = /^\/messages(\/|$)/.test(location.pathname);
 
   const isGuest = !user && !isDemoMode;
   // An investor follow-up that slipped is announced once (toast + Notifications).

@@ -681,7 +681,8 @@ export default function Discovery({ user }: DiscoveryProps) {
         >
          <div className={cn(
           "relative overflow-hidden shrink-0",
-          viewMode === "grid" ? "h-40 w-full" : "h-32 w-full md:w-48"
+          // A shorter placeholder on phones: a 160px dark block per opportunity pushed the names down.
+          viewMode === "grid" ? "h-28 sm:h-40 w-full" : "h-32 w-full md:w-48"
          )}>
           <CoverImage src={opp.photo} alt="" tone="dark" className="h-full w-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
@@ -859,8 +860,10 @@ export default function Discovery({ user }: DiscoveryProps) {
       </Button>
      </section>
 
-     {/* Upcoming Events */}
-     <section className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
+     {/* Upcoming Events — the side card. Below 1024px the columns stack and the main column already lists the same
+         sessions, so phones and tablets showed them twice (round 12); it stays on wide screens, where it sits beside
+         the founders while the main list is further down. */}
+     <section className="hidden lg:block bg-white border border-stone-100 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between mb-1">
        <div>
         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Ecosystem events', 'Εκδηλώσεις οικοσυστήματος')}</p>
