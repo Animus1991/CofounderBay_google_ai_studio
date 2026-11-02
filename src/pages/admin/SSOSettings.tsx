@@ -13,6 +13,7 @@ import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useAuth } from "../../App";
 import { askAssistant } from "../../lib/assistantBus";
+import { SEGMENT_TRACK, segmentItem } from "../../lib/segmented";
 
 interface SSOSettingsProps {
  user: User;
@@ -151,7 +152,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
    </div>
 
    {/* Tabs */}
-   <div className="scroll-tabs p-1 bg-stone-100/80 rounded-xl">
+   <div className={SEGMENT_TRACK}>
     {[
      { id: 'config', label: t('Configuration', 'Διαμόρφωση'), icon: Settings2 },
      { id: 'mapping', label: t('Role Mapping', 'Αντιστοίχιση ρόλων'), icon: Key },
@@ -161,9 +162,7 @@ export default function SSOSettings({ user }: SSOSettingsProps) {
       key={tab.id}
       onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
-       activeTab === tab.id
-        ? "bg-white text-stone-900 shadow-sm"
-        : "text-stone-400 hover:text-stone-600"
+       segmentItem(activeTab === tab.id)
       }`}
      >
       <tab.icon className="w-3.5 h-3.5" />

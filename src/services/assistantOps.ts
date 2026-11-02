@@ -81,6 +81,7 @@ import { currentReadiness } from '../lib/readiness';
 import { profileCompleteness } from '../lib/profileCompleteness';
 import { formatMoney, formatPct, modelPricedRound, safeOwnershipAtCap } from '../lib/equity';
 import { parseRoundQuery, type RoundQuery } from '../lib/roundQuery';
+import { parseShareholderQuery, type ShareholderQuery } from '../lib/shareholderQuery';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
 import { setGlobalLang } from '../lib/language';
@@ -1588,6 +1589,51 @@ function modelRoundResult(input: RoundQuery): AssistantResult {
     followUps: [{ en: 'What is my round status?', el: 'Πώς πάει ο γύρος μου;' }],
     sources,
   };
+}
+
+/**
+ * "Add Maria as a shareholder with 500k shares" — one line on the founder's own
+ * cap table (lib/entities capTable, the list Founder Tools → Cap table edits),
+ * as a proposal: Confirm writes it, Undo puts the table back exactly.
+ */
+function addShareholderResult(input: ShareholderQuery, propose: boolean): AssistantResult {
+  const previous = capTable.read();
+  const before = previous.reduce((sum, row) => sum + row.shares, 0);
+  const after = before + input.shares;
+  const stake = after > 0 ? input.shares / after : 0;
+  const href = '/founder-tools?tab=tools&tool=captable';
+  const links: AssistantLink[] = [{ href, en: 'Open the cap table', el: 'Άνοιγμα του cap table' }];
+  const fmt = (n: number) => n.toLocaleString('en-US');
+  const isPool = input.kind === 'pool';
+  const labelEn = isPool ? 'an option pool' : input.name;
+  const labelEl = isPool ? 'option pool' : input.name;
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    capTable.write([...previous, { name: input.name, shares: input.shares, ...(isPool ? { kind: 'pool' as const } : {}) }]);
+    logged = { kind: 'tool', title: `Cap table: added ${labelEn} (${fmt(input.shares)} shares)`, titleEl: `Cap table: προστέθηκε ${labelEl} (${fmt(input.shares)} μετοχές)`, href };
+    logActivity({ ...logged, byAssistant: true });
+    return {
+      tool: 'cap-table-add',
+      en: `Added ${labelEn} with ${fmt(input.shares)} shares — ${formatPct(stake)} of ${fmt(after)} fully diluted shares. Same table as Founder Tools → Cap table; a priced round now models on it too.`,
+      el: `Προστέθηκε ${labelEl} με ${fmt(input.shares)} μετοχές — ${formatPct(stake)} από ${fmt(after)} μετοχές (fully diluted). Ο ίδιος πίνακας με το Founder Tools → Cap table· και ο γύρος μοντελοποιείται πλέον πάνω του.`,
+      href,
+      links,
+      followUps: [{ en: 'Model raising 2M at 8M pre-money', el: 'Μοντελοποίησε γύρο 2M σε 8M pre-money' }],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Add ${labelEn} with ${fmt(input.shares)} shares to your cap table (${fmt(before)} → ${fmt(after)} shares, ${formatPct(stake)})?`,
+        el: `Προσθήκη ${labelEl} με ${fmt(input.shares)} μετοχές στο cap table σου (${fmt(before)} → ${fmt(after)} μετοχές, ${formatPct(stake)});`,
+      },
+      reversal: 'full',
+      apply,
+      undo: () => { capTable.write(previous); logUndo(logged); },
+    },
+    { tool: 'cap-table-add', href, links },
+  );
 }
 
 function navigateResult(query: string): AssistantResult | null {
@@ -3564,6 +3610,9 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
     if (cmd === 'help') return helpResult();
   }
 
+  // "Add Maria as a shareholder with 500k shares": before the task and milestone writes, which also start with "add".
+  const shareholder = parseShareholderQuery(query);
+  if (shareholder) return addShareholderResult(shareholder, propose);
   const taskUpdate = updateTaskResult(query, propose);
   if (taskUpdate) return taskUpdate;
   const milestoneUpdate = updateMilestoneResult(query, propose);

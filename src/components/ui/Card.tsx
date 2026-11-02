@@ -45,7 +45,9 @@ export default function Card({
    )}
   >
    {(title || subtitle) && (
-    <div className={cn("border-b", inverse ? "border-white/15" : "border-stone-200/60", paddedByCaller ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
+    // noPadding makes the content full-bleed, not the title: a titled noPadding card used to put its title
+    // against the left and top outline (Legal alerts). Only a card padded by its caller (p-*) skips the inset.
+    <div className={cn("border-b", inverse ? "border-white/15" : "border-stone-200/60", callerSetsPadding(className) ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
      {title && <h3 className={cn("text-sm font-medium tracking-tight leading-snug", inverse ? "text-white" : "text-stone-900")}>{title}</h3>}
      {subtitle && <p className={cn("text-xs font-medium tracking-wider mt-0.5 leading-normal", inverse ? "text-white/85" : "text-stone-400")}>{subtitle}</p>}
     </div>

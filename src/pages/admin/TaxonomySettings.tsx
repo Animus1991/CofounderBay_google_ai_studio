@@ -19,6 +19,7 @@ import { db } from '../../firebase';
 import { useT } from '../../lib/language';
 import { labelOf } from '../../lib/labels';
 import { useAuth } from '../../App';
+import { SEGMENT_TRACK, segmentItem } from '../../lib/segmented';
 
 type TaxonomyKind = 'skill' | 'industry' | 'role' | 'tag';
 
@@ -158,13 +159,13 @@ export default function TaxonomySettings({ user: _user }: TaxonomySettingsProps)
     </Button>
    </div>
 
-   <div className="scroll-tabs p-1 bg-stone-100 rounded-xl">
+   <div className={SEGMENT_TRACK}>
     {(Object.keys(KIND_LABELS) as TaxonomyKind[]).map((kind) => (
      <button
       key={kind}
       onClick={() => setActiveTab(kind)}
       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-       activeTab === kind ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
+       segmentItem(activeTab === kind)
       }`}
      >
       {kind === 'skill' ? <Zap className="w-4 h-4" /> : kind === 'industry' ? <Globe className="w-4 h-4" /> : kind === 'role' ? <Briefcase className="w-4 h-4" /> : <Tag className="w-4 h-4" />}

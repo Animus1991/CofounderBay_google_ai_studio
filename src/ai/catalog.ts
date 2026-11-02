@@ -517,6 +517,22 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     command: (args) => `Model raising $${arg(args, 'investment', '2000000')} at $${arg(args, 'preMoney', '8000000')} pre-money${arg(args, 'poolPct') ? ` with a ${arg(args, 'poolPct')}% pool` : ''}`,
   },
   {
+    id: 'add_shareholder',
+    tool: 'cap-table-add',
+    kind: 'write',
+    area: 'fundraising',
+    label: { en: 'Add a shareholder', el: 'Προσθήκη μετόχου' },
+    description: 'Add one line to the viewer’s cap table (a person, or an option pool) with a share count — the table Founder Tools → Cap table edits and the priced-round model reads. A proposal: the viewer confirms, and Undo restores the table exactly.',
+    params: [
+      { name: 'name', type: 'string', required: true, description: 'Holder name as written (e.g. "Maria Papadopoulou"), or "option pool".' },
+      { name: 'shares', type: 'number', required: true, description: 'Number of shares (e.g. 500000).' },
+    ],
+    reversal: 'full',
+    example: { en: 'Add Maria as a shareholder with 500k shares', el: 'Πρόσθεσε μέτοχο τη Μαρία με 500 χιλ. μετοχές' },
+    sampleArgs: { name: 'Maria', shares: '500000' },
+    command: (args) => (/^option pool$/i.test(arg(args, 'name')) ? `Add an option pool of ${arg(args, 'shares', '1000000')} shares` : `Add ${arg(args, 'name', 'Maria')} as a shareholder with ${arg(args, 'shares', '500000')} shares`),
+  },
+  {
     id: 'set_round',
     tool: 'round-set',
     kind: 'write',

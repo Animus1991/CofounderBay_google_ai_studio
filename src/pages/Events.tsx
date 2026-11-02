@@ -39,7 +39,7 @@ import { db } from "../firebase";
 import { askAssistant } from "../lib/assistantBus";
 import { DEMO_EVENTS } from "../data/demoCatalog";
 import CoverImage from "../components/ui/CoverImage";
-import { applyQuickFilter, cityOptions, groupByDay, nextUpcoming, sortEvents, type QuickFilter } from "../lib/eventsView";
+import { applyQuickFilter, cityOptions, groupByDay, sortEvents, type QuickFilter } from "../lib/eventsView";
 import { copyText } from "../lib/download";
 
 const TAB_EL: Record<string, string> = {
@@ -236,8 +236,13 @@ export default function Events(_props: EventsProps = {}) {
   } as Record<string, number>;
  }, [allEvents, typeFilter, registeredEvents, bookmarkedEvents, isDemoMode, now]);
 
- // The next event that has not started; the first listed one when none has a date.
- const featured = nextUpcoming(allEvents, now) ?? (isDemoMode ? allEvents[0] ?? null : null);
+ // The next event you have not signed up for, other than the one already at the top of the list — the card
+ // used to repeat the list's first item word for word (round 11). Undated events count in the demo only.
+ const featured = useMemo(() => {
+  const dated = sortEvents(allEvents.filter((event) => event.startsAt != null && event.startsAt >= now));
+  const pool = dated.length ? dated : isDemoMode ? allEvents : [];
+  return pool.find((event) => event.id !== visibleEvents[0]?.id && !registeredEvents.includes(event.id)) ?? null;
+ }, [allEvents, now, isDemoMode, visibleEvents, registeredEvents]);
  const typeCounts = useMemo(() => {
   const counts = new Map<Event['type'], number>();
   allEvents.forEach((event) => counts.set(event.type, (counts.get(event.type) ?? 0) + 1));

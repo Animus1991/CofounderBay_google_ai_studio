@@ -29,6 +29,7 @@ import { useAuth } from "../../App";
 import { askAssistant } from "../../lib/assistantBus";
 import Badge from "../../components/ui/Badge";
 import { statusTone } from "../../lib/statusTone";
+import { SEGMENT_TRACK, segmentItem } from "../../lib/segmented";
 
 const CHART_COLORS = ['#292524', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4'];
 
@@ -150,7 +151,7 @@ export default function BillingOversight() {
    </div>
 
    {/* Tabs */}
-   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
+   <div className={SEGMENT_TRACK}>
     {[
      { id: 'metrics', label: t('Revenue Metrics', 'Μεγέθη εσόδων'), icon: BarChart3 },
      { id: 'plans', label: t('Plan Management', 'Διαχείριση πλάνων'), icon: Zap },
@@ -161,9 +162,7 @@ export default function BillingOversight() {
       key={tab.id}
       onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
-       activeTab === tab.id
-        ? "bg-white text-stone-900 shadow-sm"
-        : "text-stone-400 hover:text-stone-600"
+       segmentItem(activeTab === tab.id)
       }`}
      >
       <tab.icon className="w-4 h-4" />

@@ -40,6 +40,8 @@ describe('card shell and content spacing', () => {
   render(<Card noPadding title="Full bleed" onClick={clicked}><span>Full width</span></Card>);
   const content = screen.getByText('Full width').parentElement!;
   expect(content).not.toHaveClass('p-4', 'pt-3', 'pb-3');
+  // The title keeps its inset even when the content is full-bleed.
+  expect(screen.getByRole('heading', { name: 'Full bleed' }).parentElement).toHaveClass('px-4', 'py-3');
   fireEvent.click(screen.getByText('Full width'));
   expect(clicked).toHaveBeenCalledTimes(1);
  });

@@ -14,6 +14,7 @@ import { useAuth } from "../../App";
 import { askAssistant } from "../../lib/assistantBus";
 import Badge from "../../components/ui/Badge";
 import { statusTone } from "../../lib/statusTone";
+import { SEGMENT_TRACK, segmentItem } from "../../lib/segmented";
 
 interface TenantBillingProps {
  tenant: Tenant;
@@ -110,7 +111,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
    </div>
 
    {/* Tabs */}
-   <div className="scroll-tabs p-1 bg-stone-100 rounded-2xl">
+   <div className={SEGMENT_TRACK}>
     {[
      { id: 'overview', label: t('Overview', 'Επισκόπηση'), icon: LayoutGrid },
      { id: 'seats', label: t('Seat Management', 'Διαχείριση θέσεων'), icon: Users },
@@ -120,9 +121,7 @@ export default function TenantBilling({ tenant }: TenantBillingProps) {
       key={tab.id}
       onClick={() => setActiveTab(tab.id as typeof activeTab)}
       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${
-       activeTab === tab.id 
-        ? "bg-white text-stone-900 shadow-sm" 
-        : "text-stone-400 hover:text-stone-600"
+       segmentItem(activeTab === tab.id)
       }`}
      >
       <tab.icon className="w-4 h-4" />
