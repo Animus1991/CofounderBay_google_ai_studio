@@ -59,6 +59,79 @@ test('events filter by one chip and read by day', async ({ page }) => {
   await expect(page.locator('#event-list')).toContainText('Startup Founders Networking Night');
 });
 
+test('the last dashboard card scrolls clear of the tab bar', async ({ page }) => {
+  await sample(page, '/dashboard');
+  await page.locator('#main-content').evaluate((main) => { main.scrollTop = main.scrollHeight; });
+  const card = page.getByRole('button', { name: /AI & Machine Learning/ });
+  await expect(card).toBeVisible();
+  const overlap = await card.evaluate((el) => {
+    const bar = document.querySelector('[data-testid="mobile-tab-bar"]')!.getBoundingClientRect().top;
+    const chat = document.querySelector('button[aria-label="Open studio assistant"]')?.getBoundingClientRect().top ?? bar;
+    return el.getBoundingClientRect().bottom - Math.min(bar, chat);
+  });
+  expect(overlap).toBeLessThanOrEqual(0);
+});
+
+test('the legal alerts title sits inside the card', async ({ page }) => {
+  await sample(page, '/legal');
+  const title = page.getByRole('heading', { name: 'Legal Alerts' });
+  await title.scrollIntoViewIfNeeded();
+  const inset = await title.evaluate((el) => {
+    const card = el.closest('[data-ui="card"]')!;
+    const titleBox = el.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    return { left: titleBox.left - cardBox.left, top: titleBox.top - cardBox.top, right: cardBox.right - titleBox.right };
+  });
+  expect(inset.left).toBeGreaterThanOrEqual(12);
+  expect(inset.top).toBeGreaterThanOrEqual(12);
+  expect(inset.right).toBeGreaterThanOrEqual(12);
+});
+
+test('dashboard suggestions scroll clear and the week sits in one card', async ({ page }) => {
+  await sample(page, '/dashboard');
+  const row = page.locator('.scroll-tabs').first();
+  const last = row.getByRole('button', { name: 'Search people in Discovery' });
+  await last.scrollIntoViewIfNeeded();
+  const cut = await last.evaluate((el) => {
+    const strip = el.parentElement!;
+    const box = el.getBoundingClientRect();
+    const frame = strip.getBoundingClientRect();
+    return box.right - frame.right;
+  });
+  expect(cut).toBeLessThanOrEqual(1);
+  const week = page.getByRole('button', { name: /This week · person/ });
+  const session = page.getByRole('button', { name: /This week · session/ });
+  const sameCard = await week.evaluate((el, sessionText) => {
+    const card = el.parentElement!;
+    const other = [...card.querySelectorAll('button')].find((button) => button.textContent?.includes('This week · session'));
+    return Boolean(other) && card.getBoundingClientRect().width < 500 && sessionText.length > 0;
+  }, 'session');
+  expect(sameCard).toBe(true);
+  await expect(session).toBeVisible();
+});
+
+test('a phone month keeps each day mark inside its cell and lists the day underneath', async ({ page }) => {
+  await sample(page, '/calendar');
+  const spill = await page.locator('.grid.grid-cols-7.gap-px > div').evaluateAll((cells) => {
+    return cells.some((cell) => {
+      const frame = cell.getBoundingClientRect();
+      return [...cell.querySelectorAll('span, div')].some((child) => {
+        const box = child.getBoundingClientRect();
+        return box.width > 4 && (box.right > frame.right + 1 || box.left < frame.left - 1);
+      });
+    });
+  });
+  expect(spill).toBe(false);
+  await expect(page.getByTestId('calendar-day-agenda')).toBeVisible();
+});
+
+test('the matches search box stays a short hint', async ({ page }) => {
+  await sample(page, '/matches');
+  const box = page.getByPlaceholder('Skills, headline, or role');
+  await expect(box).toBeVisible();
+  await expect(box).not.toHaveAttribute('placeholder', /location:/);
+});
+
 test('saved perks have their own view', async ({ page }) => {
   await sample(page, '/perks');
   await page.getByRole('button', { name: 'Save Stripe' }).click();

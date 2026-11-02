@@ -253,7 +253,8 @@
 
 @layer components {
   .card-minimal {
-    @apply bg-white border border-stone-200/60 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden;
+    /* Primer resting box: one hairline, no drop shadow. Shadows stay on overlays. */
+    @apply bg-white border border-stone-200/60 rounded-xl overflow-hidden;
   }
 
   .dark .card-minimal:not([class*="bg-"]) {

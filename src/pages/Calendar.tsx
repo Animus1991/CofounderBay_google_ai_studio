@@ -341,7 +341,7 @@ export default function Calendar() {
             key={i}
             onClick={() => setSelectedDate(cell.date)}
             className={cn(
-             "min-h-14 h-16 sm:h-20 lg:h-28 bg-white p-1 sm:p-2 transition-all hover:bg-stone-50 cursor-pointer group relative",
+             "group relative h-14 min-h-14 cursor-pointer overflow-hidden bg-white p-1 transition-all hover:bg-stone-50 sm:h-20 sm:min-h-20 sm:p-2 lg:h-28",
              !isCurrentMonth && "bg-stone-50/60",
              isSelected && "ring-1 ring-inset ring-stone-300"
             )}
@@ -356,25 +356,33 @@ export default function Calendar() {
             )}
 
             {cellEvents.length > 0 && (
-             <div className="mt-1 space-y-0.5 relative z-10">
-              {cellEvents.slice(0, 2).map((ev) => (
-               <div
-                key={ev.id}
-                title={ev.title}
-                className={cn("text-xs font-medium px-1.5 py-0.5 rounded-md truncate", chipClass(ev.type))}
-               >
-                {ev.title}
-               </div>
-              ))}
-              {cellEvents.length > 2 && (
-               <div className="text-xs text-stone-400 font-medium pl-1">
-                +{cellEvents.length - 2} {t("more", "ακόμη")}
-               </div>
-              )}
-             </div>
+             <>
+              <div className="mt-1 flex items-center gap-0.5 sm:hidden" aria-hidden="true">
+               {cellEvents.slice(0, 3).map((ev) => (
+                <span key={ev.id} className={cn("h-1.5 w-1.5 rounded-full", TONE_CLASSES[eventTone(ev.type)].dot)} />
+               ))}
+               {cellEvents.length > 3 && <span className="text-[10px] leading-none text-stone-400">+{cellEvents.length - 3}</span>}
+              </div>
+              <div className="relative z-10 mt-1 hidden space-y-0.5 sm:block">
+               {cellEvents.slice(0, 2).map((ev) => (
+                <div
+                 key={ev.id}
+                 title={ev.title}
+                 className={cn("truncate rounded-md px-1.5 py-0.5 text-xs font-medium", chipClass(ev.type))}
+                >
+                 {ev.title}
+                </div>
+               ))}
+               {cellEvents.length > 2 && (
+                <div className="pl-1 text-xs font-medium text-stone-400">
+                 +{cellEvents.length - 2} {t("more", "ακόμη")}
+                </div>
+               )}
+              </div>
+             </>
             )}
 
-            <button type="button" aria-label={t("Schedule", "Προγραμματισμός")} className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-all w-6 h-6 bg-white border border-stone-200 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900" onClick={(e) => { e.stopPropagation(); ask(`Schedule an event on ${cell.date.toLocaleDateString()}`); }}>
+            <button type="button" aria-label={t("Schedule", "Προγραμματισμός")} className="absolute bottom-1 right-1 hidden h-6 w-6 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-400 opacity-0 transition-all hover:text-stone-900 group-hover:opacity-100 focus-visible:opacity-100 sm:flex" onClick={(e) => { e.stopPropagation(); ask(`Schedule an event on ${cell.date.toLocaleDateString()}`); }}>
              <Plus className="w-3 h-3" />
             </button>
            </div>
@@ -392,18 +400,23 @@ export default function Calendar() {
             key={date.toISOString()}
             onClick={() => setSelectedDate(date)}
             className={cn(
-             "min-h-32 bg-white p-1.5 sm:p-2 cursor-pointer transition-all hover:bg-stone-50",
+             "min-h-16 cursor-pointer overflow-hidden bg-white p-1.5 transition-all hover:bg-stone-50 sm:min-h-32 sm:p-2",
              isSameDay(date, selectedDate) && "ring-1 ring-inset ring-stone-300"
             )}
            >
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 flex items-center gap-0.5 sm:hidden" aria-hidden="true">
+             {dayItems.slice(0, 3).map((ev) => (
+              <span key={ev.id} className={cn("h-1.5 w-1.5 rounded-full", TONE_CLASSES[eventTone(ev.type)].dot)} />
+             ))}
+            </div>
+            <div className="mt-1 hidden space-y-1 sm:block">
              {dayItems.map((ev) => {
               const d = parseEventDate(ev.time);
               return (
                <div
                 key={ev.id}
                 title={ev.title}
-                className={cn("text-xs font-medium px-1.5 py-0.5 rounded-md truncate", chipClass(ev.type))}
+                className={cn("truncate rounded-md px-1.5 py-0.5 text-xs font-medium", chipClass(ev.type))}
                >
                 {d && ev.duration !== 'All Day' ? `${formatTime(d)} ` : ''}{ev.title}
                </div>
@@ -457,6 +470,24 @@ export default function Calendar() {
            );
           })
          )}
+        </div>
+       )}
+       {view !== 'Day' && (
+        <div className="mt-3 space-y-2 border-t border-stone-100 pt-3 sm:hidden" data-testid="calendar-day-agenda">
+         <div className="flex items-center gap-3">
+          <p className="text-xs font-medium text-stone-500">{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => ask(`Schedule an event on ${selectedDate.toLocaleDateString()}`)}>
+           {t('Add', 'Προσθήκη')}
+          </button>
+         </div>
+         {eventsOn(selectedDate).length === 0 ? (
+          <p className="text-xs text-stone-400">{t('Nothing scheduled this day.', 'Τίποτα προγραμματισμένο αυτή την ημέρα.')}</p>
+         ) : eventsOn(selectedDate).map((ev) => (
+          <div key={ev.id} className="flex items-start gap-2">
+           <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', TONE_CLASSES[eventTone(ev.type)].dot)} />
+           <p className="min-w-0 text-sm font-medium text-stone-900">{ev.title}</p>
+          </div>
+         ))}
         </div>
        )}
       </div>

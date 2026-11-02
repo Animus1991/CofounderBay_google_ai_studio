@@ -45,13 +45,14 @@ export default function NextMove({
     <div
       data-tone={tone}
       className={cn(
-        'flex flex-col gap-3.5 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-5',
+        'flex gap-3 transition-colors',
         embedded
-          ? 'px-4 py-3.5 text-stone-900'
-          : cn(
+          ? 'flex-row items-center px-3 py-3 text-stone-900'
+          : 'flex-col sm:flex-row sm:items-center sm:justify-between sm:gap-5',
+        !embedded && cn(
             'studio-nudge rounded-2xl border',
             next
-              ? 'border-stone-200/80 bg-white text-stone-900 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
+              ? 'border-stone-200/80 bg-white text-stone-900'
               : 'border-amber-200/70 bg-amber-50/50 text-stone-900',
           ),
       )}
@@ -59,8 +60,8 @@ export default function NextMove({
       <div className="flex min-w-0 flex-1 items-center gap-3.5">
         <div
           className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-            next ? 'bg-stone-100 text-stone-700' : 'border border-amber-200/60 bg-white text-amber-700',
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-100',
+            next ? 'text-stone-700' : 'text-amber-700',
           )}
         >
           <Icon className="h-4 w-4" />
@@ -85,7 +86,7 @@ export default function NextMove({
           </div>
         </div>
       </div>
-      <div className="flex w-full shrink-0 items-center gap-3 sm:w-auto">
+      <div className={cn('flex shrink-0 items-center gap-2', embedded ? 'w-auto' : 'w-full sm:w-auto')}>
         {askPrompt ? (
           <button
             type="button"
@@ -99,7 +100,8 @@ export default function NextMove({
           type="button"
           onClick={onAction}
           className={cn(
-            'inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2 text-xs font-medium transition-colors sm:flex-none sm:w-auto sm:text-sm',
+            'inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-medium transition-colors sm:px-4 sm:text-sm',
+            embedded ? 'flex-none' : 'flex-1 sm:flex-none sm:w-auto',
             primary ? 'bg-stone-900 text-white hover:bg-stone-800' : 'border border-stone-200 bg-white text-stone-900 hover:border-stone-400',
           )}
         >

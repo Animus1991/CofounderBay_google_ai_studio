@@ -303,21 +303,35 @@ export default function Layout() {
           <main
             id="main-content"
             tabIndex={-1}
-            className={`flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto outline-none ${onMessagesPage ? 'pb-[calc(var(--bottom-nav-offset,0px)+5rem)] sm:pb-[calc(var(--bottom-nav-offset,0px)+6rem)] lg:pb-0' : onAssistantPage ? 'pb-4' : 'pb-[calc(var(--bottom-nav-offset,0px)+5rem)] sm:pb-[calc(var(--bottom-nav-offset,0px)+6rem)]'}`}
+            className={`min-h-0 w-full min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto outline-none ${onAssistantPage ? 'pb-4' : ''}`}
           >
-            <RouteErrorBoundary>
-              {/* Pages load as their own chunks; the frame (sidebar, header, assistant) stays put meanwhile. */}
-              <Suspense
-                fallback={
-                  <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-live="polite">
-                    <div className="w-7 h-7 border-[3px] border-stone-200 border-t-stone-900 rounded-full animate-spin" aria-hidden="true" />
-                    <span className="sr-only">{t('Loading page', 'Φόρτωση σελίδας')}</span>
-                  </div>
-                }
-              >
-                <Outlet />
-              </Suspense>
-            </RouteErrorBoundary>
+            {/* The scroll box itself is not a flex column: padding on a flex scroller
+                never becomes scroll height, so the last card stayed under the tab bar.
+                This inner column keeps messages filling the screen, and the spacer is
+                real content that clears the bar and the assistant button. */}
+            <div className="flex min-h-full min-w-0 flex-col">
+              <RouteErrorBoundary>
+                {/* Pages load as their own chunks; the frame (sidebar, header, assistant) stays put meanwhile. */}
+                <Suspense
+                  fallback={
+                    <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-live="polite">
+                      <div className="w-7 h-7 border-[3px] border-stone-200 border-t-stone-900 rounded-full animate-spin" aria-hidden="true" />
+                      <span className="sr-only">{t('Loading page', 'Φόρτωση σελίδας')}</span>
+                    </div>
+                  }
+                >
+                  <Outlet />
+                </Suspense>
+              </RouteErrorBoundary>
+              {!onAssistantPage && (
+                <div
+                  aria-hidden="true"
+                  data-scroll-clearance=""
+                  className="shrink-0 lg:hidden"
+                  style={{ height: 'calc(var(--bottom-nav-offset, 0px) + 5.5rem)' }}
+                />
+              )}
+            </div>
           </main>
         </div>
       </div>

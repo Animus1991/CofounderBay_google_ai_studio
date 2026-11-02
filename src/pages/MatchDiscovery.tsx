@@ -224,7 +224,8 @@ export default function MatchDiscovery() {
       <input
        type="search"
        aria-label={t('Search members', 'Αναζήτηση μελών')}
-       placeholder={t(`Skills, headline, or ${QUALIFIER_HINT_EN}`, `Δεξιότητες, τίτλος ή ${QUALIFIER_HINT_EL}`)}
+       placeholder={t('Skills, headline, or role', 'Δεξιότητες, τίτλος ή ρόλος')}
+       title={t(`Shortcuts: ${QUALIFIER_HINT_EN}`, `Συντομεύσεις: ${QUALIFIER_HINT_EL}`)}
        value={searchQuery}
        onChange={(e) => { setSearchQuery(e.target.value); persistFilters({ q: e.target.value }); setVisibleCount(PAGE); }}
        className="w-full min-h-11 pl-9 pr-4 py-[0.606rem] bg-white border border-stone-200 rounded-xl text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-all"
