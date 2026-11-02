@@ -454,7 +454,8 @@ export default function Discovery({ user }: DiscoveryProps) {
      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
      <input
       type="text"
-      placeholder={t(`Skill, industry, name, or ${QUALIFIER_HINT_EN}`, `Δεξιότητα, κλάδος, όνομα, ή ${QUALIFIER_HINT_EL}`)}
+      placeholder={t('Skill, industry, or name', 'Δεξιότητα, κλάδος ή όνομα')}
+      title={t(`Shortcuts: ${QUALIFIER_HINT_EN}`, `Συντομεύσεις: ${QUALIFIER_HINT_EL}`)}
       value={searchQuery}
       onChange={(e) => setSearchQuery(e.target.value)}
       onFocus={() => searchQuery.length > 1 && setShowSuggestions(true)}

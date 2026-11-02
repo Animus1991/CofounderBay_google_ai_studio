@@ -688,10 +688,10 @@ export default function ProfilePage() {
         const person = findPerson(profile.uid);
         const src = record.avatarUrl || record.profilePhoto || record.profile?.profilePhoto || (isOwnProfile ? currentUser?.photoURL || '' : '') || (person ? avatarOf(person) : '') || (isDemoMode || findCast(profile.uid) ? avatarFor(profile.uid, 200) : '');
         const name = isOwnProfile ? (profile.fullName || currentUser?.displayName || t('Member', 'Μέλος')) : (profile.fullName || t('Member', 'Μέλος'));
-        return <Avatar src={src || undefined} fallback={name} alt={name} size="xl" className="[&>*]:w-20 [&>*]:h-20 sm:[&>*]:w-28 sm:[&>*]:h-28 lg:[&>*]:w-36 lg:[&>*]:h-36 [&>*]:rounded-2xl [&>*]:border-4 [&>*]:border-white [&>*]:shadow-sm [&>*]:text-2xl" />;
+        return <Avatar src={src || undefined} fallback={name} alt={name} size="xl" className="[&>*]:w-20 [&>*]:h-20 sm:[&>*]:w-28 sm:[&>*]:h-28 lg:[&>*]:w-36 lg:[&>*]:h-36 [&>*]:rounded-2xl [&>*]:border-4 [&>*]:border-white [&>*]:text-2xl" />;
        })()}
        {profile.verificationStatus === 'Verified' && (
-        <div role="img" className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full border-4 border-white shadow-lg" title={t('Verified member', 'Επαληθευμένο μέλος')} aria-label={t('Verified member', 'Επαληθευμένο μέλος')}>
+        <div role="img" className="absolute -bottom-1 -right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white" title={t('Verified member', 'Επαληθευμένο μέλος')} aria-label={t('Verified member', 'Επαληθευμένο μέλος')}>
          <ShieldCheck className="w-5 h-5" />
         </div>
        )}

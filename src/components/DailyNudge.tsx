@@ -81,7 +81,7 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
       data-testid="daily-nudge"
       // Embedded: one row of the dashboard's "Today" panel, which draws the card and the dividers.
       className={embedded
-        ? 'flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between'
+        ? 'flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between'
         : 'flex flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 sm:flex-row sm:items-center sm:justify-between'}
     >
       <div className="flex min-w-0 gap-3">
@@ -98,7 +98,7 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
           <p className="text-sm text-stone-800" data-testid="daily-nudge-why">{picking && !stored ? t('Choosing today’s step…', 'Επιλέγω το σημερινό βήμα…') : why}</p>
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 flex-wrap gap-2">
         {done ? (
           <span className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-emerald-700" data-testid="daily-nudge-done-label">
             <Check className="h-3.5 w-3.5" aria-hidden="true" />{t('Done for today', 'Έγινε για σήμερα')}

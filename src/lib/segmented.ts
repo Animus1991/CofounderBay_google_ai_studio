@@ -13,7 +13,7 @@
 export const SEGMENT_TRACK = 'scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100';
 
 export const segmentItem = (active: boolean) =>
-  active ? 'bg-white text-stone-900 shadow-sm ring-1 ring-stone-200' : 'text-stone-500 hover:text-stone-900 hover:bg-white';
+  active ? 'bg-white text-stone-900 ring-1 ring-stone-200' : 'text-stone-500 hover:text-stone-900 hover:bg-white';
 
 /** The small count after a tab label. */
 export const segmentCount = (active: boolean) => (active ? 'bg-stone-100 text-stone-700' : 'bg-stone-200/70 text-stone-600');

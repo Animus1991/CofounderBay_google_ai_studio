@@ -573,7 +573,7 @@ export default function DashboardPage() {
             </div>
           )}
           {/* One scrolling row on phones and tablets (it took eight rows on a phone); wraps on wide screens. */}
-          <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
+          <div className="scroll-tabs mt-2 -mx-1 flex gap-1.5 px-1 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
             {nowChips.filter((chip) => chip.count > 0).map((chip) => (
               <button
                 key={chip.en}
@@ -661,20 +661,22 @@ export default function DashboardPage() {
                   <Avatar src={prospect.avatar || undefined} fallback={prospect.name} size="md" />
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
+                    {prospect.match > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
+                        title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
+                        className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
+                      >
+                        {prospect.match}%
+                      </button>
+                    )}
+                  </div>
                   <FactLine className="text-xs" items={[labelOf(prospect.role)]} label={t('Role', 'Ρόλος')} />
                 </div>
-                {prospect.match > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
-                    title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
-                    className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
-                  >
-                    {prospect.match}%
-                  </button>
-                )}
               </div>
               <div className="flex gap-2 mt-3">
                 <button
@@ -753,8 +755,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 lg:grid-cols-3 lg:gap-3 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent">
+          <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="bg-white p-4 text-left transition-colors hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:hover:border-stone-300">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
             {leadMatch ? (
               <div className="flex items-center gap-3">
@@ -768,7 +770,7 @@ export default function DashboardPage() {
               <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
             )}
           </button>
-          <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+          <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="bg-white p-4 text-left transition-colors hover:bg-stone-50 lg:rounded-2xl lg:border lg:border-stone-200 lg:hover:border-stone-300">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
             {!isDemoMode && schedule.length === 0 ? (
               <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
@@ -779,7 +781,7 @@ export default function DashboardPage() {
               </>
             )}
           </button>
-          <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
+          <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="bg-stone-50 p-4 text-left text-stone-900 transition-colors hover:bg-stone-100 lg:rounded-2xl lg:border lg:border-stone-200 lg:bg-stone-100 lg:hover:bg-stone-200/70">
             <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
             <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
             <p className="text-xs text-stone-400 mt-1"><Both en="Adds Workspace tasks." el="Προσθέτει εργασίες στον Χώρο εργασίας." /></p>
