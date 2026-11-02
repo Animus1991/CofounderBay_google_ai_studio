@@ -75,6 +75,8 @@ import { useLanguage } from "../lib/language";
 import { currentReadiness, readinessStatus, useReadiness } from "../lib/readiness";
 import FounderToolPanel from "../components/founderTools/FounderToolPanel";
 import { isInteractiveTool } from "../components/founderTools/tools";
+import Badge from "../components/ui/Badge";
+import { TONE_CLASSES, statusTone } from "../lib/statusTone";
 
 interface FounderToolsProps {
  user: User;
@@ -864,35 +866,20 @@ export default function FounderTools({ user }: FounderToolsProps) {
          const status = step.status;
          return (
          <div key={step.id} className="flex items-center gap-4 group cursor-pointer p-2.5 rounded-xl hover:bg-stone-50 transition-all" onClick={() => { setBuilderStep(step.id); setActiveTab('builder'); }}>
-          <div className={cn(
-           "w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 border",
-           status === "Completed" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-           status === "In-Progress" ? "bg-amber-50 text-amber-600 border-amber-100" :
-           "bg-stone-50 text-stone-300 border-stone-100"
-          )}>
+          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 border", TONE_CLASSES[statusTone(status)].label)}>
            <step.icon className="w-4.5 h-4.5" style={{ width: '18px', height: '18px' }} />
           </div>
           <div className="flex-1 space-y-1.5 min-w-0">
            <div className="flex items-center justify-between gap-2">
             <h4 className="min-w-0 text-sm font-semibold text-stone-900">{moduleName(step.title)}</h4>
-            <span className={cn(
-             "text-xs font-medium tracking-wider px-2 py-0.5 rounded-full border shrink-0",
-             status === "Completed" ? "text-emerald-600 border-transparent" :
-             status === "In-Progress" ? "text-amber-600 border-transparent" :
-             "text-stone-400 border-transparent"
-            )}>{labelOf(status)}</span>
+            <Badge variant={statusTone(status)}>{labelOf(status)}</Badge>
            </div>
            <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
             <motion.div
              initial={{ width: 0 }}
              animate={{ width: status === "Completed" ? "100%" : status === "In-Progress" ? "55%" : "0%" }}
              transition={{ duration: 1, ease: "circOut" }}
-             className={cn(
-              "h-full rounded-full",
-              status === "Completed" ? "bg-emerald-500" :
-              status === "In-Progress" ? "bg-amber-400" :
-              "bg-stone-200"
-             )}
+             className={cn("h-full rounded-full", status === "Completed" || status === "In-Progress" ? TONE_CLASSES[statusTone(status)].dot : "bg-stone-200")}
             />
            </div>
           </div>
@@ -941,7 +928,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
             <p className="text-sm font-semibold text-stone-900">{dl.title}</p>
             <p className={cn("text-xs", dl.urgent ? "text-red-500 font-medium" : "text-stone-400")}>{t("Due", "Λήξη")} {dl.date}</p>
            </div>
-           {dl.urgent && <span className="text-xs font-bold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full tracking-wider">{t("Soon", "Σύντομα")}</span>}
+           {dl.urgent && <Badge variant="danger">{t("Soon", "Σύντομα")}</Badge>}
           </div>
          ))}
         </div>
@@ -986,7 +973,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <Check className="w-2.5 h-2.5 text-white" />
           </div>
          ) : step.status === "In-Progress" ? (
-          <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center shrink-0", TONE_CLASSES[statusTone(step.status)].dot)}>
            <div className="w-1.5 h-1.5 rounded-full bg-white" />
           </div>
          ) : null}
@@ -1318,13 +1305,13 @@ export default function FounderTools({ user }: FounderToolsProps) {
      {/* Applications List */}
      <div className="space-y-2">
       {applications.map((app, index) => {
-       const statusConfig = {
-        submitted: { label: statusWord("Submitted"), color: "text-blue-600 bg-blue-50 border-blue-100" },
-        "in-review": { label: statusWord("In Review"), color: "text-amber-600 bg-amber-50 border-amber-100" },
-        draft: { label: statusWord("Draft"), color: "text-stone-500 bg-stone-50 border-stone-200" },
-        rejected: { label: statusWord("Rejected"), color: "text-red-500 bg-red-50 border-red-100" },
-        accepted: { label: statusWord("Accepted"), color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-       }[app.status] ?? { label: statusWord(app.status), color: "text-stone-500 bg-stone-50 border-stone-200" };
+       const statusLabel = {
+        submitted: statusWord("Submitted"),
+        "in-review": statusWord("In Review"),
+        draft: statusWord("Draft"),
+        rejected: statusWord("Rejected"),
+        accepted: statusWord("Accepted"),
+       }[app.status] ?? statusWord(app.status);
        return (
         <motion.div
          key={app.id}
@@ -1337,8 +1324,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
            <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
              <h4 className="text-sm font-semibold text-stone-900">{app.program}</h4>
-             <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full border", statusConfig.color)}>{statusConfig.label}</span>
-             <span className="text-xs text-stone-400 px-2 py-0.5 rounded-full border border-stone-100 bg-stone-50">{typeLabel(app.type)}</span>
+             <Badge variant={statusTone(app.status)}>{statusLabel}</Badge>
+             <Badge>{typeLabel(app.type)}</Badge>
             </div>
             <p className="text-sm text-stone-500 leading-relaxed mb-1.5 line-clamp-1">{noteLabel(app.note)}</p>
             <div className="flex items-center gap-3">

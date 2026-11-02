@@ -12,6 +12,8 @@ import { labelOf } from "../../lib/labels";
 import { formatDate } from "../../lib/dates";
 import { useStored } from "../../lib/useStored";
 import { useAuth } from "../../App";
+import Badge from "../../components/ui/Badge";
+import { statusTone } from "../../lib/statusTone";
 
 type PayCard = { id: string; brand: string; last4: string; expiry: string };
 
@@ -398,11 +400,7 @@ export default function Billing({ user }: BillingProps) {
            <td className="px-4 py-2 text-sm font-mono text-stone-500">{invoice.number}</td>
            <td className="px-4 py-2 text-sm font-medium">${invoice.total}</td>
            <td className="px-4 py-2">
-            <span className={`px-2 py-1 rounded text-xs font-medium tracking-wider ${
-             invoice.status === 'Paid' ? 'text-emerald-700' : 'text-amber-700'
-            }`}>
-             {labelOf(invoice.status)}
-            </span>
+            <Badge variant={statusTone(invoice.status)}>{labelOf(invoice.status)}</Badge>
            </td>
            <td className="px-4 py-2 text-right">
             <button

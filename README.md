@@ -22,7 +22,7 @@ fundraising and milestones, and accelerate execution with AI assistance.
 
 - **Matching engine** — compatibility scoring across skills, values, goals and availability.
 - **AI operator** — one assistant that reads and changes the same data as every page
-  (87 declared actions, Gemini tool use, confirm + undo for every write), as a corner
+  (89 declared actions, Gemini tool use, confirm + undo for every write), as a corner
   panel everywhere and as the full-page AI Studio (`/assistant`). See
   [`docs/AI_OPERATOR.md`](docs/AI_OPERATOR.md).
 - **Communication hub** — real-time messaging (Socket.IO) plus 10 specialized AI agents.
@@ -42,6 +42,13 @@ fundraising and milestones, and accelerate execution with AI assistance.
 - **Explainable matching** — five-dimension compatibility with one shared vocabulary, a
   working-hours overlap model across time zones and a confidence band from data coverage
   ([`src/lib/compatibility.ts`](src/lib/compatibility.ts)).
+- **Your week** — a weekly recap from the activity feed (steps against last week, active days,
+  a streak counted from real work), on the Dashboard and in the assistant
+  ([`src/lib/weeklyRecap.ts`](src/lib/weeklyRecap.ts)); the assistant also models a priced
+  round in words ("raise 2M at 8M pre, pool 10%") on the founder's own cap table. See
+  [`docs/ROUND9.md`](docs/ROUND9.md).
+- **One colour per meaning** — status labels with GitHub's Primer Label logic, from one map
+  ([`src/lib/statusTone.ts`](src/lib/statusTone.ts), [`docs/COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md)).
 - **Ecosystem** — communities, events, mentors, programs, resources, perks.
 - **Multi-tenancy & admin** — white-label branding, SSO, automation engine, billing.
 - **Gamification** — XP, badges, streaks, venture-readiness scoring.

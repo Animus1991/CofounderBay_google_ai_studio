@@ -36,6 +36,7 @@ import DraftNotice from '../components/ui/DraftNotice';
 import SaveStatus from '../components/ui/SaveStatus';
 import { ConfirmDialog } from '../components/ui/Modal';
 import { askAssistant } from '../lib/assistantBus';
+import { TONE_CLASSES, statusTone } from '../lib/statusTone';
 
 interface MilestonesPageProps {
  user?: User;
@@ -50,13 +51,14 @@ const CATEGORY_COLORS: Record<string, string> = {
  Marketing: 'text-amber-600 border-transparent',
 };
 
-const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> = {
- Completed: { color: 'text-emerald-600', bg: 'bg-emerald-50', dot: 'bg-emerald-500' },
- 'In Progress': { color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-500' },
- Planned: { color: 'text-stone-500', bg: 'bg-stone-50', dot: 'bg-stone-500' },
- Delayed: { color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-500' },
- Overdue: { color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500' },
+// Status colours come from lib/statusTone, so "In Progress" is the same blue here, on Workspace and in Founder Tools.
+const statusStyle = (status: string) => {
+ const tone = TONE_CLASSES[statusTone(status)];
+ return { color: tone.text, bg: tone.subtle, dot: tone.dot };
 };
+const STATUS_CONFIG: Record<string, { color: string; bg: string; dot: string }> = Object.fromEntries(
+ ['Completed', 'In Progress', 'Planned', 'Delayed', 'Overdue'].map((status) => [status, statusStyle(status)]),
+);
 
 const PRIORITY_BADGE: Record<string, string> = {
  High: 'text-red-600 border-transparent',

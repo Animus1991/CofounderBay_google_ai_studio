@@ -10,6 +10,8 @@ import { useTenant } from "../../context/TenantContext";
 import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { useAuth } from "../../App";
+import Badge from "../../components/ui/Badge";
+import { statusTone } from "../../lib/statusTone";
 
 export default function DomainSettings() {
  const t = useT();
@@ -132,19 +134,11 @@ export default function DomainSettings() {
           <div className="flex items-center gap-4">
            <div className="flex items-center gap-2">
             <span className="text-micro">{t('SSL', 'SSL')}</span>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.sslStatus === 'Active' ? 'text-emerald-700' : 'text-amber-700'
-            }`}>
-             {labelOf(domain.sslStatus)}
-            </span>
+            <Badge variant={statusTone(domain.sslStatus)}>{labelOf(domain.sslStatus)}</Badge>
            </div>
            <div className="flex items-center gap-2">
             <span className="text-micro">{t('Status', 'Κατάσταση')}</span>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium tracking-wider ${
-             domain.verificationStatus === 'Verified' ? 'text-emerald-700' : 'text-stone-500'
-            }`}>
-             {labelOf(domain.verificationStatus)}
-            </span>
+            <Badge variant={statusTone(domain.verificationStatus)}>{labelOf(domain.verificationStatus)}</Badge>
            </div>
           </div>
          </div>

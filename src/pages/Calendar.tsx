@@ -20,6 +20,7 @@ import { formatDate, formatTime, formatWeekRange, formatWhen } from "../lib/date
 import { downloadIcs, slugify, type CalendarEntry } from "../lib/download";
 import { useToast } from "../context/ToastContext";
 import { askAssistant } from "../lib/assistantBus";
+import { TONE_CLASSES, eventTone } from "../lib/statusTone";
 
 interface Event {
  id: string;
@@ -113,11 +114,8 @@ export default function Calendar() {
   [weekStart],
  );
 
- const chipClass = (type: Event["type"]) =>
-  type === 'Meeting' ? "bg-blue-50 text-blue-700 border border-blue-200" :
-  type === 'Deadline' ? "bg-red-50 text-red-700 border border-red-200" :
-  type === 'Mentorship' ? "bg-violet-50 text-violet-700 border border-violet-200" :
-  "bg-stone-900 text-white";
+ // One colour per type, shared by the chips, the dots and Workspace (lib/statusTone eventTone).
+ const chipClass = (type: Event["type"]) => cn("border", TONE_CLASSES[eventTone(type)].label);
 
  const headerLabel =
   view === 'Month' ? monthLabel
@@ -437,10 +435,7 @@ export default function Calendar() {
            return (
             <div key={ev.id} className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl border border-stone-100">
              <span className={cn("w-2 h-2 rounded-full shrink-0",
-              ev.type === 'Meeting' ? "bg-blue-500" :
-              ev.type === 'Deadline' ? "bg-red-500" :
-              ev.type === 'Mentorship' ? "bg-violet-500" :
-              "bg-emerald-500"
+              TONE_CLASSES[eventTone(ev.type)].dot
              )} />
              <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-stone-900 break-words">{ev.title}</p>
@@ -500,10 +495,7 @@ export default function Calendar() {
           <div className="flex items-center gap-2">
            <div className={cn(
             "w-1.5 h-1.5 rounded-full shrink-0",
-            event.type === 'Meeting' ? "bg-blue-500" :
-            event.type === 'Deadline' ? "bg-red-500" :
-            event.type === 'Mentorship' ? "bg-violet-500" :
-            "bg-emerald-500"
+            TONE_CLASSES[eventTone(event.type)].dot
            )} />
            <span className="text-xs font-semibold text-stone-400 tracking-wider">{labelOf(event.type)}</span>
           </div>

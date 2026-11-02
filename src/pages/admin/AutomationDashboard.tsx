@@ -39,6 +39,8 @@ import { useT } from "../../lib/language";
 import { labelOf } from "../../lib/labels";
 import { formatDateTime, formatTime } from "../../lib/dates";
 import { useAuth } from "../../App";
+import Badge from "../../components/ui/Badge";
+import { statusTone } from "../../lib/statusTone";
 
 interface AutomationDashboardProps {
  user: User;
@@ -376,12 +378,7 @@ const logMessage = (message: string) => {
               <div className="space-y-0.5">
                <div className="flex items-center gap-2.5">
                 <h3 className="text-base font-medium text-stone-900">{workflowName(rule.name)}</h3>
-                <span className={cn(
-                 "px-2 py-0.5 rounded text-xs font-medium tracking-wider",
-                 rule.status === 'Active' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-stone-50 text-stone-500 border border-stone-100"
-                )}>
-                 {labelOf(rule.status)}
-                </span>
+                <Badge variant={statusTone(rule.status)}>{labelOf(rule.status)}</Badge>
                </div>
                <p className="text-xs text-stone-500">{workflowDescription(rule.description)}</p>
               </div>
