@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Undo2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Undo2 } from 'lucide-react';
 import PageShell from '../components/ui/PageShell';
 import ChatWidget from '../components/ChatWidget';
 import { AiActionLedger } from '../components/AiActionLedger';
@@ -9,6 +9,7 @@ import { askAssistant } from '../lib/assistantBus';
 import { ACTION_CATALOG, actionsByArea, type ActionDeclaration, type ActionKind } from '../ai/catalog';
 import { AIService, type AIStatus } from '../services/aiService';
 import { cn } from '../lib/utils';
+import { useMediaQuery } from '../lib/useMediaQuery';
 
 const fold = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -59,6 +60,8 @@ export default function AssistantPage() {
   const t = useT();
   const [status, setStatus] = useState<AIStatus | null>(null);
   const [filter, setFilter] = useState('');
+  const compact = useMediaQuery('(max-width: 1023px)');
+  const [openAreas, setOpenAreas] = useState<string[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -140,10 +143,29 @@ export default function AssistantPage() {
             {groups.length === 0 && (
               <p className="text-sm text-stone-500">{t('No action matches that filter. Ask anyway — the AI model may still help.', 'Καμία ενέργεια δεν ταιριάζει. Ρώτα πάντως — το μοντέλο AI ίσως βοηθήσει.')}</p>
             )}
+            {/* Phones and tablets (round 12): each area opens on a tap — all ninety actions listed under the chat
+                made the page twelve screens long. A filter opens every area that matches. Desktop lists them all. */}
             <div className="space-y-4">
-              {groups.map((group) => (
+              {groups.map((group) => {
+                const open = !compact || filter.trim().length > 0 || openAreas.includes(group.area);
+                return (
                 <div key={group.area} className="space-y-1.5">
-                  <h3 className="text-xs font-semibold text-stone-500">{bothText(group.label.en, group.label.el)}</h3>
+                  {compact ? (
+                    <h3>
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        onClick={() => setOpenAreas((areas) => (areas.includes(group.area) ? areas.filter((area) => area !== group.area) : [...areas, group.area]))}
+                        className="flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-1 text-left text-xs font-semibold text-stone-600 hover:text-stone-900"
+                      >
+                        <span>{bothText(group.label.en, group.label.el)} <span className="font-normal text-stone-400">· {group.actions.length}</span></span>
+                        <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
+                      </button>
+                    </h3>
+                  ) : (
+                    <h3 className="text-xs font-semibold text-stone-500">{bothText(group.label.en, group.label.el)}</h3>
+                  )}
+                  {open && (
                   <ul className="divide-y divide-stone-100 rounded-xl border border-stone-100">
                     {group.actions.map((action) => (
                       <li key={action.id}>
@@ -166,8 +188,10 @@ export default function AssistantPage() {
                       </li>
                     ))}
                   </ul>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </aside>

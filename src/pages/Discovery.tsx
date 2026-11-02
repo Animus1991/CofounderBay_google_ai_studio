@@ -449,8 +449,10 @@ export default function Discovery({ user }: DiscoveryProps) {
    </AnimatePresence>
 
    {/* Discovery Search Bar */}
-   <div className="flex flex-col sm:flex-row items-center gap-3">
-    <div className="relative group flex-1">
+   {/* Phones (round 12): the search takes the whole first row and the two buttons share the second. The column
+       layout used to centre a narrow input with each button stacked under it. */}
+   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3">
+    <div className="relative group col-span-2 min-w-0 sm:flex-1">
      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 group-focus-within:text-stone-900 transition-colors" />
      <input
       type="text"
@@ -485,7 +487,7 @@ export default function Discovery({ user }: DiscoveryProps) {
     <Button
      variant="outline"
      className={cn(
-      "h-8 px-3 rounded-xl border-stone-200 text-sm flex items-center gap-2",
+      "h-8 px-3 rounded-xl border-stone-200 text-sm flex w-full items-center justify-center gap-2 sm:w-auto",
       isFilterOpen && "bg-stone-200 text-stone-900 border-stone-400"
      )}
      onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -538,7 +540,8 @@ export default function Discovery({ user }: DiscoveryProps) {
       </button>
      ))}
     </div>
-    <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
+    {/* Grid or list only differs from two columns up; a phone shows one column either way. */}
+    <div className="hidden sm:flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
      <button type="button" aria-label={t('Grid view', 'Προβολή πλέγματος')} onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", segmentItem(viewMode === "grid"))}>
       <Grid className="w-4 h-4" />
      </button>
