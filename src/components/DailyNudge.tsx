@@ -34,7 +34,7 @@ function studioPick(gaps: AuditRow[]): AuditRow | undefined {
  * hides it until tomorrow. Investor follow-ups are not repeated here — the
  * "Waiting on you" card above already puts the most overdue one first.
  */
-export function DailyNudge() {
+export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT();
   const lang = getLang() === 'el' ? 'el' : 'en';
   const { profile: authProfile } = useAuth();
@@ -77,7 +77,13 @@ export function DailyNudge() {
   );
 
   return (
-    <section data-testid="daily-nudge" className="flex flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+    <section
+      data-testid="daily-nudge"
+      // Embedded: one row of the dashboard's "Today" panel, which draws the card and the dividers.
+      className={embedded
+        ? 'flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between'
+        : 'flex flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 sm:flex-row sm:items-center sm:justify-between'}
+    >
       <div className="flex min-w-0 gap-3">
         <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
         <div className="min-w-0 space-y-0.5">
@@ -103,7 +109,10 @@ export function DailyNudge() {
               type="button"
               data-testid="daily-nudge-do"
               onClick={() => row.fix && askAssistant(lang === 'el' ? row.fix.el : row.fix.en)}
-              className="inline-flex min-h-9 items-center rounded-lg bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800"
+              // In the Today panel the first row owns the one filled button; this one is outlined there.
+              className={embedded
+                ? 'inline-flex min-h-9 items-center rounded-lg border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-900 transition-colors hover:border-stone-500'
+                : 'inline-flex min-h-9 items-center rounded-lg bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800'}
             >
               {t('Do it with the assistant', 'Κάν’ το με τον βοηθό')}
             </button>

@@ -26,6 +26,7 @@ import { User } from "../types";
 import { useAuth } from "../App";
 import { readDiscoveryFilters, writeDiscoveryFilters, addSavedSearch, removeSavedSearch, readSavedSearches, keys, readValue, writeValue } from "../lib/localLists";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from '../lib/segmented';
 import CoverImage from "../components/ui/CoverImage";
 import { explainMatch } from "../lib/matchReason";
 import { bothText, labelOf } from "../lib/labels";
@@ -519,8 +520,9 @@ export default function Discovery({ user }: DiscoveryProps) {
    )}
 
    {/* Category Tabs */}
-   <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-1 min-w-0">
-    <div className="scroll-tabs gap-4 sm:gap-6 flex-1 w-auto">
+   {/* The same segmented strip as every other page (lib/segmented); the underline was the only one of its kind. */}
+   <div className="flex items-center justify-between gap-3 min-w-0">
+    <div className={cn(SEGMENT_TRACK, "min-w-0")}>
      {categories.map((cat) => (
       <button
        key={cat}
@@ -528,22 +530,19 @@ export default function Discovery({ user }: DiscoveryProps) {
        aria-pressed={activeCategory === cat}
        onClick={() => setActiveCategory(cat)}
        className={cn(
-        "pb-3 text-sm font-semibold tracking-wider transition-all relative whitespace-nowrap",
-        activeCategory === cat ? "text-stone-900" : "text-stone-400 hover:text-stone-600"
+        "px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+        segmentItem(activeCategory === cat)
        )}
       >
        {labelOf(cat)}
-       {activeCategory === cat && (
-        <motion.div layoutId="activeCategory" className="absolute bottom-0 left-0 right-0 h-[2px] bg-stone-900 rounded-full" />
-       )}
       </button>
      ))}
     </div>
     <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-100 shrink-0">
-     <button type="button" aria-label={t('Grid view', 'Προβολή πλέγματος')} onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "grid" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label={t('Grid view', 'Προβολή πλέγματος')} onClick={() => setViewMode("grid")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", segmentItem(viewMode === "grid"))}>
       <Grid className="w-4 h-4" />
      </button>
-     <button type="button" aria-label={t('List view', 'Προβολή λίστας')} onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-400")}>
+     <button type="button" aria-label={t('List view', 'Προβολή λίστας')} onClick={() => setViewMode("list")} className={cn("min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg transition-all", segmentItem(viewMode === "list"))}>
       <ListIcon className="w-4 h-4" />
      </button>
     </div>
@@ -557,7 +556,7 @@ export default function Discovery({ user }: DiscoveryProps) {
       <section className="space-y-4">
        <div className="flex items-center justify-between">
         <div>
-         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Expertise & talent', 'Εξειδίκευση')}</p>
+         <p className="text-xs font-semibold tracking-wider text-stone-400">{t('Expertise & talent', 'Εξειδίκευση και ταλέντο')}</p>
          <h3 className="text-base font-semibold text-stone-900">{t('Founders & mentors', 'Ιδρυτές και μέντορες')}</h3>
         </div>
         <Link to="/matches" data-ui="button" className="inline-flex items-center justify-center h-7 px-3 text-sm font-medium text-stone-600 rounded-lg border border-stone-100 hover:border-stone-300 transition-colors">

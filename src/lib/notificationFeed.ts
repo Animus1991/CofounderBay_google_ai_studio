@@ -51,6 +51,26 @@ export type FeedNote = {
   origin: 'cloud' | 'activity' | 'seed' | 'derived';
 };
 
+/** Kinds that come from another member: a message, a match, an accepted request, a mentor, an endorsement. */
+const PEOPLE_TYPES: ReadonlySet<FeedNoteType> = new Set(['message', 'match', 'accepted', 'mentorship', 'endorsement']);
+
+/**
+ * Which tab a note belongs to. "From members" used to mean "came from the
+ * server", so in the demo a message from Marcus counted as "My activity" and
+ * "From members" read 0. The kind decides now: people kinds (or anything a
+ * member sent through the server) are "people"; the account's own log and the
+ * alerts computed from its data (milestones, investor follow-ups) are
+ * "activity"; platform news is neither and shows under All.
+ */
+export function noteGroup(note: Pick<FeedNote, 'type' | 'origin'>): 'people' | 'activity' | 'platform' {
+  if (note.origin === 'cloud') return 'people';
+  // The account's own log and alerts computed from its data are its activity, whatever their icon.
+  if (note.origin === 'activity' || note.origin === 'derived') return 'activity';
+  if (PEOPLE_TYPES.has(note.type)) return 'people';
+  if (note.type === 'system') return 'platform';
+  return 'activity';
+}
+
 const LEGACY_HIDDEN = 'cb_hidden_notifications';
 
 const readDerivedRead = (): string[] => readValue<string[]>(keys.derivedRead, []);

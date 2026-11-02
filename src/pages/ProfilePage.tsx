@@ -1258,15 +1258,15 @@ export default function ProfilePage() {
     {/* Signals: AI, readiness, network */}
     <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
-{/* AI Match Insight */}
+{/* Own profile: the studio check (computed, not a model — the AI review is the card below). Another profile: the match analysis. */}
       <div className="bg-stone-50 border border-stone-200 p-5 rounded-xl space-y-4">
        <div>
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile ? t('AI Profile Insight', 'Ανάλυση προφίλ με AI') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
+          <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
         </div>
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
-          <span className="text-stone-600">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
+          <span className="text-stone-600">{isOwnProfile && ownAudit ? t('Overall', 'Συνολικά') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
           <span className="text-stone-900 font-semibold" data-testid="profile-insight-score">{isOwnProfile && ownAudit ? ownAudit.score : insightScore}%</span>
          </div>
          <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">

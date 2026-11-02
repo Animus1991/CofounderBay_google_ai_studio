@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
 import { useAuth } from "../App";
@@ -132,7 +134,35 @@ export default function LegalHub() {
  return (
   <PageShell title={t("Legal Hub", "Νομικά")} description={t('Templates and your legal checklist.', 'Πρότυπα και η νομική σου λίστα.')}>
    <div className="space-y-6">
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+    {/* Your own status first (round 10): the checklist used to sit under the templates, below the fold. */}
+    {(() => {
+     const doneCount = LEGAL_CHECKLIST.filter((item) => isDone(item.id)).length;
+     const nextItem = LEGAL_CHECKLIST.find((item) => !isDone(item.id));
+     const pct = Math.round((doneCount / Math.max(1, LEGAL_CHECKLIST.length)) * 100);
+     return (
+      <div data-testid="legal-progress" className="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+       <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-stone-900">
+         {t(`Compliance: ${doneCount} of ${LEGAL_CHECKLIST.length} done`, `Συμμόρφωση: ${doneCount} από ${LEGAL_CHECKLIST.length}`)}
+        </p>
+        <div className="mt-2 h-1 w-full max-w-sm overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
+         <div className="h-full rounded-full bg-stone-900 transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-1.5 text-xs text-stone-500">
+         {nextItem ? t(`Next: ${nextItem.en}`, `Επόμενο: ${nextItem.el}`) : t('Every step is done.', 'Όλα τα βήματα έγιναν.')}
+        </p>
+       </div>
+       <div className="flex shrink-0 items-center gap-3">
+        <AskLink prompt="What is left on my legal checklist?" />
+        <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById('legal-checklist')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+         {t('Open checklist', 'Άνοιγμα λίστας')}
+        </Button>
+       </div>
+      </div>
+     );
+    })()}
+
+    <div className={SEGMENT_TRACK}>
      {categories.map((cat) => (
       <button
        key={cat.id}
@@ -141,9 +171,7 @@ export default function LegalHub() {
        onClick={() => setActiveCategory(cat.id)}
        className={cn(
         "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 whitespace-nowrap",
-        activeCategory === cat.id
-         ? "bg-stone-900 text-white shadow-sm"
-         : "text-stone-400 hover:text-stone-900 hover:bg-white"
+        segmentItem(activeCategory === cat.id)
        )}
       >
        <cat.icon className="w-3.5 h-3.5" />
@@ -162,12 +190,8 @@ export default function LegalHub() {
          <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center text-stone-400 group-hover:bg-stone-900 group-hover:text-white transition-all">
           <FileText className="w-5 h-5" />
          </div>
-         <span className={cn(
-          "text-sm font-medium tracking-wide px-2 py-0.5 rounded-full",
-          template.status === 'Critical' ? "text-red-600" : "text-stone-500"
-         )}>
-          {labelOf(template.status)}
-         </span>
+         {/* Primer Label: "Critical" is a danger label, "Verified" a success label (lib/statusTone). */}
+         <Badge variant={template.status === 'Critical' ? 'danger' : 'success'}>{labelOf(template.status)}</Badge>
         </div>
         <h4 className="font-semibold text-base mb-1">{template.name}</h4>
         <p className="text-base text-stone-500 mb-6 leading-relaxed">{template.description}</p>
@@ -184,6 +208,7 @@ export default function LegalHub() {
      </div>
 
      {/* Legal Checklist */}
+     <div id="legal-checklist" className="scroll-mt-24">
      <Card title={t("Compliance Checklist", "Λίστα συμμόρφωσης")} subtitle={t("Tick off each step as you complete it — saved to your account", "Τσέκαρε κάθε βήμα όπως το ολοκληρώνεις — αποθηκεύεται στον λογαριασμό σου")}>
       <div className="space-y-4">
        {LEGAL_CHECKLIST.map((item) => (
@@ -206,6 +231,7 @@ export default function LegalHub() {
        ))}
       </div>
      </Card>
+     </div>
     </div>
 
     {/* Sidebar: Resources & Experts */}

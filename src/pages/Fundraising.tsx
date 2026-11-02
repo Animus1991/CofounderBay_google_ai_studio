@@ -56,6 +56,7 @@ import { sessionFromMeetingDraft } from '../lib/meetingDraft';
 import FactLine from "../components/ui/FactLine";
 import { User } from "../types";
 import { cn } from "../lib/utils";
+import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { labelOf } from "../lib/labels";
 import { useT, getLang } from "../lib/language";
 import { formatDate } from "../lib/dates";
@@ -490,7 +491,7 @@ export default function Fundraising({ user }: FundraisingProps) {
    <div className="space-y-5">
 
     {/* Tab Bar */}
-    <div className="scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100">
+    <div className={SEGMENT_TRACK}>
      {(["tracker", "crm", "dd", "investors", "programs", "opportunities"] as const).map((tab) => (
       <button
        key={tab}
@@ -500,7 +501,7 @@ export default function Fundraising({ user }: FundraisingProps) {
        onClick={() => setActiveTab(tab)}
        className={cn(
         "px-3 py-1.5 text-sm font-semibold tracking-wide rounded-lg transition-all",
-        activeTab === tab ? "bg-white text-stone-900 shadow-sm ring-1 ring-stone-200" : "text-stone-500 hover:text-stone-700"
+        segmentItem(activeTab === tab)
        )}
       >
        {tabLabel[tab]}

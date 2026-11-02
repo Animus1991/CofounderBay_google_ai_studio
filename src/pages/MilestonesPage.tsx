@@ -51,6 +51,9 @@ const CATEGORY_COLORS: Record<string, string> = {
  Marketing: 'text-amber-600 border-transparent',
 };
 
+// List columns sized to their content: "Priority" (Προτεραιότητα) overflowed a 1/12 column into "Progress".
+const LIST_COLUMNS = 'grid grid-cols-[minmax(12rem,2.4fr)_minmax(6.5rem,1fr)_minmax(7.5rem,1.1fr)_minmax(7rem,auto)_minmax(4rem,auto)_minmax(9rem,1.2fr)] gap-3 min-w-[760px]';
+
 // Status colours come from lib/statusTone, so "In Progress" is the same blue here, on Workspace and in Founder Tools.
 const statusStyle = (status: string) => {
  const tone = TONE_CLASSES[statusTone(status)];
@@ -554,40 +557,40 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
       </div>
       <div role="region" aria-label={t("Milestone details table. Scroll horizontally to see all columns.", "Πίνακας οροσήμων. Κύλησε οριζόντια για όλες τις στήλες.")} tabIndex={0} className="hidden sm:block bg-white rounded-xl border border-stone-100 overflow-x-auto focus-visible:outline-1 focus-visible:outline-stone-400">
        {/* Table Header */}
-       <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-xs font-semibold text-stone-400 tracking-wider min-w-[720px]">
-        <div className="col-span-4">{t("Milestone", "Ορόσημο")}</div>
-        <div className="col-span-2">{t("Category", "Κατηγορία")}</div>
-        <div className="col-span-2">{t("Status", "Κατάσταση")}</div>
-        <div className="col-span-1">{t("Priority", "Προτεραιότητα")}</div>
-        <div className="col-span-1">{t("Progress", "Πρόοδος")}</div>
-        <div className="col-span-2">{t("Target Date", "Ημερομηνία στόχος")}</div>
+       <div className={cn(LIST_COLUMNS, "px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-xs font-semibold text-stone-400 tracking-wider")}>
+        <div>{t("Milestone", "Ορόσημο")}</div>
+        <div>{t("Category", "Κατηγορία")}</div>
+        <div>{t("Status", "Κατάσταση")}</div>
+        <div>{t("Priority", "Προτεραιότητα")}</div>
+        <div>{t("Progress", "Πρόοδος")}</div>
+        <div>{t("Target Date", "Ημερομηνία στόχος")}</div>
        </div>
        {filtered.map((m, idx) => {
         const cfg = STATUS_CONFIG[m.status] || STATUS_CONFIG.Planned!;
         return (
          <motion.div key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
-          className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group min-w-[720px]">
-          <div className="col-span-4 flex items-center gap-3 min-w-0">
+          className={cn(LIST_COLUMNS, "px-4 py-3 border-b border-stone-50 hover:bg-stone-50/50 transition-colors items-center group")}>
+          <div className="flex items-center gap-3 min-w-0">
            <ProgressRing progress={m.progress} size={28} stroke={2.5} showValue={false} />
            <div className="min-w-0">
             <p className="text-xs font-semibold text-stone-900 break-words">{m.title}</p>
             {m.description && <p className="text-xs text-stone-400 truncate">{m.description}</p>}
            </div>
           </div>
-          <div className="col-span-2">
+          <div>
            <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", CATEGORY_COLORS[m.category] || 'text-stone-500 border-transparent')}>{labelOf(m.category)}</span>
           </div>
-          <div className="col-span-2 flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
            <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
            <span className={cn("text-xs font-medium", cfg.color)}>{m.status === 'Delayed' ? t('Delayed', 'Καθυστερημένο') : labelOf(m.status)}</span>
           </div>
-          <div className="col-span-1">
+          <div>
            <span className={cn("px-1.5 py-0.5 rounded text-xs font-semibold border", PRIORITY_BADGE[m.priority])}>{labelOf(m.priority)}</span>
           </div>
-          <div className="col-span-1">
+          <div>
            <span className="text-xs font-semibold text-stone-900">{m.progress}%</span>
           </div>
-          <div className="col-span-2 flex items-center justify-between">
+          <div className="flex items-center justify-between">
            <span className="text-xs text-stone-400">{formatDate(m.targetDate)}</span>
            <div className="flex items-center gap-1 transition-all">
             <button type="button" aria-label={t(`Edit milestone: ${m.title}`, `Επεξεργασία οροσήμου: ${m.title}`)} className="p-1 text-stone-300 hover:text-stone-600 rounded" onClick={() => handleEdit(m)}><Edit3 className="w-3 h-3" /></button>
