@@ -81,7 +81,7 @@ export function personFromCast(person: CastMember): Person {
     linkedinUrl: '',
     githubUrl: '',
     availability: person.availability || '',
-    openTo: person.role === 'Mentor' || person.role === 'Advisor' ? ['mentoring', 'advisor'] : ['cofounder'],
+    openTo: person.openTo ?? (person.role === 'Mentor' || person.role === 'Advisor' ? ['mentoring', 'advisor'] : ['cofounder']),
     expertise: person.expertise || [],
     verified: true,
     lastActiveAt: null,

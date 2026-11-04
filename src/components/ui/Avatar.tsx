@@ -47,7 +47,7 @@ export default function Avatar({ src, alt, fallback, name, size = 'md', status, 
    {showImage ? (
     <img
      src={src}
-     alt={alt || fallback || name || 'Avatar'}
+     alt={alt ?? (fallback || name || 'Avatar')}
      className={cn("rounded-full object-cover border border-stone-200", sizeClasses[size])}
      referrerPolicy="no-referrer"
      onError={() => setFailed(true)}

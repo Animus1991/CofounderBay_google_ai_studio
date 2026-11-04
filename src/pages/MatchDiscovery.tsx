@@ -26,6 +26,8 @@ import { useLanguage, useT } from '../lib/language';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
 import FactLine from '../components/ui/FactLine';
+import Badge from '../components/ui/Badge';
+import { cardStatus } from '../lib/memberStatus';
 import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
 import { usePageControls } from '../lib/pageControls';
 import PersonHovercard from '../components/ui/PersonHovercard';
@@ -216,6 +218,17 @@ export default function MatchDiscovery() {
      <Layers className="w-3.5 h-3.5" aria-hidden="true" />
      {t('Open roles', 'Ανοιχτοί ρόλοι')}
     </button>
+    <button
+     type="button"
+     data-ui="button"
+     onClick={() => navigate(savedIds.length >= 2 ? `/matches/compare?ids=${savedIds.slice(0, 3).join(',')}` : '/matches/compare')}
+     title={savedIds.length >= 2
+      ? t('Your saved people side by side, on the same score', 'Τα αποθηκευμένα άτομα δίπλα-δίπλα, με το ίδιο σκορ')
+      : t('Your top three matches side by side, on the same score', 'Οι τρεις πρώτες αντιστοιχίσεις δίπλα-δίπλα, με το ίδιο σκορ')}
+     className="inline-flex items-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300 hover:text-stone-900 transition-colors"
+    >
+     {t('Compare', 'Σύγκριση')}
+    </button>
     </>
    }
   >
@@ -370,6 +383,13 @@ export default function MatchDiscovery() {
        <p className="text-xs text-stone-500 leading-relaxed line-clamp-2 mb-4">
         {person.bio ? t(person.bio, person.bioEl || person.bio) : t('No bio yet.', 'Δεν υπάρχει περιγραφή ακόμη.')}
        </p>
+
+       {/* Which way the person is heading (seeking a co-founder or joining a team), and presence: scanned before the facts. */}
+       {cardStatus(person).length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+         {cardStatus(person).map((status) => <Badge key={status.en} variant={status.tone}>{t(status.en, status.el)}</Badge>)}
+        </div>
+       )}
 
        <FactLine className="mb-4" items={[labelOf(person.stage), labelOf(person.commitment), person.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />
 

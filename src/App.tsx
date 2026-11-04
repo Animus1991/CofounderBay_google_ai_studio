@@ -47,6 +47,7 @@ const TenantLanding = lazyPage('TenantLanding', () => import('./pages/TenantLand
 const OnboardingWizard = lazyPage('OnboardingWizard', () => import('./pages/OnboardingWizard'));
 const ProfilePage = lazyPage('ProfilePage', () => import('./pages/ProfilePage'));
 const MatchDiscovery = lazyPage('MatchDiscovery', () => import('./pages/MatchDiscovery'));
+const MatchCompare = lazyPage('MatchCompare', () => import('./pages/MatchCompare'));
 const MentorsPage = lazyPage('MentorsPage', () => import('./pages/MentorsPage'));
 const CommunitiesPage = lazyPage('CommunitiesPage', () => import('./pages/CommunitiesPage'));
 const CommunicationHub = lazyPage('CommunicationHub', () => import('./pages/CommunicationHub'));
@@ -543,6 +544,7 @@ export default function App() {
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/matches" element={<ProtectedRoute><MatchDiscovery /></ProtectedRoute>} />
+              <Route path="/matches/compare" element={<ProtectedRoute><MatchCompare /></ProtectedRoute>} />
               <Route path="/discovery" element={<ProtectedRoute><WithUser render={(u) => <DiscoveryPage user={u} />} /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><WithUser render={(u) => <EventsPage user={u} />} /></ProtectedRoute>} />
               <Route path="/mentors" element={<ProtectedRoute><MentorsPage /></ProtectedRoute>} />

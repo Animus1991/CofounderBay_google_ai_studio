@@ -37,6 +37,8 @@ export type CastMember = {
   availability?: 'Immediate' | 'Flexible' | '1 month notice';
   achievements?: string[];
   checkSize?: string;
+  /** What the person says they are open to (lib/taxonomy OPEN_TO ids). Default: finding a co-founder, or mentoring for mentors and advisors. */
+  openTo?: ('cofounder' | 'joinTeam' | 'mentoring' | 'advisor')[];
 };
 
 export const CAST: CastMember[] = [
@@ -96,6 +98,7 @@ export const CAST: CastMember[] = [
   },
   {
     id: 'elena-rodriguez',
+    openTo: ['joinTeam'],
     fullName: 'Elena Rodriguez',
     role: 'Co-Founder Candidate',
     headline: 'Product designer with a climate focus',
@@ -150,6 +153,7 @@ export const CAST: CastMember[] = [
   },
   {
     id: 'jordan-taylor',
+    openTo: ['joinTeam'],
     fullName: 'Jordan Taylor',
     role: 'Co-Founder Candidate',
     headline: 'Growth marketer, ex-Stripe',

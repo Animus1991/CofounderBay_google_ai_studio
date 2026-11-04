@@ -20,6 +20,21 @@ describe('studio areas the operator now covers', () => {
     expect(readPitch().traction).toBeUndefined();
   });
 
+  it('drafts only the empty slides after Confirm and undoes exactly', async () => {
+    localStorage.setItem('demo_mode', 'true');
+    runAssistant('Set the problem slide to My own words', demo, { propose: false });
+    const result = runAssistant('Γέμισε το pitch deck μου', demo, { propose: true });
+    expect(result.tool).toBe('pitch-fill');
+    expect(readPitch().solution).toBeUndefined();
+    await result.proposal!.apply();
+    expect(readPitch().problem).toBe('My own words');
+    expect((readPitch().solution ?? '').length).toBeGreaterThan(0);
+    await result.proposal!.undo!();
+    expect(readPitch().problem).toBe('My own words');
+    expect(readPitch().solution ?? '').toBe('');
+    expect(runAssistant('πρόσθεσε εργασία Γράψε το deck μέχρι την Παρασκευή', demo).tool).toBe('task-add');
+  });
+
   it('ticks and reopens a legal checklist item', async () => {
     const tick = runAssistant('Mark EIN done', demo, { propose: true });
     expect(tick.tool).toBe('legal-check');

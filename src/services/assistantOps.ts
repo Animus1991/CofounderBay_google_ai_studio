@@ -18,6 +18,7 @@ import type { Milestone } from '../types';
 import { whereIsResult } from '../ai/whereIs';
 import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
 import { compatibility, fromCast, fromProfile, listWords, rankPeople, type CompatibilityInput } from '../lib/compatibility';
+import { MAX_COMPARE, compareCandidates } from '../lib/matchCompare';
 import {
   addSession,
   addStudioTask,
@@ -111,12 +112,14 @@ import {
   focusResult,
   isFocusQuery,
   isLegalChecklistQuery,
+  isPitchFillQuery,
   isPitchQuery,
   isSavedSearchQuery,
   legalChecklistResult,
   legalToggleResult,
   parseLegalToggle,
   parsePitchSet,
+  pitchFillResult,
   pitchReadResult,
   pitchSetResult,
   savedSearchesResult,
@@ -218,6 +221,7 @@ const SOURCE = {
 const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   matches: [SOURCE.people, SOURCE.profile],
   'match-detail': [SOURCE.people, SOURCE.profile],
+  'match-compare': [SOURCE.people, SOURCE.profile],
   'about-person': [SOURCE.people],
   'team-gap': [SOURCE.profile, SOURCE.people],
   scout: [SOURCE.people, SOURCE.profile, SOURCE.openTo],
@@ -261,6 +265,7 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   'studio-modal': [SOURCE.people, SOURCE.round],
   pitch: [SOURCE.pitch],
   'pitch-set': [SOURCE.pitch],
+  'pitch-fill': [SOURCE.pitch, SOURCE.canvas, SOURCE.builder, SOURCE.round],
   'legal-checklist': [SOURCE.legalChecklist],
   'legal-check': [SOURCE.legalChecklist],
   focus: [SOURCE.focus],
@@ -492,6 +497,36 @@ function matchDetailResult(profile: AssistantProfile | null, person: Person): As
     el: `${person.fullName} είναι ${score} στον ίδιο υπολογισμό με τις Αντιστοιχίσεις. Γιατί: ${reasonEl}. ${frictionEl} Πρώτη συζήτηση: πώς έχουν παραδώσει ${talk}. Η ίδια κάρτα με το Προφίλ.`,
     href: `/profile/${person.id}`,
     links: [linkFor(person), { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' }],
+  };
+}
+
+/** "Compare Marcus and Elena": the comparison page's numbers in the chat (lib/matchCompare), then a link to it. */
+function compareResult(profile: AssistantProfile | null, query: string): AssistantResult {
+  const folded = fold(query);
+  const people = directoryPeople();
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let chosen = people.filter((person) => folded.includes(fold(person.fullName)));
+  if (chosen.length === 0) {
+    chosen = people.filter((person) => {
+      const first = fold(person.fullName.split(' ')[0] || '');
+      return first.length >= 3 && new RegExp(`(^|[\\s,])${escape(first)}([\\s,.;?]|$)`).test(folded);
+    });
+  }
+  // Fewer than two named: fill from the ranked matches, as the page does without ?ids=.
+  if (chosen.length < 2) {
+    const ranked = rankPeople(meInput(profile), candidates()).map((row) => row.person).filter((person) => !chosen.some((item) => item.id === person.id));
+    chosen = [...chosen, ...ranked];
+  }
+  chosen = chosen.slice(0, MAX_COMPARE);
+  const { columns, summary } = compareCandidates(meInput(profile), chosen);
+  const href = `/matches/compare?ids=${chosen.map((person) => person.id).join(',')}`;
+  const lines = columns.map((column) => `${column.person.fullName} · ${column.fit.score ?? '—'}%`);
+  return {
+    tool: 'match-compare',
+    en: `${summary.en}\n${lines.join('\n')}\nSame score as Matches; the comparison page shows each dimension.`,
+    el: `${summary.el}\n${lines.join('\n')}\nΤο ίδιο σκορ με τις Αντιστοιχίσεις· η σελίδα σύγκρισης δείχνει κάθε διάσταση.`,
+    href,
+    links: [{ href, en: 'Open the comparison', el: 'Άνοιγμα σύγκρισης' }, ...chosen.map(linkFor)],
   };
 }
 
@@ -3676,6 +3711,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   if (pipelineHit) return pipelineHit;
   const pitchSet = parsePitchSet(query);
   if (pitchSet) return pitchSetResult(pitchSet, propose, proposalResult);
+  if (isPitchFillQuery(folded)) return pitchFillResult(propose, proposalResult);
   if (isPitchQuery(folded)) return pitchReadResult();
   const legalToggle = parseLegalToggle(query);
   if (legalToggle) return legalToggleResult(legalToggle, propose, proposalResult);
@@ -3694,6 +3730,11 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
 
   if (parseNotificationsRead(query)) return notificationsReadResult(propose);
 
+  // "Compare Marcus and Elena" / "Σύγκρινε τις αντιστοιχίσεις μου": before the single-person routes, since it names people.
+  if ((/\bcompare\b/.test(folded) || hasStem(folded, 'συγκριν', 'συγκρισ'))
+    && (/\b(match|matches|people|candidates?|co-?founders?|top)\b/.test(folded) || hasStem(folded, 'αντιστοιχ', 'συνιδρυτ', 'υποψηφ') || directoryPeople().some((p) => folded.includes(fold(p.fullName))))) {
+    return compareResult(profile, query);
+  }
   const person = namedPerson(query);
   if (person && hasStem(folded, 'why', 'γιατι') && hasStem(folded, 'match', 'ταιριαζ')) return matchDetailResult(profile, person);
   if (person && hasStem(folded, 'save', 'watch', 'αποθηκ')) return saveOrConnect('save', person, propose);

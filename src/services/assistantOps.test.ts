@@ -135,6 +135,18 @@ describe('runAssistant', () => {
     expect(result.followUps?.[0]?.en).toMatch(/Connect with Sarah Chen/);
   });
 
+  it('compares named matches on the Matches score and links the comparison page', () => {
+    const result = runAssistant('Compare Marcus Thorne and Elena Rodriguez', demo);
+    expect(result.tool).toBe('match-compare');
+    expect(result.href).toMatch(/^\/matches\/compare\?ids=/);
+    expect(result.href).toContain('marcus');
+    expect(result.href).toContain('elena');
+    expect(result.en).toMatch(/Marcus Thorne · \d+%/);
+    const greek = runAssistant('Σύγκρινε τις αντιστοιχίσεις μου', demo);
+    expect(greek.tool).toBe('match-compare');
+    expect(greek.href?.split('=')[1]?.split(',')).toHaveLength(3);
+  });
+
   it('says what the founding team still lacks from looking-for', () => {
     const result = runAssistant('What does my founding team still lack?', demo);
     expect(result.tool).toBe('team-gap');

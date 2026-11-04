@@ -3,7 +3,7 @@
  * the Legal Hub checklist, today's focus time and saved Discovery searches.
  * Same lists the pages read; writes return proposals with an exact undo.
  */
-import { PITCH_SLIDES, effectivePitch, readPitch, slideStatus, writePitchSlide, type PitchSlideKey } from '../lib/pitch';
+import { PITCH_SLIDES, draftPitch, effectivePitch, readPitch, slideStatus, writePitchSlide, type PitchSlideKey } from '../lib/pitch';
 import { LEGAL_CHECKLIST, isLegalDone, legalProgress, readLegalChecklist, setLegalItem } from '../lib/legalChecklist';
 import { readFocusToday } from '../lib/focusStats';
 import { keys, logActivity, readSavedSearches, writeValue } from '../lib/localLists';
@@ -90,6 +90,62 @@ export function pitchSetResult(set: { slide: PitchSlideKey; text: string }, prop
       undo: () => { writePitchSlide(set.slide, before ?? ''); },
     },
     { tool: 'pitch-set', href: slideLink(set.slide).href, links: [slideLink(set.slide), PITCH_LINK] },
+  );
+}
+
+/** "Fill my pitch deck", "draft the whole deck", "γέμισε το pitch deck". */
+export function isPitchFillQuery(folded: string): boolean {
+  // "Add task: write the deck" / "πρόσθεσε εργασία Γράψε το deck" is a task, not a fill.
+  if (/\b(add|create|new)\b.{0,20}\b(task|todo)\b/.test(folded) || /(προσθεσ|φτιαξ|δημιουργησ).{0,20}εργασι/.test(folded)) return false;
+  const deck = /\bpitch\s*deck\b|\b(deck|slides)\b/.test(folded) || /διαφανει|pitch/.test(folded);
+  const fill = /\b(fill|draft|generate|complete|prepare)\b/.test(folded) || /(γεμισ|συμπληρωσ|ετοιμασ|φτιαξ|γραψ)/.test(folded);
+  return deck && fill && !/\bslide\s+(to|as|:)/.test(folded);
+}
+
+/**
+ * Every empty slide drafted at once from what the founder already entered
+ * (lib/pitch draftPitch: canvas, builder answers, round — never an invented
+ * number). Slides the founder wrote are left alone; one Confirm, one exact Undo.
+ */
+export function pitchFillResult(propose: boolean, proposalResult: Proposer): AssistantResult {
+  const before = readPitch();
+  const draft = draftPitch();
+  const fills = PITCH_SLIDES.filter((slide) => !(before[slide.key] ?? '').trim() && (draft[slide.key] ?? '').trim());
+  const gaps = PITCH_SLIDES.filter((slide) => !(before[slide.key] ?? '').trim() && !(draft[slide.key] ?? '').trim());
+  const gapEn = gaps.length ? ` Still empty, with nothing to draw on: ${gaps.map((s) => s.en).join(', ')} — the canvas, Startup Builder and round feed these.` : '';
+  const gapEl = gaps.length ? ` Μένουν κενές, χωρίς στοιχεία: ${gaps.map((s) => s.el).join(', ')} — τα τροφοδοτούν ο καμβάς, ο Startup Builder και ο γύρος.` : '';
+  if (fills.length === 0) {
+    return {
+      tool: 'pitch-fill',
+      en: `No empty slide can be drafted yet: the slides you wrote stay as they are.${gapEn}`,
+      el: `Καμία κενή διαφάνεια δεν μπορεί να συνταχθεί ακόμη· όσες έγραψες μένουν ως έχουν.${gapEl}`,
+      href: PITCH_LINK.href,
+      links: [PITCH_LINK],
+    };
+  }
+  const apply = (): AssistantResult => {
+    for (const slide of fills) writePitchSlide(slide.key, draft[slide.key] ?? '');
+    logActivity({ kind: 'milestone', title: `Drafted ${fills.length} pitch slides`, titleEl: `Συντάχθηκαν ${fills.length} διαφάνειες pitch`, href: PITCH_LINK.href, byAssistant: true });
+    return {
+      tool: 'pitch-fill',
+      en: `Drafted ${fills.length} slides from your own data: ${fills.map((s) => s.en).join(', ')}. Edit any of them in Founder Tools → Pitch.${gapEn}`,
+      el: `Συντάχθηκαν ${fills.length} διαφάνειες από τα δικά σου στοιχεία: ${fills.map((s) => s.el).join(', ')}. Διόρθωσε όποια θέλεις στα Εργαλεία Ιδρυτή → Pitch.${gapEl}`,
+      href: PITCH_LINK.href,
+      links: [PITCH_LINK],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Draft ${fills.length} empty slides (${fills.map((s) => s.en).join(', ')}) from your canvas, builder and round? Slides you wrote stay untouched.`,
+        el: `Σύνταξη ${fills.length} κενών διαφανειών (${fills.map((s) => s.el).join(', ')}) από τον καμβά, τον builder και τον γύρο; Όσες έγραψες μένουν ως έχουν.`,
+      },
+      reversal: 'full',
+      apply,
+      undo: () => { for (const slide of fills) writePitchSlide(slide.key, before[slide.key] ?? ''); },
+    },
+    { tool: 'pitch-fill', href: PITCH_LINK.href, links: [PITCH_LINK] },
   );
 }
 

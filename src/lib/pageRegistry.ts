@@ -53,6 +53,8 @@ export const PAGE_REGISTRY: readonly PageEntry[] = [
 
   // Find
   { path: '/matches', section: 'find', icon: Users, label: { en: 'Matches', el: 'Αντιστοιχίσεις' }, help: { en: 'People ranked by how well you fit', el: 'Άτομα ταξινομημένα κατά συμβατότητα' }, assistantKeys: ['match', 'cofounder', 'co-founder', 'συνιδρυτ', 'αντιστοιχ'], assistantOrder: 2 },
+  // A view of Matches (no icon: not a menu item of its own).
+  { path: '/matches/compare', section: 'find', label: { en: 'Compare matches', el: 'Σύγκριση αντιστοιχίσεων' }, help: { en: 'Up to three people side by side, dimension by dimension', el: 'Έως τρία άτομα δίπλα-δίπλα, διάσταση προς διάσταση' } },
   { path: '/discovery', section: 'find', icon: Compass, label: { en: 'Explore', el: 'Εξερεύνηση' }, help: { en: 'People, communities, programs and events', el: 'Άτομα, κοινότητες, προγράμματα και εκδηλώσεις' }, assistantKeys: ['discover', 'explore', 'εξερευ'], assistantOrder: 3 },
   { path: '/network', section: 'find', icon: Share2, label: { en: 'Network', el: 'Δίκτυο' }, help: { en: 'Connections, saved people and looking-for posts', el: 'Συνδέσεις, αποθηκευμένα άτομα και αγγελίες αναζήτησης' }, assistantKeys: ['network', 'δικτυ'], assistantOrder: 9 },
   { path: '/mentors', section: 'find', icon: GraduationCap, label: { en: 'Mentors', el: 'Μέντορες' }, help: { en: 'Experienced people who can guide you', el: 'Έμπειροι άνθρωποι που μπορούν να σε καθοδηγήσουν' }, assistantKeys: ['mentor', 'μεντορ'], assistantOrder: 4 },

@@ -155,9 +155,12 @@ describe('draft requests go to the model', () => {
     expect(result.tool).toBe('batch');
   });
 
-  it('falls back to the pitch status when the model is unreachable', async () => {
+  it('falls back to drafting the empty slides from the founder’s own data when the model is unreachable', async () => {
     const result = await respond('Draft my pitch deck slides', demo, { ...options, planner: async () => { throw new Error('down'); } });
-    expect(result.tool).toBe('pitch');
+    // Offline the router drafts from canvas, builder and round (lib/pitch draftPitch) — still a card to confirm.
+    expect(result.tool).toBe('pitch-fill');
+    expect(result.origin).toBe('router');
+    if (result.proposal) expect(result.proposal.reversal).toBe('full');
   });
 
   it('lets the model rewrite an investor email from the same facts, and keeps the template when it cannot', async () => {
