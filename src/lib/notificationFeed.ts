@@ -8,12 +8,18 @@ import {
   markActivityRead,
   markActivityUnread,
   readActivity,
+  readNotificationPrefs,
+  readProfileLocal,
   readValue,
   scopedKey,
   writeValue,
   type ActivityKind,
 } from './localLists';
 import { overdueInvestors } from '../services/investorOps';
+import { NEED_CARD_ITEMS } from '../data/studioCatalog';
+import { nextStepIn } from '../data/demoCatalog';
+import { DEMO_FOUNDER_SKILLS } from '../data/demoVenture';
+import { cardTime, needFits } from './studioData';
 import {
   clearNotifications as clearCloudNotifications,
   deleteNotification as deleteCloudNotification,
@@ -75,9 +81,40 @@ const LEGACY_HIDDEN = 'cb_hidden_notifications';
 
 const readDerivedRead = (): string[] => readValue<string[]>(keys.derivedRead, []);
 
-/** Alerts computed from live data (overdue investor next steps) — never stored, so they clear themselves once fixed. */
+/**
+ * Need Cards that ask for a skill on the viewer's profile, while "Alert me about matching
+ * cards" is on. Other founders' cards exist only in the sample account for now, so a real
+ * account gets none until cards are shared across the platform.
+ */
+function needFitNotes(read: Set<string>): FeedNote[] {
+  if (!readNotificationPrefs().needs || !isDemoData()) return [];
+  const local = readProfileLocal();
+  const skills = Array.isArray(local.skills) && local.skills.length ? local.skills : [...DEMO_FOUNDER_SKILLS];
+  return needFits(NEED_CARD_ITEMS, skills).map(({ card, matched }) => {
+    const id = `need-fit-${card.id}`;
+    return {
+      id,
+      type: 'match' as const,
+      title: `Need Card that fits you: ${card.ventureName}`,
+      titleEl: `Κάρτα ανάγκης που σου ταιριάζει: ${card.ventureName}`,
+      description: `${card.title} — asks for ${matched.join(', ')}, which is on your profile. Sample card.`,
+      descriptionEl: `${card.title} — ζητά ${matched.join(', ')}, που υπάρχει στο προφίλ σου. Κάρτα δείγματος.`,
+      time: cardTime(card.createdAt),
+      read: read.has(id),
+      actionUrl: '/matches?panel=needs',
+      source: 'local' as const,
+      origin: 'derived' as const,
+    };
+  });
+}
+
+/** Alerts computed from live data (overdue investor next steps, matching Need Cards) — never stored, so they clear themselves once fixed. */
 function derivedNotes(): FeedNote[] {
   const read = new Set(readDerivedRead());
+  return [...needFitNotes(read), ...overdueNotes(read)];
+}
+
+function overdueNotes(read: Set<string>): FeedNote[] {
   return overdueInvestors().map((item) => {
     const id = `inv-overdue-${item.investorId}-${item.nextDate}`;
     return {
@@ -85,8 +122,8 @@ function derivedNotes(): FeedNote[] {
       type: 'investor' as const,
       title: `Overdue follow-up: ${item.name}`,
       titleEl: `Εκπρόθεσμο follow-up: ${item.name}`,
-      description: `${item.nextStep || 'Next step'} was due ${item.nextDate} (${item.stage}). Ask the assistant to draft the email.`,
-      descriptionEl: `${item.nextStep || 'Επόμενο βήμα'} — προθεσμία ${item.nextDate} (${item.stage}). Ζήτα από τον βοηθό να γράψει το email.`,
+      description: `${nextStepIn(item.nextStep, 'en') || 'Next step'} was due ${item.nextDate} (${item.stage}). Ask the assistant to draft the email.`,
+      descriptionEl: `${nextStepIn(item.nextStep, 'el') || 'Επόμενο βήμα'} — προθεσμία ${item.nextDate} (${item.stage}). Ζήτα από τον βοηθό να γράψει το email.`,
       time: `${item.nextDate}T09:00:00.000Z`,
       read: read.has(id),
       actionUrl: '/fundraising?tab=crm',
@@ -268,7 +305,7 @@ export function useNotificationFeed(): {
   const activity = useStored(activityNotes, [keys.activity]);
   const seed = useStored(readSeed, [keys.demoNotes]);
   const hidden = useStored(readHiddenNotes, [keys.hiddenNotes]);
-  const derived = useStored(derivedNotes, [keys.round, keys.derivedRead]);
+  const derived = useStored(derivedNotes, [keys.round, keys.derivedRead, keys.notificationPrefs, keys.profileLocal]);
   const cloud = useNotifications();
 
   const cloudNotes: FeedNote[] = useMemo(() => cloud.items.map((item) => ({

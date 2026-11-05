@@ -19,18 +19,16 @@ import {
 } from '../types';
 import {
   INITIAL_MY_PROFILE,
-  FOUNDER_PROFILES,
   STARTUP_VENTURES,
-  NEED_CARD_ITEMS,
   createAvatarSvg,
 } from '../data/studioCatalog';
 import { enrichFoundersWithMatches } from '../utils/matchingEngine';
 import { DEMO_VENTURE } from '../data/demoVenture';
 import { compatibility, fromCast, fromProfile } from '../lib/compatibility';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
-import { avatarOf, directoryPeople, type Person } from '../lib/peopleSource';
+import { avatarOf, cofounderPool, directoryPeople, type Person } from '../lib/peopleSource';
+import { messagingBridge } from '../lib/messagingBridge';
 import {
-  appendChatMessage,
   ensureChatConversation,
   keys,
   logActivity,
@@ -45,19 +43,40 @@ import {
   upsertNeed,
   writeProfileLocal,
   writeValue,
-  type NeedCard,
 } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { startupRecord, useEntity } from '../lib/entities';
+import { myVentureFrom, wallCards } from '../lib/studioData';
+import { effectivePitch } from '../lib/pitch';
 
+/** A real account's studio profile starts empty — never the sample founder's facts. */
+const BLANK_MY_PROFILE: FounderProfile = {
+  ...INITIAL_MY_PROFILE,
+  name: '',
+  avatar: '',
+  headline: '',
+  location: '',
+  equityExpectation: '',
+  experienceYears: 0,
+  bio: '',
+  skills: [],
+  lookingFor: [],
+  pastExperience: '',
+  education: undefined,
+  verified: false,
+  matchHighlights: [],
+  socials: {},
+  featuredProject: undefined,
+};
 
+/** Whole words only: "building" is not "ui", "maintain" is not "ai". */
 function mapRoleCategory(rawRole?: string, headline?: string): RoleCategory {
   const text = `${rawRole || ''} ${headline || ''}`.toLowerCase();
-  if (/mentor|advisor/.test(text)) return 'Mentor & Advisor';
-  if (/investor|angel|vc/.test(text)) return 'Angel / Investor';
-  if (/design|product|ux|ui/.test(text)) return 'Product & Design';
-  if (/growth|sales|gtm|marketing|business|commercial/.test(text)) return 'Business & Growth';
-  if (/tech|cto|engineer|developer|ai|ml|full-stack|hardware/.test(text)) return 'Technical Co-Founder';
+  if (/\b(mentor|advisor)/.test(text)) return 'Mentor & Advisor';
+  if (/\b(investor|angel|vc)\b/.test(text)) return 'Angel / Investor';
+  if (/\b(tech\w*|cto|engineer\w*|developer|ai|ml|full-stack|hardware)\b/.test(text)) return 'Technical Co-Founder';
+  if (/\b(design\w*|product|ux|ui)\b/.test(text)) return 'Product & Design';
+  if (/\b(growth|sales|gtm|marketing|business|commercial)\b/.test(text)) return 'Business & Growth';
   return 'Domain & Operations';
 }
 
@@ -78,6 +97,7 @@ function mapCommitment(rawCommitment?: string): CommitmentType {
   return 'Full-Time';
 }
 
+/** A directory member in the studio's shape — only what the member actually said, nothing filled in. */
 function personToFounderProfile(person: Person): FounderProfile {
   return {
     id: person.id,
@@ -85,62 +105,24 @@ function personToFounderProfile(person: Person): FounderProfile {
     avatar: avatarOf(person) || createAvatarSvg(person.fullName.slice(0, 2).toUpperCase(), '#1E293B', '#334155', '#6366F1'),
     headline: person.headline || person.role,
     role: mapRoleCategory(person.role, person.headline),
-    location: person.location || `${person.city}, ${person.country}`,
-    isRemote: true,
+    location: person.location || [person.city, person.country].filter(Boolean).join(', '),
+    isRemote: /remote/i.test(`${person.location} ${person.availability}`),
     stage: mapStartupStage(person.stage),
     commitment: mapCommitment(person.commitment),
-    equityExpectation: person.checkSize || '25% - 50% (Negotiable)',
-    experienceYears: 7,
+    equityExpectation: '',
+    experienceYears: 0,
     bio: person.bio || person.headline,
-    skills: person.skills.length > 0 ? person.skills : ['Startup Execution', 'Product Strategy'],
-    lookingFor: person.lookingFor.length > 0 ? person.lookingFor : ['Co-Founder', 'Strategic Partner'],
-    pastExperience: person.company ? `${person.role} @ ${person.company}` : `${person.role} · ${person.industry || 'Tech'}`,
-    education: person.achievements?.[0] || `${person.industry || 'Technology'} Track Record`,
-    verified: person.verified !== false,
-    matchScore: 88,
-    matchHighlights: [
-      `Complementary ${person.role}`,
-      person.industry ? `${person.industry} Domain` : 'Aligned Stage',
-      person.location || 'Remote Ready',
-    ],
+    skills: person.skills,
+    lookingFor: person.lookingFor,
+    pastExperience: person.company ? `${person.role} @ ${person.company}` : [person.role, person.industry].filter(Boolean).join(' · '),
+    education: undefined,
+    verified: person.verified,
+    matchScore: 0,
+    matchHighlights: [],
     socials: {
-      linkedin: person.linkedinUrl || 'https://linkedin.com',
+      linkedin: person.linkedinUrl || undefined,
       github: person.githubUrl || undefined,
     },
-  };
-}
-
-function localNeedToWallItem(card: NeedCard, ventureName: string): NeedCardItem {
-  const missingLower = (card.missing || '').toLowerCase();
-  const category: NeedCardItem['category'] =
-    /cto|engineer|tech|dev|rust|ai|ml|react|node/.test(missingLower)
-      ? 'Engineering'
-      : /growth|sales|gtm|marketing|commercial/.test(missingLower)
-        ? 'Growth & GTM'
-        : /design|product|ux/.test(missingLower)
-          ? 'Product'
-          : /mentor|advisor/.test(missingLower)
-            ? 'Advisory'
-            : 'Operations';
-  return {
-    id: card.id,
-    title: card.missing || 'Co-Founder / Key Partner',
-    description: `${card.exists ? `What exists: ${card.exists}. ` : ''}${card.outcome ? `Target outcome: ${card.outcome}.` : ''}`.trim() || card.missing,
-    ventureName: ventureName || 'My Startup Venture',
-    category,
-    location: 'Athens / Remote',
-    isRemote: true,
-    stage: 'Pre-Seed (Traction)',
-    commitment: 'Full-Time',
-    equityOffered: card.offer || '15% - 35% Co-Founder Equity',
-    skills: (card.missing || '')
-      .split(/[,/·•]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 5),
-    applicantCount: 1,
-    createdAt: card.at ? card.at.slice(0, 10) : 'Just now',
-    status: card.status === 'closed' ? 'filled' : 'active',
   };
 }
 
@@ -168,15 +150,20 @@ export const GlobalStudioModals: React.FC = () => {
   const localRound = useStored(readRound, [keys.round]);
   const localStartup = useEntity(startupRecord);
   const localCanvas = useStored(() => readValue<Record<string, string>>(keys.canvas, {}), [keys.canvas]);
+  const localPitch = useStored(effectivePitch, [keys.pitch, keys.canvas, keys.builder, keys.startup, keys.round]);
   const savedProfiles = useStored(readSaved, [keys.saved]);
   const customStartups = useStored(
     () => readValue<StartupVenture[]>(keys.dealRoomStartups, []),
     [keys.dealRoomStartups],
   );
 
-  const [myProfileBase, setMyProfileBase] = useState<FounderProfile>(INITIAL_MY_PROFILE);
-  const [activeFounderId, setActiveFounderId] = useState<string>('fp-1');
-  const [activeStartupId, setActiveStartupId] = useState<string>('sv-1');
+  // Edits made in the studio profile modal, kept per account kind so the sample never leaks into a real account.
+  const [myProfileEdits, setMyProfileEdits] = useState<{ demo: boolean; profile: FounderProfile } | null>(null);
+  const myProfileBase = myProfileEdits && myProfileEdits.demo === isDemoMode
+    ? myProfileEdits.profile
+    : isDemoMode ? INITIAL_MY_PROFILE : BLANK_MY_PROFILE;
+  const [activeFounderId, setActiveFounderId] = useState<string | undefined>(undefined);
+  const [activeStartupId, setActiveStartupId] = useState<string>('sv-my-venture');
   const [dealRoomMode, setDealRoomMode] = useState<'view' | 'apply' | 'create'>('view');
   const [fullProfileFounder, setFullProfileFounder] = useState<FounderProfile | null>(null);
 
@@ -205,6 +192,8 @@ export const GlobalStudioModals: React.FC = () => {
     const mergedHeadline = localProfilePatch.headline || authProfile?.headline || myProfileBase.headline;
     const mergedBio = localProfilePatch.bio || authProfile?.bio || myProfileBase.bio;
     const mergedLocation = localProfilePatch.location || authProfile?.location || myProfileBase.location;
+    const mergedAvatar = localProfilePatch.avatarUrl || authProfile?.avatarUrl || myProfileBase.avatar;
+    const rawRole = localProfilePatch.role || authProfile?.role;
     const mergedSkills =
       Array.isArray(localProfilePatch.skills) && localProfilePatch.skills.length > 0
         ? localProfilePatch.skills
@@ -220,7 +209,9 @@ export const GlobalStudioModals: React.FC = () => {
     return {
       ...myProfileBase,
       name: mergedName,
+      avatar: mergedAvatar,
       headline: mergedHeadline,
+      role: rawRole || mergedHeadline ? mapRoleCategory(rawRole, mergedHeadline) : myProfileBase.role,
       bio: mergedBio,
       location: mergedLocation,
       stage: mapStartupStage(localProfilePatch.stage || authProfile?.stage || myProfileBase.stage),
@@ -230,23 +221,49 @@ export const GlobalStudioModals: React.FC = () => {
     };
   }, [myProfileBase, authProfile, localProfilePatch]);
 
-  // Unified Founders pool: combines Studio Catalog founders (fp-1..fp-6) + ALL directory/CAST founders
+  // One score everywhere: the breakdown, the picker and the full profile use the same engine as
+  // Matches cards, profiles, the dashboard and the assistant, so every number shown is the same.
+  const fitFor = useMemo(() => {
+    const viewer = fromProfile(mergeFitIntoViewer(authProfile));
+    const directory = directoryPeople();
+    return (founder: FounderProfile) => {
+      const person = directory.find((p) => p.id === founder.id);
+      const them = person
+        ? fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })
+        : fromCast({ skills: founder.skills, lookingFor: founder.lookingFor, stage: founder.stage, commitment: founder.commitment, city: founder.location.split(/[,/]/)[0]?.trim() });
+      const fit = compatibility(viewer, them);
+      return fit.score == null ? null : fit;
+    };
+  }, [authProfile]);
+
+  // Every directory member (the demo cast in the sample account, real members otherwise), best match first.
   const founders = useMemo<FounderProfile[]>(() => {
     const byId = new Map<string, FounderProfile>();
-    for (const f of FOUNDER_PROFILES) {
-      byId.set(f.id, f);
-    }
     for (const person of directoryPeople()) {
       if (!byId.has(person.id)) {
         byId.set(person.id, personToFounderProfile(person));
       }
     }
-    return enrichFoundersWithMatches(myProfile, Array.from(byId.values()));
-  }, [myProfile]);
+    return enrichFoundersWithMatches(myProfile, Array.from(byId.values()))
+      .map((founder) => {
+        const fit = fitFor(founder);
+        return {
+          ...founder,
+          matchScore: fit?.score ?? 0,
+          matchHighlights: fit
+            ? fit.dimensions
+                .filter((dim) => dim.reason && (dim.score ?? 0) >= 60)
+                .slice(0, 3)
+                .map((dim) => (lang === 'el' ? dim.reason!.el : dim.reason!.en))
+            : [],
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+  }, [myProfile, fitFor, lang]);
 
-  // Unified Startups pool: includes the user's live Venture synced with FounderTools, Workspace Canvas & Fundraising Round
+  // Unified Startups pool: the founder's own venture (Founder Tools, pitch deck, round, Need Cards),
+  // the ventures they launched here, and — in the sample account only — the sample Deal Rooms.
   const startups = useMemo<StartupVenture[]>(() => {
-    // The sample venture only on the sample account; a real account sees its own (or a neutral placeholder).
     const ventureName =
       typeof localStartup.name === 'string' && localStartup.name.trim()
         ? localStartup.name.trim()
@@ -260,49 +277,35 @@ export const GlobalStudioModals: React.FC = () => {
         ? localStartup.description.trim()
         : oneLiner;
     const readiness = typeof localStartup.readinessScore === 'number' ? localStartup.readinessScore : isDemoMode ? DEMO_VENTURE.readinessScore : 0;
-    const openNeedRoles = localNeeds
-      .filter((n) => n.status === 'open')
-      .map((n) => n.missing)
-      .filter(Boolean);
+    const rawStage = localRound.name || authProfile?.stage;
 
-    const myVenture: StartupVenture = {
-      id: 'sv-my-venture',
+    const myVenture = myVentureFrom({
       name: ventureName,
-      logo: createAvatarSvg(ventureName.slice(0, 2).toUpperCase(), '#0F172A', '#1E293B', '#10B981'),
-      tagline: oneLiner,
+      oneLiner,
       description,
-      industry: authProfile?.industry || 'CleanTech & AI',
-      stage: mapStartupStage(localRound.name || authProfile?.stage),
-      location: myProfile.location || 'Athens, Greece',
-      openRoles: openNeedRoles.length > 0 ? openNeedRoles : ['Commercial Co-Founder (GTM)', 'Lead AI Architect'],
-      equityOffer: '15% - 35% Co-Founder Equity',
-      fundingRaised: `$${(localRound.committedAmount || 450000).toLocaleString()} / $${(localRound.targetAmount || 1500000).toLocaleString()} (${localRound.instrument || 'SAFE'})`,
-      teamSize: '3 Founders',
+      industry: authProfile?.industry || '',
+      stage: rawStage ? mapStartupStage(rawStage) : undefined,
+      location: myProfile.location || '',
+      openNeeds: localNeeds,
+      round: localRound,
+      readiness,
       founderName: myProfile.name,
       founderAvatar: myProfile.avatar,
-      tractionMetric: `Readiness ${readiness}/100 · Burn $${(localRound.monthlyBurn || 22000).toLocaleString()}/mo`,
-      verified: true,
-      pitchDeck: {
-        problem: localCanvas.problem || 'Fragmented early-stage operations and slow co-founder / investor alignment.',
-        solution: localCanvas.solution || oneLiner,
-        marketSize: '$14B addressable European & global venture ecosystem.',
-        businessModel: localCanvas.uvp || 'B2B SaaS subscription + enterprise licensing.',
-        tractionDetails: `$${(localRound.committedAmount || 450000).toLocaleString()} committed in ${localRound.name} round · ${readiness}/100 Readiness Index.`,
-        useOfFunds: `Raising $${(localRound.targetAmount || 1500000).toLocaleString()} (${localRound.instrument}) at $${(localRound.valuationCap || 12000000).toLocaleString()} cap.`,
-      },
-      applicationsCount: openNeedRoles.length + 2,
-    };
+      logo: createAvatarSvg(ventureName.slice(0, 2).toUpperCase(), '#0F172A', '#1E293B', '#10B981'),
+      pitch: localPitch,
+      canvas: localCanvas,
+    });
 
     const seen = new Set<string>(['sv-my-venture']);
     const merged: StartupVenture[] = [myVenture];
-    for (const s of [...customStartups, ...STARTUP_VENTURES]) {
+    for (const s of [...customStartups, ...(isDemoMode ? STARTUP_VENTURES : [])]) {
       if (!seen.has(s.id)) {
         seen.add(s.id);
         merged.push(s);
       }
     }
     return merged;
-  }, [localStartup, localRound, localCanvas, localNeeds, authProfile, myProfile, customStartups, isDemoMode, lang]);
+  }, [localStartup, localRound, localCanvas, localPitch, localNeeds, authProfile, myProfile, customStartups, isDemoMode, lang]);
 
   // Unified Need Cards: combines localLists Need Cards (from AI Chat / Network page) + Studio Need Cards
   const needCards = useMemo<NeedCardItem[]>(() => {
@@ -310,20 +313,16 @@ export const GlobalStudioModals: React.FC = () => {
       typeof localStartup.name === 'string' && localStartup.name.trim()
         ? localStartup.name.trim()
         : isDemoMode ? DEMO_VENTURE.name : (lang === 'el' ? 'Το venture σου' : 'Your venture');
-    const convertedLocal = localNeeds.map((c) => localNeedToWallItem(c, ventureName));
-    const localIds = new Set(convertedLocal.map((c) => c.id));
-    return [...convertedLocal, ...NEED_CARD_ITEMS.filter((c) => !localIds.has(c.id))];
+    return wallCards(localNeeds, ventureName, isDemoMode, lang === 'el' ? 'el' : 'en');
   }, [localNeeds, localStartup, isDemoMode, lang]);
 
-  const savedFounderIds = useMemo(() => {
-    return Array.from(new Set(['fp-1', 'fp-2', ...savedProfiles.map((p) => p.id)]));
-  }, [savedProfiles]);
+  const savedFounderIds = useMemo(() => savedProfiles.map((p) => p.id), [savedProfiles]);
+  const ownStartupIds = useMemo(() => new Set(['sv-my-venture', ...customStartups.map((s) => s.id)]), [customStartups]);
 
+  // Each opening starts on the person asked for, or on the best match when nobody was named.
   useEffect(() => {
-    if (selectedFounderId) {
-      setActiveFounderId(selectedFounderId);
-    }
-  }, [selectedFounderId]);
+    if (matchBreakdownModalOpen) setActiveFounderId(selectedFounderId ?? undefined);
+  }, [matchBreakdownModalOpen, selectedFounderId]);
 
   useEffect(() => {
     if (selectedStartupId === 'create') {
@@ -334,34 +333,27 @@ export const GlobalStudioModals: React.FC = () => {
     }
   }, [selectedStartupId]);
 
+  // The picker and the default are co-founder candidates — the same pool Matches ranks — best first.
+  const topMatches = useMemo(() => {
+    const poolIds = new Set(cofounderPool().map((person) => person.id));
+    return founders.filter((f) => poolIds.has(f.id)).slice(0, 10);
+  }, [founders]);
   const activeFounder =
     founders.find((f) => f.id === activeFounderId) ||
-    founders.find((f) => f.name.toLowerCase().includes(activeFounderId.toLowerCase())) ||
+    (activeFounderId ? founders.find((f) => f.name.toLowerCase().includes(activeFounderId.toLowerCase())) : undefined) ||
+    topMatches[0] ||
     founders[0] ||
     null;
+  const pickerFounders = activeFounder && !topMatches.some((f) => f.id === activeFounder.id)
+    ? [activeFounder, ...topMatches.slice(0, 9)]
+    : topMatches;
   const activeStartup =
     startups.find((s) => s.id === activeStartupId) || startups[0] || null;
 
-  // One score everywhere: the breakdown uses the same engine as Matches cards, profiles,
-  // the dashboard and the assistant, so the number in the modal equals the badge clicked.
-  const fitFor = useMemo(() => {
-    const viewer = fromProfile(mergeFitIntoViewer(authProfile));
-    const directory = directoryPeople();
-    return (founder: FounderProfile) => {
-      const person = directory.find((p) => p.id === founder.id);
-      const them = person
-        ? fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })
-        : fromCast({ skills: founder.skills, lookingFor: founder.lookingFor, stage: founder.stage, commitment: founder.commitment, city: founder.location.split(/[,/]/)[0]?.trim() });
-      const fit = compatibility(viewer, them);
-      return fit.score == null ? null : fit;
-    };
-  }, [authProfile]);
   const activeFit = useMemo(() => (activeFounder ? fitFor(activeFounder) : null), [activeFounder, fitFor]);
-  /** The picker chips show the same engine's number as the modal they open — never the older heuristic. */
-  const pickerScores = useMemo(() => new Map(founders.slice(0, 10).map((f) => [f.id, fitFor(f)?.score ?? f.matchScore])), [founders, fitFor]);
 
   const handleSaveMyProfile = (updated: FounderProfile) => {
-    setMyProfileBase(updated);
+    setMyProfileEdits({ demo: isDemoMode, profile: updated });
     writeProfileLocal({
       fullName: updated.name,
       headline: updated.headline,
@@ -377,32 +369,26 @@ export const GlobalStudioModals: React.FC = () => {
       href: '/profile',
     });
     toastSuccess(
-      t('Profile & 6-Axis Scores Updated', 'Το προφίλ & τα σκορ 6 αξόνων ενημερώθηκαν')
+      t('Profile updated — scores recalculated', 'Το προφίλ ενημερώθηκε — τα σκορ υπολογίστηκαν ξανά')
     );
   };
 
-  const handleSubmitStartupApplication = (
+  const handleSubmitStartupApplication = async (
     startupId: string,
     role: string,
     pitchNote: string
   ) => {
     const ventureTitle = activeStartup?.name || startupId;
     trackApplication(`app-deal-${Date.now()}`, `${ventureTitle} — ${role}`, '/fundraising');
-    const founderTarget =
-      directoryPeople().find((p) => p.fullName.toLowerCase() === (activeStartup?.founderName || '').toLowerCase()) ||
-      directoryPeople()[0];
-    if (founderTarget && pitchNote.trim()) {
-      const conv = ensureChatConversation(founderTarget.id);
-      appendChatMessage({
-        id: `msg-deal-${Date.now()}`,
-        conversationId: conv.id,
-        senderId: 'demo-user',
-        senderName: myProfile.name || 'You',
-        body: pitchNote.trim(),
-        createdAt: new Date().toISOString(),
-        readStatus: true,
-      });
-    }
+    const founderTarget = directoryPeople().find(
+      (p) => p.fullName.toLowerCase() === (activeStartup?.founderName || '').toLowerCase(),
+    );
+    const note = pitchNote.trim();
+    const bridge = messagingBridge();
+    const sendResult = founderTarget && note && bridge
+      ? await bridge.sendToPerson(founderTarget.id, note)
+      : null;
+    const noteSent = Boolean(sendResult?.ok);
     logActivity({
       kind: 'application',
       title: `Applied for ${role} at ${ventureTitle}`,
@@ -412,16 +398,22 @@ export const GlobalStudioModals: React.FC = () => {
     setDealRoomModalOpen(false);
     toastSuccess(
       t('Role Application Sent', 'Η αίτηση ρόλου στάλθηκε'),
-      t(
-        `Applied for ${role}. Conversation thread updated in Messages.`,
-        `Υποβλήθηκε αίτηση για ${role}. Η συνομιλία ενημερώθηκε στα Μηνύματα.`
-      )
+      noteSent && founderTarget
+        ? t(
+          `Applied for ${role}. Your note is in your conversation with ${founderTarget.fullName} in Messages.`,
+          `Υποβλήθηκε αίτηση για ${role}. Το σημείωμά σου βρίσκεται στη συνομιλία με ${founderTarget.fullName} στα Μηνύματα.`,
+        )
+        : t(
+          `Applied for ${role}.${note ? ` ${founderTarget?.fullName || 'The founder'} can't be messaged here, so your note wasn't sent.` : ''}`,
+          `Υποβλήθηκε αίτηση για ${role}.${note ? ` Δεν είναι δυνατό να σταλεί μήνυμα σε ${founderTarget?.fullName || 'αυτόν τον ιδρυτή'} εδώ, οπότε το σημείωμά σου δεν στάλθηκε.` : ''}`,
+        )
     );
   };
 
+  // Publishes exactly what the founder typed; nothing is filled in on their behalf.
   const handleCreateStartup = (startupData: Partial<StartupVenture>) => {
     const newId = `sv-${Date.now()}`;
-    const name = startupData.name?.trim() || 'New Venture';
+    const name = startupData.name?.trim() || (lang === 'el' ? 'Νέο venture' : 'New venture');
     const tagline = startupData.tagline?.trim() || '';
     const created: StartupVenture = {
       id: newId,
@@ -429,19 +421,19 @@ export const GlobalStudioModals: React.FC = () => {
       logo: createAvatarSvg(name.slice(0, 2).toUpperCase(), '#0F172A', '#1E293B', '#6366F1'),
       tagline,
       description: startupData.description || tagline,
-      industry: startupData.industry || 'AI & B2B SaaS',
-      stage: startupData.stage || 'Prototype / MVP',
-      location: startupData.location || myProfile.location || 'Athens, Greece',
-      openRoles: startupData.openRoles?.length ? startupData.openRoles : ['Co-Founder'],
-      equityOffer: startupData.equityOffer || '25% - 40%',
-      fundingRaised: startupData.fundingRaised || 'Pre-Seed',
-      teamSize: '2 Founders',
+      industry: startupData.industry?.trim() || '',
+      stage: startupData.stage || ('' as StartupStage),
+      location: startupData.location?.trim() || myProfile.location || '',
+      openRoles: startupData.openRoles ?? [],
+      equityOffer: startupData.equityOffer?.trim() || '',
+      fundingRaised: startupData.fundingRaised?.trim() || '',
+      teamSize: '',
       founderName: myProfile.name,
       founderAvatar: myProfile.avatar,
-      tractionMetric: startupData.tractionMetric || 'Active pilot',
-      verified: true,
+      tractionMetric: startupData.tractionMetric?.trim() || '',
+      verified: false,
       pitchDeck: startupData.pitchDeck,
-      applicationsCount: 1,
+      applicationsCount: 0,
     };
     writeValue(keys.dealRoomStartups, [created, ...customStartups]);
     startupRecord.write({
@@ -479,10 +471,16 @@ export const GlobalStudioModals: React.FC = () => {
     const newId = `need-${Date.now()}`;
     upsertNeed({
       id: newId,
-      exists: `${card.ventureName} (${card.stage}) — ${card.description}`,
-      outcome: `Scale ${card.category} deliverables (${card.commitment})`,
-      missing: `${card.title}${card.skills.length ? ` (${card.skills.join(', ')})` : ''}`,
+      exists: [card.ventureName, card.stage ? `(${card.stage})` : '', card.description ? `— ${card.description}` : ''].filter(Boolean).join(' '),
+      outcome: card.outcome || '',
+      missing: card.title,
       offer: card.equityOffered,
+      category: card.category,
+      stage: card.stage,
+      commitment: card.commitment,
+      location: card.location,
+      remote: card.isRemote,
+      skills: card.skills,
       status: 'open',
       at: new Date().toISOString(),
     });
@@ -493,32 +491,28 @@ export const GlobalStudioModals: React.FC = () => {
       href: '/network?tab=needs',
     });
     toastSuccess(
-      t('Need Card Published & Synced', 'Η κάρτα ανάγκης δημοσιεύθηκε & συγχρονίστηκε')
+      t('Need Card saved — it is on the wall and in Network', 'Η κάρτα ανάγκης αποθηκεύτηκε — βρίσκεται στον πίνακα και στο Δίκτυο')
     );
   };
 
   const handleExpressInterestNeed = (card: NeedCardItem) => {
-    logActivity({
-      kind: 'request',
-      title: `Expressed interest in: ${card.title} (${card.ventureName})`,
-      titleEl: `Εκδήλωση ενδιαφέροντος: ${card.title} (${card.ventureName})`,
-      href: '/network?tab=needs',
-    });
     toastSuccess(
-      t('Interest Sent to Founder', 'Το ενδιαφέρον στάλθηκε στον ιδρυτή'),
-      card.title
+      isDemoMode
+        ? t('Marked as interested. This is a sample card, so no founder is notified.', 'Σημειώθηκε ενδιαφέρον. Είναι δείγμα κάρτας, οπότε δεν ειδοποιείται κανένας ιδρυτής.')
+        : t('Marked as interested. It is saved on your account; the founder is not notified.', 'Σημειώθηκε ενδιαφέρον. Αποθηκεύτηκε στον λογαριασμό σου· ο ιδρυτής δεν ειδοποιείται.'),
+      card.title,
     );
   };
 
   return (
     <>
-      {matchBreakdownModalOpen && (
-        <div role="toolbar" aria-label={lang === 'el' ? 'Επιλογή υποψηφίου' : 'Inspect candidate'} className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 border border-stone-200 shadow-lg backdrop-blur-md max-w-[95vw] overflow-x-auto">
-          <span className="text-xs font-semibold text-stone-500 flex items-center gap-1 px-2 shrink-0">
+      {matchBreakdownModalOpen && pickerFounders.length > 1 && (
+        <div role="toolbar" aria-label={lang === 'el' ? 'Επιλογή υποψηφίου' : 'Inspect candidate'} className="fixed top-3 inset-x-0 mx-auto w-fit z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/95 border border-border shadow-lg backdrop-blur-md max-w-[95vw] overflow-x-auto">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1 px-2 shrink-0">
             <BarChart2 className="w-3.5 h-3.5" />
-            {lang === 'el' ? 'Επιλογή Υποψηφίου:' : 'Inspect Candidate:'}
+            {lang === 'el' ? 'Κορυφαίες αντιστοιχίσεις:' : 'Top matches:'}
           </span>
-          {founders.slice(0, 10).map((f) => (
+          {pickerFounders.map((f) => (
             <button
               key={f.id}
               type="button"
@@ -526,11 +520,11 @@ export const GlobalStudioModals: React.FC = () => {
               aria-pressed={activeFounder?.id === f.id}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all shrink-0 tabular-nums ${
                 activeFounder?.id === f.id
-                  ? 'bg-stone-900 text-white shadow-sm'
-                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                  ? 'bg-foreground text-background shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               }`}
             >
-              {f.name.split(' ')[0]} · {pickerScores.get(f.id) ?? f.matchScore}%
+              {f.name.split(' ')[0]} · {f.matchScore > 0 ? `${f.matchScore}%` : '—'}
             </button>
           ))}
         </div>
@@ -583,12 +577,13 @@ export const GlobalStudioModals: React.FC = () => {
             removeSaved(id);
           } else {
             const target = founders.find((f) => f.id === id);
+            const person = directoryPeople().find((p) => p.id === id);
             if (target) {
               saveProfile({
                 id: target.id,
                 fullName: target.name,
-                role: target.role,
-                industry: 'Tech',
+                role: person?.role || target.role,
+                industry: person?.industry || '',
                 location: target.location,
                 note: target.headline,
               });
@@ -599,23 +594,24 @@ export const GlobalStudioModals: React.FC = () => {
       />
 
       {dealRoomModalOpen && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/95 border border-blue-500/40 shadow-xl backdrop-blur-md max-w-[95vw] overflow-x-auto">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-300 flex items-center gap-1 px-2 shrink-0">
+        <div role="toolbar" aria-label="Deal Rooms" className="fixed top-3 inset-x-0 mx-auto w-fit z-[120] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/95 border border-border shadow-lg backdrop-blur-md max-w-[95vw] overflow-x-auto">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1 px-2 shrink-0">
             <Briefcase className="w-3.5 h-3.5" />
-            {lang === 'el' ? 'Deal Rooms:' : 'Deal Rooms:'}
+            Deal Rooms:
           </span>
           {startups.map((s) => (
             <button
               key={s.id}
               type="button"
+              aria-pressed={dealRoomMode !== 'create' && activeStartup?.id === s.id}
               onClick={() => {
                 setActiveStartupId(s.id);
                 setDealRoomMode('view');
               }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all shrink-0 ${
                 dealRoomMode !== 'create' && activeStartup?.id === s.id
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-foreground text-background shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               }`}
             >
               {s.name}
@@ -623,21 +619,24 @@ export const GlobalStudioModals: React.FC = () => {
           ))}
           <button
             type="button"
+            aria-pressed={dealRoomMode === 'create'}
             onClick={() => setDealRoomMode('create')}
             className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all shrink-0 ${
               dealRoomMode === 'create'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'border border-border text-foreground hover:bg-accent'
             }`}
           >
             <PlusCircle className="w-3.5 h-3.5" />
-            {lang === 'el' ? '+ Νέα Startup' : '+ Launch Venture'}
+            {lang === 'el' ? 'Νέο venture' : 'Launch a venture'}
           </button>
         </div>
       )}
       <StartupDealRoomModal
         startup={activeStartup}
         mode={dealRoomModalOpen ? dealRoomMode : null}
+        isOwn={activeStartup ? ownStartupIds.has(activeStartup.id) : false}
+        defaultLocation={myProfile.location}
         onClose={() => setDealRoomModalOpen(false)}
         onSubmitApplication={handleSubmitStartupApplication}
         onCreateStartup={handleCreateStartup}
@@ -655,31 +654,33 @@ export const GlobalStudioModals: React.FC = () => {
             role="dialog"
             data-type-scale="app"
             aria-modal="true"
-            aria-label={lang === 'el' ? 'Πίνακας Αναγκών & Ρόλων Startup' : 'Startup Role Needs & Co-Founder Bounties'}
+            aria-label={lang === 'el' ? 'Πίνακας Καρτών Ανάγκης' : 'Need Cards wall'}
             className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-card text-foreground border border-border shadow-2xl p-4 sm:p-6"
           >
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
                   <Layers className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-base font-semibold text-foreground">
-                    {lang === 'el'
-                      ? 'Πίνακας Αναγκών & Ρόλων Startup (Need Cards Wall)'
-                      : 'Startup Role Needs & Co-Founder Bounties (Need Cards Wall)'}
+                    {lang === 'el' ? 'Πίνακας Καρτών Ανάγκης' : 'Need Cards wall'}
                   </h2>
                   <p className="text-xs text-muted-foreground">
                     {lang === 'el'
-                      ? 'Συγχρονισμένο σε πραγματικό χρόνο με το AI Co-Pilot (/need) και το Network'
-                      : 'Synchronized in real time with AI Co-Pilot (/need) and Network'}
+                      ? isDemoMode
+                        ? 'Οι κάρτες σου (ίδιες με το /need και το Δίκτυο) και κάρτες δείγματος.'
+                        : 'Οι κάρτες σου — ίδιες με το /need του βοηθού και το Δίκτυο.'
+                      : isDemoMode
+                        ? 'Your cards (the same as /need and Network) plus sample cards.'
+                        : 'Your cards — the same list as the assistant’s /need and Network.'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setNeedWallModalOpen(false)}
-                aria-label={lang === 'el' ? 'Close' : 'Κλείσιμο'}
+                aria-label={lang === 'el' ? 'Κλείσιμο' : 'Close'}
                 className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -690,6 +691,8 @@ export const GlobalStudioModals: React.FC = () => {
               lang={lang === 'el' ? 'el' : 'en'}
               onExpressInterest={handleExpressInterestNeed}
               onCreateNeedCard={handleCreateNeedCard}
+              defaultLocation={myProfile.location}
+              defaultVenture={startups[0]?.name}
             />
           </div>
         </div>

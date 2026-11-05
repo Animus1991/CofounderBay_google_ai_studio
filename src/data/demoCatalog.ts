@@ -141,6 +141,18 @@ export const DEMO_PIPELINE = [
   { investorId: 'inv_5', name: 'Bessemer Venture', stage: 'Passed', notes: 'Too early for their current fund; revisit after the pilot.', checkSize: '$2M', nextStep: 'Re-engage after 3 pilot sites', nextStepEl: 'Επανεπικοινωνία μετά από 3 πιλοτικά κτίρια', dueInDays: 60 },
 ] as const;
 
+/**
+ * A sample next step in the reader's language. The sample pipeline is stored in the
+ * language it was created in; an untouched sample step is shown in the other language
+ * when the reader switches. Anything the founder typed is returned as written.
+ */
+export function nextStepIn(text: string | undefined, lang: Lang): string {
+  if (!text) return '';
+  const sample = DEMO_PIPELINE.find((item) => item.nextStep === text || item.nextStepEl === text);
+  if (!sample) return text;
+  return lang === 'el' ? sample.nextStepEl : sample.nextStep;
+}
+
 /** The sample pipeline as stored rows, dated from today (local day), with a first stage-history entry. */
 export function demoPipeline(lang: Lang = 'en', now: Date = new Date()) {
   const at = now.toISOString();

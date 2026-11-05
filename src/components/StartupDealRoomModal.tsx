@@ -9,6 +9,7 @@ import {
   Layers,
   DollarSign,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { StartupVenture, StartupStage } from '../types';
 import { FactLine } from './FactLine';
 
@@ -20,6 +21,10 @@ interface StartupDealRoomModalProps {
   onSubmitApplication: (startupId: string, role: string, pitchNote: string) => void;
   onCreateStartup: (startupData: Partial<StartupVenture>) => void;
   lang: 'en' | 'el';
+  /** The founder's own Deal Room: shown for review, with no "apply" form. */
+  isOwn?: boolean;
+  /** Prefills Location in "Launch a venture". */
+  defaultLocation?: string;
 }
 
 export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
@@ -30,25 +35,27 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
   onSubmitApplication,
   onCreateStartup,
   lang,
+  isOwn = false,
+  defaultLocation = '',
 }) => {
   const [activeRole, setActiveRole] = useState(selectedRole || '');
   const [pitchNote, setPitchNote] = useState('');
 
-  // Create Venture State
+  // Create Venture State: empty fields with examples as placeholders; only what the founder types is published.
   const [name, setName] = useState('');
   const [tagline, setTagline] = useState('');
-  const [industry, setIndustry] = useState('AI & B2B SaaS');
+  const [industry, setIndustry] = useState('');
   const [stage, setStage] = useState<StartupStage>('Prototype / MVP');
-  const [location] = useState('Athens, Greece / Remote');
-  const [equityOffer, setEquityOffer] = useState('25% - 40%');
-  const [fundingRaised, setFundingRaised] = useState('€250,000 Pre-Seed');
-  const [tractionMetric, setTractionMetric] = useState('3 enterprise design partners onboarded');
-  const [openRolesText, setOpenRolesText] = useState('CTO / Technical Co-Founder, Head of GTM');
+  const [location, setLocation] = useState(defaultLocation);
+  const [equityOffer, setEquityOffer] = useState('');
+  const [fundingRaised, setFundingRaised] = useState('');
+  const [tractionMetric, setTractionMetric] = useState('');
+  const [openRolesText, setOpenRolesText] = useState('');
   const [description] = useState('');
   const [problem, setProblem] = useState('');
   const [solution, setSolution] = useState('');
-  const [marketSize] = useState('€8.5B European addressable market');
-  const [businessModel] = useState('Annual B2B SaaS subscription ($18k ACV)');
+  const [marketSize, setMarketSize] = useState('');
+  const [businessModel, setBusinessModel] = useState('');
 
   useEffect(() => {
     if (startup) {
@@ -86,12 +93,12 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
           .map((r) => r.trim())
           .filter(Boolean),
         pitchDeck: {
-          problem: problem.trim() || description.trim() || tagline.trim(),
+          problem: problem.trim() || description.trim(),
           solution: solution.trim() || tagline.trim(),
-          marketSize,
-          businessModel,
-          tractionDetails: tractionMetric,
-          useOfFunds: 'Scale core engineering & close initial enterprise pilot contracts.',
+          marketSize: marketSize.trim(),
+          businessModel: businessModel.trim(),
+          tractionDetails: tractionMetric.trim(),
+          useOfFunds: '',
         },
       });
       onClose();
@@ -151,9 +158,9 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. FinTech' : 'π.χ. FinTech'}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -195,9 +202,9 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={equityOffer}
                   onChange={(e) => setEquityOffer(e.target.value)}
+                  placeholder="25% – 40%"
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -207,9 +214,9 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={fundingRaised}
                   onChange={(e) => setFundingRaised(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. Bootstrapped' : 'π.χ. Ίδια κεφάλαια'}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -218,13 +225,13 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-foreground mb-1">
-                  {lang === 'en' ? 'Verified Traction Metric' : 'Δείκτης Traction'}
+                  {lang === 'en' ? 'Traction so far' : 'Traction μέχρι τώρα'}
                 </label>
                 <input
                   type="text"
-                  required
                   value={tractionMetric}
                   onChange={(e) => setTractionMetric(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. 3 design partners' : 'π.χ. 3 πιλοτικοί πελάτες'}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -234,9 +241,51 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  required
                   value={openRolesText}
                   onChange={(e) => setOpenRolesText(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. CTO, Head of Growth' : 'π.χ. CTO, Υπεύθυνος Ανάπτυξης'}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label htmlFor="venture-location" className="block font-semibold text-foreground mb-1">
+                  {lang === 'en' ? 'Location' : 'Τοποθεσία'}
+                </label>
+                <input
+                  id="venture-location"
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. Athens / Remote' : 'π.χ. Αθήνα / Remote'}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="venture-market" className="block font-semibold text-foreground mb-1">
+                  {lang === 'en' ? 'Market size' : 'Μέγεθος αγοράς'}
+                </label>
+                <input
+                  id="venture-market"
+                  type="text"
+                  value={marketSize}
+                  onChange={(e) => setMarketSize(e.target.value)}
+                  placeholder={lang === 'en' ? 'Your own estimate' : 'Η δική σου εκτίμηση'}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="venture-model" className="block font-semibold text-foreground mb-1">
+                  {lang === 'en' ? 'Business model' : 'Επιχειρηματικό μοντέλο'}
+                </label>
+                <input
+                  id="venture-model"
+                  type="text"
+                  value={businessModel}
+                  onChange={(e) => setBusinessModel(e.target.value)}
+                  placeholder={lang === 'en' ? 'e.g. B2B subscription' : 'π.χ. Συνδρομή B2B'}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
                 />
               </div>
@@ -294,11 +343,14 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
   const deck = startup.pitchDeck || {
     problem: startup.description,
     solution: startup.tagline,
-    marketSize: '€10B+ global market opportunity',
-    businessModel: 'B2B recurring enterprise licensing',
+    marketSize: '',
+    businessModel: '',
     tractionDetails: startup.tractionMetric,
-    useOfFunds: 'Expand engineering team and accelerate commercial GTM.',
+    useOfFunds: '',
   };
+  const notShared = lang === 'en' ? 'Not shared yet' : 'Δεν έχει κοινοποιηθεί ακόμη';
+  const shown = (text: string | undefined) => (text && text.trim() ? text : null);
+  const marketLine = [deck.marketSize, deck.businessModel].filter((part) => part && part.trim()).join(' — ');
 
   const handleApplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,9 +384,9 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <h3 className="text-sm sm:text-base font-semibold text-foreground truncate">{startup.name} — Deal Room</h3>
-                <span className="text-xs text-muted-foreground">· {startup.stage}</span>
+                {startup.stage && <span className="text-xs text-muted-foreground">· {startup.stage}</span>}
               </div>
-              <FactLine items={[startup.industry, startup.location, `Equity: ${startup.equityOffer}`]} />
+              <FactLine items={[startup.industry, startup.location, startup.fundingRaised, startup.equityOffer ? `Equity: ${startup.equityOffer}` : null]} />
             </div>
           </div>
 
@@ -355,7 +407,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 <Target className="h-3.5 w-3.5 text-primary" />
                 <span>01. {lang === 'en' ? 'Problem Statement' : 'Πρόβλημα Αγοράς'}</span>
               </div>
-              <p className="text-muted-foreground leading-relaxed">{deck.problem}</p>
+              <p className="text-muted-foreground leading-relaxed">{shown(deck.problem) ?? <span className="italic">{notShared}</span>}</p>
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
@@ -363,15 +415,15 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 <span>02. {lang === 'en' ? 'Product & Solution' : 'Λύση & Προϊόν'}</span>
               </div>
-              <p className="text-muted-foreground leading-relaxed">{deck.solution}</p>
+              <p className="text-muted-foreground leading-relaxed">{shown(deck.solution) ?? <span className="italic">{notShared}</span>}</p>
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
               <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                <span>03. {lang === 'en' ? 'Verified Traction' : 'Επαληθευμένη Δυναμική'}</span>
+                <span>03. Traction</span>
               </div>
-              <p className="text-muted-foreground leading-relaxed">{deck.tractionDetails}</p>
+              <p className="text-muted-foreground leading-relaxed">{shown(deck.tractionDetails) ?? <span className="italic">{notShared}</span>}</p>
             </div>
 
             <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
@@ -380,11 +432,34 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 <span>04. {lang === 'en' ? 'Market & Business Model' : 'Αγορά & Μοντέλο Εσόδων'}</span>
               </div>
               <p className="text-muted-foreground leading-relaxed">
-                {deck.marketSize} — {deck.businessModel}
+                {marketLine || <span className="italic">{notShared}</span>}
               </p>
             </div>
           </div>
 
+          {isOwn ? (
+            <div className="rounded-xl border border-border bg-background/50 p-4 space-y-2" data-testid="own-deal-room">
+              <p className="font-semibold text-foreground">
+                {lang === 'en' ? 'This is your Deal Room' : 'Αυτό είναι το Deal Room σου'}
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                {lang === 'en'
+                  ? 'It is drawn from your pitch deck, your round and your open Need Cards. Empty sections show what investors and candidates would miss.'
+                  : 'Προκύπτει από το pitch deck, τον γύρο και τις ανοιχτές Κάρτες Ανάγκης σου. Οι κενές ενότητες δείχνουν τι θα έλειπε σε επενδυτές και υποψηφίους.'}
+              </p>
+              {startup.openRoles.length > 0 && (
+                <FactLine items={startup.openRoles} label={lang === 'en' ? 'Open roles' : 'Ανοιχτοί ρόλοι'} />
+              )}
+              <div className="flex flex-wrap justify-end gap-2 pt-1">
+                <Link to="/network?tab=needs" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3.5 text-xs font-medium text-foreground hover:bg-accent">
+                  {lang === 'en' ? 'Edit open roles' : 'Επεξεργασία ρόλων'}
+                </Link>
+                <Link to="/founder-tools" onClick={onClose} className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                  {lang === 'en' ? 'Edit pitch deck' : 'Επεξεργασία pitch deck'}
+                </Link>
+              </div>
+            </div>
+          ) : (
           <form
             onSubmit={handleApplySubmit}
             className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3"
@@ -398,9 +473,11 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                     : 'Υποβολή Υποψηφιότητας για Θέση Συνιδρυτή'}
                 </span>
               </span>
-              <span className="font-mono tabular-nums text-muted-foreground">
-                {startup.applicationsCount || 4} {lang === 'en' ? 'candidates in review' : 'υποψήφιοι'}
-              </span>
+              {(startup.applicationsCount ?? 0) > 0 && (
+                <span className="font-mono tabular-nums text-muted-foreground">
+                  {startup.applicationsCount} {lang === 'en' ? 'candidates in review' : 'υποψήφιοι σε αξιολόγηση'}
+                </span>
+              )}
             </div>
 
             <div>
@@ -455,12 +532,13 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
                 <Send className="h-3.5 w-3.5" />
                 <span>
                   {lang === 'en'
-                    ? 'Submit Pitch & Open Chat'
-                    : 'Αποστολή Πρότασης & Άνοιγμα Chat'}
+                    ? 'Send application'
+                    : 'Αποστολή αίτησης'}
                 </span>
               </button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </div>

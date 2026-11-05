@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { followUps, keys, readRound, readValue, writeValue, type FollowUp } from './localLists';
 import { useToast } from '../context/ToastContext';
 import { useT } from './language';
+import { nextStepIn } from '../data/demoCatalog';
 
 export const ALERTED_KEY = keys.followUpAlerts;
 
@@ -48,7 +49,9 @@ export function useFollowUpAlerts(enabled: boolean) {
         title: fresh.length === 1
           ? t(`${first.name} is waiting on you`, `Η/Ο ${first.name} περιμένει από σένα`)
           : t(`${fresh.length} investor follow-ups are overdue`, `${fresh.length} follow-ups με επενδυτές είναι εκπρόθεσμα`),
-        description: fresh.length === 1 ? first.nextStep : fresh.map((item) => item.name).join(', '),
+        description: fresh.length === 1
+          ? t(nextStepIn(first.nextStep, 'en'), nextStepIn(first.nextStep, 'el'))
+          : fresh.map((item) => item.name).join(', '),
         duration: 10_000,
         action: { label: t('Open CRM', 'Άνοιγμα CRM'), run: () => navigate('/fundraising?tab=crm') },
       });

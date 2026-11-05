@@ -221,6 +221,7 @@ export const keys = {
   tasks: 'cfb.workspaceTasks',
   invites: 'cfb.founderInvites',
   needs: 'cfb.needCards',
+  needInterest: 'cfb.needInterest',
   openTo: 'cfb.openTo',
   inbox: 'cfb.inbox',
   plan: 'cfb.plan',
@@ -733,6 +734,7 @@ export function addRoomFile(file: RoomFile): RoomFile[] {
 // ── Notification preferences ───────────────────────────────────────────────
 
 export type NotificationPrefs = {
+  needs: boolean;
   matches: boolean;
   messages: boolean;
   community: boolean;
@@ -744,6 +746,7 @@ export type NotificationPrefs = {
 };
 
 const defaultNotes = (): NotificationPrefs => ({
+  needs: false,
   matches: true,
   messages: true,
   community: false,
@@ -1194,7 +1197,24 @@ export type NeedCard = {
   createdAt?: string;
   version?: number;
   history?: NeedHistory[];
+  category?: 'Engineering' | 'Growth & GTM' | 'Product' | 'Advisory' | 'Operations';
+  stage?: import('../types').StartupStage;
+  commitment?: import('../types').CommitmentType;
+  location?: string;
+  remote?: boolean;
+  skills?: string[];
 };
+
+export function readNeedInterest(): string[] {
+  return readJson<string[]>(keys.needInterest, []);
+}
+
+export function toggleNeedInterest(id: string): string[] {
+  const current = readNeedInterest();
+  const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+  writeJson(keys.needInterest, next);
+  return next;
+}
 
 const NEED_FIELDS: NeedField[] = ['exists', 'outcome', 'missing', 'offer'];
 

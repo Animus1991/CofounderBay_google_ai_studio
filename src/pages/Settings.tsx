@@ -346,6 +346,7 @@ export default function Settings() {
   ];
 
   const emailNotes: { id: keyof NotificationPrefs; title: string; desc: string }[] = [
+    { id: "needs", title: t("Need Cards that fit you", "Κάρτες ανάγκης που σου ταιριάζουν"), desc: t("In Notifications, when an open Need Card asks for a skill you have.", "Στις Ειδοποιήσεις, όταν μια ανοιχτή κάρτα ζητά δεξιότητα που έχεις.") },
     { id: "matches", title: t("New match alerts", "Νέες αντιστοιχίσεις"), desc: t("When a compatible co-founder joins.", "Όταν μπαίνει συμβατός συνιδρυτής.") },
     { id: "messages", title: t("Direct messages", "Άμεσα μηνύματα"), desc: t("An email when someone writes to you.", "Email όταν σου γράφει κάποιος.") },
     { id: "community", title: t("Community activity", "Κοινότητες"), desc: t("Posts and replies in communities you joined.", "Δημοσιεύσεις στις κοινότητες που ακολουθείς.") },

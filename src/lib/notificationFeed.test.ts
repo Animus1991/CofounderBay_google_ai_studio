@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { noteGroup, useNotificationFeed } from './notificationFeed';
-import { logActivity, resetAllLists, scopedKey, setDataScope } from './localLists';
+import { logActivity, readNotificationPrefs, resetAllLists, scopedKey, setDataScope, writeNotificationPrefs } from './localLists';
 
 let cloudItems: { id: string; type: string; title: string; titleEl: string; body: string; bodyEl: string; read: boolean; createdAt: number }[] = [];
 
@@ -79,6 +79,27 @@ describe('notification feed', () => {
     expect(result.current.items.map((note) => note.id)).not.toContain('demo-2');
     expect(localStorage.getItem(scopedKey('cb_hidden_notifications'))).toBeNull();
     expect(localStorage.getItem(scopedKey('cfb.hiddenNotifications'))).toContain('demo-2');
+  });
+
+  it('Need Card alerts list only cards asking for a skill on the profile, and stop when switched off', () => {
+    const { result } = renderHook(() => useNotificationFeed());
+    expect(result.current.items.some((note) => note.id.startsWith('need-fit-'))).toBe(false);
+    act(() => { writeNotificationPrefs({ ...readNotificationPrefs(), needs: true }); });
+    const fits = result.current.items.filter((note) => note.id.startsWith('need-fit-'));
+    // The sample founder knows React and TypeScript: AegisPay (React, TypeScript) and NeuroScan (TypeScript) fit; CanvasOS (sales) does not.
+    expect(fits.map((note) => note.id).sort()).toEqual(['need-fit-need-1', 'need-fit-need-3']);
+    expect(fits[0]?.actionUrl).toBe('/matches?panel=needs');
+    expect(fits.every((note) => note.description.includes('Sample card'))).toBe(true);
+    act(() => { writeNotificationPrefs({ ...readNotificationPrefs(), needs: false }); });
+    expect(result.current.items.some((note) => note.id.startsWith('need-fit-'))).toBe(false);
+  });
+
+  it('a real account gets no sample Need Card alerts', () => {
+    localStorage.setItem('demo_mode', 'false');
+    setDataScope('real-user');
+    writeNotificationPrefs({ ...readNotificationPrefs(), needs: true });
+    const { result } = renderHook(() => useNotificationFeed());
+    expect(result.current.items.some((note) => note.id.startsWith('need-fit-'))).toBe(false);
   });
 
   it('clearAll empties the list and the seed does not come back', () => {

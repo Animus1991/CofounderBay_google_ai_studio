@@ -110,12 +110,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         aria-label={profile.name}
         className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card shadow-2xl"
       >
-        <div className="relative h-28 w-full bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border-b border-border">
+        <div className="relative h-28 w-full bg-muted border-b border-border">
           <button
             type="button"
             onClick={onClose}
             aria-label={lang === 'en' ? 'Close' : 'Κλείσιμο'}
-            className="absolute top-3 right-3 rounded-lg bg-black/50 p-1.5 text-white/80 hover:bg-black/80 hover:text-white transition-colors"
+            className="absolute top-3 right-3 rounded-lg border border-border bg-card/90 p-1.5 text-muted-foreground hover:bg-card hover:text-foreground transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -126,14 +126,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <div className="relative">
               <CoverImage
                 src={profile.avatar}
-                alt={profile.name}
+                alt=""
                 className="h-24 w-24 rounded-2xl ring-4 ring-card shadow-xl"
                 fallback={<span className="text-xl font-semibold text-stone-400">{profile.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>}
               />
               {profile.verified && (
                 <div
                   className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-card"
-                  title="Verified Profile"
+                  title={lang === 'en' ? 'Verified profile' : 'Επαληθευμένο προφίλ'}
                 >
                   <CheckCircle className="h-4 w-4 stroke-[2.5]" />
                 </div>
@@ -353,13 +353,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <BarChart2 className="h-4 w-4 text-primary" />
-                      {lang === 'en'
-                        ? '6-Axis Compatibility Breakdown'
-                        : 'Συμβατότητα Αλγορίθμου 6 Αξόνων'}
+                      {lang === 'en' ? 'Compatibility' : 'Συμβατότητα'}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono tabular-nums text-xs font-semibold text-primary">
-                        {profile.matchScore}% Match
+                      <span className="font-mono tabular-nums text-xs font-semibold text-primary-accessible">
+                        {profile.matchScore > 0
+                          ? `${profile.matchScore}% ${lang === 'en' ? 'match' : 'ταίριασμα'}`
+                          : (lang === 'en' ? 'Not enough data' : 'Λίγα στοιχεία')}
                       </span>
                       {onOpenMatchBreakdown && (
                         <button
@@ -370,7 +370,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           }}
                           className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary/20"
                         >
-                          {lang === 'en' ? 'Full Matrix' : 'Αναλυτικός Πίνακας'}
+                          {lang === 'en' ? 'Why this score' : 'Γιατί αυτό το σκορ'}
                         </button>
                       )}
                     </div>
@@ -402,8 +402,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Equity Target' : 'Στόχος Equity'}
                   </span>
-                  <div className="font-semibold font-mono tabular-nums text-primary mt-1">
-                    {profile.equityExpectation}
+                  <div className={profile.equityExpectation ? 'font-semibold font-mono tabular-nums text-primary-accessible mt-1' : 'text-muted-foreground mt-1'}>
+                    {profile.equityExpectation || (lang === 'en' ? 'Not shared' : 'Δεν έχει δηλωθεί')}
                   </div>
                 </div>
               </div>
@@ -421,8 +421,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Core Superpowers & Stack' : 'Κύριες Δεξιότητες & Τεχνολογίες'}
                 </h4>
-                <p className="text-xs text-foreground font-medium">
-                  {profile.skills.join(' · ')}
+                <p className={profile.skills.length ? 'text-xs text-foreground font-medium' : 'text-xs text-muted-foreground'}>
+                  {profile.skills.length ? profile.skills.join(' · ') : (lang === 'en' ? 'Not shared yet' : 'Δεν έχουν δηλωθεί ακόμη')}
                 </p>
               </div>
 
@@ -431,27 +431,33 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   {lang === 'en' ? 'Seeking in a Co-Founder' : 'Αναζητά σε Συνιδρυτή'}
                 </h4>
                 <div className="rounded-xl border border-border bg-background/50 p-3 space-y-1">
-                  {profile.lookingFor.map((lf, i) => (
+                  {profile.lookingFor.length ? profile.lookingFor.map((lf, i) => (
                     <div key={i} className="text-xs text-foreground font-medium">
                       · {lf}
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-xs text-muted-foreground">{lang === 'en' ? 'Not shared yet' : 'Δεν έχει δηλωθεί ακόμη'}</div>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground space-y-1">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-3.5 w-3.5 text-primary" />
-                  <span className="font-semibold text-foreground">Track Record:</span>
-                  <span>{profile.pastExperience}</span>
+              {(profile.pastExperience || profile.education) && (
+                <div className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground space-y-1">
+                  {profile.pastExperience && (
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-semibold text-foreground">{lang === 'en' ? 'Track record:' : 'Διαδρομή:'}</span>
+                      <span>{profile.pastExperience}</span>
+                    </div>
+                  )}
+                  {profile.education && (
+                    <div>
+                      <span className="font-semibold text-foreground">{lang === 'en' ? 'Education: ' : 'Σπουδές: '}</span>
+                      <span>{profile.education}</span>
+                    </div>
+                  )}
                 </div>
-                {profile.education && (
-                  <div>
-                    <span className="font-semibold text-foreground">Education: </span>
-                    <span>{profile.education}</span>
-                  </div>
-                )}
-              </div>
+              )}
             </>
           )}
         </div>

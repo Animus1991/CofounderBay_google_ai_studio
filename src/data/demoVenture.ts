@@ -15,6 +15,8 @@ export const DEMO_VENTURE = {
   readinessScore: 68,
 } as const;
 
+export const DEMO_FOUNDER_SKILLS = ['React', 'TypeScript', 'Node.js', 'IoT'] as const;
+
 /** Lean Canvas sample (Workspace → Canvas, the assistant's /canvas). */
 export const DEMO_CANVAS = {
   problem: 'Apartment buildings pay for clean water twice: once to use it, once to dispose of it — 40% of it could be reused.',

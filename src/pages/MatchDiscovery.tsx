@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
  Search,
  Star,
@@ -55,6 +55,15 @@ export default function MatchDiscovery() {
  const setNeedWallModalOpen = useUIStore((s) => s.setNeedWallModalOpen);
  const fitResult = useStored(readFitCheck, [keys.fitCheck]);
  const navigate = useNavigate();
+ const [params, setParams] = useSearchParams();
+ // `?panel=needs` (activity feed, notifications, the assistant) opens the Need Cards wall over Matches.
+ useEffect(() => {
+  if (params.get('panel') !== 'needs') return;
+  setNeedWallModalOpen(true);
+  const next = new URLSearchParams(params);
+  next.delete('panel');
+  setParams(next, { replace: true });
+ }, [params, setParams, setNeedWallModalOpen]);
  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
  const real = !isDemoMode && Boolean(currentUser?.uid);
  const { people, loading, error } = usePeople(currentUser?.uid);
@@ -93,7 +102,7 @@ export default function MatchDiscovery() {
 
  usePageControls(() => [
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowFilters(true) },
-  { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id || 'fp-1') },
+  { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id ?? null) },
   { id: 'open-need-wall', en: 'Open roles (Needs Wall)', el: 'Ανοιχτοί ρόλοι (Πίνακας Αναγκών)', run: () => setNeedWallModalOpen(true) },
   { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); setVisibleCount(PAGE); } },
   { id: 'open-explore', en: 'Open Explore', el: 'Άνοιγμα Εξερεύνησης', run: () => navigate('/discovery') },

@@ -33,7 +33,7 @@ import {
   PIPELINE_STAGES,
   type RoundInvestor,
 } from '../lib/localLists';
-import { DEMO_INVESTOR_NAMES } from '../data/demoCatalog';
+import { DEMO_INVESTOR_NAMES, nextStepIn } from '../data/demoCatalog';
 import { escapeRegExp, fold, hasStem } from './assistantText';
 import type { AssistantLink, AssistantProposal, AssistantResult } from './assistantOps';
 
@@ -227,7 +227,7 @@ export function pipelineReadResult(now: Date = new Date()): AssistantResult {
     const head = `${item.name} · ${stage}${item.checkSize ? ` · ${item.checkSize}` : ''}`;
     if (!item.nextStep) return head;
     const when = item.nextDate ? ` (${whenWords(dayDiff(item.nextDate, now), item.nextDate)[lang]})` : '';
-    return `${head} · ${lang === 'el' ? 'επόμενο' : 'next'}: ${item.nextStep}${when}`;
+    return `${head} · ${lang === 'el' ? 'επόμενο' : 'next'}: ${nextStepIn(item.nextStep, lang)}${when}`;
   };
   const due = followUps(readRound(), now);
   const active = pipeline.filter((item) => item.stage !== 'Passed' && item.stage !== 'Closed').length;
@@ -259,17 +259,17 @@ export function followUpsResult(now: Date = new Date()): AssistantResult {
     return {
       tool: 'followups',
       en: later
-        ? `Nothing overdue or due this week. Next up: ${later.name} — ${later.nextStep} (${whenWords(later.inDays, later.nextDate).en}).`
+        ? `Nothing overdue or due this week. Next up: ${later.name} — ${nextStepIn(later.nextStep, 'en')} (${whenWords(later.inDays, later.nextDate).en}).`
         : 'No follow-ups are scheduled. Say “next step with <investor>: <what> by <day>” to set one.',
       el: later
-        ? `Τίποτα εκπρόθεσμο ή για αυτή την εβδομάδα. Επόμενο: ${later.name} — ${later.nextStep} (${whenWords(later.inDays, later.nextDate).el}).`
+        ? `Τίποτα εκπρόθεσμο ή για αυτή την εβδομάδα. Επόμενο: ${later.name} — ${nextStepIn(later.nextStep, 'el')} (${whenWords(later.inDays, later.nextDate).el}).`
         : 'Δεν υπάρχουν προγραμματισμένα follow-ups. Πες «επόμενο βήμα με <επενδυτή>: <τι> μέχρι <μέρα>».',
       href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
     };
   }
-  const line = (item: (typeof rows)[number], lang: 'en' | 'el') => `• ${item.name}: ${item.nextStep} — ${whenWords(item.inDays, item.nextDate)[lang]}`;
+  const line = (item: (typeof rows)[number], lang: 'en' | 'el') => `• ${item.name}: ${nextStepIn(item.nextStep, lang)} — ${whenWords(item.inDays, item.nextDate)[lang]}`;
   return {
     tool: 'followups',
     en: `${due.overdue.length} overdue, ${due.soon.length} due in the next 7 days:\n${rows.map((item) => line(item, 'en')).join('\n')}`,

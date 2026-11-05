@@ -12,6 +12,7 @@ import { CalendarClock, Check, Pencil, X } from 'lucide-react';
 import { daysUntil, setPipelineFollowUp, type RoundInvestor } from '../../lib/localLists';
 import { useLanguage, useT } from '../../lib/language';
 import { cn } from '../../lib/utils';
+import { nextStepIn } from '../../data/demoCatalog';
 
 function dueLabel(day: string, lang: 'en' | 'el', t: (en: string, el?: string) => string) {
   const inDays = daysUntil(day);
@@ -116,7 +117,7 @@ export function FollowUpEditor({ investor, onSaved }: { investor: RoundInvestor;
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5" data-testid="followup">
-      <span className="text-sm text-stone-800">{investor.nextStep}</span>
+      <span className="text-sm text-stone-800">{t(nextStepIn(investor.nextStep, 'en'), nextStepIn(investor.nextStep, 'el'))}</span>
       {investor.nextDate && !closed && <FollowUpChip day={investor.nextDate} />}
       <button type="button" onClick={open} aria-label={t(`Edit the next step with ${investor.name}`, `Επεξεργασία επόμενου βήματος με ${investor.name}`)} className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-900 tap-area">
         <Pencil className="h-3.5 w-3.5" />

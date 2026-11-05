@@ -708,6 +708,17 @@ describe('studio extended co-pilot tools', () => {
     expect(useUIStore.getState().needWallModalOpen).toBe(true);
   });
 
+  it('opens the breakdown on the best match when no one is named, and describes only what the modal shows', () => {
+    const res = runAssistant('/6axis', demo);
+    const picked = useUIStore.getState().selectedFounderId;
+    expect(picked).toBeTruthy();
+    expect(picked).not.toBe('fp-1');
+    expect(res.en).toMatch(/your best match/);
+    expect(res.en).not.toMatch(/Values Radar|Risk Flags|Icebreaker/);
+    const room = runAssistant('open deal room', demo);
+    expect(room.en).not.toMatch(/Investor Commit/);
+  });
+
   it('switches theme palette and UI language via assistant commands', () => {
     const tRes = runAssistant('/theme dark', demo);
     expect(tRes.tool).toBe('settings-set');

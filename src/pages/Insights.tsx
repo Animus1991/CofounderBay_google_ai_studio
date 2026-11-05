@@ -386,7 +386,7 @@ export default function Insights({ user }: InsightsProps) {
        <div className="grid grid-cols-2 gap-2">
         {badges.map((badge, i) => (
          <div key={i} role="button" tabIndex={0} onClick={() => askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`); }} className={cn(
-          "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
+          "py-3 px-4 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
           badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-dashed border-stone-200 hover:border-stone-300"
          )}>
           <div className={cn(

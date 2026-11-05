@@ -105,7 +105,7 @@ export default function CommandPalette() {
 
   const commands: CommandItem[] = useMemo(() => {
     const items: CommandItem[] = [
-      { id: 'match-6axis', label: 'Open 6-Axis Match Breakdown', labelEl: 'Άνοιγμα Ανάλυσης Συμβατότητας 6 Αξόνων', icon: BarChart2, action: () => { setOpen(false); setMatchBreakdownModalOpen(true, 'fp-1'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['6-axis', 'breakdown', 'score', 'matching'], kind: 'command' },
+      { id: 'match-6axis', label: 'Open 6-Axis Match Breakdown', labelEl: 'Άνοιγμα Ανάλυσης Συμβατότητας 6 Αξόνων', icon: BarChart2, action: () => { setOpen(false); setMatchBreakdownModalOpen(true, null); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['6-axis', 'breakdown', 'score', 'matching'], kind: 'command' },
       { id: 'deal-room', label: 'Open my Deal Room & Pitch Deck', labelEl: 'Άνοιγμα του Deal Room & Pitch Deck μου', icon: Briefcase, action: () => { setOpen(false); setDealRoomModalOpen(true, 'sv-my-venture'); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['deal room', 'pitch deck', 'venture', 'apply'], kind: 'command' },
       { id: 'need-wall', label: 'Open Startup Need Cards Wall', labelEl: 'Άνοιγμα Πίνακα Αναγκών & Ρόλων Startup', icon: Layers, action: () => { setOpen(false); setNeedWallModalOpen(true); }, section: 'Studio Tools', sectionEl: 'Εργαλεία Studio', keywords: ['need', 'bounties', 'roles', 'wall'], kind: 'command' },
       { id: 'assistant', label: 'Ask the studio assistant', labelEl: 'Ρώτα τον βοηθό', icon: Zap, action: () => { openAssistant(); setOpen(false); }, section: 'Studio', sectionEl: 'Βοηθός', keywords: ['ai', 'chat', 'help', 'βοηθός', 'slash', '/match'], kind: 'command' },

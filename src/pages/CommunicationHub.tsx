@@ -372,12 +372,15 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  // `?user=<id>` or `?agent=<id>` opens that conversation (from profile, network, assistant links).
  useEffect(() => {
   const target = params.get("user") || params.get("agent");
+  const draftText = params.get("text");
   if (!target || !ready) return;
   void messaging.openConversationWith(target).then((id) => {
    if (!id) toast.info(t("Could not open that conversation", "Δεν ήταν δυνατό να ανοίξει η συνομιλία"), t("This member may have left or is not visible to you.", "Το μέλος ίσως αποχώρησε ή δεν είναι ορατό σε εσένα."));
+   if (id && draftText) setInputText(draftText.slice(0, 2000));
    const next = new URLSearchParams(params);
    next.delete("user");
    next.delete("agent");
+   next.delete("text");
    setParams(next, { replace: true });
   });
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -6,6 +6,7 @@ import { cofounderPool } from './peopleSource';
 import { readFitCheck } from './fitCheck';
 import { fromProfile, listWords, rankPeople, type CompatibilityInput } from './compatibility';
 import { effectiveStatus, followUps, readMilestones, readNeeds, readRound, readSessions, readTasks } from './localLists';
+import { nextStepIn } from '../data/demoCatalog';
 
 type Words = { en: string; el: string };
 
@@ -129,12 +130,14 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
   const late = followUps(readRound(), new Date(now)).overdue;
   if (late[0]) {
     const first = late[0];
+    const stepEn = nextStepIn(first.nextStep, 'en');
+    const stepEl = nextStepIn(first.nextStep, 'el');
     return {
       id: `followup-${first.investorId}`,
-      en: `${first.name}: ${first.nextStep} is overdue.`,
-      el: `${first.name}: «${first.nextStep}» είναι εκπρόθεσμο.`,
+      en: `${first.name}: ${stepEn} is overdue.`,
+      el: `${first.name}: «${stepEl}» είναι εκπρόθεσμο.`,
       href: '/fundraising?tab=crm',
-      title: { en: `${first.name} is waiting: ${first.nextStep}`, el: `Η/Ο ${first.name} περιμένει: ${first.nextStep}` },
+      title: { en: `${first.name} is waiting: ${stepEn}`, el: `Η/Ο ${first.name} περιμένει: ${stepEl}` },
       why: late.length > 1
         ? { en: `+${late.length - 1} more investor follow-up overdue`, el: `+${late.length - 1} ακόμη εκπρόθεσμα follow-ups` }
         : { en: `Was due ${dayLabel(first.nextDate, 'en')}`, el: `Έληγε ${dayLabel(first.nextDate, 'el')}` },

@@ -4,6 +4,8 @@
  * next date and tasks by due — all the lists the app already keeps.
  */
 import { effectiveStatus, followUps, readMilestones, readSessions, readTasks } from './localLists';
+import { getLang } from './language';
+import { nextStepIn } from '../data/demoCatalog';
 
 export type AgendaItem = {
   /** 'YYYY-MM-DDTHH:MM' local when timed, else 'YYYY-MM-DD'. */
@@ -39,7 +41,7 @@ export function agendaFor(range: 'today' | 'tomorrow' | 'week', now: Date = new 
   for (const item of [...fu.overdue, ...fu.soon, ...fu.later]) {
     const day = (item.nextDate ?? '').slice(0, 10);
     if (!wanted.has(day)) continue;
-    items.push({ at: day, allDay: true, kind: 'followup', title: `${item.name ?? item.investorId}: ${item.nextStep ?? ''}`.trim(), href: '/fundraising?tab=crm' });
+    items.push({ at: day, allDay: true, kind: 'followup', title: `${item.name ?? item.investorId}: ${nextStepIn(item.nextStep, getLang() === 'el' ? 'el' : 'en')}`.trim(), href: '/fundraising?tab=crm' });
   }
   for (const task of readTasks()) {
     const day = task.due ?? '';

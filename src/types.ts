@@ -901,15 +901,17 @@ export interface NeedCardItem {
   ventureName: string;
   ventureLogo?: string;
   category: 'Engineering' | 'Growth & GTM' | 'Product' | 'Advisory' | 'Operations';
-  location: string;
-  isRemote: boolean;
-  stage: StartupStage;
-  commitment: CommitmentType;
+  location?: string;
+  isRemote?: boolean;
+  stage?: StartupStage;
+  commitment?: CommitmentType;
   equityOffered: string;
   skills: string[];
   applicantCount: number;
   createdAt: string;
   status: 'active' | 'in_review' | 'filled';
+  own?: boolean;
+  outcome?: string;
 }
 
 export interface AnalyticsMetric {

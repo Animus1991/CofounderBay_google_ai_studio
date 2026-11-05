@@ -78,7 +78,7 @@ import { formatBytes, uploadFile, UploadError } from '../lib/files';
 import { capTable, roundSafes, useEntity, useVentureName } from '../lib/entities';
 import { formatMoney, formatPct, proFormaCapTable, safeOwnershipAtCap } from '../lib/equity';
 import { copyText } from '../lib/download';
-import { DEMO_FUNDING_OPPORTUNITIES, DEMO_FUNDING_PROGRAMS, DEMO_INVESTOR_MEETINGS, DEMO_ROOM_FILES, demoDay } from '../data/demoCatalog';
+import { DEMO_FUNDING_OPPORTUNITIES, DEMO_FUNDING_PROGRAMS, DEMO_INVESTOR_MEETINGS, DEMO_ROOM_FILES, demoDay, nextStepIn } from '../data/demoCatalog';
 
 interface FundraisingProps {
  user: User;
@@ -985,7 +985,7 @@ export default function Fundraising({ user }: FundraisingProps) {
             <div className={cn("p-3 rounded-xl border flex gap-2", late ? "bg-red-50 border-red-100" : "bg-amber-50 border-amber-100")}>
              <Zap className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", late ? "text-red-500" : "text-amber-500")} />
              <p className="text-sm text-stone-600 leading-relaxed">
-              <span className="font-semibold text-stone-900">{first.name}</span>{' — '}{first.nextStep}{' · '}
+              <span className="font-semibold text-stone-900">{first.name}</span>{' — '}{t(nextStepIn(first.nextStep, 'en'), nextStepIn(first.nextStep, 'el'))}{' · '}
               {late ? t(`overdue by ${-first.inDays} day${first.inDays === -1 ? '' : 's'}`, `εκπρόθεσμο ${-first.inDays} ${first.inDays === -1 ? 'μέρα' : 'μέρες'}`) : first.inDays === 0 ? t('due today', 'για σήμερα') : t(`due in ${first.inDays} day${first.inDays === 1 ? '' : 's'}`, `σε ${first.inDays} ${first.inDays === 1 ? 'μέρα' : 'μέρες'}`)}
              </p>
             </div>

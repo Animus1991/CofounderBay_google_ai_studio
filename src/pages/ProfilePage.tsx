@@ -349,7 +349,7 @@ export default function ProfilePage() {
         { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
       ]
     : [
-        { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile?.uid || 'fp-1') },
+        { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile?.uid || null) },
         { id: 'message-member', en: 'Send a message', el: 'Αποστολή μηνύματος', run: () => { if (id) navigate(`/messages?user=${id}`); } },
         { id: 'connect-member', en: 'Connect', el: 'Σύνδεση', run: () => { void handleConnect(); } },
       ]),
@@ -801,7 +801,7 @@ export default function ProfilePage() {
         {!isOwnProfile && fitWithViewer?.score != null && (
          <button
           type="button"
-          onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile.uid || 'fp-1')}
+          onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile.uid || null)}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-50 hover:bg-stone-900 hover:text-white border border-stone-200 hover:border-stone-900 text-stone-900 text-xs font-semibold transition-colors"
           title={fitWithViewer.headline ? (lang === 'el' ? fitWithViewer.headline.el : fitWithViewer.headline.en) : t('Open 6-Axis Compatibility Breakdown', 'Άνοιγμα Ανάλυσης 6 Αξόνων')}
          >
@@ -1173,7 +1173,7 @@ export default function ProfilePage() {
          whileHover={{ scale: badge.earned ? 1.05 : 1 }}
          title={badge.earned ? undefined : badge.progress}
          className={cn(
-          "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
+          "relative flex flex-col items-center gap-2 py-3 px-4 rounded-xl border text-center transition-all",
           badge.earned
            ? `${badge.bg} ${badge.border} shadow-sm`
            : "bg-stone-50/50 border-dashed border-stone-200"

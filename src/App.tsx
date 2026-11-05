@@ -31,6 +31,7 @@ import { setOwnConnectionIds, setSocialIdentity, startPresence, startSocial, sto
 import { getLang } from './lib/language';
 import { markEmailVerified } from './lib/account';
 import { coverFor } from './data/photos';
+import { DEMO_FOUNDER_SKILLS } from './data/demoVenture';
 import { lazyPage, prefetchPages } from './lib/lazyPage';
 import { topPages } from './lib/usage';
 
@@ -128,7 +129,7 @@ function demoProfile(): UserProfile {
     headline: 'Technical founder building EcoFlow Systems (water-tech)',
     company: 'EcoFlow Systems',
     roles: [UserRole.FOUNDER, UserRole.ADMIN],
-    skills: ['React', 'TypeScript', 'Node.js', 'IoT'],
+    skills: [...DEMO_FOUNDER_SKILLS],
     lookingFor: ['Sales', 'Growth', 'Fundraising'],
     interests: ['CleanTech', 'Water', 'SaaS', 'AI'],
     industry: 'CleanTech',

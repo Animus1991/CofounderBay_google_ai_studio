@@ -36,6 +36,7 @@ import {
 } from '../lib/chat';
 import { createLogger } from '../lib/logger';
 import { getLang } from '../lib/language';
+import { registerMessagingBridge, type BridgeRefusal } from '../lib/messagingBridge';
 
 export type { ChatAttachment, ChatMessage, ChatReply, ConversationValidation } from '../lib/chat';
 
@@ -418,6 +419,165 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
   }, [activeId, ai.messages, real, demo.messages, remote, remoteMessages, userId]);
 
   const totalUnread = conversations.reduce((sum, item) => sum + (item.muted ? 0 : item.unread), 0);
+  const conversationsRef = useRef(conversations);
+  const demoRef = useRef(demo);
+  const remoteRef = useRef(remote);
+  const remoteMessagesRef = useRef(remoteMessages);
+  const activeIdRef = useRef(activeId);
+  const totalUnreadRef = useRef(totalUnread);
+  const bridgeUndoRef = useRef(new Map<string, {
+    createdThread: boolean;
+    conversationId: string;
+    lastMessage: string;
+    lastMessageAt: number;
+    lastSenderId: string;
+  }>());
+  conversationsRef.current = conversations;
+  demoRef.current = demo;
+  remoteRef.current = remote;
+  remoteMessagesRef.current = remoteMessages;
+  activeIdRef.current = activeId;
+  totalUnreadRef.current = totalUnread;
+
+  useEffect(() => {
+    const refusalFor = (personId: string): BridgeRefusal | null => {
+      if (!personId || personId === userId) return 'self';
+      if (MOCK_AGENTS.some((agent) => agent.id === personId)) return 'unknown';
+      const conversation = conversationsRef.current.find((item) => item.otherId === personId);
+      if (conversation?.blockedByOther) return 'blocked';
+      if (conversation?.blockedByMe) return 'blockedByMe';
+      if (conversation?.exists && conversation.lastMessage) return null;
+      const person = findPerson(personId);
+      if (!person && !findCast(personId) && !real) return 'unknown';
+      const rule = person?.messagesFrom || 'anyone';
+      const connected = connectionStateWith(personId).state === 'connected';
+      if (rule === 'none' && !connected) return 'closed';
+      if (rule === 'connections' && !connected) return 'connections-only';
+      return null;
+    };
+
+    registerMessagingBridge({
+      real,
+      threads: () => conversationsRef.current.map((item) => ({
+        conversationId: item.id,
+        personId: item.otherId,
+        name: item.other.fullName,
+        kind: item.kind,
+        unread: item.unread,
+        muted: item.muted,
+        lastMessage: item.lastMessage,
+        lastMessageAt: item.lastMessageAt,
+        lastFromMe: item.lastSenderId === userId,
+      })),
+      totalUnread: () => totalUnreadRef.current,
+      searchable: () => {
+        if (!real) {
+          return [...demoRef.current.messages, ...readAi().messages].map((message) => ({
+            conversationId: message.conversationId,
+            name: message.senderName,
+            body: message.body,
+            createdAt: message.createdAt,
+          }));
+        }
+        const latest = conversationsRef.current
+          .filter((item) => item.lastMessage)
+          .map((item) => ({
+            conversationId: item.id,
+            name: item.lastSenderId === userId ? selfRef.current.fullName : item.other.fullName,
+            body: item.lastMessage,
+            createdAt: item.lastMessageAt,
+          }));
+        const open = remoteMessagesRef.current.map((message) => ({
+          conversationId: message.conversationId,
+          name: message.senderName,
+          body: message.body,
+          createdAt: message.createdAt,
+        }));
+        return [...latest, ...open];
+      },
+      canSendTo: refusalFor,
+      sendToPerson: async (personId, body) => {
+        const refusal = refusalFor(personId);
+        if (refusal) return { ok: false, reason: refusal };
+        const now = Date.now();
+        const messageId = `local-${now}-${Math.random().toString(36).slice(2, 6)}`;
+        if (!real) {
+          const person = findCast(personId);
+          if (!person) return { ok: false, reason: 'unknown' };
+          const existing = demoRef.current.conversations.find((item) => item.otherId === personId);
+          const conversationId = existing?.id ?? `demo-${person.id}`;
+          const other = sampleParticipant(person.id);
+          const message: ChatMessage = {
+            id: messageId,
+            conversationId,
+            senderId: userId,
+            senderName: selfRef.current.fullName,
+            body,
+            createdAt: now,
+          };
+          bridgeUndoRef.current.set(messageId, {
+            createdThread: !existing,
+            conversationId,
+            lastMessage: existing?.lastMessage ?? '',
+            lastMessageAt: existing?.lastMessageAt ?? 0,
+            lastSenderId: existing?.lastSenderId ?? '',
+          });
+          setDemo((prev) => {
+            const current = prev.conversations.find((item) => item.otherId === personId);
+            const conversation: ChatConversation = current ?? {
+              id: conversationId, kind: 'demo', otherId: person.id, other, lastMessage: '', lastMessageAt: now,
+              lastSenderId: '', unread: 0, pinned: false, archived: false, muted: false, blockedByMe: false,
+              blockedByOther: false, otherTypingAt: 0, otherLastReadAt: now, validation: { mode: 'casual' },
+              exists: true, lastNotifiedAt: 0, createdAt: now,
+            };
+            return {
+              messages: [...prev.messages, message],
+              conversations: [
+                ...prev.conversations.filter((item) => item.id !== conversationId),
+                { ...conversation, lastMessage: body, lastMessageAt: now, lastSenderId: userId },
+              ],
+            };
+          });
+          return { ok: true, conversationId, messageId };
+        }
+        const existing = conversationsRef.current.find((item) => item.otherId === personId);
+        const loaded = findPerson(personId) ?? await fetchPerson(personId);
+        if (!loaded) return { ok: false, reason: 'unknown' };
+        const other = participantFor(personId, remoteRef.current.find((item) => item.id === existing?.id)?.info[personId]);
+        const conversationId = conversationIdWith(userId, personId);
+        const remoteId = await sendRemoteMessage({
+          conversationId,
+          me: { id: userId, name: selfRef.current.fullName, avatar: selfRef.current.avatar, headline: selfRef.current.headline, role: selfRef.current.role },
+          other: { id: personId, name: other.fullName, avatar: other.avatar, headline: other.headline, role: other.role },
+          body,
+          conversationExists: Boolean(existing?.exists),
+          lastNotifiedAt: existing?.lastNotifiedAt,
+        });
+        return { ok: true, conversationId, messageId: remoteId };
+      },
+      unsend: async (conversationId, messageId) => {
+        if (real) {
+          await deleteRemoteMessage(conversationId, messageId);
+          return;
+        }
+        const undo = bridgeUndoRef.current.get(messageId);
+        if (!undo) return;
+        setDemo((prev) => ({
+          messages: prev.messages.filter((message) => message.id !== messageId),
+          conversations: undo.createdThread
+            ? prev.conversations.filter((item) => item.id !== conversationId)
+            : prev.conversations.map((item) => item.id === conversationId ? {
+              ...item,
+              lastMessage: undo.lastMessage,
+              lastMessageAt: undo.lastMessageAt,
+              lastSenderId: undo.lastSenderId,
+            } : item),
+        }));
+        bridgeUndoRef.current.delete(messageId);
+      },
+    });
+    return () => registerMessagingBridge(null);
+  }, [participantFor, real, userId]);
 
   const setActiveId = useCallback((id: string | null) => {
     setActiveIdState(id);

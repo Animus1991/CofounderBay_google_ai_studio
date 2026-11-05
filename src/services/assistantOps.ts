@@ -14,6 +14,7 @@ import { updateStudioTask, insertStudioTask, readSessions, eventListKeys } from 
 import { connectionRecords } from '../lib/social';
 import { exportMyData } from '../lib/dataExport';
 import { formatDate } from '../lib/dates';
+import { messagingBridge, type BridgeRefusal } from '../lib/messagingBridge';
 import type { Milestone } from '../types';
 import { whereIsResult } from '../ai/whereIs';
 import { avatarOf, cofounderPool, directoryPeople, mentorPool, type Person } from '../lib/peopleSource';
@@ -65,6 +66,8 @@ import {
   writeRound,
   followUps,
   readNotificationPrefs,
+  readMatchFilters,
+  readRequests,
   writeNotificationPrefs,
   writeProfileLocal,
   keys,
@@ -77,15 +80,17 @@ import {
   type StudioTask,
   type TurnSource,
 } from '../lib/localLists';
+import { profileCompleteness } from '../lib/profileCompleteness';
+import { pitchProgress } from '../lib/pitch';
 import { capTable, roundSafes, savedPerks, startupRecord, ventureName, ventureSummary } from '../lib/entities';
 import { currentReadiness } from '../lib/readiness';
-import { profileCompleteness } from '../lib/profileCompleteness';
 import { formatMoney, formatPct, modelPricedRound, safeOwnershipAtCap } from '../lib/equity';
 import { parseRoundQuery, type RoundQuery } from '../lib/roundQuery';
 import { parseShareholderQuery, type ShareholderQuery } from '../lib/shareholderQuery';
 import { BUILDER_MODULES, builderStatus, readBuilderInputs } from '../lib/builder';
 import { useUIStore, type PaletteTheme } from '../stores/useUIStore';
-import { setGlobalLang } from '../lib/language';
+import { getLang, setGlobalLang } from '../lib/language';
+import { firstMessage } from '../lib/firstMessage';
 import { applySwitches, readSwitches, type Switches } from '../lib/privacySwitches';
 import { readAssistantPrefs, writeAssistantPrefs, type AssistantPrefs } from '../lib/assistantPrefs';
 import { topPages, unvisited } from '../lib/usage';
@@ -101,7 +106,7 @@ import { roundMetrics } from '../lib/roundMetrics';
 import { TEAM_AREAS, teamGaps } from '../lib/teamGaps';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
 import { applyQualifiers, parseQualifiers } from '../lib/searchQualifiers';
-import { DEMO_EVENTS, datedKnowledge, demoEventsLine } from '../data/demoCatalog';
+import { DEMO_EVENTS, datedKnowledge, demoEventsLine, nextStepIn } from '../data/demoCatalog';
 import { DEMO_CANVAS, DEMO_VENTURE } from '../data/demoVenture';
 import { PITCH_SLIDES, effectivePitch, slideStatus } from '../lib/pitch';
 import { legalProgress } from '../lib/legalChecklist';
@@ -293,9 +298,9 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/builder', en: 'Read or fill Startup Builder modules', el: 'Διάβασε ή συμπλήρωσε το Startup Builder' },
   { cmd: '/completeness', en: 'How complete your profile is, and what to add first', el: 'Πόσο πλήρες είναι το προφίλ σου και τι να προσθέσεις πρώτα' },
   { cmd: '/readiness', en: 'Inspect or update Venture Readiness Index', el: 'Έλεγξε ή ενημέρωσε τον Δείκτη Ετοιμότητας' },
-  { cmd: '/6axis', en: 'Open 6-Axis Match Breakdown (or /6axis Sarah)', el: 'Άνοιξε το modal Ανάλυσης 6 Αξόνων (ή /6axis Sarah)' },
-  { cmd: '/dealroom', en: 'Open Startup Deal Room & Pitch Deck modal', el: 'Άνοιξε το modal Deal Room & Pitch Deck' },
-  { cmd: '/needwall', en: 'Open Startup Need Cards Wall modal', el: 'Άνοιξε τον Πίνακα Αναγκών & Ρόλων Startup' },
+  { cmd: '/6axis', en: 'Why a score: your best match, or /6axis Sarah', el: 'Γιατί αυτό το σκορ: η καλύτερη αντιστοίχιση ή /6axis Sarah' },
+  { cmd: '/dealroom', en: 'Open your Deal Room (pitch, traction, open roles)', el: 'Άνοιξε το Deal Room σου (pitch, traction, ανοιχτοί ρόλοι)' },
+  { cmd: '/needwall', en: 'Open the Need Cards wall', el: 'Άνοιξε τον πίνακα Καρτών Ανάγκης' },
   { cmd: '/tasks', en: 'List or add Workspace tasks', el: 'Δείξε ή πρόσθεσε εργασίες στον Χώρο Εργασίας' },
   { cmd: '/msg', en: 'Send a direct message (e.g. /msg Sarah: Hello)', el: 'Στείλε άμεσο μήνυμα (π.χ. /msg Sarah: Γεια)' },
   { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac, burgundy)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac, burgundy)' },
@@ -417,8 +422,8 @@ function briefingResult(profile: AssistantProfile | null): AssistantResult {
   }
   const investorDue = followUps(round);
   if (investorDue.overdue.length) {
-    linesEn.push(`Investor follow-up overdue: ${investorDue.overdue.map((item) => `${item.name} (${item.nextStep})`).join(', ')}.`);
-    linesEl.push(`Εκπρόθεσμο follow-up με επενδυτή: ${investorDue.overdue.map((item) => `${item.name} (${item.nextStep})`).join(', ')}.`);
+    linesEn.push(`Investor follow-up overdue: ${investorDue.overdue.map((item) => `${item.name} (${nextStepIn(item.nextStep, 'en')})`).join(', ')}.`);
+    linesEl.push(`Εκπρόθεσμο follow-up με επενδυτή: ${investorDue.overdue.map((item) => `${item.name} (${nextStepIn(item.nextStep, 'el')})`).join(', ')}.`);
   }
   const links: AssistantLink[] = [
     ...(top ? [linkFor(top.person)] : []),
@@ -491,12 +496,26 @@ function matchDetailResult(profile: AssistantProfile | null, person: Person): As
   const reasonEl = strongest?.reason?.el ?? fit.headline?.el ?? person.headline;
   const frictionEn = friction && (friction.score as number) < 80 ? `Friction: ${friction.reason?.en}.` : 'No sharp friction on the scored dimensions.';
   const frictionEl = friction && (friction.score as number) < 80 ? `Τριβή: ${friction.reason?.el}.` : 'Δεν υπάρχει έντονη τριβή στις διαστάσεις με σκορ.';
+  const draft = firstMessage({
+    theirFirstName: person.fullName.split(' ')[0] || person.fullName,
+    viewerFirstName: profile?.fullName?.split(' ')[0],
+    score: fit.score,
+    coveredSkills: covered,
+    sameStage: profile?.stage && profile.stage === person.stage ? person.stage : undefined,
+    sameIndustry: profile?.industry && profile.industry === person.industry ? person.industry : undefined,
+    talk,
+  }, getLang());
+  const draftHref = `/messages?user=${encodeURIComponent(person.id)}&text=${encodeURIComponent(draft)}`;
   return {
     tool: 'match-detail',
-    en: `${person.fullName} is ${score} on the same scorer Matches uses. Why: ${reasonEn}. ${frictionEn} First conversation: how they have shipped ${talk}. Same card as Profile.`,
-    el: `${person.fullName} είναι ${score} στον ίδιο υπολογισμό με τις Αντιστοιχίσεις. Γιατί: ${reasonEl}. ${frictionEl} Πρώτη συζήτηση: πώς έχουν παραδώσει ${talk}. Η ίδια κάρτα με το Προφίλ.`,
+    en: `${person.fullName} is ${score} on the same scorer Matches uses. Why: ${reasonEn}. ${frictionEn} First conversation: how they have shipped ${talk}. Same card as Profile.\n\nFirst message, ready to edit:\n“${draft}”`,
+    el: `${person.fullName} είναι ${score} στον ίδιο υπολογισμό με τις Αντιστοιχίσεις. Γιατί: ${reasonEl}. ${frictionEl} Πρώτη συζήτηση: πώς έχουν παραδώσει ${talk}. Η ίδια κάρτα με το Προφίλ.\n\nΠρώτο μήνυμα, έτοιμο για επεξεργασία:\n«${draft}»`,
     href: `/profile/${person.id}`,
-    links: [linkFor(person), { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' }],
+    links: [
+      linkFor(person),
+      { href: draftHref, en: `First message to ${person.fullName}`, el: `Πρώτο μήνυμα προς ${person.fullName}` },
+      { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' },
+    ],
   };
 }
 
@@ -775,6 +794,87 @@ function inboxResult(query: string): AssistantResult {
   const wasSearch = needle !== query.trim();
   const wantsUnread = /\bunread\b/.test(folded) || folded.includes('αδιαβαστ');
   const question = wantsUnread || (!wasSearch && /\b(which|what|who)\b|ποια|ποιος|ποιες/.test(folded));
+  const bridge = messagingBridge();
+  if (bridge) {
+    const openLink: AssistantLink = { href: '/messages', en: 'Open messages', el: 'Άνοιγμα μηνυμάτων' };
+    const scopeEn = bridge.real ? '\nSearched the latest message of each conversation and the open thread.' : '';
+    const scopeEl = bridge.real ? '\nΈγινε αναζήτηση στο τελευταίο μήνυμα κάθε συνομιλίας και στο ανοιχτό νήμα.' : '';
+    if (question) {
+      const threads = bridge.threads()
+        .filter((thread) => !wantsUnread || (!thread.muted && thread.unread > 0))
+        .sort((a, b) => b.lastMessageAt - a.lastMessageAt)
+        .slice(0, wantsUnread ? 3 : 6);
+      if (!threads.length) {
+        return {
+          tool: 'inbox',
+          en: wantsUnread ? 'No unread messages.' : 'No conversations yet. Open Messages to start one.',
+          el: wantsUnread ? 'Δεν υπάρχουν αδιάβαστα μηνύματα.' : 'Δεν υπάρχουν ακόμη συνομιλίες. Άνοιξε τα Μηνύματα για να ξεκινήσεις.',
+          href: '/messages',
+          links: [openLink],
+        };
+      }
+      const linesEn = threads.map((thread) => wantsUnread
+        ? `${thread.name} · ${thread.unread} unread — “${thread.lastMessage.slice(0, 100)}”`
+        : `${thread.name}: ${thread.lastFromMe ? 'You: ' : ''}${thread.lastMessage.slice(0, 100)}`);
+      const linesEl = threads.map((thread) => wantsUnread
+        ? `${thread.name} · ${thread.unread} αδιάβαστα — «${thread.lastMessage.slice(0, 100)}»`
+        : `${thread.name}: ${thread.lastFromMe ? 'Εσύ: ' : ''}${thread.lastMessage.slice(0, 100)}`);
+      const links = [
+        ...threads.slice(0, 3).map((thread) => ({
+          href: `/messages?user=${encodeURIComponent(thread.personId)}`,
+          en: `Open ${thread.name}`,
+          el: `Άνοιγμα συνομιλίας με ${thread.name}`,
+        })),
+        openLink,
+      ];
+      return {
+        tool: 'inbox',
+        en: wantsUnread
+          ? `${bridge.totalUnread()} unread — same count as the Messages badge:\n${linesEn.join('\n')}${scopeEn}`
+          : `Latest conversations:\n${linesEn.join('\n')}${scopeEn}`,
+        el: wantsUnread
+          ? `${bridge.totalUnread()} αδιάβαστα — ο ίδιος αριθμός με το σήμα των Μηνυμάτων:\n${linesEl.join('\n')}${scopeEl}`
+          : `Τελευταίες συνομιλίες:\n${linesEl.join('\n')}${scopeEl}`,
+        href: '/messages',
+        links,
+      };
+    }
+    const normalized = fold(needle || query);
+    const bridgeHits = bridge.searchable().filter((message) => fold(message.body).includes(normalized));
+    const legacyHits = searchChat(needle || query).map((message) => ({
+      conversationId: message.conversationId,
+      name: message.senderName || message.senderId,
+      body: message.body,
+      createdAt: new Date(message.createdAt).getTime(),
+    }));
+    const seen = new Set<string>();
+    const hits = [...bridgeHits, ...legacyHits]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .filter((message) => {
+        const key = `${message.conversationId}:${message.body}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 8);
+    if (!hits.length) {
+      return {
+        tool: 'inbox',
+        en: `No message contains “${needle || query}”.${scopeEn}`,
+        el: `Κανένα μήνυμα δεν περιέχει «${needle || query}».${scopeEl}`,
+        href: '/messages',
+        links: [openLink],
+      };
+    }
+    const lines = hits.map((message) => `${message.name}: ${message.body.slice(0, 120)}`);
+    return {
+      tool: 'inbox',
+      en: `Messages matching “${needle || query}”:\n${lines.join('\n')}${scopeEn}`,
+      el: `Μηνύματα που ταιριάζουν με «${needle || query}»:\n${lines.join('\n')}${scopeEl}`,
+      href: '/messages',
+      links: [openLink],
+    };
+  }
   if (question) {
     const all = readChat().messages;
     const list = (wantsUnread ? all.filter((item) => !item.readStatus) : all).slice(-8);
@@ -1287,6 +1387,7 @@ type SettingsSet =
   | { kind: 'notify'; key: keyof NotificationPrefs; on: boolean; labelEn: string; labelEl: string };
 
 const NOTIFY_ROWS: { key: keyof NotificationPrefs; words: RegExp; en: string; el: string }[] = [
+  { key: 'needs', words: /need ?cards?|καρτ\w{0,3} αναγκ/, en: 'Need Card notifications', el: 'Ειδοποιήσεις καρτών ανάγκης' },
   { key: 'matches', words: /match|ταιριασ/, en: 'Match notifications', el: 'Ειδοποιήσεις ταιριασμάτων' },
   { key: 'messages', words: /messag|μηνυμ/, en: 'Message notifications', el: 'Ειδοποιήσεις μηνυμάτων' },
   { key: 'community', words: /communit|κοινοτ/, en: 'Community notifications', el: 'Ειδοποιήσεις κοινότητας' },
@@ -2714,17 +2815,20 @@ function readinessResult(query: string, propose: boolean, profile: AssistantProf
 function studioModalResult(kind: '6axis' | 'dealroom' | 'needwall', query = '', profile?: AssistantProfile | null): AssistantResult {
   const ui = useUIStore.getState();
   if (kind === '6axis') {
-    const person = query ? namedPerson(query) : undefined;
-    const targetId = person ? person.id : 'fp-1';
-    ui.setMatchBreakdownModalOpen(true, targetId);
+    const named = query ? namedPerson(query) : undefined;
+    // Without a name, the breakdown opens on the best match — the same ranking Matches shows first.
+    const best = named ? undefined : rankPeople(fromProfile(profile ?? null), cofounderPool()).find((row) => row.fit.score != null);
+    const person = named ?? best?.person;
+    ui.setMatchBreakdownModalOpen(true, person?.id ?? null);
     if (person) {
-      const fit = compatibility(fromProfile(profile ?? null), fromCast(person));
-      const scoreText = fit.score != null ? ` (${fit.score}% compatibility)` : '';
-      const scoreTextEl = fit.score != null ? ` (${fit.score}% συμβατότητα)` : '';
+      const fit = named ? compatibility(fromProfile(profile ?? null), fromCast(person)) : best!.fit;
+      const scoreText = fit.score != null ? ` (${fit.score}%)` : '';
+      const leadEn = named ? `Opened the score breakdown for ${person.fullName}${scoreText}` : `Opened the score breakdown for your best match, ${person.fullName}${scoreText}`;
+      const leadEl = named ? `Άνοιξε η ανάλυση σκορ για ${person.fullName}${scoreText}` : `Άνοιξε η ανάλυση σκορ για την καλύτερη αντιστοίχισή σου, ${person.fullName}${scoreText}`;
       return {
         tool: 'studio-modal',
-        en: `Opened the 6-Axis Match Breakdown modal for ${person.fullName}${scoreText} — inspecting Role Complementarity, Skills Synergy, Stage, Commitment, Location, and Verification.`,
-        el: `Άνοιξε το modal Ανάλυσης Συμβατότητας 6 Αξόνων για ${person.fullName}${scoreTextEl} — έλεγχος Συμπληρωματικότητας Ρόλου, Δεξιοτήτων, Σταδίου, Δέσμευσης, Τοποθεσίας & Επαλήθευσης.`,
+        en: `${leadEn} — the same factors Matches scores (skills, market, stage, commitment, working hours), with role and verification shown as context. Say “/6axis <name>” for anyone else.`,
+        el: `${leadEl} — οι ίδιοι παράγοντες με τις Αντιστοιχίσεις (δεξιότητες, αγορά, στάδιο, δέσμευση, ώρες εργασίας), με τον ρόλο και την επαλήθευση ως πλαίσιο. Πες «/6axis <όνομα>» για οποιονδήποτε άλλον.`,
         href: `/profile/${person.id}`,
         links: [
           { href: `/profile/${person.id}`, en: `Open ${person.fullName}`, el: `Άνοιγμα ${person.fullName}` },
@@ -2734,28 +2838,31 @@ function studioModalResult(kind: '6axis' | 'dealroom' | 'needwall', query = '', 
     }
     return {
       tool: 'studio-modal',
-      en: 'Opened the 6-Axis Match Breakdown modal (Skills, Stage, Industry, Commitment, Workstyle, Values Radar + Risk Flags & Icebreaker Prompts). You can also say “/6axis Sarah Chen” for any founder.',
-      el: 'Άνοιξε το modal Ανάλυσης Συμβατότητας 6 Αξόνων (Δεξιότητες, Στάδιο, Κλάδος, Δέσμευση, Τρόπος Εργασίας, Αξίες + Risk Flags & Icebreakers). Μπορείς επίσης να πεις «/6axis Sarah Chen» για κάθε ιδρυτή.',
-      href: '/matches',
-      links: [{ href: '/matches', en: 'Open Matches', el: 'Άνοιγμα Αντιστοιχίσεων' }],
+      en: 'Opened the score breakdown. There is not enough profile data to rank anyone yet — add your skills, stage and commitment, then say “/6axis <name>”.',
+      el: 'Άνοιξε η ανάλυση σκορ. Δεν υπάρχουν ακόμη αρκετά στοιχεία προφίλ για κατάταξη — πρόσθεσε δεξιότητες, στάδιο και δέσμευση και μετά πες «/6axis <όνομα>».',
+      href: '/profile',
+      links: [{ href: '/profile', en: 'Complete your profile', el: 'Συμπλήρωσε το προφίλ σου' }, { href: '/matches', en: 'Open Matches', el: 'Άνοιγμα Αντιστοιχίσεων' }],
     };
   }
   if (kind === 'dealroom') {
     const folded = fold(query);
+    const browsing = hasStem(folded, 'browse', 'other', 'others', 'startups', 'all', 'αλλες', 'ολες');
     const startupId = hasStem(folded, 'create', 'new', 'launch', 'νεα', 'δημιουργ')
       ? 'create'
-      : hasStem(folded, 'browse', 'other', 'others', 'startups', 'all', 'αλλες', 'ολες')
+      : browsing && isDemoData()
         ? 'sv-1'
         : 'sv-my-venture';
     ui.setDealRoomModalOpen(true, startupId);
+    const noOthersEn = browsing && !isDemoData() ? ' Other founders’ Deal Rooms are not shared on the platform yet, so yours is the one shown.' : '';
+    const noOthersEl = browsing && !isDemoData() ? ' Τα Deal Rooms άλλων ιδρυτών δεν κοινοποιούνται ακόμη στην πλατφόρμα, οπότε εμφανίζεται το δικό σου.' : '';
     return {
       tool: 'studio-modal',
       en: startupId === 'create'
-        ? 'Opened the Startup Deal Room modal in Create Venture mode.'
-        : 'Opened the Startup Deal Room & Pitch Deck modal (Overview, Pitch Deck Slides, Traction KPIs, Open Roles, and Investor Commit — synchronized with your Venture & Fundraising Round).',
+        ? 'Opened the Deal Room in “launch a venture” mode. Nothing is published until you press Publish.'
+        : `Opened the Deal Room: problem, solution, traction, market and model, open roles — drawn from your pitch deck, round and Need Cards.${noOthersEn}`,
       el: startupId === 'create'
-        ? 'Άνοιξε το modal Startup Deal Room σε λειτουργία Δημιουργίας Νέας Startup.'
-        : 'Άνοιξε το modal Startup Deal Room & Pitch Deck (Επισκόπηση, Διαφάνειες Pitch Deck, Μετρικές Traction, Ανοιχτοί Ρόλοι & Επενδυτικό Ενδιαφέρον — συγχρονισμένο με το Venture & τον Γύρο Χρηματοδότησης).',
+        ? 'Άνοιξε το Deal Room σε λειτουργία «νέο venture». Δεν δημοσιεύεται τίποτα μέχρι να πατήσεις Δημοσίευση.'
+        : `Άνοιξε το Deal Room: πρόβλημα, λύση, traction, αγορά και μοντέλο, ανοιχτοί ρόλοι — από το pitch deck, τον γύρο και τις Κάρτες Ανάγκης σου.${noOthersEl}`,
       href: '/fundraising',
       links: [{ href: '/fundraising', en: 'Open Fundraising', el: 'Άνοιγμα Χρηματοδότησης' }],
     };
@@ -2763,8 +2870,8 @@ function studioModalResult(kind: '6axis' | 'dealroom' | 'needwall', query = '', 
   ui.setNeedWallModalOpen(true);
   return {
     tool: 'studio-modal',
-    en: 'Opened the Startup Role Need Cards Wall modal (synchronized live with your /need cards and Network).',
-    el: 'Άνοιξε το modal Πίνακα Αναγκών & Ρόλων Startup (συγχρονισμένο σε πραγματικό χρόνο με τις κάρτες /need και το Δίκτυο).',
+    en: 'Opened the Need Cards wall — your cards (the same list as /need and Network)' + (isDemoData() ? ' and the sample cards.' : '. Other founders’ cards are not shared on the platform yet.'),
+    el: 'Άνοιξε ο πίνακας Καρτών Ανάγκης — οι κάρτες σου (η ίδια λίστα με το /need και το Δίκτυο)' + (isDemoData() ? ' και οι κάρτες δείγματος.' : '. Οι κάρτες άλλων ιδρυτών δεν κοινοποιούνται ακόμη στην πλατφόρμα.'),
     href: '/network?tab=needs',
     links: [{ href: '/network?tab=needs', en: 'Open Need Cards', el: 'Άνοιγμα Καρτών Ανάγκης' }],
   };
@@ -3097,10 +3204,107 @@ function directMessageResult(query: string, propose: boolean): AssistantResult {
     };
   }
   const messageBody = bodyPart || `Hi ${person.fullName.split(' ')[0]}, I saw our compatibility on CoFounderBay and would love to connect!`;
+  const bridge = messagingBridge();
   const links: AssistantLink[] = [
     { href: `/messages?user=${person.id}`, en: `Open chat with ${person.fullName}`, el: `Άνοιγμα συνομιλίας με ${person.fullName}` },
     { href: `/profile/${person.id}`, en: `View ${person.fullName}`, el: `Προβολή ${person.fullName}` },
   ];
+  if (bridge) {
+    links.unshift({
+      href: `/messages?user=${encodeURIComponent(person.id)}&text=${encodeURIComponent(messageBody)}`,
+      en: 'Edit in Messages first',
+      el: 'Επεξεργασία στα Μηνύματα πρώτα',
+    });
+    const refusalResult = (reason: BridgeRefusal): AssistantResult => {
+      const copy: Record<BridgeRefusal, { en: string; el: string }> = {
+        self: { en: 'You cannot message yourself.', el: 'Δεν μπορείς να στείλεις μήνυμα στον εαυτό σου.' },
+        blocked: { en: `${person.fullName} has blocked messages.`, el: `Το μέλος ${person.fullName} έχει αποκλείσει τα μηνύματα.` },
+        blockedByMe: { en: `Unblock ${person.fullName} in Messages before sending.`, el: `Κατάργησε τον αποκλεισμό για ${person.fullName} στα Μηνύματα πριν από την αποστολή.` },
+        closed: { en: `${person.fullName} does not accept messages.`, el: `Το μέλος ${person.fullName} δεν δέχεται μηνύματα.` },
+        'connections-only': {
+          en: `Send ${person.fullName} a connection request first.`,
+          el: `Στείλε πρώτα αίτημα σύνδεσης προς ${person.fullName}.`,
+        },
+        unknown: { en: `I could not find ${person.fullName} in Messages.`, el: `Δεν βρήκα το μέλος ${person.fullName} στα Μηνύματα.` },
+      };
+      return {
+        tool: 'inbox',
+        ...copy[reason],
+        href: reason === 'blockedByMe' ? '/messages' : `/profile/${person.id}`,
+        links: reason === 'blockedByMe'
+          ? [{ href: '/messages', en: 'Open Messages to unblock', el: 'Άνοιγμα Μηνυμάτων για άρση αποκλεισμού' }]
+          : [{ href: `/profile/${person.id}`, en: `View ${person.fullName}`, el: `Προβολή ${person.fullName}` }],
+        ...(reason === 'connections-only'
+          ? { followUps: [{ en: `Connect with ${person.fullName}`, el: `Σύνδεση με ${person.fullName}` }] }
+          : {}),
+      };
+    };
+    const initialRefusal = bridge.canSendTo(person.id);
+    if (initialRefusal) return refusalResult(initialRefusal);
+    let sent: { conversationId: string; messageId: string } | null = null;
+    let logged: LoggedWrite | null = null;
+    const apply = async (): Promise<AssistantResult> => {
+      const result = await bridge.sendToPerson(person.id, messageBody);
+      if (!result.ok) return refusalResult(result.reason);
+      sent = result;
+      logged = {
+        kind: 'message',
+        title: `Sent message to ${person.fullName}`,
+        titleEl: `Στάλθηκε μήνυμα σε ${person.fullName}`,
+        href: `/messages?user=${person.id}`,
+      };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'inbox',
+        en: `Sent to ${person.fullName}: “${messageBody}”. It is in your conversation on Messages.`,
+        el: `Στάλθηκε σε ${person.fullName}: «${messageBody}». Βρίσκεται στη συνομιλία σας στα Μηνύματα.`,
+        href: `/messages?user=${person.id}`,
+        links,
+      };
+    };
+    if (!propose) {
+      // A typed direct command sends at once (specialist chats); a failure is written to the
+      // activity log so it is visible in Notifications instead of disappearing.
+      const logFailure = () => logActivity({
+        kind: 'message',
+        title: `Message to ${person.fullName} was not sent`,
+        titleEl: `Το μήνυμα προς ${person.fullName} δεν στάλθηκε`,
+        href: `/messages?user=${person.id}`,
+        byAssistant: true,
+      });
+      void apply()
+        .then(() => { if (!sent) logFailure(); })
+        .catch(logFailure);
+      return {
+        tool: 'inbox',
+        en: `Sending to ${person.fullName}… It will appear in your conversation on Messages; if it fails, Notifications will say so.`,
+        el: `Γίνεται αποστολή σε ${person.fullName}… Θα εμφανιστεί στη συνομιλία σας στα Μηνύματα· αν αποτύχει, θα το δεις στις Ειδοποιήσεις.`,
+        href: `/messages?user=${person.id}`,
+        links,
+      };
+    }
+    return proposalResult(
+      {
+        summary: {
+          en: `Send message to ${person.fullName}: “${messageBody}”?`,
+          el: `Αποστολή μηνύματος σε ${person.fullName}: «${messageBody}»;`,
+        },
+        reversal: bridge.real ? 'partial' : 'full',
+        ...(bridge.real ? {
+          reversalNote: {
+            en: 'Undo deletes it from the conversation, but they may already have seen it or been notified.',
+            el: 'Η αναίρεση το διαγράφει από τη συνομιλία, αλλά μπορεί να το έχουν ήδη δει ή να έχουν ειδοποιηθεί.',
+          },
+        } : {}),
+        apply,
+        undo: async () => {
+          if (sent) await bridge.unsend(sent.conversationId, sent.messageId);
+          logUndo(logged);
+        },
+      },
+      { tool: 'inbox', href: `/messages?user=${person.id}`, links },
+    );
+  }
   const beforeChat = readChat();
   let logged: LoggedWrite | null = null;
   const apply = (): AssistantResult => {
@@ -3820,6 +4024,26 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
   const uxPrefs = readUxPrefs();
   const visited = topPages(4).map((row) => `${row.path}(${row.count})`).join(', ') || 'nothing yet';
   const usageLine = `Usage: most visited ${visited} · pinned [${uxPrefs.favorites.join(', ') || 'none'}] · home ${uxPrefs.homePath || '/'}`;
+  const completeness = profileCompleteness(profile ? {
+    ...profile,
+    skills: listWords(profile.skills),
+    lookingFor: listWords(profile.lookingFor),
+  } : null);
+  const profileLine = `Profile: skills ${listWords(profile?.skills).slice(0, 4).join(', ') || 'none'} · looking for ${listWords(profile?.lookingFor).slice(0, 4).join(', ') || 'none'} · stage ${profile?.stage || 'unset'} · commitment ${profile?.commitment || 'unset'} · location ${profile?.location || 'unset'} · completeness ${completeness.score}% (missing: ${completeness.missing.slice(0, 3).map((field) => field.label.en).join(', ') || 'none'})`;
+  const filters = readMatchFilters();
+  const filterParts = Object.entries(filters).filter(([, value]) => value.trim()).slice(0, 4).map(([key, value]) => `${key}=${value}`);
+  const filtersLine = `Match filters in effect: ${filterParts.join(' · ') || 'none'}`;
+  const pitch = pitchProgress();
+  const pitchLine = `Pitch deck: ${pitch.complete}/${pitch.total} slides complete · empty: ${pitch.empty.slice(0, 4).map((slide) => slide.en).join(', ') || 'none'}`;
+  const bridge = messagingBridge();
+  const unreadThreads = bridge?.threads().filter((thread) => !thread.muted && thread.unread > 0).slice(0, 4) ?? [];
+  const messagesLine = bridge
+    ? `Messages: ${bridge.totalUnread()} unread${unreadThreads.length ? ` (${unreadThreads.map((thread) => `${thread.name} ${thread.unread}`).join(', ')})` : ''}`
+    : null;
+  const sentRequests = readRequests().filter((request) => request.status === 'pending').slice(0, 3);
+  const requestsLine = `Connection requests sent: ${sentRequests.map((request) => request.fullName).join(', ') || 'none'}`;
+  const nextUp = agendaFor('week').slice(0, 3);
+  const agendaLine = `Next up this week: ${nextUp.map((item) => `${item.at.slice(0, 16)} ${item.title}`).join(' · ') || 'none'}`;
   return [
     `Viewer: ${profile?.fullName || 'Demo User'} · ${profile?.headline || ''} · ${profile?.industry || ''}`,
     `Venture: ${ventureLabel} · Readiness Score: ${readinessScore}/100 · Open Need Cards: ${needsCount}`,
@@ -3828,6 +4052,12 @@ export function assistantContextBlock(profile: AssistantProfile | null): string 
     `Round: ${brief.round.name} ($${brief.round.committedAmount.toLocaleString()} / $${brief.round.targetAmount.toLocaleString()}, burn $${brief.round.monthlyBurn.toLocaleString()}/mo)`,
     `Lean Canvas: ${canvasLine}`,
     `Startup Builder: ${builderLine}`,
+    profileLine,
+    filtersLine,
+    pitchLine,
+    ...(messagesLine ? [messagesLine] : []),
+    requestsLine,
+    agendaLine,
     usageLine,
   ].join('\n');
 }

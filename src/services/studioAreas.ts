@@ -3,7 +3,7 @@
  * the Legal Hub checklist, today's focus time and saved Discovery searches.
  * Same lists the pages read; writes return proposals with an exact undo.
  */
-import { PITCH_SLIDES, draftPitch, effectivePitch, readPitch, slideStatus, writePitchSlide, type PitchSlideKey } from '../lib/pitch';
+import { PITCH_SLIDES, draftPitch, pitchProgress, readPitch, slideStatus, writePitchSlide, type PitchSlideKey } from '../lib/pitch';
 import { LEGAL_CHECKLIST, isLegalDone, legalProgress, readLegalChecklist, setLegalItem } from '../lib/legalChecklist';
 import { readFocusToday } from '../lib/focusStats';
 import { keys, logActivity, readSavedSearches, writeValue } from '../lib/localLists';
@@ -53,15 +53,13 @@ export function parsePitchSet(query: string): { slide: PitchSlideKey; text: stri
 }
 
 export function pitchReadResult(): AssistantResult {
-  const deck = effectivePitch();
-  const rows = PITCH_SLIDES.map((slide) => ({ slide, status: slideStatus(deck[slide.key]) }));
-  const complete = rows.filter((row) => row.status === 'complete').length;
+  const { rows, complete, total } = pitchProgress();
   const nextGap = rows.find((row) => row.status !== 'complete');
   const mark = (status: string) => (status === 'complete' ? '✓' : status === 'in-progress' ? '…' : '○');
   return {
     tool: 'pitch',
-    en: `Pitch deck: ${complete}/${rows.length} slides complete — same deck Founder Tools shows.\n${rows.map((row) => `${mark(row.status)} ${row.slide.en}`).join('\n')}${nextGap ? `\nNext: say “set the ${nextGap.slide.key} slide to …”.` : ''}`,
-    el: `Pitch deck: ${complete}/${rows.length} διαφάνειες ολοκληρωμένες — το ίδιο deck με τα Εργαλεία Ιδρυτή.\n${rows.map((row) => `${mark(row.status)} ${row.slide.el}`).join('\n')}${nextGap ? `\nΕπόμενο: πες «όρισε τη διαφάνεια ${nextGap.slide.key} σε …».` : ''}`,
+    en: `Pitch deck: ${complete}/${total} slides complete — same deck Founder Tools shows.\n${rows.map((row) => `${mark(row.status)} ${row.slide.en}`).join('\n')}${nextGap ? `\nNext: say “set the ${nextGap.slide.key} slide to …”.` : ''}`,
+    el: `Pitch deck: ${complete}/${total} διαφάνειες ολοκληρωμένες — το ίδιο deck με τα Εργαλεία Ιδρυτή.\n${rows.map((row) => `${mark(row.status)} ${row.slide.el}`).join('\n')}${nextGap ? `\nΕπόμενο: πες «όρισε τη διαφάνεια ${nextGap.slide.key} σε …».` : ''}`,
     href: PITCH_LINK.href,
     links: [PITCH_LINK],
   };

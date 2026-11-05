@@ -115,6 +115,17 @@ export function effectivePitch(): PitchContent {
   return isDemoData() ? { ...draftPitch(), ...stored } : stored;
 }
 
+export function pitchProgress() {
+  const deck = effectivePitch();
+  const rows = PITCH_SLIDES.map((slide) => ({ slide, status: slideStatus(deck[slide.key]) }));
+  return {
+    complete: rows.filter((row) => row.status === 'complete').length,
+    total: rows.length,
+    empty: rows.filter((row) => row.status === 'pending').map((row) => row.slide),
+    rows,
+  };
+}
+
 /** The deck as a Markdown document, in one language, for Word / print / share. */
 export function pitchMarkdown(content: PitchContent, lang: 'en' | 'el', title: string): string {
   const empty = lang === 'el' ? '_(κενό — συμπλήρωσέ το στα Εργαλεία ιδρυτή → Pitch)_' : '_(empty — fill it in Founder Tools → Pitch)_';

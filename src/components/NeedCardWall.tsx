@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   PieChart,
-  CheckCircle,
   Users,
   X,
   Bell,
@@ -13,12 +13,20 @@ import { NeedCardItem } from '../types';
 import { CardHead, CardFoot } from './CardAnatomy';
 import { FactLine } from './FactLine';
 import { PageHeader } from './PageHeader';
+import Badge from './ui/Badge';
+import { keys, logActivity, readNeedInterest, readNotificationPrefs, toggleNeedInterest, writeNotificationPrefs } from '../lib/localLists';
+import { useStored } from '../lib/useStored';
+import { useToast } from '../context/ToastContext';
+import { equityRange } from '../lib/studioData';
 
 interface NeedCardWallProps {
   needCards: NeedCardItem[];
   lang: 'en' | 'el';
   onExpressInterest: (card: NeedCardItem) => void;
   onCreateNeedCard: (card: Omit<NeedCardItem, 'id' | 'createdAt' | 'applicantCount' | 'status'>) => void;
+  defaultLocation?: string;
+  /** The founder's own venture, prefilled in "Write Need Card". */
+  defaultVenture?: string;
 }
 
 export const NeedCardWall: React.FC<NeedCardWallProps> = ({
@@ -26,24 +34,29 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
   lang,
   onExpressInterest,
   onCreateNeedCard,
+  defaultLocation = '',
+  defaultVenture = '',
 }) => {
+  const toast = useToast();
+  const interestedIds = useStored(readNeedInterest, [keys.needInterest]);
+  const notificationPrefs = useStored(readNotificationPrefs, [keys.notificationPrefs]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [selectedCommitment, setSelectedCommitment] = useState<string>('all');
   const [remoteOnly, setRemoteOnly] = useState(false);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [alertEmail, setAlertEmail] = useState('');
-  const [alertSuccess, setAlertSuccess] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [newTitle, setNewTitle] = useState('');
-  const [newVenture, setNewVenture] = useState('');
+  const [newVenture, setNewVenture] = useState(defaultVenture);
   const [newDesc, setNewDesc] = useState('');
   const [newCategory, setNewCategory] = useState<NeedCardItem['category']>('Engineering');
-  const [newEquity, setNewEquity] = useState('20% - 35%');
+  const [newEquity, setNewEquity] = useState('');
   const [newCommitment, setNewCommitment] = useState<NeedCardItem['commitment']>('Full-Time');
   const [newStage, setNewStage] = useState<NeedCardItem['stage']>('Prototype / MVP');
-  const [newSkills, setNewSkills] = useState('TypeScript, AI, Next.js');
+  const [newSkills, setNewSkills] = useState('');
+  const [newOutcome, setNewOutcome] = useState('');
+  const [newLocation, setNewLocation] = useState(defaultLocation);
+  const [newRemote, setNewRemote] = useState(false);
 
   const categories = ['all', 'Engineering', 'Growth & GTM', 'Product', 'Advisory', 'Operations'];
   const stages = ['all', 'Idea / Concept', 'Prototype / MVP', 'Pre-Seed (Traction)', 'Seed Funded'];
@@ -66,39 +79,30 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
       ventureName: newVenture,
       description: newDesc,
       category: newCategory,
-      location: 'Athens, Greece / Remote',
-      isRemote: true,
+      location: newLocation,
+      isRemote: newRemote,
       stage: newStage,
       commitment: newCommitment,
       equityOffered: newEquity,
       skills: newSkills.split(',').map((s) => s.trim()).filter(Boolean),
+      outcome: newOutcome,
     });
 
     setIsCreateOpen(false);
     setNewTitle('');
-    setNewVenture('');
+    setNewVenture(defaultVenture);
     setNewDesc('');
-  };
-
-  const handleAlertSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (alertEmail) {
-      setAlertSuccess(true);
-      setTimeout(() => {
-        setIsAlertOpen(false);
-        setAlertSuccess(false);
-        setAlertEmail('');
-      }, 1800);
-    }
+    setNewOutcome('');
+    setNewSkills('');
+    setNewEquity('');
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
         headingAs="h3"
-        eyebrow="Live Venture Needs Wall"
-        eyebrowEl="Ζωντανός Τοίχος Αναγκών Startups"
-        eyebrowColor="text-emerald-400"
+        eyebrow="Venture needs"
+        eyebrowEl="Ανάγκες startups"
         title="Project Need Cards & Co-Founder Openings"
         titleEl="Κάρτες Αναγκών & Ανοιχτές Θέσεις Συνιδρυτών"
         description="Specific co-founder commitments, equity ranges, and technical or growth capabilities actively sought by founders."
@@ -108,11 +112,22 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsAlertOpen(true)}
+              aria-pressed={notificationPrefs.needs}
+              onClick={() => {
+                const on = !notificationPrefs.needs;
+                writeNotificationPrefs({ ...notificationPrefs, needs: on });
+                if (on) toast.success(
+                  lang === 'en'
+                    ? 'Alerts on: open cards that ask for a skill on your profile appear in Notifications. Email alerts aren’t available.'
+                    : 'Ειδοποιήσεις ενεργές: ανοιχτές κάρτες που ζητούν δεξιότητα του προφίλ σου εμφανίζονται στις Ειδοποιήσεις. Ειδοποιήσεις μέσω email δεν είναι διαθέσιμες.',
+                );
+              }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-2xs"
             >
               <Bell className="h-3.5 w-3.5 text-primary" />
-              <span>{lang === 'en' ? 'Alert me about new cards' : 'Ειδοποίηση για νέες κάρτες'}</span>
+              <span>{notificationPrefs.needs
+                ? (lang === 'en' ? 'Alerts on' : 'Ειδοποιήσεις ενεργές')
+                : (lang === 'en' ? 'Alert me about matching cards' : 'Ειδοποίησέ με για κάρτες που μου ταιριάζουν')}</span>
             </button>
             <button
               type="button"
@@ -126,8 +141,8 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
         }
         metrics={[
           { label: 'Active Needs', labelEl: 'Ενεργές Ανάγκες', value: needCards.length },
-          { label: 'Total Openings', labelEl: 'Ανοιχτές Θέσεις', value: needCards.reduce((acc, c) => acc + c.applicantCount + 1, 0), color: 'text-primary' },
-          { label: 'Avg Equity Pool', labelEl: 'Μ.Ο. Equity', value: '20% - 35%', color: 'text-emerald-400' },
+          { label: 'Applicants', labelEl: 'Υποψήφιοι', value: needCards.reduce((acc, c) => acc + c.applicantCount, 0), color: 'text-primary' },
+          { label: 'Equity offered', labelEl: 'Προσφερόμενο equity', value: equityRange(needCards.map((card) => card.equityOffered)), color: 'text-emerald-700' },
           { label: 'Remote Friendly', labelEl: 'Remote Θέσεις', value: `${needCards.filter((c) => c.isRemote).length} / ${needCards.length}` },
         ]}
       />
@@ -244,10 +259,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
                   />
                 }
                 aside={
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                  card.equityOffered ? <Badge variant="success">
                     <PieChart className="h-3 w-3" />
                     <span>{card.equityOffered}</span>
-                  </span>
+                  </Badge> : null
                 }
                 asideStays={false}
               />
@@ -273,18 +288,39 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
               meta={
                 <span className="inline-flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" />
-                  {card.applicantCount} {lang === 'en' ? 'applicants' : 'υποψήφιοι'} · {card.createdAt}
+                  {[
+                    card.own
+                      ? (lang === 'en' ? 'Your card' : 'Η κάρτα σου')
+                      : `${card.applicantCount} ${lang === 'en' ? 'applicants' : 'υποψήφιοι'}`,
+                    card.createdAt,
+                  ].filter(Boolean).join(' · ')}
                 </span>
               }
             >
-              <button
-                type="button"
-                onClick={() => onExpressInterest(card)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-              >
-                <Send className="h-3 w-3" />
-                <span>{lang === 'en' ? 'Express Interest' : 'Εκδήλωση Ενδιαφέροντος'}</span>
-              </button>
+              {card.own ? (
+                <Link to="/network?tab=needs" className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground">
+                  {lang === 'en' ? 'Open in Network' : 'Άνοιγμα στο Δίκτυο'}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  aria-pressed={interestedIds.includes(card.id)}
+                  onClick={() => {
+                    const marking = !interestedIds.includes(card.id);
+                    toggleNeedInterest(card.id);
+                    if (marking) {
+                      onExpressInterest(card);
+                      logActivity({ kind: 'request', title: `Marked interest in ${card.title}`, titleEl: `Σημείωσες ενδιαφέρον για ${card.title}`, href: '/matches?panel=needs' });
+                    }
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                >
+                  <Send className="h-3 w-3" />
+                  <span>{interestedIds.includes(card.id)
+                    ? (lang === 'en' ? 'Interested ✓' : 'Ενδιαφέρομαι ✓')
+                    : (lang === 'en' ? 'Express interest' : 'Εκδήλωση ενδιαφέροντος')}</span>
+                </button>
+              )}
             </CardFoot>
           </div>
         ))}
@@ -314,86 +350,20 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
         </div>
       )}
 
-      {isAlertOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-semibold text-foreground">
-                  {lang === 'en' ? 'Need Card Alerts' : 'Ειδοποιήσεις Νέων Καρτών'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAlertOpen(false)}
-                aria-label={lang === 'en' ? 'Close' : 'Κλείσιμο'}
-                className="rounded-lg p-1 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {alertSuccess ? (
-              <div className="py-6 text-center space-y-2">
-                <CheckCircle className="mx-auto h-10 w-10 text-emerald-400" />
-                <h4 className="text-sm font-semibold text-foreground">
-                  {lang === 'en' ? 'Alert Configured Successfully!' : 'Η ειδοποίηση ρυθμίστηκε επιτυχώς!'}
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  {lang === 'en'
-                    ? 'You will receive notifications whenever a matching need card is posted.'
-                    : 'Θα λαμβάνεις ειδοποιήσεις όταν αναρτάται σχετική κάρτα ανάγκης.'}
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleAlertSubmit} className="mt-4 space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  {lang === 'en'
-                    ? 'Get instant alerts when startups in your domain post new co-founder positions.'
-                    : 'Άμεση ενημέρωση όταν startups στον τομέα σου δημοσιεύουν νέες θέσεις συνιδρυτών.'}
-                </p>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    {lang === 'en' ? 'Email Address' : 'Διεύθυνση Email'}
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="alex@example.com"
-                    value={alertEmail}
-                    onChange={(e) => setAlertEmail(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAlertOpen(false)}
-                    className="h-9 rounded-lg border border-border px-3.5 text-xs font-medium text-foreground hover:bg-accent"
-                  >
-                    {lang === 'en' ? 'Cancel' : 'Ακύρωση'}
-                  </button>
-                  <button
-                    type="submit"
-                    className="h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    {lang === 'en' ? 'Subscribe' : 'Εγγραφή'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsCreateOpen(false); }}
+          onKeyDown={(e) => {
+            // Escape closes only this form; the wall behind it stays open with its filters.
+            if (e.key === 'Escape') { e.stopPropagation(); setIsCreateOpen(false); }
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby="need-create-title" className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 id="need-create-title" className="text-base font-semibold text-foreground">
                   {lang === 'en' ? 'Post a Venture Need Card' : 'Δημοσίευση Κάρτας Ανάγκης'}
                 </h3>
               </div>
@@ -409,10 +379,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
 
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
+                <label htmlFor="need-title" className="block text-xs font-medium text-foreground mb-1">
                   {lang === 'en' ? 'Need Title / Role' : 'Τίτλος Ανάγκης / Ρόλος'}
                 </label>
-                <input
+                <input id="need-title" autoFocus
                   type="text"
                   required
                   placeholder={lang === 'en' ? 'e.g. Lead Technical Co-Founder' : 'π.χ. Τεχνικός Συνιδρυτής'}
@@ -423,10 +393,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
+                <label htmlFor="need-venture" className="block text-xs font-medium text-foreground mb-1">
                   {lang === 'en' ? 'Venture / Project Name' : 'Όνομα Venture / Project'}
                 </label>
-                <input
+                <input id="need-venture"
                   type="text"
                   required
                   placeholder={lang === 'en' ? 'e.g. AgentMesh OS' : 'π.χ. AgentMesh OS'}
@@ -438,10 +408,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
+                  <label htmlFor="need-category" className="block text-xs font-medium text-foreground mb-1">
                     {lang === 'en' ? 'Category' : 'Κατηγορία'}
                   </label>
-                  <select
+                  <select id="need-category"
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as NeedCardItem['category'])}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
@@ -455,12 +425,13 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
+                  <label htmlFor="need-equity" className="block text-xs font-medium text-foreground mb-1">
                     {lang === 'en' ? 'Equity Offered' : 'Προσφερόμενο Equity'}
                   </label>
-                  <input
+                  <input id="need-equity"
                     type="text"
                     required
+                    placeholder="20% - 35%"
                     value={newEquity}
                     onChange={(e) => setNewEquity(e.target.value)}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
@@ -470,10 +441,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
+                  <label htmlFor="need-commitment" className="block text-xs font-medium text-foreground mb-1">
                     {lang === 'en' ? 'Commitment' : 'Δέσμευση'}
                   </label>
-                  <select
+                  <select id="need-commitment"
                     value={newCommitment}
                     onChange={(e) => setNewCommitment(e.target.value as NeedCardItem['commitment'])}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
@@ -486,10 +457,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
+                  <label htmlFor="need-stage" className="block text-xs font-medium text-foreground mb-1">
                     {lang === 'en' ? 'Stage' : 'Στάδιο'}
                   </label>
-                  <select
+                  <select id="need-stage"
                     value={newStage}
                     onChange={(e) => setNewStage(e.target.value as NeedCardItem['stage'])}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
@@ -503,10 +474,10 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
+                <label htmlFor="need-desc" className="block text-xs font-medium text-foreground mb-1">
                   {lang === 'en' ? 'Description & Core Responsibilities' : 'Περιγραφή & Βασικές Αρμοδιότητες'}
                 </label>
-                <textarea
+                <textarea id="need-desc"
                   rows={3}
                   required
                   value={newDesc}
@@ -517,11 +488,41 @@ export const NeedCardWall: React.FC<NeedCardWallProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1">
+                <label htmlFor="need-outcome" className="block text-xs font-medium text-foreground mb-1">
+                  {lang === 'en' ? 'Outcome' : 'Αποτέλεσμα'}
+                </label>
+                <input id="need-outcome"
+                  type="text"
+                  value={newOutcome}
+                  onChange={(e) => setNewOutcome(e.target.value)}
+                  placeholder={lang === 'en' ? 'What this person will make happen' : 'Τι θα πετύχει αυτό το άτομο'}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="need-location" className="block text-xs font-medium text-foreground mb-1">
+                  {lang === 'en' ? 'Location' : 'Τοποθεσία'}
+                </label>
+                <input id="need-location"
+                  type="text"
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+                />
+                <label className="mt-2 inline-flex items-center gap-2 text-xs text-foreground">
+                  <input type="checkbox" checked={newRemote} onChange={(e) => setNewRemote(e.target.checked)} />
+                  {lang === 'en' ? 'Remote' : 'Εξ αποστάσεως'}
+                </label>
+              </div>
+
+              <div>
+                <label htmlFor="need-skills" className="block text-xs font-medium text-foreground mb-1">
                   {lang === 'en' ? 'Required Skills (comma-separated)' : 'Απαιτούμενες Δεξιότητες (με κόμμα)'}
                 </label>
-                <input
+                <input id="need-skills"
                   type="text"
+                  placeholder="TypeScript, AI, Next.js"
                   value={newSkills}
                   onChange={(e) => setNewSkills(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
