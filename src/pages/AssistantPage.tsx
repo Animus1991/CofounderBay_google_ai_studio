@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ChevronDown, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Undo2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowRight, ChevronDown, Eye, Navigation, PenLine, Search, Settings2, ShieldCheck, Undo2, X } from 'lucide-react';
 import PageShell from '../components/ui/PageShell';
 import ChatWidget from '../components/ChatWidget';
 import { AiActionLedger } from '../components/AiActionLedger';
+import AssistantHelp from '../components/AssistantHelp';
 import { useLanguage, useT } from '../lib/language';
 import { bothText } from '../lib/labels';
 import { askAssistant } from '../lib/assistantBus';
+import { usePageControls } from '../lib/pageControls';
 import { ACTION_CATALOG, actionsByArea, type ActionDeclaration, type ActionKind } from '../ai/catalog';
 import { AIService, type AIStatus } from '../services/aiService';
 import { cn } from '../lib/utils';
@@ -62,12 +65,36 @@ export default function AssistantPage() {
   const [filter, setFilter] = useState('');
   const compact = useMediaQuery('(max-width: 1023px)');
   const [openAreas, setOpenAreas] = useState<string[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const askedRef = useRef<string | null>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
     void AIService.status().then((value) => { if (alive) setStatus(value); });
     return () => { alive = false; };
   }, []);
+
+  // A question arriving in ?q= is sent, not just typed (the sibling app does
+  // the same for its "Ask AI about this" links). The address then drops the
+  // parameter so a reload — or React's double effect run — does not ask twice.
+  useEffect(() => {
+    const q = searchParams.get('q')?.trim();
+    if (!q || askedRef.current === q) return;
+    askedRef.current = q;
+    setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.delete('q');
+      return next;
+    }, { replace: true });
+    askAssistant(q);
+  }, [searchParams, setSearchParams]);
+
+  usePageControls(() => [
+    { id: 'run-studio-check', en: 'Run a studio check', el: 'Έλεγχος studio', run: () => askAssistant('/audit') },
+    { id: 'clear-action-filter', en: 'Clear the action filter', el: 'Καθαρισμός φίλτρου ενεργειών', run: () => setFilter('') },
+    { id: 'open-help', en: 'Open the help section', el: 'Άνοιγμα της βοήθειας', run: () => helpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+  ], []);
 
   const groups = useMemo(() => {
     const needle = fold(filter.trim());
@@ -139,7 +166,20 @@ export default function AssistantPage() {
                 placeholder={t('Filter, e.g. round, mentor, canvas', 'Φίλτρο, π.χ. γύρος, μέντορας, canvas')}
                 className="min-h-10 w-full bg-transparent text-sm outline-none"
               />
+              {filter && (
+                <button type="button" onClick={() => setFilter('')} aria-label={t('Clear the filter', 'Καθαρισμός φίλτρου')} className="shrink-0 text-stone-400 hover:text-stone-700">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
             </label>
+            {filter.trim() && (
+              <p role="status" className="text-xs text-stone-500">
+                {t(
+                  `${groups.reduce((n, group) => n + group.actions.length, 0)} actions match`,
+                  `${groups.reduce((n, group) => n + group.actions.length, 0)} ενέργειες ταιριάζουν`,
+                )}
+              </p>
+            )}
             {groups.length === 0 && (
               <p className="text-sm text-stone-500">{t('No action matches that filter. Ask anyway — the AI model may still help.', 'Καμία ενέργεια δεν ταιριάζει. Ρώτα πάντως — το μοντέλο AI ίσως βοηθήσει.')}</p>
             )}
@@ -194,6 +234,12 @@ export default function AssistantPage() {
               })}
             </div>
           </section>
+
+          {/* Reference questions sit last in the rail, under the action list
+              they complement — the card itself is what `open-help` scrolls to. */}
+          <div ref={helpRef} className="scroll-mt-4">
+            <AssistantHelp />
+          </div>
         </aside>
       </div>
     </PageShell>
