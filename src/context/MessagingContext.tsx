@@ -4,7 +4,7 @@
  *  - Real accounts: conversations with members live in Firestore (lib/chat.ts).
  *  - Everyone: conversations with the AI specialists are kept on the account
  *    (`cfb.aiChats`, synced to the cloud for real accounts).
- *  - The sample account keeps its in-memory sample threads.
+ *  - The sample account keeps its sample threads in this browser.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
@@ -219,6 +219,14 @@ function sampleThreads(userId: string): { conversations: ChatConversation[]; mes
   return { conversations, messages };
 }
 
+type DemoStore = ReturnType<typeof sampleThreads>;
+
+function readDemo(userId: string): DemoStore {
+  const stored = readValue<DemoStore | null>(keys.demoThreads, null);
+  if (!stored || !Array.isArray(stored.conversations) || !Array.isArray(stored.messages)) return sampleThreads(userId);
+  return { conversations: stored.conversations, messages: stored.messages };
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────
 
 type Me = {
@@ -240,7 +248,7 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
   const [remote, setRemote] = useState<RemoteConversation[]>([]);
   const [remoteReady, setRemoteReady] = useState(!real);
   const [drafts, setDrafts] = useState<Record<string, ChatParticipant>>({});
-  const [demo, setDemo] = useState(() => (isDemo ? sampleThreads(userId || 'demo-user') : { conversations: [], messages: [] }));
+  const [demo, setDemo] = useState(() => (isDemo ? readDemo(userId || 'demo-user') : { conversations: [], messages: [] }));
   const [activeId, setActiveIdState] = useState<string | null>(null);
   const [remoteMessages, setRemoteMessages] = useState<ChatMessage[]>([]);
   const [count, setCount] = useState(PAGE);
@@ -250,15 +258,22 @@ export function MessagingProvider({ children, userId, isDemo = false, me }: { ch
   const [, setPeopleTick] = useState(0);
   const ai = useStored(readAi, [keys.aiChats]);
   const selfRef = useRef(self);
+  const demoModeRef = useRef(isDemo);
   selfRef.current = self;
 
   useEffect(() => onPeopleChange(() => setPeopleTick((value) => value + 1)), []);
 
   useEffect(() => {
-    setDemo(isDemo ? sampleThreads(userId || 'demo-user') : { conversations: [], messages: [] });
+    setDemo(isDemo ? readDemo(userId || 'demo-user') : { conversations: [], messages: [] });
     setActiveIdState(null);
     setDrafts({});
   }, [isDemo, userId]);
+
+  useEffect(() => {
+    const stayedInDemo = demoModeRef.current === isDemo;
+    demoModeRef.current = isDemo;
+    if (isDemo && stayedInDemo) writeValue(keys.demoThreads, demo);
+  }, [demo, isDemo]);
 
   // Inbox listener (real accounts).
   useEffect(() => {

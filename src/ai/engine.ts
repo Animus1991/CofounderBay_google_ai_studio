@@ -33,13 +33,17 @@
  */
 import {
   assistantContextBlock,
+  notificationTriageResult,
   runAssistant,
+  startMilestoneProposal,
   type AssistantFollowUp,
   type AssistantLink,
   type AssistantProfile,
   type AssistantResult,
   type AssistantSource,
 } from '../services/assistantOps';
+import { fold } from '../services/assistantText';
+import { weekPlan } from '../lib/weekPlan';
 import { AIProxyError, AIService, type GenerateResult } from '../services/aiService';
 import { actionById, checkArgs, toFunctionDeclarations, type ActionDeclaration, type Bilingual } from './catalog';
 
@@ -177,6 +181,65 @@ function batchFor(text: string, profile: AssistantProfile | null): EngineResult 
   return batchResult(results.map((result) => ({ ...result, origin: 'router' as const })), 'router');
 }
 
+function isPrepareWeek(text: string): boolean {
+  const value = fold(text.trim());
+  if (/^\/prepare\b/.test(value)) return true;
+  if (/\b(?:prepare|plan|set up|get) my week(?: ready)?\b/.test(value)) return true;
+  if (/\borganise my week\b|\borganize my week\b/.test(value)) return true;
+  return /(ετοιμασε|προετοιμασε|οργανωσε|σχεδιασε)\s+την\s+εβδομαδα(?:\s+μου)?/.test(value);
+}
+
+function prepareWeekResult(): EngineResult {
+  const plan = weekPlan();
+  const steps: EngineResult[] = [];
+  if (plan.canTriage) {
+    const result = notificationTriageResult(true);
+    if (result.proposal) steps.push({ ...result, origin: 'router' });
+  }
+  for (const milestone of plan.startable.slice(0, 3)) {
+    const proposal = startMilestoneProposal(milestone);
+    steps.push({
+      tool: 'update_milestone',
+      origin: 'router',
+      en: proposal.summary.en,
+      el: proposal.summary.el,
+      href: '/milestones',
+      links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }],
+      proposal,
+    });
+  }
+  if (steps.length >= 2) {
+    return {
+      tool: 'prepare-week',
+      origin: 'router',
+      en: plan.en,
+      el: plan.el,
+      links: plan.links,
+      followUps: plan.followUps,
+      batch: steps.slice(0, 4),
+    };
+  }
+  const step = steps[0];
+  if (step) {
+    return {
+      ...step,
+      tool: 'prepare-week',
+      en: `${plan.en}\n\n${step.proposal!.summary.en}`,
+      el: `${plan.el}\n\n${step.proposal!.summary.el}`,
+      links: plan.links,
+      followUps: plan.followUps,
+    };
+  }
+  return {
+    tool: 'prepare-week',
+    origin: 'router',
+    en: plan.en,
+    el: plan.el,
+    links: plan.links,
+    followUps: plan.followUps,
+  };
+}
+
 // ── Content the router cannot write ────────────────────────────────────────
 
 /**
@@ -262,6 +325,7 @@ function readLinks(reads: Read[]): AssistantLink[] {
 
 /** Runs one assistant turn: batch → router (or a draft for the model) → model (reads, then tools or an answer) → honest fallback. */
 export async function respond(text: string, profile: AssistantProfile | null, options: EngineOptions): Promise<EngineResult> {
+  if (isPrepareWeek(text)) return prepareWeekResult();
   const batch = batchFor(text, profile);
   if (batch) return batch;
 

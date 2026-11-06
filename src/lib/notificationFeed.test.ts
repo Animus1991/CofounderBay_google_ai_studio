@@ -1,12 +1,14 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { noteGroup, useNotificationFeed } from './notificationFeed';
+import { currentNotes, noteGroup, triageNotifications, useNotificationFeed, waitsOnReader } from './notificationFeed';
 import { logActivity, readNotificationPrefs, resetAllLists, scopedKey, setDataScope, writeNotificationPrefs } from './localLists';
+import { markNotificationsRead } from './social';
 
 let cloudItems: { id: string; type: string; title: string; titleEl: string; body: string; bodyEl: string; read: boolean; createdAt: number }[] = [];
 
 vi.mock('./social', () => ({
   useNotifications: () => ({ items: cloudItems, loaded: true }),
+  readCloudNotifications: () => cloudItems,
   markNotificationsRead: vi.fn(() => Promise.resolve()),
   deleteNotification: vi.fn(() => Promise.resolve()),
   clearNotifications: vi.fn(() => Promise.resolve()),
@@ -107,6 +109,49 @@ describe('notification feed', () => {
     act(() => result.current.clearAll());
     expect(result.current.items.length).toBe(0);
     expect(result.current.unread).toBe(0);
+  });
+});
+
+describe('triage', () => {
+  it('waits on the reader for a message, an overdue follow-up and a request from a member', () => {
+    expect(waitsOnReader({ type: 'message', origin: 'seed' })).toBe(true);
+    expect(waitsOnReader({ type: 'investor', origin: 'derived' })).toBe(true);
+    expect(waitsOnReader({ type: 'match', origin: 'cloud' })).toBe(true);
+    expect(waitsOnReader({ type: 'mentorship', origin: 'cloud' })).toBe(true);
+    // A suggestion, a matching sample Need Card, an endorsement and the account's own log need nothing.
+    expect(waitsOnReader({ type: 'match', origin: 'seed' })).toBe(false);
+    expect(waitsOnReader({ type: 'match', origin: 'derived' })).toBe(false);
+    expect(waitsOnReader({ type: 'endorsement', origin: 'cloud' })).toBe(false);
+    expect(waitsOnReader({ type: 'system', origin: 'activity' })).toBe(false);
+  });
+
+  it('marks read only what needs nothing, and restore un-reads exactly those it can', () => {
+    cloudItems = [
+      { id: 'cloud-request', type: 'connection', title: 'Connection request', titleEl: 'Αίτημα σύνδεσης', body: '', bodyEl: '', read: false, createdAt: Date.now() },
+      { id: 'cloud-endorsement', type: 'endorsement', title: 'New endorsement', titleEl: 'Νέα σύσταση', body: '', bodyEl: '', read: false, createdAt: Date.now() },
+    ];
+    logActivity({ kind: 'profile', title: 'Saved a profile', titleEl: 'Αποθηκεύτηκε προφίλ', href: '/discovery' });
+    const result = triageNotifications();
+    // Kept: the message seed, the overdue investor alert, the connection request. Cleared: the match
+    // suggestion seed, the account's own activity, the endorsement.
+    expect(result.kept).toBe(3);
+    expect(result.cleared).toBe(3);
+    expect(result.cloudCleared).toBe(1);
+    expect(markNotificationsRead).toHaveBeenCalledWith(['cloud-endorsement']);
+    const after = currentNotes();
+    expect(after.find((note) => note.id === 'demo-1')?.read).toBe(true);
+    expect(after.find((note) => note.id === 'demo-2')?.read).toBe(false);
+    expect(after.find((note) => note.origin === 'derived')?.read).toBe(false);
+    expect(after.find((note) => note.origin === 'activity')?.read).toBe(true);
+    result.restore();
+    const restored = currentNotes();
+    expect(restored.find((note) => note.id === 'demo-1')?.read).toBe(false);
+    expect(restored.find((note) => note.origin === 'activity')?.read).toBe(false);
+  });
+
+  it('agrees with the badge: currentNotes is the list the page shows', () => {
+    const { result } = renderHook(() => useNotificationFeed());
+    expect(currentNotes().map((note) => note.id)).toEqual(result.current.items.map((note) => note.id));
   });
 });
 

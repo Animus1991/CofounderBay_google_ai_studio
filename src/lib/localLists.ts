@@ -226,6 +226,8 @@ export const keys = {
   inbox: 'cfb.inbox',
   plan: 'cfb.plan',
   aiChats: 'cfb.aiChats',
+  demoThreads: 'cfb.demoThreads',
+  messageTapHint: 'cfb.messageTapHint',
   bookmarks: 'cfb.bookmarks',
   hiddenPeople: 'cfb.hiddenPeople',
   pinnedTools: 'cfb.pinnedTools',

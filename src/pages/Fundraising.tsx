@@ -61,6 +61,7 @@ import { labelOf } from "../lib/labels";
 import { useT, getLang } from "../lib/language";
 import { formatDate } from "../lib/dates";
 import { addRoomFile, addSession, followUps, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
+import { investorStageLabel } from "../lib/investorStage";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
@@ -393,18 +394,7 @@ export default function Fundraising({ user }: FundraisingProps) {
   programs: t("Programs", "Προγράμματα"),
   opportunities: t("Opportunities", "Ευκαιρίες"),
  };
- const stageLabel = (stage: string) => {
-  const names: Record<string, string> = {
-   Identified: t("Identified", "Εντοπίστηκε"),
-   Contacted: t("Contacted", "Έγινε επαφή"),
-   Meeting: t("Meeting", "Συνάντηση"),
-   "Due Diligence": t("Due Diligence", "Δέουσα επιμέλεια"),
-   "Term Sheet": t("Term Sheet", "Βασικοί όροι συμφωνίας"),
-   Closed: t("Closed", "Κλειστό"),
-   Passed: t("Passed", "Απορρίφθηκε"),
-  };
-  return names[stage] ?? labelOf(stage);
- };
+ const stageLabel = (stage: string) => investorStageLabel(stage, getLang());
  const ddLabel = (label: string) => {
   const names: Record<string, string> = {
    "Incorporation docs": t("Incorporation docs", "Έγγραφα σύστασης"),

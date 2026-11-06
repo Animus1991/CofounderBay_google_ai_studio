@@ -32,5 +32,6 @@ test('a text deep link prefills the composer and sends nothing', async ({ page }
   await sample(page, '/messages?user=sarah-chen&text=Hello%20there');
   const composer = page.getByPlaceholder(/Write a message|Γράψε μήνυμα/);
   await expect(composer).toHaveValue('Hello there');
-  await expect(page.locator('[data-message-id]', { hasText: 'Hello there' })).toHaveCount(0);
+  // A sent message would be text on the page outside the composer itself.
+  await expect(page.getByText('Hello there', { exact: true }).and(page.locator(':not(textarea)'))).toHaveCount(0);
 });

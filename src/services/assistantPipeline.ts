@@ -34,6 +34,7 @@ import {
   type RoundInvestor,
 } from '../lib/localLists';
 import { DEMO_INVESTOR_NAMES, nextStepIn } from '../data/demoCatalog';
+import { INVESTOR_STAGE_EL } from '../lib/investorStage';
 import { escapeRegExp, fold, hasStem } from './assistantText';
 import type { AssistantLink, AssistantProposal, AssistantResult } from './assistantOps';
 
@@ -44,15 +45,7 @@ const SOURCE = { kind: 'round', en: 'Investor CRM · Fundraising', el: 'CRM επ
 
 // ── Stages ─────────────────────────────────────────────────────────────────
 
-export const STAGE_LABEL_EL: Record<string, string> = {
-  Identified: 'Εντοπίστηκε',
-  Contacted: 'Έγινε επαφή',
-  Meeting: 'Συνάντηση',
-  'Due Diligence': 'Δέουσα επιμέλεια',
-  'Term Sheet': 'Βασικοί όροι συμφωνίας',
-  Closed: 'Κλειστό',
-  Passed: 'Απορρίφθηκε',
-};
+export const STAGE_LABEL_EL: Record<string, string> = INVESTOR_STAGE_EL;
 
 const STAGE_STEMS: [string, string[]][] = [
   ['Due Diligence', ['due diligence', 'dd', 'δεουσα', 'επιμελει']],
@@ -381,7 +374,7 @@ export function pipelineMoveResult(query: string, propose: boolean): AssistantRe
     return {
       tool: 'pipeline',
       en: `${investor.name} is already at ${stage}.`,
-      el: `Η/Ο ${investor.name} είναι ήδη στο στάδιο «${STAGE_LABEL_EL[stage] ?? stage}».`,
+      el: `${investor.name}: ήδη στο στάδιο «${STAGE_LABEL_EL[stage] ?? stage}».`,
       href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
@@ -395,7 +388,7 @@ export function pipelineMoveResult(query: string, propose: boolean): AssistantRe
     return {
       tool: 'pipeline-move',
       en: `Moved ${investor.name} from ${previous} to ${stage}.`,
-      el: `Η/Ο ${investor.name} πέρασε από «${STAGE_LABEL_EL[previous] ?? previous}» σε «${STAGE_LABEL_EL[stage] ?? stage}».`,
+      el: `Το στάδιο για ${investor.name} άλλαξε από «${STAGE_LABEL_EL[previous] ?? previous}» σε «${STAGE_LABEL_EL[stage] ?? stage}».`,
       href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
@@ -444,7 +437,7 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
     return {
       tool: 'pipeline',
       en: `${existing.investor.name} is already in your pipeline (${existing.investor.stage}).`,
-      el: `Η/Ο ${existing.investor.name} είναι ήδη στη ροή σου («${STAGE_LABEL_EL[existing.investor.stage] ?? existing.investor.stage}»).`,
+      el: `Υπάρχει ήδη στη ροή σου: ${existing.investor.name} («${STAGE_LABEL_EL[existing.investor.stage] ?? existing.investor.stage}»).`,
       href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],
@@ -459,7 +452,7 @@ export function pipelineAddResult(query: string, propose: boolean): AssistantRes
     return {
       tool: 'pipeline-add',
       en: `Added ${display} to your pipeline as ${stage}. Set a next step: “next step with ${display}: ask for an intro by Friday”.`,
-      el: `Η/Ο ${display} μπήκε στη ροή σου ως «${stageEl}». Όρισε επόμενο βήμα: «επόμενο βήμα με ${display}: ζήτα γνωριμία μέχρι Παρασκευή».`,
+      el: `Προστέθηκε στη ροή σου: ${display}, ως «${stageEl}». Όρισε επόμενο βήμα: «επόμενο βήμα με ${display}: ζήτα γνωριμία μέχρι Παρασκευή».`,
       href: CRM_HREF,
       links: [FUNDRAISING_LINK],
       sources: [SOURCE],

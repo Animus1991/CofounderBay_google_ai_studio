@@ -11,9 +11,9 @@ import { RECAP_AREAS, weeklyRecap } from '../lib/weeklyRecap';
 import { setEventRegistration } from '../lib/eventRegistration';
 import { atDaysFromToday } from '../data/demoClock';
 import { updateStudioTask, insertStudioTask, readSessions, eventListKeys } from '../lib/localLists';
-import { connectionRecords } from '../lib/social';
 import { exportMyData } from '../lib/dataExport';
-import { formatDate } from '../lib/dates';
+import { formatDate, formatDateIn } from '../lib/dates';
+import { labelIn } from '../lib/labels';
 import { messagingBridge, type BridgeRefusal } from '../lib/messagingBridge';
 import type { Milestone } from '../types';
 import { whereIsResult } from '../ai/whereIs';
@@ -97,7 +97,8 @@ import { topPages, unvisited } from '../lib/usage';
 import { readUxPrefs, writeUxPrefs, pinFavorite } from '../lib/personalization';
 import { navLabel, NAV_PATHS } from '../lib/navMap';
 import { assistantPages, pageContext } from '../lib/pageRegistry';
-import { cloudNotificationsUnread, markAllNotificationsRead } from '../lib/notificationFeed';
+import { cloudNotificationsUnread, currentNotes, markAllNotificationsRead, triageNotifications, waitsOnReader } from '../lib/notificationFeed';
+import { incomingRequests } from '../lib/requests';
 import { persistProfilePatch } from '../lib/account';
 import type { UserProfile } from '../types';
 import { milestoneService } from './milestoneService';
@@ -289,7 +290,9 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
 export const ASSISTANT_PAGES: { keys: string[]; href: string; en: string; el: string }[] = assistantPages();
 
 /** Slash shortcuts in the studio chat — same tools as the natural-language router. */
-export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
+export const SLASH_COMMANDS: { cmd: string; en: string; el: string; needsArg?: true }[] = [
+  { cmd: '/prepare', en: 'Prepare the next 7 days', el: 'Ετοίμασε τις επόμενες 7 ημέρες' },
+  { cmd: '/triage', en: 'Mark read what needs nothing from you', el: 'Σήμανε ως αναγνωσμένα όσα δεν χρειάζονται τίποτα από σένα' },
   { cmd: '/match', en: 'Rank people on this profile', el: 'Βαθμολόγησε ανθρώπους σε αυτό το προφίλ' },
   { cmd: '/scout', en: 'Propose three people — never send', el: 'Πρότεινε τρεις — χωρίς αποστολή' },
   { cmd: '/need', en: 'List or draft a need card', el: 'Δείξε ή γράψε κάρτα ανάγκης' },
@@ -302,14 +305,14 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/dealroom', en: 'Open your Deal Room (pitch, traction, open roles)', el: 'Άνοιξε το Deal Room σου (pitch, traction, ανοιχτοί ρόλοι)' },
   { cmd: '/needwall', en: 'Open the Need Cards wall', el: 'Άνοιξε τον πίνακα Καρτών Ανάγκης' },
   { cmd: '/tasks', en: 'List or add Workspace tasks', el: 'Δείξε ή πρόσθεσε εργασίες στον Χώρο Εργασίας' },
-  { cmd: '/msg', en: 'Send a direct message (e.g. /msg Sarah: Hello)', el: 'Στείλε άμεσο μήνυμα (π.χ. /msg Sarah: Γεια)' },
-  { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac, burgundy)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac, burgundy)' },
-  { cmd: '/lang', en: 'Switch language (/lang el or /lang en)', el: 'Εναλλαγή γλώσσας (/lang el ή /lang en)' },
-  { cmd: '/style', en: 'How I reply: /style short | balanced | detailed, friendly | direct | formal, emoji on | off', el: 'Πώς απαντώ: /style short | balanced | detailed, friendly | direct | formal, emoji on | off' },
+  { cmd: '/msg', en: 'Send a direct message (e.g. /msg Sarah: Hello)', el: 'Στείλε άμεσο μήνυμα (π.χ. /msg Sarah: Γεια)', needsArg: true },
+  { cmd: '/theme', en: 'Switch theme palette (stone, dark, cyan, mint, apricot, lilac, burgundy)', el: 'Άλλαξε παλέτα θέματος (stone, dark, cyan, mint, apricot, lilac, burgundy)', needsArg: true },
+  { cmd: '/lang', en: 'Switch language (/lang el or /lang en)', el: 'Εναλλαγή γλώσσας (/lang el ή /lang en)', needsArg: true },
+  { cmd: '/style', en: 'How I reply: /style short | balanced | detailed, friendly | direct | formal, emoji on | off', el: 'Πώς απαντώ: /style short | balanced | detailed, friendly | direct | formal, emoji on | off', needsArg: true },
   { cmd: '/coach', en: 'UX coach: reads how you use the app and suggests shortcuts', el: 'UX coach: διαβάζει πώς χρησιμοποιείς την εφαρμογή και προτείνει συντομεύσεις' },
-  { cmd: '/pin', en: 'Pin a page to your sidebar (/pin matches)', el: 'Καρφίτσωσε σελίδα στο μενού (/pin matches)' },
-  { cmd: '/unpin', en: 'Remove a pinned page (/unpin matches)', el: 'Ξεκαρφίτσωσε σελίδα (/unpin matches)' },
-  { cmd: '/home', en: 'Choose the page you land on (/home matches, /home off)', el: 'Διάλεξε σε ποια σελίδα προσγειώνεσαι (/home matches, /home off)' },
+  { cmd: '/pin', en: 'Pin a page to your sidebar (/pin matches)', el: 'Καρφίτσωσε σελίδα στο μενού (/pin matches)', needsArg: true },
+  { cmd: '/unpin', en: 'Remove a pinned page (/unpin matches)', el: 'Ξεκαρφίτσωσε σελίδα (/unpin matches)', needsArg: true },
+  { cmd: '/home', en: 'Choose the page you land on (/home matches, /home off)', el: 'Διάλεξε σε ποια σελίδα προσγειώνεσαι (/home matches, /home off)', needsArg: true },
   { cmd: '/inbox', en: 'Search messages in this browser', el: 'Ψάξε μηνύματα σε αυτόν τον περιηγητή' },
   { cmd: '/plan', en: 'Write a 7-day match plan', el: 'Γράψε πλάνο 7 ημερών' },
   { cmd: '/invite', en: 'Prepare three founder invites', el: 'Ετοίμασε τρεις προσκλήσεις ιδρυτών' },
@@ -1293,8 +1296,8 @@ function milestonesResult(query: string, propose: boolean): AssistantResult {
       links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }],
     };
   }
-  const linesEn = list.slice(0, 6).map((item) => `${item.title} · ${item.status} · ${item.progress}% · due ${item.targetDate.slice(0, 10)}`);
-  const linesEl = list.slice(0, 6).map((item) => `${item.title} · ${item.status} · ${item.progress}% · έως ${item.targetDate.slice(0, 10)}`);
+  const linesEn = list.slice(0, 6).map((item) => `${item.title} · ${labelIn(effectiveStatus(item), 'en')} · ${item.progress}% · due ${formatDateIn(item.targetDate, 'en')}`);
+  const linesEl = list.slice(0, 6).map((item) => `${item.title} · ${labelIn(effectiveStatus(item), 'el')} · ${item.progress}% · έως ${formatDateIn(item.targetDate, 'el')}`);
   return {
     tool: 'milestones',
     en: `Same board as the Milestones page:\n${linesEn.join('\n')}`,
@@ -1345,7 +1348,7 @@ function parseRoundSet(query: string): RoundSet | null {
 }
 
 const roundSetDisplay = (set: RoundSet, value: unknown): string => {
-  if (set.kind === 'money') return `$${Number(value || 0).toLocaleString()}`;
+  if (set.kind === 'money') return formatMoney(Number(value || 0));
   if (set.kind === 'percent') return `${value}%`;
   return String(value ?? '—');
 };
@@ -1652,6 +1655,95 @@ function notificationsReadResult(propose: boolean): AssistantResult {
     },
     { tool: 'notifications-read', href: '/notifications', links },
   );
+}
+
+/** Keeps unread only the notifications that still need the founder's decision or reply. */
+export function notificationTriageResult(propose: boolean): AssistantResult {
+  const links: AssistantLink[] = [{ href: '/notifications', en: 'Open notifications', el: 'Άνοιγμα ειδοποιήσεων' }];
+  const unread = currentNotes().filter((note) => !note.read);
+  if (unread.length === 0) {
+    return {
+      tool: 'notifications-triage',
+      en: 'There are no unread notifications.',
+      el: 'Δεν υπάρχουν αδιάβαστες ειδοποιήσεις.',
+      href: '/notifications',
+      links,
+    };
+  }
+  const waiting = unread.filter(waitsOnReader);
+  const clearable = unread.filter((note) => !waitsOnReader(note));
+  if (clearable.length === 0) {
+    return {
+      tool: 'notifications-triage',
+      en: 'Every unread notification is waiting on you.',
+      el: 'Κάθε αδιάβαστη ειδοποίηση περιμένει από σένα.',
+      href: '/notifications',
+      links,
+    };
+  }
+  const namesEn = waiting.slice(0, 2).map((note) => note.fromName || note.title);
+  const namesEl = waiting.slice(0, 2).map((note) => note.fromName || note.titleEl || note.title);
+  const notesEn = (n: number) => `${n} ${n === 1 ? 'notification' : 'notifications'}`;
+  const notesEl = (n: number) => `${n} ${n === 1 ? 'ειδοποίηση' : 'ειδοποιήσεις'}`;
+  const waitingSuffixEn = waiting.length
+    ? ` ${waiting.length} waiting on you ${waiting.length === 1 ? 'stays' : 'stay'} unread (${namesEn.join(', ')}).`
+    : '';
+  const waitingSuffixEl = waiting.length
+    ? ` ${waiting.length === 1 ? 'Μένει αδιάβαστη 1 που σε περιμένει' : `Μένουν αδιάβαστες ${waiting.length} που σε περιμένουν`} (${namesEl.join(', ')}).`
+    : '';
+  const cloudTouched = clearable.some((note) => note.origin === 'cloud');
+  let restore: (() => void) | null = null;
+  let logged: LoggedWrite | null = null;
+  const apply = (): AssistantResult => {
+    const result = triageNotifications();
+    restore = result.restore;
+    logged = {
+      kind: 'settings',
+      title: `Marked ${notesEn(result.cleared)} read that needed nothing`,
+      titleEl: `Σήμανση ως αναγνωσμένων: ${notesEl(result.cleared)} που δεν ${result.cleared === 1 ? 'χρειαζόταν' : 'χρειάζονταν'} τίποτα`,
+      href: '/notifications',
+    };
+    logActivity({ ...logged, byAssistant: true, read: true });
+    return {
+      tool: 'notifications-triage',
+      en: `Marked ${notesEn(result.cleared)} read.${result.kept ? ` ${result.kept} waiting on you ${result.kept === 1 ? 'stays' : 'stay'} unread.` : ''}`,
+      el: `Σημειώθηκαν ως αναγνωσμένες: ${notesEl(result.cleared)}.${result.kept ? ` ${result.kept === 1 ? 'Μένει αδιάβαστη 1 που σε περιμένει' : `Μένουν αδιάβαστες ${result.kept} που σε περιμένουν`}.` : ''}`,
+      href: '/notifications',
+      links,
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Mark ${notesEn(clearable.length)} read that ${clearable.length === 1 ? 'needs' : 'need'} nothing from you?${waitingSuffixEn}`,
+        el: `Σήμανση ως αναγνωσμένων: ${notesEl(clearable.length)} που δεν ${clearable.length === 1 ? 'χρειάζεται' : 'χρειάζονται'} τίποτα από σένα;${waitingSuffixEl}`,
+      },
+      reversal: cloudTouched ? 'partial' : 'full',
+      ...(cloudTouched ? {
+        reversalNote: {
+          en: 'Notifications already synced to your account cannot be marked unread again.',
+          el: 'Οι ειδοποιήσεις που έχουν ήδη συγχρονιστεί με τον λογαριασμό σου δεν μπορούν να γίνουν ξανά αδιάβαστες.',
+        },
+      } : {}),
+      apply,
+      undo: () => {
+        restore?.();
+        // Logged as read, like the mark-all undo: taking back a triage must not add an unread notification.
+        if (logged) logActivity({ kind: logged.kind, title: `Undid: ${logged.title}`, titleEl: `Αναιρέθηκε: ${logged.titleEl || logged.title}`, href: logged.href, byAssistant: true, read: true });
+      },
+    },
+    { tool: 'notifications-triage', href: '/notifications', links },
+  );
+}
+
+function parseNotificationTriage(query: string): boolean {
+  const f = fold(query);
+  if (/^\/triage\b/.test(f)) return true;
+  if (/\btriage (?:my )?notifications?\b/.test(f)) return true;
+  if (/\bmark (?:the )?rest (?:as )?read\b/.test(f)) return true;
+  if (/\bmark everything that needs nothing read\b/.test(f)) return true;
+  return hasStem(f, 'διαλογη ειδοποιησεων', 'διαλογη στις ειδοποιησεις', 'τακτοποιησε τις ειδοποιησεις', 'σημανε τις υπολοιπ', 'σημειωσε τις υπολοιπ');
 }
 
 function roundResult(): AssistantResult {
@@ -3488,6 +3580,39 @@ function matchMilestone(folded: string): { milestone: Milestone; ambiguous: bool
   return { milestone: scored[0]!.milestone, ambiguous: scored.length > 1 && scored[0]!.len === scored[1]!.len };
 }
 
+export function startMilestoneProposal(milestone: Milestone): AssistantProposal {
+  const previous = { ...milestone };
+  let logged: LoggedWrite | null = null;
+  return {
+    summary: {
+      en: `Start “${milestone.title}” and mark it In Progress?`,
+      el: `Έναρξη «${milestone.title}» και σήμανση ως Σε εξέλιξη;`,
+    },
+    reversal: 'full',
+    apply: () => {
+      upsertMilestone({ ...milestone, status: 'In Progress' });
+      logged = {
+        kind: 'milestone',
+        title: `Started milestone: ${milestone.title}`,
+        titleEl: `Ξεκίνησε το ορόσημο: ${milestone.title}`,
+        href: '/milestones',
+      };
+      logActivity({ ...logged, byAssistant: true });
+      return {
+        tool: 'update_milestone',
+        en: `Started “${milestone.title}”. It is now In Progress on Milestones.`,
+        el: `Ξεκίνησε το «${milestone.title}». Είναι πλέον Σε εξέλιξη στα Ορόσημα.`,
+        href: '/milestones',
+        links: [{ href: '/milestones', en: 'Open milestones', el: 'Άνοιγμα οροσήμων' }],
+      };
+    },
+    undo: () => {
+      upsertMilestone(previous);
+      logUndo(logged);
+    },
+  };
+}
+
 function updateMilestoneResult(query: string, propose: boolean): AssistantResult | null {
   const folded = fold(query);
   if (isCreateSentence(folded)) return null;
@@ -3496,9 +3621,17 @@ function updateMilestoneResult(query: string, propose: boolean): AssistantResult
   const pct = folded.match(/(\d{1,3})\s*%|(\d{1,3})\s*percent|(\d{1,3})\s*τοις εκατο/)?.filter(Boolean).slice(1)[0];
   const day = parseDay(folded);
   const completing = /\b(mark|complete|finish)\b.{0,30}\b(done|completed|complete|finished)\b|done\b.{0,30}\bmilestone\b/.test(folded) || hasStem(folded, 'ολοκληρωσ', 'τελειωσ');
+  // "Start" alone is too common ("how do I start the pitch?"): the verb must lead the sentence,
+  // name the milestone, or ask for the In Progress state.
+  const starting = /^(?:please\s+)?(?:start|begin|kick off)\b/.test(folded)
+    || /\b(?:start|begin)\b.{0,40}\bmilestone\b/.test(folded)
+    || /\b(?:mark|move|set|put)\b.{0,60}\bin progress\b/.test(folded)
+    || /^(?:παρακαλω\s+)?(?:ξεκινα|ξεκινησε|αρχισε)(?=\s|$)/.test(folded)
+    || (hasStem(folded, 'ξεκιν', 'αρχισ') && hasStem(folded, 'οροσημ'))
+    || (hasStem(folded, 'βαλε', 'μεταφερε', 'σημανε') && hasStem(folded, 'σε εξελιξ'));
   const moving = (/\b(move|push|postpone|reschedule|set)\b/.test(folded) && day) || (hasStem(folded, 'μετακινησ', 'μεταφερ', 'ορισε') && day);
-  if (!isMsTalk && !completing && !pct && !moving) return null;
-  if (!completing && !pct && !moving) return null;
+  if (!isMsTalk && !completing && !starting && !pct && !moving) return null;
+  if (!completing && !starting && !pct && !moving) return null;
   const hit = matchMilestone(folded);
   if (!hit) {
     if (!isMsTalk) return null;
@@ -3510,6 +3643,20 @@ function updateMilestoneResult(query: string, propose: boolean): AssistantResult
     return { tool: 'update_milestone', en: `Which milestone? Open: ${titles.join(' · ') || 'none'}.`, el: `Ποιο ορόσημο; Ανοιχτά: ${titles.join(' · ') || 'κανένα'}.`, href: '/milestones', links };
   }
   const m = hit.milestone;
+  if (starting) {
+    if (m.status === 'In Progress') {
+      return {
+        tool: 'update_milestone',
+        en: `“${m.title}” is already In Progress.`,
+        el: `Το «${m.title}» είναι ήδη Σε εξέλιξη.`,
+        href: '/milestones',
+        links,
+      };
+    }
+    const plan = startMilestoneProposal(m);
+    if (!propose) return plan.apply() as AssistantResult;
+    return proposalResult(plan, { tool: 'update_milestone', href: '/milestones', links });
+  }
   const previous = { ...m };
   let patch: Partial<Milestone>;
   let actionEn: string;
@@ -3715,14 +3862,6 @@ function registerEventResult(query: string, propose: boolean): AssistantResult |
     },
     { tool: 'register_event', href: '/events', links },
   );
-}
-
-function incomingRequests(): { record: ReturnType<typeof connectionRecords>[number]; name: string }[] {
-  const uid = dataScope() || null;
-  if (!uid) return [];
-  return connectionRecords()
-    .filter((record) => record.status === 'Pending' && record.receiverId === uid)
-    .map((record) => ({ record, name: record.senderName || record.senderId }));
 }
 
 function readRequestsResult(): AssistantResult {
@@ -3932,6 +4071,7 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   const profileSet = parseProfileSet(query);
   if (profileSet) return profileSetResult(profileSet, profile, propose);
 
+  if (parseNotificationTriage(query)) return notificationTriageResult(propose);
   if (parseNotificationsRead(query)) return notificationsReadResult(propose);
 
   // "Compare Marcus and Elena" / "Σύγκρινε τις αντιστοιχίσεις μου": before the single-person routes, since it names people.

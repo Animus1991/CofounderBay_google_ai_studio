@@ -112,6 +112,32 @@ describe('studio chat proposals', () => {
     expect(screen.getByText('Not matched')).toBeInTheDocument();
   });
 
+  it('picks a slash command with the keyboard and runs it', async () => {
+    renderChat();
+    const input = screen.getByLabelText('Message the assistant');
+    await userEvent.type(input, '/');
+    const options = screen.getAllByRole('option');
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true');
+    expect(input).toHaveAttribute('aria-activedescendant', 'assistant-slash-1');
+    await userEvent.clear(input);
+    await userEvent.type(input, '/tri');
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
+  it('puts a command that needs a name in the box instead of running it', async () => {
+    renderChat();
+    const input = screen.getByLabelText('Message the assistant');
+    await userEvent.type(input, '/ms');
+    await userEvent.keyboard('{Enter}');
+    expect(input).toHaveValue('/msg ');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(readAssistant()).toHaveLength(0);
+  });
+
   it('offers Confirm all for several changes in one message, applies them in order, and undoes all', async () => {
     renderChat();
     await send('add milestone Private beta live and add task Call the bank');

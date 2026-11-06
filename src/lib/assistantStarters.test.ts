@@ -92,6 +92,10 @@ describe('slashQuery', () => {
     expect(slashQuery('/events coming')).toBe('');
     expect(slashQuery('')).toBe('');
   });
+
+  it('closes once the command is chosen and its argument begins', () => {
+    expect(slashQuery('/msg ')).toBe('');
+  });
 });
 
 describe('filterSlash', () => {

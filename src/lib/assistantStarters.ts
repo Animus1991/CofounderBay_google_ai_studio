@@ -86,10 +86,14 @@ export function startersFor(pathname: string, role?: string | null): { en: strin
 
 const foldText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-/** The slash-menu query: a leading '/', a single token, lower-cased. */
+/**
+ * The slash-menu query: a leading '/', a single token, lower-cased. A space after
+ * the token means the command is chosen and its argument is being typed, so the
+ * menu closes ("/msg " stays in the box, the list does not).
+ */
 export function slashQuery(input: string): string {
-  const query = input.startsWith('/') ? input.trim().toLowerCase() : '';
-  return query && !query.includes(' ') ? query : '';
+  const query = input.startsWith('/') ? input.toLowerCase() : '';
+  return query && !/\s/.test(query) ? query : '';
 }
 
 /**

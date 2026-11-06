@@ -206,6 +206,11 @@ export function unreadNotificationCount(): number {
   return notificationStore.get().items.filter((item) => !item.read).length;
 }
 
+/** The cloud inbox as last received, for readers outside React (the assistant). */
+export function readCloudNotifications(): AppNotification[] {
+  return notificationStore.get().items;
+}
+
 /** Writes a notification into another member's inbox. Failures never block the action that caused it. */
 export async function notify(
   toUid: string,

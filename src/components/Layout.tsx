@@ -147,6 +147,7 @@ export default function Layout() {
   const t = useT();
   const currentPage = pageContext(location.pathname);
   const onAssistantPage = location.pathname.replace(/\/+$/, '') === '/assistant';
+  const onMessagesPage = location.pathname.replace(/\/+$/, '') === '/messages';
 
   const isGuest = !user && !isDemoMode;
   // An investor follow-up that slipped is announced once (toast + Notifications).
@@ -326,8 +327,7 @@ export default function Layout() {
                 <div
                   aria-hidden="true"
                   data-scroll-clearance=""
-                  className="shrink-0 lg:hidden"
-                  style={{ height: 'calc(var(--bottom-nav-offset, 0px) + 5.5rem)' }}
+                  className={`shrink-0 ${onMessagesPage ? 'h-[var(--bottom-nav-offset,0px)] lg:hidden' : 'h-[calc(var(--bottom-nav-offset,0px)+5.5rem)] lg:h-[4.5rem]'}`}
                 />
               )}
             </div>

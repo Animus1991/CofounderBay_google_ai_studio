@@ -1,12 +1,30 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { resetAllLists } from '../lib/localLists';
 import { messagingBridge, registerMessagingBridge, type BridgeSend } from '../lib/messagingBridge';
 import { MessagingProvider } from './MessagingContext';
+
+const me = { id: 'demo-user', fullName: 'Demo User', avatar: '', headline: '', role: 'Founder' };
 
 describe('MessagingProvider bridge', () => {
   afterEach(() => {
     cleanup();
     registerMessagingBridge(null);
+  });
+
+  it('keeps a sample-account message after a reload, like every other sample edit', async () => {
+    resetAllLists();
+    const first = render(<MessagingProvider userId="demo-user" isDemo me={me}><div /></MessagingProvider>);
+    await waitFor(() => expect(messagingBridge()).not.toBeNull());
+    await act(async () => {
+      await messagingBridge()!.sendToPerson('sarah-chen', 'Still here after a reload');
+    });
+    first.unmount();
+    registerMessagingBridge(null);
+    render(<MessagingProvider userId="demo-user" isDemo me={me}><div /></MessagingProvider>);
+    await waitFor(() => expect(messagingBridge()).not.toBeNull());
+    expect(messagingBridge()!.threads().find((thread) => thread.personId === 'sarah-chen')?.lastMessage).toBe('Still here after a reload');
+    resetAllLists();
   });
 
   it('sends into demo threads and undo restores or removes the thread exactly', async () => {

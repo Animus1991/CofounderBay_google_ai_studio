@@ -20,7 +20,7 @@ import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
-import { followUps, keys, readActivity, readRequests, readRound, readValue, saveRequest, writeValue } from '../lib/localLists';
+import { followUps, keys, readActivity, readRequests, readRound, readSessions, readValue, saveRequest, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
@@ -51,9 +51,9 @@ import FactLine from '../components/ui/FactLine';
 import { askAssistant } from '../lib/assistantBus';
 import { usePageControls } from '../lib/pageControls';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { profileCompleteness } from '../lib/profileCompleteness';
 import SectionHeader from '../components/ui/SectionHeader';
 import { RECAP_AREAS, weeklyRecap } from '../lib/weeklyRecap';
+import { useProfileNudge } from '../lib/profileNudge';
 
 // The same demo series Insights and the "Profile views" number read (data/demoStats): the chart here summed
 // to 192 from its own copy while the card and Insights said 174.
@@ -289,6 +289,7 @@ export default function DashboardPage() {
   const messaging = useOptionalMessaging();
   const localRequests = useStored(readRequests, [keys.requests]);
   const round = useStored(readRound, [keys.round]);
+  const sessions = useStored(readSessions, [keys.sessions]);
   const connections = useConnections();
   const noteFeed = useNotificationFeed();
   const [viewCount, setViewCount] = useState<number | null>(null);
@@ -301,9 +302,16 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [user, isDemoMode]);
 
-  // One completeness definition (lib/profileCompleteness), the same as the profile page,
-  // Insights and the "finish your profile" banner; fit-check answers count.
-  const { score, missing } = profileCompleteness(mergeFitIntoViewer(profile));
+  const profileNudge = useProfileNudge();
+  const { score, missing } = profileNudge;
+  const nextSession = useMemo(() => {
+    const now = Date.now();
+    const through = now + 7 * 24 * 60 * 60 * 1000;
+    return sessions
+      .map((session) => ({ session, at: Date.parse(session.time ?? '') }))
+      .filter(({ at }) => Number.isFinite(at) && at >= now && at <= through)
+      .sort((a, b) => a.at - b.at)[0]?.session;
+  }, [sessions]);
 
   useEffect(() => {
     if (!user) {
@@ -421,7 +429,8 @@ export default function DashboardPage() {
     { id: 'open-next-step', en: 'Open my next step', el: 'Άνοιγμα του επόμενου βήματος', run: () => goStep(studioNext.href) },
     ...(waiting ? [{ id: 'open-waiting', en: 'Open what is waiting on me', el: 'Άνοιγμα αυτού που με περιμένει', run: () => goStep(waiting.href) }] : []),
     { id: 'week-recap', en: 'Recap my week', el: 'Σύνοψη της εβδομάδας μου', run: () => askAssistant('What did I do this week?') },
-    { id: 'plan-week', en: 'Plan my next 7 days', el: 'Πλάνο για τις επόμενες 7 ημέρες', run: () => askAssistant('Give me a 7-day match plan') },
+    { id: 'prepare-week', en: 'Prepare my week', el: 'Ετοίμασε την εβδομάδα μου', run: () => askAssistant('Prepare my week') },
+    { id: 'plan-week', en: 'Make a 7-day match plan', el: 'Φτιάξε πλάνο αντιστοιχίσεων 7 ημερών', run: () => askAssistant('Give me a 7-day match plan') },
     ...(compact ? [{ id: 'show-more', en: 'Show everything on the dashboard', el: 'Εμφάνιση όλων στον πίνακα', run: () => setMoreOpen(true) }] : []),
   ], [studioNext.href, waiting?.href, compact]);
 
@@ -766,7 +775,10 @@ export default function DashboardPage() {
                   : t('One step today starts a streak', 'Ένα βήμα σήμερα ξεκινά σερί')}
               </p>
             </div>
-            <AskLink prompt="What did I do this week?">{t('Recap', 'Σύνοψη')}</AskLink>
+            <div className="flex shrink-0 items-center gap-3">
+              <AskLink prompt="Prepare my week">{t('Prepare my week', 'Ετοίμασε την εβδομάδα μου')}</AskLink>
+              <AskLink prompt="What did I do this week?">{t('Recap', 'Σύνοψη')}</AskLink>
+            </div>
           </div>
         </div>
       </div>
@@ -789,14 +801,14 @@ export default function DashboardPage() {
           <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
         )}
       </button>
-      <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+      <button type="button" onClick={() => navigate('/calendar')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
         <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
-        {!isDemoMode && schedule.length === 0 ? (
+        {!nextSession ? (
           <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
         ) : (
           <>
-            <p className="text-sm font-medium text-stone-900">{(() => { const ev = schedule[0] ?? DEMO_EVENTS[0]; return ev ? t(ev.title, ev.titleEl ?? ev.title) : ''; })()}</p>
-            <p className="text-xs text-stone-500 mt-1">{dashTime(schedule[0]?.time ?? DEMO_EVENTS[0]?.time ?? '')}</p>
+            <p className="text-sm font-medium text-stone-900">{nextSession.title}</p>
+            <p className="text-xs text-stone-500 mt-1">{dashTime(nextSession.time)}</p>
           </>
         )}
       </button>
@@ -992,7 +1004,7 @@ export default function DashboardPage() {
     </div>
   );
 
-  const blockProfile = (
+  const blockProfile = !profileNudge.visible && (
     <div className="bg-white rounded-2xl border border-stone-100 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

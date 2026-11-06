@@ -267,7 +267,7 @@ export default function Events(_props: EventsProps = {}) {
       onClick={() => askAssistant('Schedule a new event on my calendar')}
       className="flex items-center gap-1.5 min-h-11 px-3 py-2 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all"
      >
-      <Plus className="w-3.5 h-3.5" /> {t('Host Event', 'Διοργάνωση εκδήλωσης')}
+      <Plus className="w-3.5 h-3.5" /> {t('New session', 'Νέα συνάντηση')}
      </button>
     </div>
    }
@@ -501,9 +501,9 @@ export default function Events(_props: EventsProps = {}) {
        <Rocket className="w-4 h-4 text-emerald-600" />
       </div>
       <div>
-       <p className="text-sm font-semibold text-stone-900">{t('Host Your Own Event', 'Διοργάνωσε τη δική σου εκδήλωση')}</p>
+       <p className="text-sm font-semibold text-stone-900">{t('Host your own session', 'Διοργάνωσε τη δική σου συνάντηση')}</p>
        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-        {t('Share your expertise or host a networking session for the community.', 'Μοιράσου την εμπειρία σου ή διοργάνωσε μια συνάντηση δικτύωσης για την κοινότητα.')}
+        {t('Plan it in your calendar and invite people by message. Listing an event for the whole community is not available yet.', 'Σχεδίασέ τη στο ημερολόγιό σου και κάλεσε ανθρώπους με μήνυμα. Καταχώριση εκδήλωσης για όλη την κοινότητα δεν υπάρχει ακόμη.')}
        </p>
       </div>
       <button
@@ -511,7 +511,7 @@ export default function Events(_props: EventsProps = {}) {
        onClick={() => askAssistant('Schedule a new event on my calendar')}
        className="w-full py-2 rounded-lg bg-stone-900 text-white hover:bg-stone-800 transition-all text-sm font-semibold"
       >
-       {t('Create Event', 'Δημιουργία εκδήλωσης')}
+       {t('New session', 'Νέα συνάντηση')}
       </button>
      </div>
     </aside>

@@ -9,31 +9,16 @@
  * for this completeness; it returns only when the number changes. Pages where
  * the profile is being edited, or that own the full screen, do not show it.
  */
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { useAuth } from '../../App';
 import { useT } from '../../lib/language';
-import { mergeFitIntoViewer } from '../../lib/fitCheck';
-import { profileCompleteness } from '../../lib/profileCompleteness';
-import { keys, readValue, writeValue } from '../../lib/localLists';
-import { useStored } from '../../lib/useStored';
-
-type Nudge = { closedAt?: number };
-
-const HIDDEN_ON = /^\/(profile|onboarding|messages|assistant)(\/|$)/;
+import { closeProfileNudge, useProfileNudge } from '../../lib/profileNudge';
 
 export default function ProfileProgressBar() {
   const t = useT();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { profile, user, isDemoMode } = useAuth();
-  const nudge = useStored(() => readValue<Nudge>(keys.profileNudge, {}), [keys.profileNudge]);
-  if (!user && !isDemoMode) return null;
-  if (HIDDEN_ON.test(location.pathname)) return null;
-  const { score, missing } = profileCompleteness(mergeFitIntoViewer(profile));
-  if (score >= 100 || missing.length === 0) return null;
-  if (nudge.closedAt === score) return null;
-  const next = missing[0]!;
+  const { visible, score, missing, next } = useProfileNudge();
+  if (!visible || !next) return null;
   const others = missing.length - 1;
 
   return (
@@ -65,7 +50,7 @@ export default function ProfileProgressBar() {
           type="button"
           aria-label={t('Hide until the profile changes', 'Απόκρυψη μέχρι να αλλάξει το προφίλ')}
           title={t('Hide until the profile changes', 'Απόκρυψη μέχρι να αλλάξει το προφίλ')}
-          onClick={() => writeValue<Nudge>(keys.profileNudge, { closedAt: score })}
+          onClick={() => closeProfileNudge(score)}
           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-900"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />

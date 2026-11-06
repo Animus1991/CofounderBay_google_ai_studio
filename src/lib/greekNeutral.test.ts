@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // appear anywhere in source copy — every name-bearing phrase uses a neutral
 // construction instead.
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
-const GENDERED = /Ο\/Η|ο\/η |τον\/την|του\/της|ος\/-?η\b/;
+const GENDERED = /Ο\/Η|Η\/Ο|ο\/η |η\/ο |τον\/την|την\/τον|στον\/στην|στην\/στον|του\/της|της\/του|ος\/-?η\b/;
 const SKIP = new Set(['greekNeutral.test.ts']);
 
 function* walk(dir: string): Generator<string> {

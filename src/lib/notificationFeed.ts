@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNotifications, type NotificationType } from './social';
+import { readCloudNotifications, useNotifications, type AppNotification, type NotificationType } from './social';
 import { useStored } from './useStored';
 import {
   clearActivity,
@@ -20,6 +20,8 @@ import { NEED_CARD_ITEMS } from '../data/studioCatalog';
 import { nextStepIn } from '../data/demoCatalog';
 import { DEMO_FOUNDER_SKILLS } from '../data/demoVenture';
 import { cardTime, needFits } from './studioData';
+import { formatDateIn } from './dates';
+import { investorStageLabel } from './investorStage';
 import {
   clearNotifications as clearCloudNotifications,
   deleteNotification as deleteCloudNotification,
@@ -117,13 +119,14 @@ function derivedNotes(): FeedNote[] {
 function overdueNotes(read: Set<string>): FeedNote[] {
   return overdueInvestors().map((item) => {
     const id = `inv-overdue-${item.investorId}-${item.nextDate}`;
+    const due = item.nextDate ?? '';
     return {
       id,
       type: 'investor' as const,
       title: `Overdue follow-up: ${item.name}`,
       titleEl: `Εκπρόθεσμο follow-up: ${item.name}`,
-      description: `${nextStepIn(item.nextStep, 'en') || 'Next step'} was due ${item.nextDate} (${item.stage}). Ask the assistant to draft the email.`,
-      descriptionEl: `${nextStepIn(item.nextStep, 'el') || 'Επόμενο βήμα'} — προθεσμία ${item.nextDate} (${item.stage}). Ζήτα από τον βοηθό να γράψει το email.`,
+      description: `${nextStepIn(item.nextStep, 'en') || 'Next step'}. Was due ${formatDateIn(due, 'en', { day: 'numeric', month: 'short' })} (${investorStageLabel(item.stage, 'en')}). Ask the assistant to draft the email.`,
+      descriptionEl: `${nextStepIn(item.nextStep, 'el') || 'Επόμενο βήμα'}. Έληγε ${formatDateIn(due, 'el', { day: 'numeric', month: 'short' })} (${investorStageLabel(item.stage, 'el')}). Ζήτα από τον βοηθό να γράψει το email.`,
       time: `${item.nextDate}T09:00:00.000Z`,
       read: read.has(id),
       actionUrl: '/fundraising?tab=crm',
@@ -150,6 +153,24 @@ function cloudToType(type: NotificationType): FeedNoteType {
   if (type === 'community') return 'community';
   if (type === 'event') return 'event';
   return 'system';
+}
+
+function cloudToFeed(item: AppNotification): FeedNote {
+  return {
+    id: item.id,
+    type: cloudToType(item.type),
+    title: item.title,
+    titleEl: item.titleEl,
+    description: item.body,
+    descriptionEl: item.bodyEl,
+    time: new Date(item.createdAt).toISOString(),
+    read: item.read,
+    actionUrl: item.href || undefined,
+    fromName: item.fromName,
+    fromAvatar: item.fromAvatar,
+    source: 'cloud',
+    origin: 'cloud',
+  };
 }
 
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600_000).toISOString();
@@ -293,6 +314,50 @@ function activityNotes(): FeedNote[] {
   }));
 }
 
+export function currentNotes(): FeedNote[] {
+  const hidden = new Set(readHiddenNotes());
+  return [...derivedNotes(), ...readCloudNotifications().map(cloudToFeed), ...activityNotes(), ...readSeed()]
+    .filter((item) => !hidden.has(item.id))
+    .sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+}
+
+export function waitsOnReader(note: Pick<FeedNote, 'type' | 'origin'>): boolean {
+  if (note.type === 'message' || note.type === 'investor') return true;
+  return note.origin === 'cloud' && (note.type === 'match' || note.type === 'mentorship');
+}
+
+export function triageNotifications(): {
+  cleared: number;
+  kept: number;
+  cloudCleared: number;
+  restore: () => void;
+} {
+  const unread = currentNotes().filter((note) => !note.read);
+  const clearedNotes = unread.filter((note) => !waitsOnReader(note));
+  const kept = unread.length - clearedNotes.length;
+  const cloudIds = clearedNotes.filter((note) => note.origin === 'cloud').map((note) => note.id);
+  const activityIds = clearedNotes.filter((note) => note.origin === 'activity').map((note) => note.id);
+  const derivedIds = clearedNotes.filter((note) => note.origin === 'derived').map((note) => note.id);
+  const seedIds = new Set(clearedNotes.filter((note) => note.origin === 'seed').map((note) => note.id));
+  const derivedBefore = readDerivedRead();
+
+  if (cloudIds.length) void markCloudNotificationsRead(cloudIds);
+  if (activityIds.length) markActivityRead(activityIds);
+  if (derivedIds.length) writeValue(keys.derivedRead, [...new Set([...derivedBefore, ...derivedIds])]);
+  if (seedIds.size) writeSeed(readSeed().map((note) => (seedIds.has(note.id) ? { ...note, read: true } : note)));
+
+  return {
+    cleared: clearedNotes.length,
+    kept,
+    cloudCleared: cloudIds.length,
+    restore: () => {
+      if (activityIds.length) markActivityUnread(activityIds);
+      if (derivedIds.length) writeValue(keys.derivedRead, derivedBefore);
+      if (seedIds.size) writeSeed(readSeed().map((note) => (seedIds.has(note.id) ? { ...note, read: false } : note)));
+    },
+  };
+}
+
 export function useNotificationFeed(): {
   items: FeedNote[];
   unread: number;
@@ -308,21 +373,7 @@ export function useNotificationFeed(): {
   const derived = useStored(derivedNotes, [keys.round, keys.derivedRead, keys.notificationPrefs, keys.profileLocal]);
   const cloud = useNotifications();
 
-  const cloudNotes: FeedNote[] = useMemo(() => cloud.items.map((item) => ({
-    id: item.id,
-    type: cloudToType(item.type),
-    title: item.title,
-    titleEl: item.titleEl,
-    description: item.body,
-    descriptionEl: item.bodyEl,
-    time: new Date(item.createdAt).toISOString(),
-    read: item.read,
-    actionUrl: item.href || undefined,
-    fromName: item.fromName,
-    fromAvatar: item.fromAvatar,
-    source: 'cloud',
-    origin: 'cloud',
-  })), [cloud.items]);
+  const cloudNotes: FeedNote[] = useMemo(() => cloud.items.map(cloudToFeed), [cloud.items]);
 
   const items = useMemo(
     () => [...derived, ...cloudNotes, ...activity, ...seed]

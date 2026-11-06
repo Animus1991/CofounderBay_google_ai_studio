@@ -10,7 +10,7 @@
  * pipeline, so a second device does not repeat it.
  */
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { followUps, keys, readRound, readValue, writeValue, type FollowUp } from './localLists';
 import { useToast } from '../context/ToastContext';
 import { useT } from './language';
@@ -37,6 +37,7 @@ export function takeNewOverdue(now: Date = new Date()): FollowUp[] {
 export function useFollowUpAlerts(enabled: boolean) {
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const t = useT();
   useEffect(() => {
     if (!enabled) return undefined;
@@ -44,10 +45,11 @@ export function useFollowUpAlerts(enabled: boolean) {
       const fresh = takeNewOverdue();
       const first = fresh[0];
       if (!first) return;
+      if (/^\/(dashboard|fundraising)(\/|$)/.test(location.pathname)) return;
       toast.toast({
         type: 'warning',
         title: fresh.length === 1
-          ? t(`${first.name} is waiting on you`, `Η/Ο ${first.name} περιμένει από σένα`)
+          ? t(`${first.name} is waiting on you`, `Εκπρόθεσμο follow-up: ${first.name}`)
           : t(`${fresh.length} investor follow-ups are overdue`, `${fresh.length} follow-ups με επενδυτές είναι εκπρόθεσμα`),
         description: fresh.length === 1
           ? t(nextStepIn(first.nextStep, 'en'), nextStepIn(first.nextStep, 'el'))
@@ -59,5 +61,5 @@ export function useFollowUpAlerts(enabled: boolean) {
     return () => window.clearTimeout(timer);
     // Once per mount of the app frame; the toast hook is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, location.pathname]);
 }

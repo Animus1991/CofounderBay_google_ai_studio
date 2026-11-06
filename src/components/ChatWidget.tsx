@@ -22,6 +22,7 @@ import { recordAiAction } from '../lib/aiLedger';
 import { onPageControlsChange, readPageControls } from '../lib/pageControls';
 import { useUIStore } from '../stores/useUIStore';
 import { onAssistantRequest } from '../lib/assistantBus';
+import DictationButton from './DictationButton';
 
 type Bubble = AssistantTurn & {
   links?: AssistantLink[];
@@ -71,6 +72,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const [tab, setTab] = useState<'studio' | 'agents'>('studio');
   const [agentId, setAgentId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
+  const [slashIndex, setSlashIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(false);
   /** The model's answer while it is being written (streaming); null otherwise. */
   const [streamingText, setStreamingText] = useState<string | null>(null);
@@ -145,6 +147,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
     ],
     inputText,
   );
+  const slashActive = Math.min(slashIndex, Math.max(0, slashHits.length - 1));
   const atQuery = inputText.startsWith('@') && !inputText.includes(' ') ? inputText.slice(1).toLowerCase() : null;
   const atHits = atQuery === null
     ? []
@@ -171,6 +174,18 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   }, [visibleTurns, isTyping, isOpen, streamingText]);
 
   const speak = (result: AssistantResult): string => (mode === 'el' ? result.el : result.en);
+
+  const runSlashItem = (item: (typeof slashHits)[number]) => {
+    if ('needsArg' in item && item.needsArg) {
+      setInputText(`${item.cmd} `);
+      setSlashIndex(0);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+      return;
+    }
+    setInputText('');
+    setSlashIndex(0);
+    void runRef.current(item.cmd);
+  };
 
   /** Appends a turn to the shared transcript *under the id the bubble uses*, so its proposal and undo stay attached. */
   const pushStudio = (bubble: Bubble) => {
@@ -891,19 +906,20 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                 </div>
               )}
               {slashHits.length > 0 && (
-                <div className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
-                  {slashHits.map((item) => (
+                <div id="assistant-slash-list" role="listbox" className="mb-2 max-h-36 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+                  {slashHits.map((item, index) => (
                     <button
                       key={item.cmd}
+                      id={`assistant-slash-${index}`}
+                      role="option"
+                      aria-selected={index === slashActive}
                       type="button"
-                      onClick={() => {
-                        setInputText('');
-                        void run(item.cmd);
-                      }}
-                      className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-baseline gap-2"
+                      onMouseEnter={() => setSlashIndex(index)}
+                      onClick={() => runSlashItem(item)}
+                      className={cn('w-full px-3 py-2 text-left flex items-baseline gap-2', index === slashActive && 'bg-stone-50')}
                     >
                       <span className="text-xs font-mono font-medium text-stone-900">{item.cmd}</span>
-                      <span className="text-xs text-stone-400 truncate">{bothText(item.en, item.el)}</span>
+                      <span className="text-xs text-stone-500 truncate">{bothText(item.en, item.el)}</span>
                     </button>
                   ))}
                 </div>
@@ -930,14 +946,30 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                   data-assistant-input
                   data-testid="assistant-input"
                   aria-label={t('Message the assistant', 'Μήνυμα στον βοηθό')}
+                  aria-controls={slashHits.length ? 'assistant-slash-list' : undefined}
+                  aria-activedescendant={slashHits.length ? `assistant-slash-${slashActive}` : undefined}
                   placeholder={isTyping
                     ? bothText('Studio is answering…', 'Ο βοηθός απαντά…')
                     : bothText('Ask, or type / or @ …', 'Ρώτα, ή πληκτρολόγησε / ή @ …')}
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={(e) => {
+                    setInputText(e.target.value);
+                    setSlashIndex(0);
+                  }}
                   onClick={() => { if (isTyping) stop(); }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Escape' && (slashHits.length || atHits.length)) { e.preventDefault(); setInputText(''); return; }
+                    if (slashHits.length) {
+                      if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex((index) => Math.min(index + 1, slashHits.length - 1)); return; }
+                      if (e.key === 'ArrowUp') { e.preventDefault(); setSlashIndex((index) => Math.max(index - 1, 0)); return; }
+                      if (e.key === 'Escape') { e.preventDefault(); setInputText(''); setSlashIndex(0); return; }
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        const item = slashHits[slashActive];
+                        if (item) runSlashItem(item);
+                        return;
+                      }
+                    }
+                    if (e.key === 'Escape' && atHits.length) { e.preventDefault(); setInputText(''); return; }
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       if (isTyping) { stop(); return; }
@@ -948,6 +980,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                   }}
                   className="flex-1 min-h-11 bg-transparent border-none text-base sm:text-sm focus:ring-0 px-2"
                 />
+                {!isTyping && <DictationButton value={inputText} onChange={setInputText} />}
                 {isTyping ? (
                   <button
                     type="button"
@@ -1047,7 +1080,11 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-3 pointer-events-auto self-end">
+      <div className={cn(
+        'flex items-center gap-3 pointer-events-auto self-end',
+        // On Messages the round button would sit on the message box; the header's AI button opens the same panel.
+        location.pathname.replace(/\/+$/, '') === '/messages' && !visible && 'hidden',
+      )}>
         {isMinimized && isOpen && (
           <motion.button
             type="button"

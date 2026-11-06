@@ -22,7 +22,7 @@ import { MOCK_AGENTS } from "../services/aiService";
 import { User } from "../types";
 import { useAuth } from "../App";
 import { avatarFor, findCast } from "../data/cast";
-import { keys, logActivity, readRequests, removeRequest } from "../lib/localLists";
+import { keys, logActivity, readRequests, readValue, removeRequest, writeValue } from "../lib/localLists";
 import { labelOf } from "../lib/labels";
 import { useLanguage, useT } from "../lib/language";
 import { formatDate, formatDateTime, formatTime } from "../lib/dates";
@@ -31,6 +31,8 @@ import Modal from "../components/ui/Modal";
 import { ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePageControls } from "../lib/pageControls";
 import { useStored } from "../lib/useStored";
+import { useMediaQuery } from "../lib/useMediaQuery";
+import { useDialogFocus } from "../lib/useDialogFocus";
 import { useToast } from "../context/ToastContext";
 import { usePeople } from "../lib/directory";
 import { avatarOf, findPerson, isOnline, type Person } from "../lib/peopleSource";
@@ -287,11 +289,18 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   { id: 'filter-archived', en: 'Show archived', el: 'Αρχείο', run: () => setMessageFilter('archived') },
  ], []);
  const [reactionFor, setReactionFor] = useState<string | null>(null);
+ // Phones: a message's actions show when it is tapped, not under every message.
+ const [actionsFor, setActionsFor] = useState<string | null>(null);
+ const tapHintSeen = useStored(() => readValue<boolean>(keys.messageTapHint, false), [keys.messageTapHint]);
+ const toggleActions = (id: string) => {
+  setActionsFor((current) => (current === id ? null : id));
+  if (!tapHintSeen) writeValue(keys.messageTapHint, true);
+ };
  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
  const [recording, setRecording] = useState<{ since: number } | null>(null);
  const [recordingTime, setRecordingTime] = useState(0);
- const [showRightSidebar, setShowRightSidebar] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches);
+ const [showRightSidebar, setShowRightSidebar] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1440px)").matches);
  const [showSearchPanel, setShowSearchPanel] = useState(false);
  const [chatSearchQuery, setChatSearchQuery] = useState("");
  const [pendingFiles, setPendingFiles] = useState<{ file: File; preview?: string }[]>([]);
@@ -310,9 +319,16 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
  const fileInputRef = useRef<HTMLInputElement>(null);
  const messagesEndRef = useRef<HTMLDivElement>(null);
  const textareaRef = useRef<HTMLTextAreaElement>(null);
+ const detailsRef = useRef<HTMLElement>(null);
  const recorderRef = useRef<MediaRecorder | null>(null);
  const chunksRef = useRef<Blob[]>([]);
  const lastReadRef = useRef<string>("");
+
+ // Below 1440px the details are a sheet over the thread (full screen on phones):
+ // the same keyboard containment, Escape and focus return as every other dialog.
+ const detailsBeside = useMediaQuery("(min-width: 1440px)");
+ const closeDetails = useCallback(() => setShowRightSidebar(false), []);
+ useDialogFocus(showRightSidebar && !detailsBeside && activeView === "chat" && Boolean(active), detailsRef, closeDetails);
 
  // ── Derived ───────────────────────────────────────────────────────────────
  const isAIChat = active?.kind === "ai";
@@ -1023,7 +1039,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
      )}
      <div className={cn("max-w-[80%] sm:max-w-[65%] space-y-1 flex flex-col", isMe ? "items-end" : "items-start")}>
-      <div className={cn(
+      <div onClick={(e) => { if (!msg.deleted && !isCall && !(e.target as HTMLElement).closest("a, button, textarea, input")) toggleActions(msg.id); }} className={cn(
        "relative px-4 py-2.5 rounded-2xl text-sm shadow-sm",
        isMe ? "bg-stone-900 text-white rounded-br-lg" : msg.isAI ? "bg-stone-50 text-stone-900 border border-stone-200 rounded-bl-lg" : "bg-white text-stone-800 border border-stone-200 rounded-bl-lg",
        highlighted && "ring-2 ring-amber-300",
@@ -1073,7 +1089,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
        )}
 
        {!msg.deleted && !isCall && (
-        <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 md:focus-within:opacity-100 transition-opacity z-10", isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1")}>
+        <div className={cn("flex flex-wrap gap-0.5 mt-2 md:absolute md:-top-1 md:mt-0 md:opacity-0 md:group-hover/message:opacity-100 md:focus-within:opacity-100 transition-opacity z-10", isMe ? "justify-end md:right-full md:mr-1" : "md:left-full md:ml-1", actionsFor !== msg.id && "max-md:sr-only max-md:focus-within:not-sr-only")}>
          <div className="flex items-center gap-0.5 p-1 bg-white rounded-lg shadow-lg border border-stone-200">
           <button type="button" aria-label={t("Reply", "Απάντηση")} title={t("Reply", "Απάντηση")} onClick={() => { setReplyingTo(msg); textareaRef.current?.focus(); }} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Reply className="w-3.5 h-3.5" /></button>
           <button type="button" aria-label={t("React", "Προσθήκη αντίδρασης")} title={t("React", "Προσθήκη αντίδρασης")} onClick={(e) => { e.stopPropagation(); setReactionFor(reactionFor === msg.id ? null : msg.id); }} className="min-h-9 min-w-9 inline-flex items-center justify-center text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-md"><Smile className="w-3.5 h-3.5" /></button>
@@ -1312,7 +1328,7 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
         <MessageCircle className="w-8 h-8 text-stone-300" />
        </div>
        <p className="text-sm text-stone-600 font-medium">
-        {isAIChat && activeAgent ? agentDescription(activeAgent) : t(`Say hello to ${active.other.fullName.split(" ")[0]}.`, `Πες ένα γεια στον/στην ${active.other.fullName.split(" ")[0]}.`)}
+        {isAIChat && activeAgent ? agentDescription(activeAgent) : t(`Say hello to ${active.other.fullName.split(" ")[0]}.`, `Πρώτο μήνυμα προς ${active.other.fullName.split(" ")[0]}: πες ένα γεια.`)}
        </p>
        {!isAIChat && active.other.headline && <p className="text-xs text-stone-400 mt-1 max-w-sm">{active.other.headline}</p>}
        {isAIChat && prompts.length > 0 && (
@@ -1325,6 +1341,9 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
       </div>
      ) : (
       <>
+       {!tapHintSeen && (
+        <p className="md:hidden text-center text-xs text-stone-500">{t("Tap a message to reply, react, copy or forward it.", "Πάτησε ένα μήνυμα για απάντηση, αντίδραση, αντιγραφή ή προώθηση.")}</p>
+       )}
        {messages.map((msg, idx) => renderMessageBubble(msg, idx))}
        {(aiTyping && isAIChat) && (
         <div className="flex items-center gap-3">
@@ -1451,11 +1470,13 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   const style = MODE_STYLE[validation.mode];
   const VIcon = style.icon;
   return (
-   <motion.aside initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-    className="flex flex-col bg-white overflow-hidden max-xl:fixed max-xl:inset-0 max-xl:z-[80] xl:w-80 xl:shrink-0 xl:border-l xl:border-stone-200">
+   <motion.aside key="details" ref={detailsRef} tabIndex={-1}
+    role={detailsBeside ? undefined : "dialog"} aria-modal={detailsBeside ? undefined : true} aria-labelledby="conversation-details-title"
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    className="fixed inset-y-0 right-0 z-[80] flex w-[22rem] max-w-full flex-col overflow-hidden border-l border-stone-200 bg-white shadow-xl outline-none max-sm:inset-0 max-sm:w-full min-[1440px]:static min-[1440px]:z-auto min-[1440px]:w-80 min-[1440px]:shrink-0 min-[1440px]:shadow-none">
     <div className="flex items-center justify-between p-3 border-b border-stone-100">
-     <h4 className="text-xs font-semibold text-stone-500 tracking-wider uppercase">{t("Details", "Λεπτομέρειες")}</h4>
-     <button type="button" aria-label={t("Close details", "Κλείσιμο λεπτομερειών")} onClick={() => setShowRightSidebar(false)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-400 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
+     <h4 id="conversation-details-title" className="text-xs font-semibold text-stone-500 tracking-wider uppercase">{t("Details", "Λεπτομέρειες")}</h4>
+     <button type="button" aria-label={t("Close details", "Κλείσιμο λεπτομερειών")} onClick={() => setShowRightSidebar(false)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-stone-500 hover:text-stone-900 rounded-lg hover:bg-stone-100"><X className="w-4 h-4" /></button>
     </div>
     <div className="flex-1 overflow-y-auto">
      <div className="p-5 text-center border-b border-stone-100">
@@ -1737,7 +1758,13 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
     <div className="flex-1 flex min-h-0">
      {activeView === "chat" && renderMainChat()}
      {activeView === "ai-center" && renderAICenter()}
-     <AnimatePresence>{activeView === "chat" && renderRightSidebar()}</AnimatePresence>
+     <AnimatePresence>
+      {/* Over the thread the sheet dims what it covers; a click outside closes it. */}
+      {activeView === "chat" && showRightSidebar && active && !detailsBeside && (
+       <motion.div key="details-scrim" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeDetails} className="fixed inset-0 z-[79] bg-stone-900/30" />
+      )}
+      {activeView === "chat" && renderRightSidebar()}
+     </AnimatePresence>
     </div>
    </main>
 

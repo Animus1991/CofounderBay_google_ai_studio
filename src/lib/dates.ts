@@ -15,8 +15,16 @@ export function formatDate(
   value: When,
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' },
 ): string {
+  return formatDateIn(value, getLang(), options);
+}
+
+export function formatDateIn(
+  value: When,
+  lang: 'en' | 'el',
+  options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' },
+): string {
   const date = toDate(value);
-  return date ? date.toLocaleDateString(locale(), options) : String(value);
+  return date ? date.toLocaleDateString(lang === 'el' ? 'el-GR' : 'en-GB', options) : String(value);
 }
 
 /** 07:00 */

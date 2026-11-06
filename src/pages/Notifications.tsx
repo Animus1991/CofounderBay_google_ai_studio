@@ -11,7 +11,7 @@ import Tabs from '../components/ui/Tabs';
 import { cn } from '../lib/utils';
 import { useT } from '../lib/language';
 import { useAuth } from '../App';
-import { useNotificationFeed, type FeedNote, type FeedNoteType, noteGroup } from '../lib/notificationFeed';
+import { noteGroup, triageNotifications, useNotificationFeed, type FeedNote, type FeedNoteType } from '../lib/notificationFeed';
 import { usePageControls } from '../lib/pageControls';
 import { useToast } from '../context/ToastContext';
 
@@ -31,6 +31,7 @@ export default function Notifications() {
     { id: 'show-people', en: 'Show what members sent', el: 'Μόνο από μέλη', run: () => setFilter('people') },
     { id: 'show-activity', en: 'Show my activity', el: 'Μόνο η δραστηριότητά μου', run: () => setFilter('activity') },
     { id: 'mark-all-read', en: 'Mark all read', el: 'Σήμανση όλων ως αναγνωσμένων', run: feed.markAllRead },
+    { id: 'mark-rest-read', en: 'Mark read what needs nothing', el: 'Σήμανση ως αναγνωσμένων όσων δεν χρειάζονται τίποτα', run: () => { triageNotifications(); } },
   ], [feed.markAllRead]);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported',

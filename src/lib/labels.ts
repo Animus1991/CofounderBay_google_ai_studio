@@ -308,3 +308,8 @@ export function labelOf(value: string | null | undefined): string {
   if (getLang() !== 'el') return value;
   return lookup(value) || value;
 }
+
+export function labelIn(value: string | null | undefined, lang: 'en' | 'el'): string {
+  if (!value) return '';
+  return lang === 'el' ? lookup(value) || value : value;
+}

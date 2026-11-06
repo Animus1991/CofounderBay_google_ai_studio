@@ -137,7 +137,7 @@ export function studioWaiting(now = Date.now()): StudioNext | null {
       en: `${first.name}: ${stepEn} is overdue.`,
       el: `${first.name}: «${stepEl}» είναι εκπρόθεσμο.`,
       href: '/fundraising?tab=crm',
-      title: { en: `${first.name} is waiting: ${stepEn}`, el: `Η/Ο ${first.name} περιμένει: ${stepEl}` },
+      title: { en: `${first.name} is waiting: ${stepEn}`, el: `Εκκρεμεί με ${first.name}: ${stepEl}` },
       why: late.length > 1
         ? { en: `+${late.length - 1} more investor follow-up overdue`, el: `+${late.length - 1} ακόμη εκπρόθεσμα follow-ups` }
         : { en: `Was due ${dayLabel(first.nextDate, 'en')}`, el: `Έληγε ${dayLabel(first.nextDate, 'el')}` },

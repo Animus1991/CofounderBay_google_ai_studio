@@ -788,10 +788,10 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     area: 'venture',
     reversal: 'full',
     label: { en: 'Update a milestone', el: 'Ενημέρωση οροσήμου' },
-    description: 'Complete a milestone, set its progress percent, or move its target date.',
+    description: 'Start or complete a milestone, set its progress percent, or move its target date.',
     params: [
       { name: 'title', type: 'string', required: true, description: 'Milestone title (a distinctive part is enough).' },
-      { name: 'action', type: 'string', required: true, description: 'What to do.', enum: ['done', 'progress', 'date'] },
+      { name: 'action', type: 'string', required: true, description: 'What to do.', enum: ['start', 'done', 'progress', 'date'] },
       { name: 'value', type: 'string', required: false, description: 'For progress: 0-100. For date: a day.' },
     ],
     example: { en: 'Set milestone MVP launch to 60%', el: 'Όρισε το ορόσημο MVP launch στο 60%' },
@@ -799,6 +799,7 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     command: (args) => {
       const action = arg(args, 'action');
       const title = arg(args, 'title');
+      if (action === 'start') return `start milestone ${title}`;
       if (action === 'date') return `move milestone ${title} to ${arg(args, 'value', 'next week')}`;
       if (action === 'progress') return `milestone ${title} ${arg(args, 'value', '50')}%`;
       return `mark milestone ${title} done`;
@@ -1102,12 +1103,24 @@ export const ACTION_CATALOG: readonly ActionDeclaration[] = [
     label: { en: 'Turn a notification on or off', el: 'Ειδοποιήσεις on/off' },
     description: 'Turn one notification topic on or off.',
     params: [
-      { name: 'topic', type: 'string', required: true, description: 'Topic.', enum: ['match', 'message', 'community', 'news', 'event', 'mentor', 'fundraising', 'mention'] },
+      { name: 'topic', type: 'string', required: true, description: 'Topic.', enum: ['match', 'message', 'community', 'news', 'event', 'mentor', 'fundraising', 'mention', 'need'] },
       { name: 'state', type: 'string', required: true, description: 'On or off.', enum: ['on', 'off'] },
     ],
     example: { en: 'Turn off event notifications', el: 'Απενεργοποίησε τις ειδοποιήσεις εκδηλώσεων' },
     sampleArgs: { topic: 'news', state: 'off' },
-    command: (args) => `turn ${arg(args, 'state') === 'on' ? 'on' : 'off'} ${arg(args, 'topic', 'event')} notifications`,
+    command: (args) => `turn ${arg(args, 'state') === 'on' ? 'on' : 'off'} ${arg(args, 'topic', 'event') === 'need' ? 'need card' : arg(args, 'topic', 'event')} notifications`,
+  },
+  {
+    id: 'triage_notifications',
+    tool: 'notifications-triage',
+    kind: 'write',
+    area: 'account',
+    reversal: 'partial',
+    label: { en: 'Triage notifications', el: 'Διαλογή ειδοποιήσεων' },
+    description: 'Mark read only notifications that need nothing from the founder.',
+    params: [],
+    example: { en: 'Triage my notifications', el: 'Τακτοποίησε τις ειδοποιήσεις' },
+    command: () => 'triage my notifications',
   },
   {
     id: 'mark_notifications_read',
