@@ -122,6 +122,7 @@ export default function MentorsPage() {
  const savedMentors = useStored(() => new Set(readIds(listKeys.mentors)), [keys.mentors]);
  const sessions = useStored(() => readSessions(), [keys.sessions]);
  const navigate = useNavigate();
+ const myRequests = sessions.filter((session) => session.mentorRequest);
 
  usePageControls(() => [
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => document.getElementById('mentor-filters')?.scrollIntoView({ behavior: 'smooth' }) },
@@ -150,6 +151,19 @@ export default function MentorsPage() {
    {/* Search and filters first, on the page's own surface (round 10). A dark hero with a slogan and a
        four-number stats bar used to fill the first screen — on a phone, all of it — so no mentor was visible
        without scrolling. The figures now sit in one line above the list. */}
+   {myRequests.length > 0 && (
+    <section aria-labelledby="my-mentor-requests" data-testid="mentor-requests" className="rounded-2xl border border-stone-200 bg-white p-4">
+     <h2 id="my-mentor-requests" className="text-sm font-semibold text-stone-900">{t('My requests', 'Τα αιτήματά μου')}</h2>
+     <ul className="mt-2 divide-y divide-stone-100">
+      {myRequests.map((request) => (
+       <li key={request.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2 text-sm">
+        <span className="min-w-0 font-medium text-stone-900">{request.participants[0] ?? request.title}</span>
+        <span className="text-stone-500">{t('Sent', 'Στάλθηκε')} · {request.time}</span>
+       </li>
+      ))}
+     </ul>
+    </section>
+   )}
    <section aria-label={t('Find a mentor', 'Βρες μέντορα')} className="space-y-3">
     <form
      role="search"
@@ -571,6 +585,7 @@ export default function MentorsPage() {
             location: t('Messages', 'Μηνύματα'),
             participants: [mentor.name],
             priority: 'Medium',
+            mentorRequest: true,
            });
            logActivity({ kind: 'session', title: `Requested mentoring from ${mentor.name}`, titleEl: `Αίτημα καθοδήγησης προς ${mentor.name}`, href: `/profile/${mentor.id}`, byAssistant: false });
            toast.success(t('Request sent', 'Το αίτημα στάλθηκε'), isDemoMode ? t('In the demo, requests stay on this device.', 'Στη δοκιμαστική λειτουργία, τα αιτήματα μένουν σε αυτή τη συσκευή.') : t(`${mentor.name} will see your focus areas and availability and can reply in Messages.`, `${mentor.name} θα δει τα θέματα και τη διαθεσιμότητά σου και μπορεί να απαντήσει στα Μηνύματα.`));

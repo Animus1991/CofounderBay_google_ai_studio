@@ -216,6 +216,7 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
  const [searchQuery, setSearchQuery] = useState('');
  const [categoryFilter, setCategoryFilter] = useState('All');
  const [statusFilter, setStatusFilter] = useState('All');
+ const [priorityFilter, setPriorityFilter] = useState('All');
  const editor = useProtectedDraft('milestone', user?.id || 'anonymous', { title: '', editingId: '' });
  const [adding, setAdding] = useState(editor.dirty);
  const draftTitle = editor.value.title;
@@ -231,8 +232,8 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
   setAdding(true);
  };
  const setShowCreate = setAdding;
- const filtersActive = Boolean(searchQuery) || categoryFilter !== 'All' || statusFilter !== 'All';
- const clearFilters = () => { setSearchQuery(''); setCategoryFilter('All'); setStatusFilter('All'); };
+ const filtersActive = Boolean(searchQuery) || categoryFilter !== 'All' || statusFilter !== 'All' || priorityFilter !== 'All';
+ const clearFilters = () => { setSearchQuery(''); setCategoryFilter('All'); setStatusFilter('All'); setPriorityFilter('All'); };
 
  useEffect(() => {
   fetchMilestones();
@@ -245,6 +246,8 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
 
  usePageControls(() => [
   { id: 'new-milestone', en: 'New milestone', el: 'Νέο ορόσημο', run: openNew },
+  { id: 'milestones-high', en: 'Show only high priority', el: 'Μόνο υψηλή προτεραιότητα', run: () => setPriorityFilter('High') },
+  { id: 'milestones-clear-filters', en: 'Clear the milestone filters', el: 'Καθαρισμός φίλτρων ορόσημων', run: clearFilters },
   { id: 'milestones-list', en: 'Show milestones as a list', el: 'Ορόσημα σε λίστα', run: () => setView('list') },
   { id: 'milestones-board', en: 'Show the milestones board', el: 'Πίνακας ορόσημων', run: () => setView('kanban') },
   { id: 'milestones-timeline', en: 'Show the milestones timeline', el: 'Χρονολόγιο ορόσημων', run: () => setView('timeline') },
@@ -317,9 +320,10 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
    const matchSearch = !searchQuery || m.title.toLowerCase().includes(searchQuery.toLowerCase()) || m.description?.toLowerCase().includes(searchQuery.toLowerCase());
    const matchCat = categoryFilter === 'All' || m.category === categoryFilter;
    const matchStatus = statusFilter === 'All' || m.status === statusFilter;
-   return matchSearch && matchCat && matchStatus;
+   const matchPriority = priorityFilter === 'All' || m.priority === priorityFilter;
+   return matchSearch && matchCat && matchStatus && matchPriority;
   }).sort((a, b) => rank(a) - rank(b) || due(a) - due(b));
- }, [milestones, searchQuery, categoryFilter, statusFilter]);
+ }, [milestones, searchQuery, categoryFilter, statusFilter, priorityFilter]);
 
  const overallProgress = milestones.length > 0 ? Math.round(milestones.reduce((sum, m) => sum + m.progress, 0) / milestones.length) : 0;
 
@@ -459,6 +463,16 @@ export default function MilestonesPage({ user }: MilestonesPageProps) {
         categoryFilter === cat ? "bg-stone-100 text-stone-900" : "text-stone-500 hover:bg-stone-50"
        )}>
        {cat === 'All' ? t('All', 'Όλα') : labelOf(cat)}
+      </button>
+     ))}
+    </div>
+    <div role="group" aria-label={t("Milestone priority", "Προτεραιότητα οροσήμων")} className="mt-2 flex flex-wrap items-center gap-1">
+     {['All', 'High', 'Medium', 'Low'].map(level => (
+      <button type="button" key={level} onClick={() => setPriorityFilter(level)} aria-pressed={priorityFilter === level}
+       className={cn("px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+        priorityFilter === level ? "bg-stone-100 text-stone-900" : "text-stone-500 hover:bg-stone-50"
+       )}>
+       {level === 'All' ? t('Any priority', 'Κάθε προτεραιότητα') : labelOf(level)}
       </button>
      ))}
     </div>

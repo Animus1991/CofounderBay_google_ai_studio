@@ -362,7 +362,7 @@ export function useNotificationFeed(): {
   items: FeedNote[];
   unread: number;
   loaded: boolean;
-  markAllRead: () => void;
+  markAllRead: () => ReturnType<typeof markAllNotificationsRead>;
   markRead: (id: string) => void;
   remove: (id: string) => void;
   clearAll: () => void;
@@ -383,9 +383,7 @@ export function useNotificationFeed(): {
   );
   const unread = items.filter((item) => !item.read).length;
 
-  const markAllRead = () => {
-    markAllNotificationsRead();
-  };
+  const markAllRead = () => markAllNotificationsRead();
 
   const markRead = (id: string) => {
     const target = items.find((note) => note.id === id) ?? seed.find((note) => note.id === id);

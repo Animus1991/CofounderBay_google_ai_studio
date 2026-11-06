@@ -287,7 +287,12 @@ export default function CommunicationHub({ user: routeUser }: CommunicationHubPr
   { id: 'filter-all', en: 'Show all conversations', el: 'Όλες οι συνομιλίες', run: () => { setMessageFilter('all'); setSearchQuery(''); } },
   { id: 'filter-unread', en: 'Show unread', el: 'Αδιάβαστα', run: () => setMessageFilter('unread') },
   { id: 'filter-archived', en: 'Show archived', el: 'Αρχείο', run: () => setMessageFilter('archived') },
- ], []);
+  ...(active && active.kind !== 'ai' ? [
+   { id: 'conversation-pin', en: active.pinned ? 'Unpin this conversation' : 'Pin this conversation', el: active.pinned ? 'Ξεκαρφίτσωμα συνομιλίας' : 'Καρφίτσωμα συνομιλίας', run: () => messaging.setFlag(active.id, 'pinned', !active.pinned) },
+   { id: 'conversation-mute', en: active.muted ? 'Unmute this conversation' : 'Mute this conversation', el: active.muted ? 'Κατάργηση σίγασης' : 'Σίγαση συνομιλίας', run: () => messaging.setFlag(active.id, 'muted', !active.muted) },
+   { id: 'conversation-archive', en: active.archived ? 'Unarchive this conversation' : 'Archive this conversation', el: active.archived ? 'Επαναφορά από το αρχείο' : 'Αρχειοθέτηση συνομιλίας', run: () => messaging.setFlag(active.id, 'archived', !active.archived) },
+  ] : []),
+ ], [active?.id, active?.pinned, active?.muted, active?.archived]);
  const [reactionFor, setReactionFor] = useState<string | null>(null);
  // Phones: a message's actions show when it is tapped, not under every message.
  const [actionsFor, setActionsFor] = useState<string | null>(null);

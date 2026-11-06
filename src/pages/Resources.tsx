@@ -14,7 +14,9 @@ import {
  GraduationCap,
  Wrench,
  HelpCircle,
- PlayCircle
+ PlayCircle,
+ Bookmark,
+ CheckCircle2
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import CoverImage from "../components/ui/CoverImage";
@@ -29,6 +31,7 @@ import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { motion } from "motion/react";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
+import { completedCourses, savedResources, toggleId, useEntity } from "../lib/entities";
 import { useAuth } from "../App";
 import { usePeople } from "../lib/directory";
 import { avatarOf } from "../lib/peopleSource";
@@ -89,12 +92,16 @@ export default function Resources({ user: _user }: ResourcesProps) {
  const [courseQuery, setCourseQuery] = useState('');
  const [courseLevel, setCourseLevel] = useState<'All' | 'Beginner' | 'Intermediate' | 'Advanced'>('All');
  const [jobModalOpen, setJobModalOpen] = useState(false);
+ const [savedOnly, setSavedOnly] = useState(false);
+ const savedItems = useEntity(savedResources);
+ const doneCourses = useEntity(completedCourses);
  const ask = (prompt: string) => askAssistant(prompt);
  usePageControls(() => [
   { id: 'tab-learning', en: 'Show learning', el: 'Εμφάνιση μάθησης', run: () => setActiveTab('learning') },
   { id: 'tab-services', en: 'Show services', el: 'Εμφάνιση υπηρεσιών', run: () => setActiveTab('services') },
   { id: 'tab-jobs', en: 'Show jobs', el: 'Εμφάνιση θέσεων', run: () => setActiveTab('jobs') },
   { id: 'tab-support', en: 'Show support', el: 'Εμφάνιση υποστήριξης', run: () => setActiveTab('support') },
+  { id: 'saved-resources', en: 'Show what I saved', el: 'Όσα αποθήκευσα', run: () => setSavedOnly(true) },
   { id: 'clear-course-filters', en: 'Clear course filters', el: 'Καθάρισε τα φίλτρα μαθημάτων', run: () => { setCourseQuery(''); setCourseLevel('All'); } },
  ], []);
 
@@ -183,6 +190,14 @@ export default function Resources({ user: _user }: ResourcesProps) {
      ))}
     </div>
 
+   {(activeTab === 'learning' || activeTab === 'jobs') && (
+    <div className="flex justify-end">
+     <Button type="button" variant={savedOnly ? 'primary' : 'outline'} size="sm" aria-pressed={savedOnly} onClick={() => setSavedOnly((value) => !value)} data-testid="resources-saved-only">
+      <Bookmark className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" /> {t(`Saved (${savedItems.length})`, `Αποθηκευμένα (${savedItems.length})`)}
+     </Button>
+    </div>
+   )}
+
    {activeTab === 'learning' && (
     <div className="space-y-10">
      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -216,7 +231,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
         const q = courseQuery.trim().toLowerCase();
         const matchesQuery = !q || course.title.toLowerCase().includes(q) || course.instructor.toLowerCase().includes(q);
         const matchesLevel = courseLevel === 'All' || course.level === courseLevel;
-        return matchesQuery && matchesLevel;
+        return matchesQuery && matchesLevel && (!savedOnly || savedItems.includes(`course:${course.id}`));
       });
       if (visibleCourses.length === 0) {
         return (
@@ -270,6 +285,16 @@ export default function Resources({ user: _user }: ResourcesProps) {
          <Button type="button" variant="outline" className="w-full mt-8 h-10 rounded-2xl text-sm font-medium border-stone-200 hover:bg-stone-900 hover:text-white hover:border-stone-900 transition-all" onClick={() => ask(`Tell me about ${course.title}`)}>
           {t('Start Learning', 'Ξεκίνα τη μάθηση')}
          </Button>
+         <div className="mt-2 grid grid-cols-2 gap-2">
+          <Button type="button" variant="ghost" size="sm" aria-pressed={savedItems.includes(`course:${course.id}`)} onClick={() => toggleId(savedResources, `course:${course.id}`)}>
+           <Bookmark className="w-3.5 h-3.5 mr-1.5" fill={savedItems.includes(`course:${course.id}`) ? 'currentColor' : 'none'} aria-hidden="true" />
+           {savedItems.includes(`course:${course.id}`) ? t('Saved', 'Αποθηκεύτηκε') : t('Save', 'Αποθήκευση')}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" aria-pressed={doneCourses.includes(course.id)} onClick={() => toggleId(completedCourses, course.id)}>
+           <CheckCircle2 className={cn('w-3.5 h-3.5 mr-1.5', doneCourses.includes(course.id) && 'text-emerald-600')} aria-hidden="true" />
+           {doneCourses.includes(course.id) ? t('Completed', 'Ολοκληρώθηκε') : t('Mark done', 'Ολοκλήρωση')}
+          </Button>
+         </div>
         </Card>
        </motion.div>
       ))}
@@ -365,7 +390,7 @@ export default function Resources({ user: _user }: ResourcesProps) {
       </EmptyHint>
      )}
      <div className="space-y-6">
-      {jobs.map((job, idx) => (
+      {jobs.filter((job) => !savedOnly || savedItems.includes(`job:${job.id}`)).map((job, idx) => (
        <motion.div
         key={job.id}
         initial={{ opacity: 0, x: -20 }}
@@ -392,6 +417,9 @@ export default function Resources({ user: _user }: ResourcesProps) {
             <p className="text-base font-medium text-stone-900 tracking-tight">{job.salary}</p>
             <p className="text-sm text-stone-400 font-medium">{labelOf(job.type)}</p>
            </div>
+           <Button type="button" variant="ghost" size="sm" aria-pressed={savedItems.includes(`job:${job.id}`)} aria-label={t(`Save ${job.title}`, `Αποθήκευση: ${job.title}`)} onClick={() => toggleId(savedResources, `job:${job.id}`)}>
+            <Bookmark className="w-4 h-4" fill={savedItems.includes(`job:${job.id}`) ? 'currentColor' : 'none'} aria-hidden="true" />
+           </Button>
            {job.mine ? (
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg">{t('Your listing', 'Δική σου αγγελία')}</span>
            ) : (

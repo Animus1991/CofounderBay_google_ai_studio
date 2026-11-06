@@ -42,6 +42,7 @@ export default function Calendar() {
  const [selectedDate, setSelectedDate] = useState(() => new Date());
  const [view, setView] = useState('Month');
  const [searchQuery, setSearchQuery] = useState('');
+ const [typeFilter, setTypeFilter] = useState('All');
  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
  const briefingEnabled = useStored(() => readValue<boolean>(keys.calendarBriefing, false), [keys.calendarBriefing]);
 
@@ -171,7 +172,14 @@ export default function Calendar() {
 
 
  const storedSessions = useStored(readSessions, [keys.sessions]);
+ const typeOptions = [
+  { value: 'Meeting', label: t('Meetings', 'Συναντήσεις') },
+  { value: 'Deadline', label: t('Deadlines', 'Προθεσμίες') },
+  { value: 'Event', label: t('Events', 'Εκδηλώσεις') },
+  { value: 'Mentorship', label: t('Mentorship', 'Καθοδήγηση') },
+ ];
  const events: Event[] = [...storedSessions].filter((event) => {
+  if (typeFilter !== 'All' && event.type !== typeFilter) return false;
   const q = searchQuery.trim().toLowerCase();
   return !q || event.title.toLowerCase().includes(q) || event.type.toLowerCase().includes(q);
  });
@@ -213,6 +221,11 @@ export default function Calendar() {
   { id: 'new-session', en: 'New session', el: 'Νέα συνάντηση', run: () => ask('schedule a session') },
   { id: 'toggle-briefing', en: briefingEnabled ? 'Disable briefing' : 'Enable briefing', el: briefingEnabled ? 'Απενεργοποίηση ενημέρωσης' : 'Ενεργοποίηση ενημέρωσης', run: toggleBriefing },
   { id: 'export-ics', en: 'Export calendar (.ics)', el: 'Εξαγωγή ημερολογίου (.ics)', run: exportAll },
+  { id: 'type-all', en: 'Show every type', el: 'Όλοι οι τύποι', run: () => setTypeFilter('All') },
+  { id: 'type-meeting', en: 'Show only meetings', el: 'Μόνο συναντήσεις', run: () => setTypeFilter('Meeting') },
+  { id: 'type-deadline', en: 'Show only deadlines', el: 'Μόνο προθεσμίες', run: () => setTypeFilter('Deadline') },
+  { id: 'type-event', en: 'Show only events', el: 'Μόνο εκδηλώσεις', run: () => setTypeFilter('Event') },
+  { id: 'type-mentorship', en: 'Show only mentorship', el: 'Μόνο καθοδήγηση', run: () => setTypeFilter('Mentorship') },
  ], [briefingEnabled, upcomingEntries.length]);
 
  const calendarCells = useMemo(() => {
@@ -268,6 +281,16 @@ export default function Calendar() {
        className="pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/5 focus:border-stone-400 w-36 transition-all"
       />
      </div>
+     <select
+      aria-label={t('Filter by type', 'Φίλτρο τύπου')}
+      value={typeFilter}
+      onChange={(e) => setTypeFilter(e.target.value)}
+      data-testid="calendar-type-filter"
+      className="min-h-8 rounded-lg border border-stone-200 bg-white px-2 text-sm text-stone-700"
+     >
+      <option value="All">{t('All types', 'Όλοι οι τύποι')}</option>
+      {typeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+     </select>
      <Button
       type="button"
       variant="outline"
@@ -564,7 +587,7 @@ export default function Calendar() {
       <div className="space-y-2">
        {events.length === 0 && (
         <EmptyHint title={t("No events match this search.", "Δεν υπάρχουν εκδηλώσεις για αυτή την αναζήτηση.")} detail={t("Ask the studio assistant to schedule one, or clear the search.", "Ρώτα τον βοηθό να προγραμματίσει μία, ή καθάρισε την αναζήτηση.")}>
-         {searchQuery ? <ClearFiltersButton onClick={() => setSearchQuery('')}>{t('Clear search', 'Καθάρισε την αναζήτηση')}</ClearFiltersButton> : null}
+         {searchQuery || typeFilter !== 'All' ? <ClearFiltersButton onClick={() => { setSearchQuery(''); setTypeFilter('All'); }}>{t('Clear search', 'Καθάρισε την αναζήτηση')}</ClearFiltersButton> : null}
          <AskLink prompt="Schedule a meeting on my calendar" />
         </EmptyHint>
        )}

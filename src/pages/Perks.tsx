@@ -95,6 +95,7 @@ export default function Perks() {
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
  const [perkQuery, setPerkQuery] = useState('');
  const [savedOnly, setSavedOnly] = useState(false);
+ const [claimedOnly, setClaimedOnly] = useState(false);
  const saved = useEntity(savedPerks);
  const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
  const ask = (prompt: string) => askAssistant(prompt);
@@ -112,7 +113,8 @@ export default function Perks() {
  };
 
  usePageControls(() => [
-  { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); setSavedOnly(false); } },
+  { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); setSavedOnly(false); setClaimedOnly(false); } },
+  { id: 'claimed-perks', en: 'Show the perks I claimed', el: 'Οι παροχές που εξαργύρωσα', run: () => setClaimedOnly(true) },
   { id: 'saved-perks', en: 'Show saved perks', el: 'Αποθηκευμένες παροχές', run: () => setSavedOnly(true) },
  ], []);
 
@@ -135,10 +137,12 @@ export default function Perks() {
  const filteredPerks = (activeCategory === 'all' ? perks : perks.filter(p => p.category === activeCategory)).filter((perk) => {
   const q = perkQuery.trim().toLowerCase();
   if (savedOnly && !saved.includes(perk.id)) return false;
+  if (claimedOnly && !claimed.includes(perkClaimId(perk.name))) return false;
   return !q || perk.name.toLowerCase().includes(q) || perk.category.toLowerCase().includes(q) || perk.description.toLowerCase().includes(q);
  });
  const categoryCount = (id: string) => (id === 'all' ? perks.length : perks.filter((perk) => perk.category === id).length);
  const savedCount = perks.filter((perk) => saved.includes(perk.id)).length;
+ const claimedCount = perks.filter((perk) => claimed.includes(perkClaimId(perk.name))).length;
  // A short mark for the tile ("HubSpot" → "HS", "AWS" → "AWS"), so the name is not printed twice.
  const monogram = (logo: string) => (logo.length <= 4 && logo === logo.toUpperCase() ? logo : (logo.match(/[A-Z]/g)?.join('') || logo.charAt(0).toUpperCase()).slice(0, 3));
 
@@ -184,6 +188,9 @@ export default function Perks() {
          "Filters" button that cycled the same categories the tabs above already switch.) */}
      <Button type="button" variant={savedOnly ? 'primary' : 'outline'} aria-pressed={savedOnly} className="h-9 px-4 shrink-0" onClick={() => setSavedOnly((on) => !on)}>
       <Star className="w-4 h-4 mr-2" fill={savedOnly ? 'currentColor' : 'none'} aria-hidden="true" /> {t(`Saved (${savedCount})`, `Αποθηκευμένες (${savedCount})`)}
+     </Button>
+     <Button type="button" variant={claimedOnly ? 'primary' : 'outline'} aria-pressed={claimedOnly} className="h-9 px-4 shrink-0" onClick={() => setClaimedOnly((value) => !value)}>
+      <Check className="w-4 h-4 mr-2" aria-hidden="true" /> {t(`Claimed (${claimedCount})`, `Εξαργυρωμένες (${claimedCount})`)}
      </Button>
     </Card>
     <Card className="bg-stone-900 text-white border-none p-4 self-start" contentClassName="flex items-center justify-between gap-3">

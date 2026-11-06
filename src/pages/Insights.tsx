@@ -2,6 +2,7 @@ import { DEMO_VENTURE } from '../data/demoVenture';
 import {
  useEffect,
  useMemo,
+ useRef,
  useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
@@ -25,6 +26,7 @@ import {
 } from 'recharts';
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
+import { downloadCsv } from "../lib/download";
 import { cn } from "../lib/utils";
 import { User } from "../types";
 import { keys, readActivity, readRequests, readRound, readSaved, readTracked, readValue, writeValue, type ActivityItem } from "../lib/localLists";
@@ -66,6 +68,7 @@ export default function Insights({ user }: InsightsProps) {
   { id: 'range-24h', en: 'Last 24 hours', el: 'Τελευταίες 24 ώρες', run: () => setActiveRange('24H') },
   { id: 'range-7d', en: 'Last 7 days', el: 'Τελευταίες 7 ημέρες', run: () => setActiveRange('7D') },
   { id: 'range-30d', en: 'Last 30 days', el: 'Τελευταίες 30 ημέρες', run: () => setActiveRange('30D') },
+  { id: 'export-csv', en: 'Export these numbers (CSV)', el: 'Εξαγωγή αυτών των αριθμών (CSV)', run: () => exportCsvRef.current() },
  ], []);
  const studioActivity = useStored(readActivity, [keys.activity]);
  const saved = useStored(readSaved, [keys.saved]);
@@ -140,6 +143,12 @@ export default function Insights({ user }: InsightsProps) {
   return week;
  }, [isDemoMode, activeRange, studioActivity, mode]);
 
+ const exportCsvRef = useRef<() => void>(() => undefined);
+ const exportCsv = () => downloadCsv(`insights-${activeRange.toLowerCase()}.csv`, [
+  [t('Period', 'Περίοδος'), t('Readiness', 'Ετοιμότητα'), t('Profile views', 'Προβολές προφίλ'), t('Connections', 'Συνδέσεις'), t('Messages', 'Μηνύματα')],
+  ...activityView.map((row) => [row.name, readinessView.find((point) => point.name === row.name)?.score ?? '', row.views, row.connections, row.messages]),
+ ]);
+ exportCsvRef.current = exportCsv;
  const lastScore = readinessView[readinessView.length - 1]?.score ?? readinessScore;
  const viewSum = activityView.reduce((sum, row) => sum + row.views, 0);
  const connectSum = activityView.reduce((sum, row) => sum + row.connections, 0);
@@ -199,7 +208,7 @@ export default function Insights({ user }: InsightsProps) {
  ];
 
  return (
-  <PageShell title={t("Insights", "Αναλύσεις")} description={t('How your venture is progressing.', 'Πώς προχωρά το venture σου.')}>
+  <PageShell title={t("Insights", "Αναλύσεις")} description={t('How your venture is progressing.', 'Πώς προχωρά το venture σου.')} actions={<Button type="button" variant="outline" size="sm" onClick={exportCsv} data-testid="insights-export">{t("Export CSV", "Εξαγωγή CSV")}</Button>}>
    <div className="space-y-5">
 
     {/* Time range tab bar */}

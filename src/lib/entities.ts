@@ -123,6 +123,8 @@ export function roundSafes(round: Pick<Round, 'instrument' | 'committedAmount' |
 
 // ── Small id lists ──────────────────────────────────────────────────────────
 export const savedPerks = entity<string[]>(keys.savedPerks, () => [], strings);
+export const savedResources = entity<string[]>(keys.savedResources, () => [], strings);
+export const completedCourses = entity<string[]>(keys.completedCourses, () => [], strings);
 export const pinnedTools = entity<string[]>(keys.pinnedTools, () => [], strings);
 export const recentTools = entity<string[]>(keys.recentTools, () => [], strings);
 

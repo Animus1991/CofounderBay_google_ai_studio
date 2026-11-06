@@ -38,6 +38,17 @@ export default function Notifications() {
   );
 
   const unreadCount = feed.unread;
+  // Undo restores what this browser marked; another member's note stays read on the server, and it says so.
+  const markAllWithUndo = () => {
+    const { restore, cloudTouched } = feed.markAllRead();
+    toast.toast({
+      type: 'info',
+      title: t('All marked as read', 'Όλες σημειώθηκαν ως αναγνωσμένες'),
+      description: cloudTouched ? t('Notes from other members stay read.', 'Όσες ήρθαν από άλλα μέλη μένουν αναγνωσμένες.') : undefined,
+      duration: 8000,
+      action: { label: t('Undo', 'Αναίρεση'), run: restore },
+    });
+  };
   const notifications = feed.items.filter((item) => {
     if (filter === 'unread') return !item.read;
     if (filter === 'people') return noteGroup(item) === 'people';
@@ -94,7 +105,7 @@ export default function Notifications() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <AskLink prompt="show my studio activity" />
-          <Button variant="outline" size="sm" data-testid="notifications-mark-all-read" onClick={feed.markAllRead} disabled={unreadCount === 0}>
+          <Button variant="outline" size="sm" data-testid="notifications-mark-all-read" onClick={markAllWithUndo} disabled={unreadCount === 0}>
             <Check className="w-4 h-4 mr-2" /> {t('Mark all as read', 'Σήμανση όλων ως αναγνωσμένων')}
           </Button>
           <Button type="button" variant="ghost" size="sm" className="text-stone-400 hover:text-red-600" data-testid="notifications-clear-all" onClick={feed.clearAll} disabled={feed.items.length === 0}>

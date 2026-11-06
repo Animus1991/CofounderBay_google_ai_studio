@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, Link2, X } from 'lucide-react';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -15,6 +15,8 @@ import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { MAX_COMPARE, compareCandidates } from '../lib/matchCompare';
 import { usePageControls } from '../lib/pageControls';
 import { useUIStore } from '../stores/useUIStore';
+import { absoluteUrl } from '../lib/download';
+import { useToast } from '../context/ToastContext';
 
 /**
  * Up to three candidates side by side (adapted from cofoundersbay /matches/compare).
@@ -28,6 +30,7 @@ export default function MatchCompare() {
  const { user, profile } = useAuth();
  const { people, loading } = usePeople(user?.uid);
  const [params, setParams] = useSearchParams();
+ const toast = useToast();
 
  const viewer = useMemo(() => fromProfile(mergeFitIntoViewer(profile)), [profile]);
  const pool = useMemo(() => {
@@ -45,10 +48,20 @@ export default function MatchCompare() {
 
  const setChosen = (next: Person[]) => setParams(next.length ? { ids: next.map((person) => person.id).join(',') } : {}, { replace: true });
  const names = chosen.map((person) => person.fullName);
+ // The link names the people, so it opens this comparison and not the reader's own top three.
+ const copyLink = async () => {
+  try {
+   await navigator.clipboard.writeText(absoluteUrl(`/matches/compare?ids=${chosen.map((person) => person.id).join(',')}`));
+   toast.success(t('Link copied', 'Ο σύνδεσμος αντιγράφηκε'));
+  } catch {
+   toast.error(t('The link could not be copied', 'Ο σύνδεσμος δεν αντιγράφηκε'));
+  }
+ };
 
  usePageControls(() => [
   { id: 'compare-top', en: 'Compare my top three', el: 'Σύγκριση των τριών πρώτων', run: () => setParams({}, { replace: true }) },
- ], [setParams]);
+  ...(chosen.length ? [{ id: 'compare-copy-link', en: 'Copy a link to this comparison', el: 'Αντιγραφή συνδέσμου αυτής της σύγκρισης', run: () => { void copyLink(); } }] : []),
+ ], [setParams, chosen.map((person) => person.id).join(',')]);
 
  return (
   <PageShell
@@ -87,6 +100,15 @@ export default function MatchCompare() {
        </button>
       </span>
      ))}
+     {chosen.length > 0 && (
+      <button
+       type="button"
+       onClick={() => { void copyLink(); }}
+       className="inline-flex min-h-8 items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-2 text-xs text-stone-700 hover:bg-stone-50"
+      >
+       <Link2 className="h-3 w-3" aria-hidden="true" /> {t('Copy link', 'Αντιγραφή συνδέσμου')}
+      </button>
+     )}
      {chosen.length < MAX_COMPARE && addable.length > 0 && (
       <label className="inline-flex items-center gap-1.5 text-xs text-stone-500">
        <span className="sr-only">{t('Add a person to compare', 'Πρόσθεσε άτομο στη σύγκριση')}</span>

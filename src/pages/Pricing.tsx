@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, X, ArrowRight, Shield, Globe, ZapIcon } from "lucide-react";
+import { Check, X, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
@@ -239,36 +239,24 @@ export default function Pricing() {
     </div>
    </div>
 
-   {/* FAQ / Trust Section */}
-   <div className="grid grid-cols-1 md:grid-cols-3 gap-12 pt-20 border-t border-stone-200">
-    <div className="space-y-4">
-     <div className="p-3 bg-stone-100 rounded-2xl w-fit">
-      <Shield className="w-6 h-6 text-stone-900" />
-     </div>
-     <h3 className="text-base font-semibold">{t('Enterprise Security', 'Ασφάλεια enterprise')}</h3>
-     <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
-      {t("We employ bank-grade encryption and follow strict data privacy protocols to ensure your organization's data is always protected.", "Χρησιμοποιούμε κρυπτογράφηση τραπεζικού επιπέδου και αυστηρά πρωτόκολλα ιδιωτικότητας ώστε τα δεδομένα του οργανισμού σου να είναι πάντα προστατευμένα.")}
-     </p>
-    </div>
-    <div className="space-y-4">
-     <div className="p-3 bg-stone-100 rounded-2xl w-fit">
-      <Globe className="w-6 h-6 text-stone-900" />
-     </div>
-     <h3 className="text-base font-semibold">{t('Global Compliance', 'Παγκόσμια συμμόρφωση')}</h3>
-     <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
-      {t('Fully GDPR and CCPA compliant. We support data residency requirements for our institutional partners.', 'Πλήρης συμμόρφωση με GDPR και CCPA. Υποστηρίζουμε απαιτήσεις διαμονής δεδομένων για θεσμικούς συνεργάτες.')}
-     </p>
-    </div>
-    <div className="space-y-4">
-     <div className="p-3 bg-stone-100 rounded-2xl w-fit">
-      <ZapIcon className="w-6 h-6 text-stone-900" />
-     </div>
-     <h3 className="text-base font-semibold">{t('Instant Provisioning', 'Άμεση ενεργοποίηση')}</h3>
-     <p className="text-stone-500 text-xs sm:text-sm md:text-base leading-relaxed">
-      {t('Get your community up and running in minutes. Our automated onboarding ensures a seamless experience for your members.', 'Η κοινότητά σου είναι έτοιμη σε λίγα λεπτά. Η αυτοματοποιημένη ένταξη δίνει ομαλή εμπειρία στα μέλη σου.')}
-     </p>
-    </div>
-   </div>
+   {/* Only what the product does today: this used to promise "bank-grade encryption",
+       "fully GDPR and CCPA compliant" and data residency, none of which anyone had verified. */}
+   <section aria-labelledby="pricing-faq" className="pt-10 sm:pt-20 border-t border-stone-200">
+    <h2 id="pricing-faq" className="text-base font-semibold text-stone-900">{t('Frequently asked questions', 'Συχνές ερωτήσεις')}</h2>
+    <dl className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+     {[
+      { q: t('Can I pay today?', 'Μπορώ να πληρώσω σήμερα;'), a: t('Not yet. These plans show what is coming, and nothing is charged here.', 'Όχι ακόμη. Τα πακέτα δείχνουν τι έρχεται, και εδώ δεν χρεώνεται τίποτα.') },
+      { q: t('Does the free plan end?', 'Το δωρεάν πακέτο λήγει;'), a: t('No. It has no end date, so you can use the platform before deciding anything.', 'Όχι. Δεν έχει ημερομηνία λήξης, οπότε χρησιμοποιείς την πλατφόρμα πριν αποφασίσεις.') },
+      { q: t('Where is my data kept?', 'Πού φυλάσσονται τα δεδομένα μου;'), a: t('Your account, and what other members need to see, are stored online. The lists you keep for yourself stay in this browser.', 'Ο λογαριασμός σου, και ό,τι πρέπει να βλέπουν άλλα μέλη, αποθηκεύονται online. Οι λίστες που κρατάς για τον εαυτό σου μένουν σε αυτόν τον browser.') },
+      { q: t('Can I take my data with me?', 'Μπορώ να πάρω τα δεδομένα μου;'), a: t('Yes. Settings → Privacy downloads all of it, or one part, as a file. You can delete your account from the same place.', 'Ναι. Οι Ρυθμίσεις → Απόρρητο τα κατεβάζουν όλα, ή ένα μέρος τους, σε αρχείο. Από το ίδιο σημείο διαγράφεις και τον λογαριασμό σου.') },
+     ].map((item) => (
+      <div key={item.q}>
+       <dt className="text-sm font-semibold text-stone-900">{item.q}</dt>
+       <dd className="mt-1 text-sm leading-relaxed text-stone-500">{item.a}</dd>
+      </div>
+     ))}
+    </dl>
+   </section>
   </div>
  );
 }

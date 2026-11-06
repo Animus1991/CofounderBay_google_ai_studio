@@ -37,7 +37,7 @@ import { usePageControls } from "../lib/pageControls";
 import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
-import { exportMyData } from "../lib/dataExport";
+import { EXPORT_GROUPS, exportGroup, exportMyData } from "../lib/dataExport";
 import { profileCompleteness } from "../lib/profileCompleteness";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 
@@ -862,6 +862,20 @@ export default function Settings() {
                   <span className="mt-0.5 block text-sm leading-snug text-stone-500">{t("Removes your profile and this account.", "Διαγράφει το προφίλ και αυτόν τον λογαριασμό.")}</span>
                 </span>
               </button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="export-groups">
+              <span className="text-sm text-stone-500">{t("Or only:", "Ή μόνο:")}</span>
+              {EXPORT_GROUPS.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  disabled={isGuest}
+                  onClick={() => { exportGroup(group.id); success(t("Download started", "Η λήψη ξεκίνησε")); }}
+                  className="min-h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                >
+                  {t(group.en, group.el)}
+                </button>
+              ))}
             </div>
             <p className="mt-3 text-sm text-stone-500">
               {t("The export contains your profile and every list this browser stores for you — matches, requests, settings and drafts — as one JSON file.", "Η εξαγωγή περιέχει το προφίλ σου και κάθε λίστα που κρατά αυτός ο περιηγητής — αντιστοιχίσεις, αιτήματα, ρυθμίσεις και πρόχειρα — σε ένα αρχείο JSON.")}

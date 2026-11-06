@@ -244,6 +244,8 @@ export const keys = {
   compliance: 'cfb.compliance',
   savedPrograms: 'cfb.savedPrograms',
   savedPerks: 'cfb.savedPerks',
+  savedResources: 'cfb.savedResources',
+  completedCourses: 'cfb.completedCourses',
   readiness: 'cfb.readinessHistory',
   prefs: 'cfb.prefs',
   venture: 'cfb.ventureChecklist',
@@ -677,6 +679,8 @@ export type StudioSession = {
   location: string;
   participants: string[];
   priority: 'High' | 'Medium' | 'Low';
+  /** A request the member sent to a mentor, so it can be told from a session on the calendar. */
+  mentorRequest?: boolean;
 };
 
 const demoSeedSessions = (): StudioSession[] => {
