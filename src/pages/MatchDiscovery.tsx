@@ -45,6 +45,20 @@ const ROLES = ['Founder', 'Co-Founder Candidate', 'Technical Founder', 'Product 
 const COMMITMENTS = ['Full-time', 'Part-time', 'Side Project', 'Advisory'];
 const PAGE = 24;
 
+type SortKey = 'fit' | 'name' | 'recent';
+
+/** Availability reads as a fact, in the reader's language; unknown values pass through as written. */
+const AVAILABILITY_TEXT: Record<string, { en: string; el: string }> = {
+  Immediate: { en: 'Immediate', el: 'Άμεση διαθεσιμότητα' },
+  Flexible: { en: 'Flexible', el: 'Ευέλικτη' },
+  '1 month notice': { en: '1 month notice', el: 'Σε 1 μήνα' },
+};
+const availabilityText = (value: string) => (AVAILABILITY_TEXT[value] ? bothText(AVAILABILITY_TEXT[value].en, AVAILABILITY_TEXT[value].el) : value);
+
+/** A search that reads like a question belongs to the assistant, not to a name filter. */
+const QUESTION_START = /^(how|what|who|why|where|when|which|whom|whose|is|are|can|could|should|would|do|does|did|ποια|ποιο|ποιος|πως|πώς|τι|γιατι|γιατί|που|πού|μπορω|μπορώ|μπορει|μπορεί)\b/i;
+const looksLikeQuestion = (value: string) => /[?？]\s*$/.test(value.trim()) || QUESTION_START.test(value.trim());
+
 export default function MatchDiscovery() {
  useLanguage();
  const t = useT();
@@ -79,15 +93,17 @@ export default function MatchDiscovery() {
   stage: storedFilters.stage,
   role: storedFilters.role,
   commitment: storedFilters.commitment,
-  location: storedFilters.location
+  location: storedFilters.location,
+  availability: storedFilters.availability
  });
+ const [sortBy, setSortBy] = useState<SortKey>('fit');
  void connections.items; // re-render when connection states change
 
  // The same pool Matches has always ranked: founders and co-founder candidates, from the live directory.
  const poolIds = new Set(cofounderPool().map((person) => person.id));
  const profiles = people.filter((person) => poolIds.has(person.id));
 
- const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string; skill?: string; industry?: string }) => {
+ const persistFilters = (next: { q?: string; stage?: string; role?: string; commitment?: string; location?: string; skill?: string; industry?: string; availability?: string }) => {
   const parsed = parseQualifiers(next.q ?? searchQuery);
   writeMatchFilters({
    q: next.q ?? searchQuery,
@@ -97,6 +113,7 @@ export default function MatchDiscovery() {
    location: next.location ?? parsed.filters.location ?? filters.location,
    skill: next.skill ?? parsed.filters.skill ?? storedFilters.skill,
    industry: next.industry ?? parsed.filters.industry ?? storedFilters.industry,
+   availability: next.availability ?? filters.availability,
   });
  };
 
@@ -104,9 +121,14 @@ export default function MatchDiscovery() {
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowFilters(true) },
   { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id ?? null) },
   { id: 'open-need-wall', en: 'Open roles (Needs Wall)', el: 'Ανοιχτοί ρόλοι (Πίνακας Αναγκών)', run: () => setNeedWallModalOpen(true) },
-  { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); setVisibleCount(PAGE); } },
+  { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '', availability: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '', availability: '' }); setVisibleCount(PAGE); } },
   { id: 'open-explore', en: 'Open Explore', el: 'Άνοιγμα Εξερεύνησης', run: () => navigate('/discovery') },
- ], [searchQuery, filters]);
+  // The sort the sibling offers: name and newest sit beside best fit, as controls too.
+  ...(sortBy !== 'name' ? [{ id: 'sort-by-name', en: 'Sort matches by name', el: 'Ταξινόμηση αντιστοιχίσεων κατ’ όνομα', run: () => setSortBy('name') }] : []),
+  ...(sortBy !== 'recent' ? [{ id: 'sort-by-newest', en: 'Sort matches by newest', el: 'Ταξινόμηση αντιστοιχίσεων από νεότερο', run: () => setSortBy('recent') }] : []),
+  ...(sortBy !== 'fit' ? [{ id: 'sort-by-fit', en: 'Back to best-fit order', el: 'Επιστροφή στην ταξινόμηση κατά ταίριασμα', run: () => setSortBy('fit') }] : []),
+  ...(hiddenIds.length > 0 ? [{ id: 'unhide-people', en: 'Bring back hidden members', el: 'Επαναφορά κρυμμένων μελών', run: () => { for (const id of hiddenIds) toggleId(keys.hiddenPeople, id); } }] : []),
+ ], [searchQuery, filters, sortBy, hiddenIds]);
 
  const handleConnect = async (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
@@ -149,10 +171,20 @@ export default function MatchDiscovery() {
   else saveProfile({ id: person.id, fullName: person.fullName, role: person.role, industry: person.industry || '', location: person.location || '', note: person.headline || '' });
  };
 
+ const { toast: toastWithAction } = useToast();
  const handleHide = (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
   toggleId(keys.hiddenPeople, person.id);
-  toastInfo(t(`${person.fullName.split(' ')[0]} hidden`, `Απόκρυψη: ${person.fullName.split(' ')[0]}`), t('Hidden members stay out of Matches and Explore. Undo from Settings › Privacy.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης. Αναίρεση από Ρυθμίσεις › Απόρρητο.'));
+  // The pass is a local flag, so bringing it back is exact: the same key
+  // flips again and the card returns to its place (sibling parity: their
+  // toast offered Undo; ours used to send people to Settings › Privacy).
+  toastWithAction({
+   type: 'info',
+   title: t(`${person.fullName.split(' ')[0]} hidden`, `Απόκρυψη: ${person.fullName.split(' ')[0]}`),
+   description: t('Hidden members stay out of Matches and Explore.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης.'),
+   duration: 8000,
+   action: { label: t('Undo', 'Αναίρεση'), run: () => toggleId(keys.hiddenPeople, person.id) },
+  });
  };
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {
@@ -178,15 +210,23 @@ export default function MatchDiscovery() {
    const matchesLocation = !location || person.location.toLowerCase().includes(location.toLowerCase());
    const matchesSkill = !parsedSearch.filters.skill || person.skills.some((skill) => skill.toLowerCase().includes(parsedSearch.filters.skill!.toLowerCase()));
    const matchesIndustry = !parsedSearch.filters.industry || person.industry.toLowerCase().includes(parsedSearch.filters.industry.toLowerCase());
-   return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation && matchesSkill && matchesIndustry;
+   const matchesAvailability = !filters.availability || person.availability === filters.availability;
+   return matchesSearch && matchesStage && matchesRole && matchesCommitment && matchesLocation && matchesSkill && matchesIndustry && matchesAvailability;
   })
   .map((person) => ({
    person,
    fit: compatibility(viewer, fromCast({ skills: person.skills, lookingFor: person.lookingFor, interests: person.interests, industry: person.industry, stage: person.stage, commitment: person.commitment, city: person.city || person.location.split(',')[0], timezone: person.timezone })),
   }))
   .sort((a, b) => (b.fit.score ?? -1) - (a.fit.score ?? -1));
- const filteredProfiles = scored.slice(0, visibleCount);
- const hasMore = scored.length > visibleCount;
+ // Best fit stays the default; name is alphabetical, newest uses the join
+ // date (members without one fall to the end, keeping their fit order).
+ const sorted = sortBy === 'name'
+  ? [...scored].sort((a, b) => a.person.fullName.localeCompare(b.person.fullName))
+  : sortBy === 'recent'
+   ? [...scored].sort((a, b) => (b.person.createdAt ?? 0) - (a.person.createdAt ?? 0) || (b.fit.score ?? -1) - (a.fit.score ?? -1))
+   : scored;
+ const filteredProfiles = sorted.slice(0, visibleCount);
+ const hasMore = sorted.length > visibleCount;
 
  const filterCause = [
   parsedSearch.text && t(`search “${parsedSearch.text}”`, `αναζήτηση «${parsedSearch.text}»`),
@@ -196,6 +236,7 @@ export default function MatchDiscovery() {
   (parsedSearch.filters.location || filters.location) && `${t('location', 'τοποθεσία')} ${parsedSearch.filters.location || filters.location}`,
   parsedSearch.filters.skill && `${t('skill', 'δεξιότητα')} ${parsedSearch.filters.skill}`,
   parsedSearch.filters.industry && `${t('industry', 'κλάδος')} ${parsedSearch.filters.industry}`,
+  filters.availability && `${t('availability', 'διαθεσιμότητα')} ${availabilityText(filters.availability)}`,
  ].filter(Boolean).join(', ');
 
  const connectState = (id: string) => (real ? connectionStateWith(id).state : 'none');
@@ -282,6 +323,16 @@ export default function MatchDiscovery() {
       <BarChart2 className="w-3.5 h-3.5 shrink-0" />
       <span>{t('How scores work', 'Πώς βγαίνει το σκορ')}</span>
      </button>
+     <select
+      aria-label={t('Sort order', 'Σειρά ταξινόμησης')}
+      value={sortBy}
+      onChange={(e) => setSortBy(e.target.value as SortKey)}
+      className="flex-1 sm:flex-none min-h-11 px-3 rounded-xl text-xs font-medium border bg-white text-stone-600 border-stone-200 hover:border-stone-300 cursor-pointer outline-none focus:ring-1 focus:ring-stone-900 shrink-0"
+     >
+      <option value="fit">{t('Best fit', 'Καλύτερο ταίριασμα')}</option>
+      <option value="name">{t('Name A–Z', 'Όνομα Α–Ω')}</option>
+      <option value="recent">{t('Newest', 'Νεότερα')}</option>
+     </select>
     </div>
     {searchQuery.trim().length > 1 && (
      <p className="text-xs text-stone-400">{t(`Searching names, headlines and skills for “${searchQuery.trim()}”. Shortcuts: ${QUALIFIER_HINT_EN}.`, `Αναζήτηση σε ονόματα, τίτλους και δεξιότητες για «${searchQuery.trim()}». Συντομεύσεις: ${QUALIFIER_HINT_EL}.`)}</p>
@@ -315,10 +366,27 @@ export default function MatchDiscovery() {
          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900 placeholder:text-stone-400"
         />
        </div>
+       {/* Availability (sibling parity): the options are only the values the
+           visible pool actually carries, so the select never offers a
+           filter that could match nobody. */}
+       {(() => { const options = [...new Set(profiles.map((person) => person.availability).filter(Boolean))]; return options.length > 0 && (
+        <div className="space-y-1.5">
+         <label className="text-xs font-semibold text-stone-400" htmlFor="filter-availability">{t('Availability', 'Διαθεσιμότητα')}</label>
+         <select
+          id="filter-availability"
+          value={filters.availability}
+          onChange={(e) => { const next = { ...filters, availability: e.target.value }; setFilters(next); persistFilters(next); setVisibleCount(PAGE); }}
+          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-xs text-stone-900 outline-none focus:ring-1 focus:ring-stone-900"
+         >
+          <option value="">{t('All', 'Όλα')}</option>
+          {options.map((o) => <option key={o} value={o}>{availabilityText(o)}</option>)}
+         </select>
+        </div>
+       ); })()}
        <div className="col-span-2 lg:col-span-4 flex items-end">
         <button
          type="button"
-         onClick={() => { const next = { stage: '', role: '', commitment: '', location: '' }; setFilters(next); persistFilters({ ...next, q: searchQuery, skill: '', industry: '' }); }}
+         onClick={() => { const next = { stage: '', role: '', commitment: '', location: '', availability: '' }; setFilters(next); persistFilters({ ...next, q: searchQuery, skill: '', industry: '' }); }}
          className="w-full min-h-10 text-xs font-medium text-stone-400 hover:text-stone-900 border border-stone-200 rounded-lg transition-colors bg-white"
         >
          {t('Reset filters', 'Επαναφορά φίλτρων')}
@@ -358,6 +426,7 @@ export default function MatchDiscovery() {
       return (
       <motion.div
        key={person.id}
+       data-match-card
        initial={{ opacity: 0, y: 12 }}
        animate={{ opacity: 1, y: 0 }}
        transition={{ delay: Math.min(idx, 12) * 0.03 }}
@@ -372,7 +441,7 @@ export default function MatchDiscovery() {
          <Avatar src={avatarOf(person) || undefined} fallback={person.fullName || 'Founder'} size="lg" status={isOnline(person) ? 'online' : undefined} className="w-11 h-11" />
          <div className="min-w-0">
           <PersonHovercard person={person.id}>
-           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.fullName || t('Founder', 'Ιδρυτής')}</p>
+           <p data-match-name className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.fullName || t('Founder', 'Ιδρυτής')}</p>
           </PersonHovercard>
           <p className="text-xs text-stone-400 line-clamp-1">{person.headline ? t(person.headline, person.headlineEl || person.headline) : labelOf(person.role)}</p>
           {fit.headline && <p className="text-xs text-stone-500">{bothText(fit.headline.en, fit.headline.el)}</p>}
@@ -400,7 +469,7 @@ export default function MatchDiscovery() {
         </div>
        )}
 
-       <FactLine className="mb-4" items={[labelOf(person.stage), labelOf(person.commitment), person.location]} label={t('Profile facts', 'Στοιχεία προφίλ')} />
+       <FactLine className="mb-4" items={[labelOf(person.stage), labelOf(person.commitment), person.location, person.availability ? availabilityText(person.availability) : '']} label={t('Profile facts', 'Στοιχεία προφίλ')} />
 
        <div className="flex items-center gap-2">
         <button
@@ -451,11 +520,18 @@ export default function MatchDiscovery() {
       detail={filterCause ? t('Clear the filter, or ask the assistant who ranks highest for your profile.', 'Καθάρισε το φίλτρο ή ρώτα τον βοηθό ποιοι ταιριάζουν περισσότερο στο προφίλ σου.') : t('Invite the founders you already know — the fit check link takes a minute.', 'Προσκάλεσε τους ιδρυτές που ήδη γνωρίζεις — ο σύνδεσμος fit check παίρνει ένα λεπτό.')}
      >
       {filterCause ? (
-       <ClearFiltersButton onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); }} />
+       <ClearFiltersButton onClick={() => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '', availability: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '', availability: '' }); }} />
       ) : (
        <AskLink prompt="Invite 3 founders">{t('Invite founders', 'Πρόσκληση ιδρυτών')}</AskLink>
       )}
-      <AskLink prompt="who is my best match" />
+      {/* A question typed into a name filter matches nobody ("How do I find a
+          co-founder?" → zero names). Offer the assistant the actual question
+          instead of a generic one. */}
+      {looksLikeQuestion(searchQuery) && filterCause ? (
+       <AskLink prompt={searchQuery.trim()}>{t('Ask the assistant this', 'Ρώτα τον βοηθό αυτό')}</AskLink>
+      ) : (
+       <AskLink prompt="who is my best match" />
+      )}
      </EmptyHint>
     )}
    </div>

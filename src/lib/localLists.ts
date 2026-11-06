@@ -449,9 +449,10 @@ export type MatchFilters = {
   location: string;
   skill: string;
   industry: string;
+  availability: string;
 };
 
-export const emptyMatchFilters = (): MatchFilters => ({ q: '', role: '', stage: '', commitment: '', location: '', skill: '', industry: '' });
+export const emptyMatchFilters = (): MatchFilters => ({ q: '', role: '', stage: '', commitment: '', location: '', skill: '', industry: '', availability: '' });
 
 export function readMatchFilters(): MatchFilters {
   const stored = readJson<Partial<MatchFilters> | null>(keys.matchFilters, null);

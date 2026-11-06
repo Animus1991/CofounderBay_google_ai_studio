@@ -463,6 +463,7 @@ function matchesResult(profile: AssistantProfile | null, query: string): Assista
     location: parsed.filters.location || '',
     skill,
     industry: parsed.filters.industry || '',
+    availability: '',
   });
   const ranked = rankPeople(meInput(profile), pool).slice(0, 4);
   if (ranked.length === 0) {

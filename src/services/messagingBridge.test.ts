@@ -87,7 +87,7 @@ describe('assistant messaging bridge', () => {
 
   it('adds compact live sources to the context block', () => {
     registerMessagingBridge(fakeBridge());
-    writeMatchFilters({ q: '', role: 'Founder', stage: 'Pre-seed', commitment: '', location: '', skill: '', industry: '' });
+    writeMatchFilters({ q: '', role: 'Founder', stage: 'Pre-seed', commitment: '', location: '', skill: '', industry: '', availability: '' });
     writePitchSlide('problem', 'A'.repeat(70));
     const context = assistantContextBlock(profile);
     expect(context).toContain('Match filters in effect: role=Founder · stage=Pre-seed');
