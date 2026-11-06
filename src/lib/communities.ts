@@ -48,6 +48,8 @@ export type CommunityPost = {
   createdAt: number | null;
   reactionsCount: number;
   commentsCount: number;
+  /** Uids that liked it — the toggle is exact and reversible per member. */
+  likeIds: string[];
 };
 
 export function communityFromDoc(id: string, data: Record<string, unknown>): CommunityDoc {
@@ -156,6 +158,7 @@ export function onCommunityPosts(communityId: string, cb: (list: CommunityPost[]
             createdAt: toMillis(data.createdAt),
             reactionsCount: typeof data.reactionsCount === 'number' ? data.reactionsCount : 0,
             commentsCount: typeof data.commentsCount === 'number' ? data.commentsCount : 0,
+            likeIds: Array.isArray(data.likeIds) ? data.likeIds.filter((item: unknown): item is string => typeof item === 'string') : [],
           } satisfies CommunityPost;
         }),
       ),
@@ -175,6 +178,7 @@ export async function addCommunityPost(communityId: string, post: { authorId: st
     tags: [],
     reactionsCount: 0,
     commentsCount: 0,
+    likeIds: [],
     createdAt: serverTimestamp(),
   });
   try {
@@ -183,4 +187,12 @@ export async function addCommunityPost(communityId: string, post: { authorId: st
     /* the count is cosmetic */
   }
   return ref.id;
+}
+
+/** Toggles a like on a post: the member list, not just the counter, flips. */
+export async function toggleCommunityPostLike(communityId: string, postId: string, uid: string, liked: boolean) {
+  await updateDoc(doc(db, 'communities', communityId, 'posts', postId), {
+    likeIds: liked ? arrayRemove(uid) : arrayUnion(uid),
+    reactionsCount: increment(liked ? -1 : 1),
+  });
 }

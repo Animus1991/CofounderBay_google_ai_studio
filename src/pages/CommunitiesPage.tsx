@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageShell from '../components/ui/PageShell';
 import FactLine from '../components/ui/FactLine';
 import EmptyHint, { AskLink, ClearFiltersButton } from '../components/ui/EmptyHint';
@@ -12,6 +13,8 @@ import {
  MoreVertical,
  Share2,
  Send,
+ Heart,
+ Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -30,10 +33,14 @@ import {
  leaveCommunity,
  onCommunities,
  onCommunityPosts,
+ toggleCommunityPostLike,
  type CommunityDoc,
  type CommunityPost,
 } from '../lib/communities';
 import { askAssistant } from '../lib/assistantBus';
+import { absoluteUrl, shareLink } from '../lib/download';
+import { avatarOf, findPerson } from '../lib/peopleSource';
+import { findCast } from '../data/cast';
 
 const TAB_EL: Record<string, string> = {
  all: 'Όλα',
@@ -89,6 +96,20 @@ const COMMUNITIES = [
  },
 ];
 
+/** Sample posts for the bundled demo spaces — read-only, from cast members. */
+const DEMO_POSTS: Record<string, { authorId: string; title: string; body: string; days: number }[]> = {
+ 'fintech-founders': [
+  { authorId: 'sarah-chen', title: 'Open-banking APIs worth reusing', body: 'We mapped the aggregators our invoicing tool needed — happy to share the shortlist with anyone building on PSD2.', days: 2 },
+  { authorId: 'marcus-thorne', title: 'Waiting list → paid pilot in 6 weeks', body: 'What worked for us: a 20-call batch of bookkeeping demos, then a fixed-price pilot. Notes inside.', days: 5 },
+ ],
+ 'saas-builders': [
+  { authorId: 'alex-rivera', title: 'Seats vs usage: our pricing teardown', body: 'We moved from per-seat to usage-based last quarter — churn, expansion and the mistakes that cost us two deals.', days: 1 },
+ ],
+ 'ai-machine-learning': [
+  { authorId: 'priya-sharma', title: 'Eval harness before the demo, not after', body: 'The checklist we run before any LLM feature ships: golden set, regression run, cost ceiling.', days: 3 },
+ ],
+};
+
 interface CommunityCardData {
  id: string;
  name: string;
@@ -122,12 +143,17 @@ export default function CommunitiesPage() {
 
  const [cloud, setCloud] = useState<CommunityDoc[] | null>(isDemoMode ? [] : null);
  const [createOpen, setCreateOpen] = useState(false);
- const [openId, setOpenId] = useState<string | null>(null);
+ // ?id= deep-links a community — shared links and assistant navigation land
+ // on its space directly (parity: the sibling gives each group its own page).
+ const [params, setParams] = useSearchParams();
+ const openId = params.get('id');
+ const setOpenId = (id: string | null) => {
+  const next = new URLSearchParams(params);
+  if (id) next.set('id', id);
+  else next.delete('id');
+  setParams(next, { replace: true });
+ };
  const [busy, setBusy] = useState<string | null>(null);
-
- usePageControls(() => [
-  { id: 'create-community', en: 'Create community', el: 'Δημιουργία κοινότητας', run: () => (isDemoMode ? ask('How do I create a community?') : setCreateOpen(true)) },
- ], [isDemoMode]);
 
  useEffect(() => {
   if (isDemoMode) { setCloud([]); return; }
@@ -187,6 +213,14 @@ export default function CommunitiesPage() {
  const visibleCommunities = cards.filter((community) => inTab(community, activeTab));
  const tabCount = (tab: string) => cards.filter((community) => inTab(community, tab)).length;
 
+ usePageControls(() => [
+  { id: 'create-community', en: 'Create community', el: 'Δημιουργία κοινότητας', run: () => (isDemoMode ? ask('How do I create a community?') : setCreateOpen(true)) },
+  { id: 'show-joined', en: 'Show my communities', el: 'Οι κοινότητές μου', run: () => setActiveTab('joined') },
+  { id: 'show-trending', en: 'Show trending', el: 'Δημοφιλείς', run: () => setActiveTab('trending') },
+  { id: 'show-new', en: 'Show new communities', el: 'Νέες κοινότητες', run: () => setActiveTab('new') },
+  ...(openId ? [] : [{ id: 'open-first-community', en: 'Open the first community', el: 'Άνοιγμα πρώτης κοινότητας', run: () => { const first = cards.find((community) => inTab(community, activeTab)); if (first) void openCommunity(first); } }]),
+ ], [isDemoMode, openId, cards, activeTab, joinedList]);
+
  const join = async (card: CommunityCardData) => {
   setId(listKeys.communities, card.id, true);
   logActivity({ kind: 'community', title: `Joined ${card.name}`, titleEl: `Συμμετοχή στην κοινότητα: ${card.name}`, href: '/communities' });
@@ -221,6 +255,13 @@ export default function CommunitiesPage() {
    try { await joinCommunity(card.id, user.uid, { name: card.name, description: card.description, category: card.category }); } catch { /* read-only view */ }
   }
   setOpenId(card.id);
+ };
+
+ const share = async (card: CommunityCardData) => {
+  // The link lands on this community's space through ?id=, not on the page's top.
+  const result = await shareLink({ title: card.name, text: card.description, url: absoluteUrl(`/communities?id=${encodeURIComponent(card.id)}`) });
+  if (result === 'copied') toast.success(t('Link copied', 'Ο σύνδεσμος αντιγράφηκε'), card.name);
+  else if (result === 'failed') toast.error(t('Could not copy the link', 'Ο σύνδεσμος δεν αντιγράφηκε'));
  };
 
  const openCard = cards.find((c) => c.id === openId) ?? null;
@@ -313,7 +354,7 @@ export default function CommunitiesPage() {
         fallback={<span className="flex h-full w-full items-center justify-center bg-stone-900 text-base font-semibold text-white">{community.name.slice(0, 2).toUpperCase()}</span>}
        />
        <div className="flex items-center gap-1">
-        <button type="button" aria-label={t('Share community', 'Κοινοποίηση κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all tap-area" onClick={() => void navigator.clipboard?.writeText(community.name)}>
+        <button type="button" aria-label={t('Share community', 'Κοινοποίηση κοινότητας')} title={t('Copy the community link', 'Αντιγραφή συνδέσμου κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all tap-area" onClick={() => void share(community)}>
          <Share2 className="w-4 h-4" />
         </button>
         <button type="button" aria-label={t('Community options', 'Επιλογές κοινότητας')} className="p-2 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all tap-area" onClick={() => ask(`What can I do in ${community.name}?`)}>
@@ -537,6 +578,25 @@ function CommunityModal({ card, uid, userName, isDemoMode, onClose }: { card: Co
     <p className="text-sm text-stone-500 leading-relaxed">{card.description}</p>
     <FactLine items={[card.categoryEl ? t(card.category, card.categoryEl) : card.category, card.members != null ? t(`${card.members} members`, `${card.members} μέλη`) : '']} />
 
+    {/* Members, when the cloud document knows them (platform spaces list them
+        as they join; a sample row never invents a roster). */}
+    {card.memberIds.length > 0 && (
+     <div className="flex items-center gap-2 flex-wrap">
+      <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" aria-hidden="true" />
+      {card.memberIds.slice(0, 8).map((id) => {
+       const member = findPerson(id);
+       const name = member?.fullName || id;
+       return (
+        <span key={id} className="inline-flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-stone-50 border border-stone-100 text-xs text-stone-600" title={name}>
+         <Avatar src={member ? avatarOf(member) : undefined} fallback={name} size="xs" />
+         <span className="max-w-24 truncate">{name.split(' ')[0]}</span>
+        </span>
+       );
+      })}
+      {card.memberIds.length > 8 && <span className="text-xs text-stone-400">+{card.memberIds.length - 8}</span>}
+     </div>
+    )}
+
     {!isDemoMode && (
      <div className="rounded-xl border border-stone-100 p-3 space-y-2 bg-stone-50/50">
       <input
@@ -569,22 +629,61 @@ function CommunityModal({ card, uid, userName, isDemoMode, onClose }: { card: Co
     )}
 
     <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-     {posts.length === 0 && (
-      <p className="text-xs text-stone-400 text-center py-6">
-       {isDemoMode ? t('Community posts appear here.', 'Οι αναρτήσεις της κοινότητας εμφανίζονται εδώ.') : t('No posts yet — start the conversation.', 'Καμία ανάρτηση ακόμη — ξεκίνα τη συζήτηση.')}
-      </p>
+     {/* Demo spaces show the sample posts their cast authors wrote; a real
+         account reads and writes the community's own collection. */}
+     {isDemoMode ? (
+      (DEMO_POSTS[card.id] ?? []).length === 0 ? (
+       <p className="text-xs text-stone-400 text-center py-6">{t('Community posts appear here.', 'Οι αναρτήσεις της κοινότητας εμφανίζονται εδώ.')}</p>
+      ) : (
+       (DEMO_POSTS[card.id] ?? []).map((post, i) => {
+        const author = findCast(post.authorId);
+        const name = author?.fullName || t('A member', 'Ένα μέλος');
+        return (
+         <div key={i} className="rounded-xl border border-stone-100 p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+           <Avatar name={name} size="xs" />
+           <span className="text-xs font-semibold text-stone-700">{name}</span>
+           <span className="text-xs text-stone-400">{t(`${post.days}d ago`, `πριν ${post.days} ημ.`)}</span>
+          </div>
+          <p className="text-sm font-semibold text-stone-900">{post.title}</p>
+          <p className="text-sm text-stone-600 leading-relaxed">{post.body}</p>
+         </div>
+        );
+       })
+      )
+     ) : (
+      <>
+       {posts.length === 0 && (
+        <p className="text-xs text-stone-400 text-center py-6">{t('No posts yet — start the conversation.', 'Καμία ανάρτηση ακόμη — ξεκίνα τη συζήτηση.')}</p>
+       )}
+       {posts.map((post) => {
+        const liked = uid ? post.likeIds.includes(uid) : false;
+        return (
+         <div key={post.id} className="rounded-xl border border-stone-100 p-3">
+          <div className="flex items-center gap-2 mb-1.5">
+           <Avatar name={post.authorName} size="xs" />
+           <span className="text-xs font-semibold text-stone-700">{post.authorName}</span>
+           {post.createdAt && <span className="text-xs text-stone-400">{new Date(post.createdAt).toLocaleDateString()}</span>}
+          </div>
+          {post.title && <p className="text-sm font-semibold text-stone-900">{post.title}</p>}
+          <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{post.body}</p>
+          <div className="mt-2 flex items-center gap-2">
+           <button
+            type="button"
+            aria-pressed={liked}
+            aria-label={liked ? t('Unlike post', 'Αναίρεση «μου αρέσει»') : t('Like post', 'Μου αρέσει')}
+            onClick={() => { if (uid) void toggleCommunityPostLike(card.id, post.id, uid, liked).catch(() => undefined); }}
+            className={cn('inline-flex items-center gap-1 min-h-8 px-2 rounded-lg text-xs font-medium transition-colors', liked ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50')}
+           >
+            <Heart className={cn('w-3.5 h-3.5', liked && 'fill-current')} />
+            {post.reactionsCount > 0 && <span className="tabular-nums">{post.reactionsCount}</span>}
+           </button>
+          </div>
+         </div>
+        );
+       })}
+      </>
      )}
-     {posts.map((post) => (
-      <div key={post.id} className="rounded-xl border border-stone-100 p-3">
-       <div className="flex items-center gap-2 mb-1.5">
-        <Avatar name={post.authorName} size="xs" />
-        <span className="text-xs font-semibold text-stone-700">{post.authorName}</span>
-        {post.createdAt && <span className="text-xs text-stone-400">{new Date(post.createdAt).toLocaleDateString()}</span>}
-       </div>
-       {post.title && <p className="text-sm font-semibold text-stone-900">{post.title}</p>}
-       <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{post.body}</p>
-      </div>
-     ))}
     </div>
    </div>
   </Modal>
