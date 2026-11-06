@@ -3,7 +3,7 @@ import {
  useState,
  useEffect,
  useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { 
  CheckSquare,
  Target,
@@ -65,6 +65,12 @@ interface WorkspaceProps {
 }
 
 type TabType = "Dashboard" | "Builder" | "Canvas" | "Milestones" | "Calendar";
+
+const TAB_TYPES: TabType[] = ["Dashboard", "Builder", "Canvas", "Milestones", "Calendar"];
+// ?tab= accepts the tab name case-insensitively so shared links and the
+// assistant land on the right section (e.g. /workspace?tab=canvas).
+const tabFromParam = (raw: string | null): TabType | null =>
+ TAB_TYPES.find((tab) => tab.toLowerCase() === (raw ?? '').toLowerCase()) ?? null;
 type TaskView = "list" | "kanban";
 type FocusMode = "work" | "shortBreak" | "longBreak";
 
@@ -89,7 +95,13 @@ export default function Workspace({ user }: WorkspaceProps) {
  const [failedUpload, setFailedUpload] = useState<File | null>(null);
  const [uploadError, setUploadError] = useState('');
  useBeforeUnload(uploading || !!failedUpload);
- const [activeTab, setActiveTab] = useState<TabType>("Dashboard");
+ const [params, setParams] = useSearchParams();
+ const [activeTab, setActiveTab] = useState<TabType>(() => tabFromParam(params.get('tab')) ?? "Dashboard");
+ // Clicking a tab keeps the URL shareable; the assistant reads the same names.
+ const selectTab = (tab: TabType) => {
+  setActiveTab(tab);
+  setParams((prev) => { const next = new URLSearchParams(prev); if (tab === 'Dashboard') next.delete('tab'); else next.set('tab', tab.toLowerCase()); return next; }, { replace: true });
+ };
  const [searchQuery, setSearchQuery] = useState("");
  const [taskView, setTaskView] = useState<TaskView>("list");
  const [focusMode, setFocusMode] = useState(false);
@@ -123,6 +135,11 @@ export default function Workspace({ user }: WorkspaceProps) {
  usePageControls(() => [
   { id: 'toggle-focus', en: focusMode ? 'Exit focus mode' : 'Start focus mode', el: focusMode ? 'Έξοδος από εστίαση' : 'Έναρξη εστίασης', run: () => setFocusMode((prev) => !prev) },
   { id: 'add-milestone', en: 'Add milestone', el: 'Προσθήκη ορόσημου', run: () => askAssistant('add milestone') },
+  { id: 'open-builder', en: 'Open the Builder tab', el: 'Άνοιγμα Δημιουργού', run: () => selectTab('Builder') },
+  { id: 'open-canvas', en: 'Open the Lean Canvas', el: 'Άνοιγμα Καμβά', run: () => selectTab('Canvas') },
+  { id: 'open-milestones', en: 'Open the Milestones tab', el: 'Άνοιγμα Οροσήμων', run: () => selectTab('Milestones') },
+  { id: 'open-calendar', en: 'Open the Calendar tab', el: 'Άνοιγμα Ημερολογίου', run: () => selectTab('Calendar') },
+  { id: 'open-dashboard', en: 'Back to the sprint board', el: 'Επιστροφή στον πίνακα sprint', run: () => selectTab('Dashboard') },
  ], [focusMode]);
  const assets = useStored(() => readValue<AssetRow[]>(keys.assets, []), [keys.assets]);
  const nextStep = useMemo(() => studioNextStep(profile), [profile]);
@@ -169,7 +186,7 @@ export default function Workspace({ user }: WorkspaceProps) {
  };
  const ask = (prompt: string) => askAssistant(prompt);
 
- const tabs: TabType[] = ["Dashboard", "Builder", "Canvas", "Milestones", "Calendar"];
+ const tabs: TabType[] = TAB_TYPES;
  const tabLabel = (tab: TabType) => ({
   Dashboard: t("Dashboard", "Πίνακας ελέγχου"),
   Builder: t("Builder", "Δημιουργός"),
@@ -268,7 +285,7 @@ export default function Workspace({ user }: WorkspaceProps) {
       type="button"
       role="tab"
       aria-selected={activeTab === tab}
-      onClick={() => setActiveTab(tab)}
+      onClick={() => selectTab(tab)}
       className={cn(
        "px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
        activeTab === tab
