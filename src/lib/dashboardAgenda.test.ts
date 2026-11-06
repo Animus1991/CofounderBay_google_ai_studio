@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agendaDayLabel, dashboardAgenda, type AgendaEvent } from './dashboardAgenda';
 import { addSession, keys, upsertMilestone, writeMilestones, writeTasks, writeValue, type StudioTask } from './localLists';
 
@@ -81,6 +81,11 @@ describe('dashboardAgenda', () => {
 });
 
 describe('agendaDayLabel', () => {
+  // The label reads the clock, so the test holds it: without this it passed
+  // only on the day it was written.
+  beforeEach(() => { vi.useFakeTimers({ now: NOW, toFake: ['Date'] }); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('marks all-day rows with the day alone and timed rows with the clock', () => {
     const noon = new Date(NOW); noon.setHours(12, 0, 0, 0);
     const tomorrow = noon.getTime() + 86_400_000;

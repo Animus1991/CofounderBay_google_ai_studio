@@ -46,7 +46,8 @@ import {
  Search,
  Copy,
  Bookmark,
- BookOpen
+ BookOpen,
+ Trash2
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -64,6 +65,7 @@ import { DEMO_VENTURE } from "../data/demoVenture";
 import { monthFromToday, shortDay } from "../data/demoClock";
 import { formatDate } from "../lib/dates";
 import { useStored } from "../lib/useStored";
+import { useToast } from "../context/ToastContext";
 import { pinnedTools as pinnedToolsEntity, pushRecent, recentTools, startupRecord, useEntity } from "../lib/entities";
 import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } from "../lib/builder";
 import { useAuth } from "../App";
@@ -166,6 +168,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
  };
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
+ const toast = useToast();
  // The tab lives in the URL (?tab=pitch); ?step=… still opens the builder at that step.
  const [searchParams, setSearchParams] = useSearchParams();
  const TOOL_TABS = ['dashboard', 'builder', 'pitch', 'applications', 'tools', 'templates'] as const;
@@ -379,6 +382,20 @@ export default function FounderTools({ user }: FounderToolsProps) {
   setEditingSlide(null);
   showToast(t('Slide saved', 'Η διαφάνεια αποθηκεύτηκε'));
  };
+ // Clearing removes only the founder's own text; in the sample account the
+ // drafted-from-data version stays (it is not "deleted", it was never typed).
+ const clearSlide = (key: PitchSlideKey, title: string) => {
+  const before = pitchContent[key] ?? '';
+  if (!before.trim()) return;
+  writePitchSlide(key, '');
+  logActivity({ kind: 'profile', title: `Pitch slide cleared: ${key}`, titleEl: `Καθαρίστηκε η διαφάνεια pitch: ${key}`, href: '/founder-tools' });
+  toast.toast({
+   type: 'info',
+   title: t(`${title} cleared`, `Καθαρίστηκε: ${title}`),
+   duration: 8000,
+   action: { label: t('Undo', 'Αναίρεση'), run: () => writePitchSlide(key, before) },
+  });
+ };
  const deckTitle = () => `${(readValue<Record<string, unknown>>(keys.startup, {}).name as string | undefined)?.trim() || t('Pitch deck', 'Pitch deck')}`;
  const deckMarkdown = () => pitchMarkdown(pitchContent, mode, deckTitle());
  const downloadDeck = () => {
@@ -438,6 +455,24 @@ export default function FounderTools({ user }: FounderToolsProps) {
    .map((item) => deadlineRow(item.title, dayDiff(item.targetDate), '/milestones'));
  const [applications, setApplications] = useState<TrackedApplication[]>(() => [...readTracked(), ...(isDemoMode ? starterApplications : [])]);
  const [trackingName, setTrackingName] = useState<string | null>(null);
+
+ // Only rows from the account's tracked list can be edited or move status —
+ // the sample applications are display data, not records.
+ const isTrackedRow = (app: TrackedApplication) => readTracked().some((row) => row.id === app.id);
+ const updateApp = (app: TrackedApplication, patch: Partial<TrackedApplication>) => {
+  const tracked = readTracked().map((row) => (row.id === app.id ? { ...row, ...patch } : row));
+  writeTracked(tracked);
+  setApplications([...tracked, ...(isDemoMode ? starterApplications : [])]);
+ };
+ // A first draft for the application's note, joined from what the founder
+ // already wrote (canvas, builder, round) — the same sources the pitch uses,
+ // so it never invents program-specific facts.
+ const draftApplicationNote = (app: TrackedApplication): string | null => {
+  const source = draftPitch();
+  const parts = [source.cover, source.problem && `${t('Problem', 'Πρόβλημα')}: ${source.problem}`, source.solution && `${t('Solution', 'Λύση')}: ${source.solution}`, source.ask].filter(Boolean);
+  if (parts.length === 0) return null;
+  return `${t(`Why ${app.program} fits`, `Γιατί ταιριάζει το ${app.program}`)}\n\n${parts.join('\n\n')}`;
+ };
 
  // Tool Categories with icons and descriptions
  const toolCategories = [
@@ -1168,6 +1203,9 @@ export default function FounderTools({ user }: FounderToolsProps) {
           <div className="flex items-center gap-2">
            <Button variant="ghost" size="icon" title={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} aria-label={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; askAssistant(`Review my ${s?.title ?? 'pitch'} slide: ${(s && pitchContent[s.key]) || 'empty'}`, { agentId: 'a2' }); }}><Eye className="w-4 h-4" /></Button>
            <Button variant="ghost" size="icon" title={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-pressed={editingSlide !== null} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; if (s) startEditingSlide(s.key); }}><Edit3 className="w-4 h-4" /></Button>
+           {(() => { const s = pitchSlides[pitchSlide - 1]; return s && (pitchContent[s.key] ?? '').trim() ? (
+            <Button variant="ghost" size="icon" title={t("Clear this slide's text", "Καθαρισμός κειμένου διαφάνειας")} aria-label={t("Clear this slide's text", "Καθαρισμός κειμένου διαφάνειας")} className="rounded-lg text-stone-400 hover:text-red-600" onClick={() => clearSlide(s.key, slideTitle(s.title))}><Trash2 className="w-4 h-4" /></Button>
+           ) : null; })()}
            <Button variant="ghost" size="icon" title={t("Download the deck outline (.doc)", "Λήψη περιγράμματος deck (.doc)")} aria-label={t("Download the deck outline (.doc)", "Λήψη περιγράμματος deck (.doc)")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={downloadDeck}><Download className="w-4 h-4" /></Button>
           </div>
          </div>
@@ -1287,20 +1325,26 @@ export default function FounderTools({ user }: FounderToolsProps) {
 
    {activeTab === 'applications' && (
     <div className="space-y-4">
-     {/* Stats Row */}
+     {/* Stats Row — counted from the same list the cards render, not quoted numbers. */}
      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {[
-       { label: t("Total Applied", "Σύνολο αιτήσεων"), value: String(applications.length), sub: t("Programs", "Προγράμματα"), color: "text-stone-900" },
-       { label: t("In Review", "Σε έλεγχο"), value: "1", sub: t("active", "ενεργό"), color: "text-amber-600" },
-       { label: t("Submitted", "Υποβλήθηκε"), value: "1", sub: t("awaiting", "σε αναμονή"), color: "text-blue-600" },
-       { label: t("Success Rate", "Ποσοστό επιτυχίας"), value: "0%", sub: t("so far", "μέχρι τώρα"), color: "text-stone-400" },
-      ].map((stat) => (
+      {(() => {
+       const inReview = applications.filter((a) => a.status === 'in-review').length;
+       const submitted = applications.filter((a) => a.status === 'submitted').length;
+       const accepted = applications.filter((a) => a.status === 'accepted').length;
+       const resolved = accepted + applications.filter((a) => a.status === 'rejected').length;
+       return [
+        { label: t("Total Applied", "Σύνολο αιτήσεων"), value: String(applications.length), sub: t("Programs", "Προγράμματα"), color: "text-stone-900" },
+        { label: t("In Review", "Σε έλεγχο"), value: String(inReview), sub: t("active", "ενεργό"), color: "text-amber-600" },
+        { label: t("Submitted", "Υποβλήθηκε"), value: String(submitted), sub: t("awaiting", "σε αναμονή"), color: "text-blue-600" },
+        { label: t("Success Rate", "Ποσοστό επιτυχίας"), value: resolved > 0 ? `${Math.round((accepted / resolved) * 100)}%` : '—', sub: t("so far", "μέχρι τώρα"), color: "text-stone-400" },
+       ].map((stat) => (
        <Card key={stat.label} className="p-4 border-stone-100">
         <p className="text-xs text-stone-400 font-semibold mb-1">{stat.label}</p>
         <p className={cn("text-base font-semibold tracking-tight", stat.color)}>{stat.value}</p>
         <p className="text-xs text-stone-400 mt-0.5">{stat.sub}</p>
        </Card>
-      ))}
+      ));
+      })()}
      </div>
 
      {/* Applications List */}
@@ -1353,6 +1397,76 @@ export default function FounderTools({ user }: FounderToolsProps) {
             </Button>
            </div>
           </div>
+          {expandedAppId === app.id && (() => {
+           const editable = isTrackedRow(app);
+           return (
+            <div className="mt-4 pt-4 border-t border-stone-100 space-y-3" onClick={(e) => e.stopPropagation()}>
+             <div className="flex flex-wrap items-center gap-3">
+              <label className="text-xs font-semibold text-stone-500" htmlFor={`app-status-${app.id}`}>{t('Status', 'Κατάσταση')}</label>
+              <select
+               id={`app-status-${app.id}`}
+               value={app.status}
+               disabled={!editable}
+               title={editable ? undefined : t('Sample application — track your own to change status', 'Δείγμα αίτησης — η δική σου αλλάζει κατάσταση')}
+               onChange={(e) => { updateApp(app, { status: e.target.value }); logActivity({ kind: 'application', title: `${app.program}: ${e.target.value}`, titleEl: `${app.program}: ${statusWord(e.target.value)}`, href: '/founder-tools' }); }}
+               className="h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs font-medium text-stone-700 disabled:opacity-50"
+              >
+               {['draft', 'submitted', 'in-review', 'accepted', 'rejected'].map((status) => (
+                <option key={status} value={status}>{statusWord(status)}</option>
+               ))}
+              </select>
+              <Button
+               type="button"
+               variant="outline"
+               size="sm"
+               className="h-8 text-xs"
+               disabled={!editable}
+               title={editable ? undefined : t('Sample application — track your own to draft a note', 'Δείγμα αίτησης — η δική σου παίρνει πρόχειρο')}
+               onClick={() => {
+                const draft = draftApplicationNote(app);
+                if (!draft) { toast.info(t('Nothing to draft from yet — fill the builder or the Lean Canvas first', 'Δεν υπάρχουν ακόμα δεδομένα — συμπλήρωσε πρώτα τον Δημιουργό ή τον Καμβά')); return; }
+                updateApp(app, { note: draft.slice(0, 1200) });
+                logActivity({ kind: 'application', title: `Drafted a note for ${app.program}`, titleEl: `Πρόχειρο για ${app.program}`, href: '/founder-tools' });
+                showToast(t('Draft note added — edit it below', 'Προστέθηκε πρόχειρο — επεξεργάσου το παρακάτω'));
+               }}
+              >
+               {t('Draft from my data', 'Πρόχειρο από τα δεδομένα μου')}
+              </Button>
+             </div>
+             <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-stone-500" htmlFor={`app-note-${app.id}`}>{t('Application note', 'Σημείωση αίτησης')}</label>
+              <textarea
+               id={`app-note-${app.id}`}
+               rows={5}
+               maxLength={1200}
+               defaultValue={app.note}
+               key={`${app.id}:${app.note.length}`}
+               readOnly={!editable}
+               title={editable ? undefined : t('Sample application — notes save on your own applications', 'Δείγμα αίτησης — οι σημειώσεις σώζονται στις δικές σου')}
+               className="w-full rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-800 focus:border-stone-400 focus:outline-none read-only:bg-stone-50 read-only:text-stone-500"
+               placeholder={t('Why this program fits, what you will send, next steps…', 'Γιατί ταιριάζει το πρόγραμμα, τι θα στείλεις, επόμενα βήματα…')}
+              />
+              {editable && (
+               <div className="flex justify-end">
+                <Button
+                 type="button"
+                 variant="outline"
+                 size="sm"
+                 className="h-7 text-xs"
+                 onClick={() => {
+                  const area = document.getElementById(`app-note-${app.id}`);
+                  updateApp(app, { note: area instanceof HTMLTextAreaElement ? area.value : '' });
+                  showToast(t('Note saved', 'Η σημείωση αποθηκεύτηκε'));
+                 }}
+                >
+                 {t('Save note', 'Αποθήκευση σημείωσης')}
+                </Button>
+               </div>
+              )}
+             </div>
+            </div>
+           );
+          })()}
          </Card>
         </motion.div>
        );

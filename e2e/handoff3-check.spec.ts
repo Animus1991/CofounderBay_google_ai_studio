@@ -48,7 +48,8 @@ test('dashboard and mentors render the Greek demo copy in EL mode', async ({ pag
   await demoEl(page);
   await page.goto('/dashboard');
   await expect(page.getByText('έφτασε σκορ αντιστοίχισης 98').first()).toBeVisible();
-  await expect(page.getByText('Αυτή την εβδομάδα · σχέδιο δράσης').first()).toBeVisible();
+  // Round 16 folded the weekly plan into one agenda, which this heading names.
+  await expect(page.getByTestId('dashboard-agenda').getByText('Επόμενα').first()).toBeVisible();
   // The match explainer link now names the person: «Γιατί Sarah; Δες την ανάλυση σκορ».
   await expect(page.getByText(/Γιατί .+; Δες την ανάλυση σκορ/).first()).toBeVisible();
 
