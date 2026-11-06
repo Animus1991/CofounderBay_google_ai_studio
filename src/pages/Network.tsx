@@ -26,6 +26,7 @@ import {
   removeRequest,
   removeSaved,
   setNeedStatus,
+  updateSavedNote,
   upsertNeed,
   type NeedCard,
   type NeedField,
@@ -165,18 +166,10 @@ export default function Network({ user }: NetworkProps) {
   const [received, setReceived] = useState<EndorsementRecord[]>([]);
   const [given, setGiven] = useState<EndorsementRecord[]>([]);
   const [endorsementsLoaded, setEndorsementsLoaded] = useState(false);
+  // Saved-profile note being edited (sibling shortlist parity): one at a time.
+  const [noteEdit, setNoteEdit] = useState<{ id: string; value: string } | null>(null);
 
-  usePageControls(() => [
-    { id: 'show-connections', en: 'Show connections', el: 'Εμφάνιση συνδέσεων', run: () => setActiveTab('connections') },
-    { id: 'show-saved', en: 'Show saved', el: 'Εμφάνιση αποθηκευμένων', run: () => setActiveTab('saved') },
-    { id: 'show-intros', en: 'Show endorsements', el: 'Εμφάνιση συστάσεων', run: () => setActiveTab('endorsements') },
-    { id: 'show-compare', en: 'Compare profiles', el: 'Σύγκριση προφίλ', run: () => setActiveTab('compare') },
-    { id: 'show-need-cards', en: 'Show need cards', el: 'Εμφάνιση καρτών ανάγκης', run: () => setActiveTab('needs') },
-    { id: 'status-all', en: 'All statuses', el: 'Όλες οι καταστάσεις', run: () => setStatusFilter('All') },
-    { id: 'status-connected', en: 'Connected only', el: 'Μόνο συνδεδεμένοι', run: () => setStatusFilter('Connected') },
-    { id: 'status-pending', en: 'Pending only', el: 'Μόνο σε αναμονή', run: () => setStatusFilter('Pending') },
-    { id: 'status-incoming', en: 'Incoming only', el: 'Μόνο εισερχόμενα', run: () => setStatusFilter('Incoming') },
-  ], []);
+
 
   // Endorsements come from Firestore for a real account; the demo shows the sample set.
   useEffect(() => {
@@ -241,6 +234,25 @@ export default function Network({ user }: NetworkProps) {
   const connectedCount = connectionPool.filter((conn) => conn.status === 'Connected').length;
   const incomingCount = connectionPool.filter((conn) => conn.status === 'Incoming').length;
   const sentCount = connectionPool.filter((conn) => conn.status === 'Pending').length;
+
+  usePageControls(() => [
+    { id: 'show-connections', en: 'Show connections', el: 'Εμφάνιση συνδέσεων', run: () => setActiveTab('connections') },
+    { id: 'show-saved', en: 'Show saved', el: 'Εμφάνιση αποθηκευμένων', run: () => setActiveTab('saved') },
+    { id: 'show-intros', en: 'Show endorsements', el: 'Εμφάνιση συστάσεων', run: () => setActiveTab('endorsements') },
+    { id: 'show-compare', en: 'Compare profiles', el: 'Σύγκριση προφίλ', run: () => setActiveTab('compare') },
+    { id: 'show-need-cards', en: 'Show need cards', el: 'Εμφάνιση καρτών ανάγκης', run: () => setActiveTab('needs') },
+    { id: 'status-all', en: 'All statuses', el: 'Όλες οι καταστάσεις', run: () => setStatusFilter('All') },
+    { id: 'status-connected', en: 'Connected only', el: 'Μόνο συνδεδεμένοι', run: () => setStatusFilter('Connected') },
+    { id: 'status-pending', en: 'Pending only', el: 'Μόνο σε αναμονή', run: () => setStatusFilter('Pending') },
+    { id: 'status-incoming', en: 'Incoming only', el: 'Μόνο εισερχόμενα', run: () => setStatusFilter('Incoming') },
+    // Sibling parity: the assistant answers a request exactly like the card
+    // does — the same record, the same handler. One control per waiting
+    // request so it can be named ("Accept Alex Rivera's request").
+    ...connectionPool.filter((conn) => conn.status === 'Incoming' && conn.record).flatMap((conn) => [
+      { id: `accept-${conn.record!.id}`, en: `Accept ${conn.fullName}'s request`, el: `Αποδοχή αιτήματος από ${conn.fullName}`, run: () => void acceptIncoming(conn) },
+      { id: `decline-${conn.record!.id}`, en: `Decline ${conn.fullName}'s request`, el: `Απόρριψη αιτήματος από ${conn.fullName}`, run: () => void declineIncoming(conn) },
+    ]),
+  ], [connectionPool]);
 
   const statusLabel = (status: ConnectionStatus) =>
     status === 'Connected' ? t('Connected', 'Συνδεδεμένοι') : status === 'Incoming' ? t('Awaiting your answer', 'Περιμένει απάντησή σου') : t('Request sent', 'Αίτημα σταλμένο');
@@ -343,14 +355,23 @@ export default function Network({ user }: NetworkProps) {
                   className="w-full min-h-11 bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-stone-200 focus:border-stone-300 transition-all"
                 />
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 px-3 text-sm rounded-lg border-stone-200"
-                onClick={() => setStatusFilter((prev) => (prev === 'All' ? 'Connected' : prev === 'Connected' ? 'Pending' : prev === 'Pending' ? 'Incoming' : 'All'))}
-              >
-                <SlidersHorizontal className="w-3 h-3 mr-1.5" /> {statusFilter === 'All' ? t('All statuses', 'Όλες οι καταστάσεις') : statusLabel(statusFilter)}
-              </Button>
+              {/* A select, not a cycling button: the four statuses stay
+                  visible instead of hiding behind taps (sibling parity —
+                  received / sent / accepted are separate lists there). */}
+              <div className="relative">
+                <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
+                <select
+                  aria-label={t('Filter by status', 'Φίλτρο κατάστασης')}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as 'All' | ConnectionStatus)}
+                  className="min-h-11 w-full sm:w-auto pl-8 pr-3 text-sm rounded-lg border border-stone-200 bg-white text-stone-700 outline-none focus:ring-1 focus:ring-stone-900 cursor-pointer"
+                >
+                  <option value="All">{t('All statuses', 'Όλες οι καταστάσεις')}</option>
+                  <option value="Connected">{t('Connected', 'Συνδεδεμένοι')}</option>
+                  <option value="Incoming">{t('Awaiting your answer', 'Περιμένουν απάντησή σου')}</option>
+                  <option value="Pending">{t('Requests you sent', 'Αιτήματα που έστειλες')}</option>
+                </select>
+              </div>
               <span className="text-sm text-stone-400 sm:ml-auto">{t(`${connectedCount} connected`, connectedCount === 1 ? '1 συνδεδεμένος' : `${connectedCount} συνδεδεμένοι`)}{incomingCount ? ` · ${t(`${incomingCount} waiting`, `${incomingCount} σε αναμονή`)}` : ''}{/* The tab counts sent requests too (4 = 3 connected + 1 sent); say so here. */}{sentCount ? ` · ${t(`${sentCount} request${sentCount === 1 ? '' : 's'} sent`, sentCount === 1 ? '1 αίτημα σταλμένο' : `${sentCount} αιτήματα σταλμένα`)}` : ''}</span>
             </div>
 
@@ -434,7 +455,33 @@ export default function Network({ user }: NetworkProps) {
                             <PersonHovercard person={p.id}>{p.fullName}</PersonHovercard>
                           </h4>
                           <FactLine className="text-sm" items={[labelOf(p.role), p.industry, p.location]} />
-                          {p.note ? <p className="text-sm text-stone-500 mt-1 line-clamp-2">{p.note}</p> : null}
+                          {noteEdit?.id === p.id ? (
+                            <form
+                              className="mt-1.5 flex items-center gap-1.5"
+                              onSubmit={(e) => { e.preventDefault(); updateSavedNote(p.id, noteEdit.value); setNoteEdit(null); }}
+                            >
+                              <input
+                                autoFocus
+                                value={noteEdit.value}
+                                onChange={(e) => setNoteEdit({ id: p.id, value: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'Escape') setNoteEdit(null); }}
+                                aria-label={t(`Note about ${p.fullName}`, `Σημείωση για ${p.fullName}`)}
+                                placeholder={t('Why this person matters…', 'Γιατί σε ενδιαφέρει αυτό το άτομο…')}
+                                className="w-full min-h-8 px-2 text-sm bg-stone-50 border border-stone-200 rounded-lg outline-none focus:ring-1 focus:ring-stone-900 placeholder:text-stone-300"
+                              />
+                              <button type="submit" aria-label={t('Save note', 'Αποθήκευση σημείωσης')} className="min-h-8 min-w-8 inline-flex items-center justify-center rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100"><Check className="w-3.5 h-3.5" /></button>
+                            </form>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setNoteEdit({ id: p.id, value: p.note })}
+                              aria-label={p.note ? t(`Edit note about ${p.fullName}`, `Επεξεργασία σημείωσης για ${p.fullName}`) : t(`Add a note about ${p.fullName}`, `Πρόσθεση σημείωσης για ${p.fullName}`)}
+                              title={t('Edit note', 'Επεξεργασία σημείωσης')}
+                              className="mt-1 text-left text-sm text-stone-500 hover:text-stone-900 line-clamp-2 group/note"
+                            >
+                              {p.note || <span className="text-stone-300 italic">{t('Add a note…', 'Πρόσθεσε σημείωση…')}</span>}
+                            </button>
+                          )}
                         </div>
                         <Button variant="ghost" size="icon" aria-label={t('Remove from saved', 'Αφαίρεση από τα αποθηκευμένα')} title={t('Remove from saved', 'Αφαίρεση από τα αποθηκευμένα')} onClick={() => { removeSaved(p.id); }} className="w-9 h-9 rounded-lg text-stone-400 hover:text-stone-900 shrink-0">
                           <Star className="w-3.5 h-3.5 fill-current" />

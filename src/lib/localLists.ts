@@ -349,6 +349,13 @@ export function removeSaved(id: string): SavedProfile[] {
   return next;
 }
 
+/** Edits the note in place — saveProfile would unshift the row to the top. */
+export function updateSavedNote(id: string, note: string): SavedProfile[] {
+  const next = readSaved().map((item) => (item.id === id ? { ...item, note: note.trim() } : item));
+  writeJson(keys.saved, next);
+  return next;
+}
+
 // ── Id sets: registered and bookmarked events, watches, follows, mentors, communities, perks ──
 
 export function readIds(key: string): string[] {
