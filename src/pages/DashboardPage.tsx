@@ -20,7 +20,7 @@ import { bothText, labelOf } from '../lib/labels';
 import { useAuth } from '../App';
 import PageShell from '../components/ui/PageShell';
 import Avatar from '../components/ui/Avatar';
-import { followUps, keys, readActivity, readRequests, readRound, readSessions, readValue, saveRequest, writeValue } from '../lib/localLists';
+import { followUps, keys, readActivity, readMilestones, readNeeds, readRequests, readRound, readSessions, readTasks, readValue, saveRequest, writeValue } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { getNextBestActions, logNudgeConversion, logNudgeExposure, NextBestAction } from '../services/behavioralOptimizer';
 import { db } from '../firebase';
@@ -34,8 +34,8 @@ import { useOptionalMessaging } from '../context/MessagingContext';
 import { fromProfile, rankPeople } from '../lib/compatibility';
 import { mergeFitIntoViewer } from '../lib/fitCheck';
 import { studioNextStep, studioWaiting } from '../lib/nextStep';
-import { greetingFor, formatWhen, localizeAxisLabel } from '../lib/dates';
-import { byWhen } from '../lib/agenda';
+import { greetingFor, localizeAxisLabel } from '../lib/dates';
+import { agendaDayLabel, dashboardAgenda } from '../lib/dashboardAgenda';
 import { filterSlash, startersFor } from '../lib/assistantStarters';
 import { useNotificationFeed } from '../lib/notificationFeed';
 import { useLanguage, useT } from '../lib/language';
@@ -99,11 +99,8 @@ const DEMO_EVENTS = [
   { id: 'hackathon', title: 'Weekend Builders Hackathon', titleEl: 'Hackathon builders το Σαββατοκύριακο', time: demoAt(nextWeekday(6), 9), day: '', clock: '', type: 'NETWORK', location: '', attendees: 0 },
   { id: 'deadline', title: 'Pre-Seed Checklist Deadline', titleEl: 'Προθεσμία λίστας Pre-Seed', time: demoAt(nextWeekday(5), 17), day: '', clock: '', type: 'MILESTONE', location: '', attendees: 0 },
 ];
-// ISO timestamps (demo entries, stored sessions) render via formatWhen; free
-// text from the events collection stays as written.
-const dashTime = (time: string) => (/^\d{4}-\d{2}-\d{2}/.test(time) || time.endsWith('Z') ? formatWhen(time) : time);
-
-
+// ISO timestamps (demo entries, stored sessions) render via the shared agenda
+// helpers; free text from the events collection stays as written.
 const DEMO_POSTS = [
   {
     id: 'demo-post-sarah',
@@ -290,6 +287,9 @@ export default function DashboardPage() {
   const localRequests = useStored(readRequests, [keys.requests]);
   const round = useStored(readRound, [keys.round]);
   const sessions = useStored(readSessions, [keys.sessions]);
+  const milestones = useStored(readMilestones, [keys.milestones]);
+  const tasks = useStored(readTasks, [keys.tasks]);
+  const needs = useStored(readNeeds, [keys.needs]);
   const connections = useConnections();
   const noteFeed = useNotificationFeed();
   const [viewCount, setViewCount] = useState<number | null>(null);
@@ -304,14 +304,11 @@ export default function DashboardPage() {
 
   const profileNudge = useProfileNudge();
   const { score, missing } = profileNudge;
-  const nextSession = useMemo(() => {
-    const now = Date.now();
-    const through = now + 7 * 24 * 60 * 60 * 1000;
-    return sessions
-      .map((session) => ({ session, at: Date.parse(session.time ?? '') }))
-      .filter(({ at }) => Number.isFinite(at) && at >= now && at <= through)
-      .sort((a, b) => a.at - b.at)[0]?.session;
-  }, [sessions]);
+  // One agenda for the whole page: the same seven-day list the assistant
+  // reads (sessions, milestones, follow-ups, tasks) plus dated platform events.
+  // The stored lists above make the render re-run when any of them changes.
+  void sessions; void milestones; void tasks; void round;
+  const agenda = dashboardAgenda(isDemoMode ? DEMO_EVENTS : events, new Date(), 7);
 
   useEffect(() => {
     if (!user) {
@@ -423,6 +420,10 @@ export default function DashboardPage() {
   const moreOpen = useStored(() => readValue<boolean>(keys.dashboardMore, false), [keys.dashboardMore]);
   const setMoreOpen = (next: boolean | ((open: boolean) => boolean)) => writeValue<boolean>(keys.dashboardMore, typeof next === 'function' ? next(moreOpen) : next);
 
+  const openNeeds = needs.filter((item) => item.status === 'open').length;
+  // The need-card row joins "Today" only when the step above is not already it (one prompt per thing).
+  const showNeedRow = openNeeds === 0 && studioNext.id !== 'need';
+
   // What the assistant can run on this page ("open my next step", "what is waiting on me"); the Dashboard
   // was the one member page with none.
   usePageControls(() => [
@@ -431,8 +432,10 @@ export default function DashboardPage() {
     { id: 'week-recap', en: 'Recap my week', el: 'Σύνοψη της εβδομάδας μου', run: () => askAssistant('What did I do this week?') },
     { id: 'prepare-week', en: 'Prepare my week', el: 'Ετοίμασε την εβδομάδα μου', run: () => askAssistant('Prepare my week') },
     { id: 'plan-week', en: 'Make a 7-day match plan', el: 'Φτιάξε πλάνο αντιστοιχίσεων 7 ημερών', run: () => askAssistant('Give me a 7-day match plan') },
+    ...(showNeedRow ? [{ id: 'publish-need-card', en: 'Publish a need card', el: 'Δημοσίευση κάρτας ανάγκης', run: () => goStep('/network?tab=needs') }] : []),
     ...(compact ? [{ id: 'show-more', en: 'Show everything on the dashboard', el: 'Εμφάνιση όλων στον πίνακα', run: () => setMoreOpen(true) }] : []),
-  ], [studioNext.href, waiting?.href, compact]);
+    ...(compact && moreOpen ? [{ id: 'show-less', en: 'Show less on the dashboard', el: 'Λιγότερα στον πίνακα', run: () => setMoreOpen(false) }] : []),
+  ], [studioNext.href, waiting?.href, compact, moreOpen, showNeedRow]);
 
 
   const greeting = greetingFor(new Date().getHours());
@@ -464,9 +467,6 @@ export default function DashboardPage() {
     likedBy: [],
   }));
   const posts = isDemoMode ? [...activityPosts, ...DEMO_POSTS] : (activityPosts.length > 0 ? [...activityPosts, ...feed] : feed);
-  // Soonest first: the demo's fixed list put Saturday before Friday on some weekdays. Entries whose time is
-  // free text (not a date) keep their order after the dated ones.
-  const schedule = byWhen(isDemoMode ? DEMO_EVENTS : events);
   const rawSeries = isDemoMode ? ACTIVITY_DATA : live.activitySeries;
   // Series keep English day keys so the numbers stay comparable; only the tick is translated.
   const chartSeries = rawSeries?.map((point) => ({ ...point, name: localizeAxisLabel(point.name, mode) })) ?? null;
@@ -665,6 +665,22 @@ export default function DashboardPage() {
           onAction={() => goStep(studioNext.href)}
           askPrompt={studioNext.prompt}
         />
+        {/* Sibling's first move: while no need card is open, one row asks the one
+            question and opens the cards tab (skipped when "Next" already is this step). */}
+        {showNeedRow ? (
+          <NextMove
+            embedded
+            primary={false}
+            tone="next"
+            icon={Target}
+            label={t('Need', 'Ανάγκη')}
+            title={t('Who does your startup need? Publish a need card.', 'Ποιον χρειάζεσαι; Δημοσίευσε κάρτα ανάγκης.')}
+            why={t('The Needs Wall matches it with members.', 'Ο Πίνακας Αναγκών την ταιριάζει με μέλη.')}
+            action={t('Need cards', 'Κάρτες ανάγκης')}
+            onAction={() => goStep('/network?tab=needs')}
+            askPrompt="Draft a need card for a co-founder"
+          />
+        ) : null}
         {/* One area a day from the studio check, picked by the AI model when it is reachable. */}
         <Suspense fallback={null}>
           <DailyNudge embedded />
@@ -674,149 +690,113 @@ export default function DashboardPage() {
   );
 
   // Progress and people, right under Today: "Your week" and the next person worth meeting (moved up from the bottom).
-  const blockPeopleWeek = (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {prospect && (
-        <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
-          <SectionHeader
-            title={prospect.id === leadMatch?.id
-              ? <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
-              : <Both en="Also worth meeting" el="Αξίζει επίσης να γνωρίσεις" />}
-            actions={[{ label: <Both en="All" el="Όλες" />, to: '/matches' }]}
-          />
-          <div className="flex items-center gap-3">
-            <div className="relative shrink-0">
-              <Avatar src={prospect.avatar || undefined} fallback={prospect.name} size="md" />
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
-              <FactLine className="text-xs" items={[roleText(prospect)]} label={t('Role', 'Ρόλος')} />
-            </div>
-            {prospect.match > 0 && (
-              <button
-                type="button"
-                onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
-                title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
-                className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
-              >
-                {prospect.match}%
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button
-              type="button"
-              onClick={async () => {
-                if (isDemoMode) {
-                  saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' });
-                } else {
-                  try {
-                    await sendConnectionRequest({ id: prospect.id, fullName: prospect.name, headline: prospect.role, avatarUrl: prospect.avatar }, 'Co-Founder');
-                  } catch {
-                    /* already requested or declined: the profile page explains the state */
-                  }
-                }
-                navigate(`/messages?user=${prospect.id}`);
-              }}
-              className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"
-            >
-              <Both en="Connect" el="Σύνδεση" />
-            </button>
-            <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
-          </div>
+  const blockPerson = prospect && (
+    <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+      <SectionHeader
+        title={prospect.id === leadMatch?.id
+          ? <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
+          : <Both en="Also worth meeting" el="Αξίζει επίσης να γνωρίσεις" />}
+        actions={[{ label: <Both en="All" el="Όλες" />, to: '/matches' }]}
+      />
+      <div className="flex items-center gap-3">
+        <div className="relative shrink-0">
+          <Avatar src={prospect.avatar || undefined} fallback={prospect.name} size="md" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-stone-50 rounded-full" />
         </div>
-      )}
-      {/* "Your week" (round 9): the streak card now also shows what moved this week, so a return visit
-          opens on visible progress. Same sizes as before; nothing estimated, all read from activity. */}
-      <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between" data-testid="dashboard-week">
-        <SectionHeader
-          className="mb-2"
-          title={<Both en="Your week" el="Η εβδομάδα σου" />}
-          actions={[{ label: <Both en="Activity" el="Δραστηριότητα" />, to: '/notifications' }]}
-        />
-        <div>
-          <p className="text-sm font-semibold text-stone-900 tracking-tight">
-            {recap.total}
-            <span className="text-xs font-medium text-stone-400">{t(recap.total === 1 ? ' action' : ' actions', recap.total === 1 ? ' ενέργεια' : ' ενέργειες')}</span>
-            {recap.previous > 0 && (
-              <span className={cn('ml-2 text-xs font-medium', recap.change > 0 ? 'text-emerald-600' : 'text-stone-400')}>
-                {recap.change === 0
-                  ? t('same as last week', 'όσες και την προηγούμενη')
-                  : t(`${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} vs last week`, `${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} από την προηγούμενη`)}
-              </span>
-            )}
-          </p>
-          <div
-            className="mt-2 flex items-center gap-1"
-            role="img"
-            aria-label={t(`Active on ${recap.activeDays} of the last 7 days`, `Ενεργός ${recap.activeDays} από τις τελευταίες 7 ημέρες`)}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-stone-900"><PersonHovercard person={prospect.id}>{prospect.name}</PersonHovercard></p>
+          <FactLine className="text-xs" items={[roleText(prospect)]} label={t('Role', 'Ρόλος')} />
+        </div>
+        {prospect.match > 0 && (
+          <button
+            type="button"
+            onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
+            title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
+            className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
           >
-            {recap.days.map((active, index) => (
-              <span key={index} className={cn('h-1.5 flex-1 rounded-full', active ? 'bg-stone-900' : 'bg-stone-100')} />
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-stone-400">
-            {recap.areas.length > 0
-              ? recap.areas.slice(0, 3).map((entry, index) => (
-                <span key={entry.area}>
-                  {index > 0 ? ' · ' : ''}
-                  {t(RECAP_AREAS[entry.area].en, RECAP_AREAS[entry.area].el)} {entry.count}
-                </span>
-              ))
-              : <Both en="Tasks, connections and updates you make show here." el="Εργασίες, συνδέσεις και ενημερώσεις που κάνεις εμφανίζονται εδώ." />}
-          </p>
-          <div className="flex items-center justify-between gap-2 mt-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-              <p className="text-xs text-stone-400">
-                {streakDays > 0
-                  ? t(`${streakDays}-day streak · keep it going today`, `Σερί ${streakDays} ${streakDays === 1 ? 'ημέρας' : 'ημερών'} · συνέχισε σήμερα`)
-                  : t('One step today starts a streak', 'Ένα βήμα σήμερα ξεκινά σερί')}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <AskLink prompt="Prepare my week">{t('Prepare my week', 'Ετοίμασε την εβδομάδα μου')}</AskLink>
-              <AskLink prompt="What did I do this week?">{t('Recap', 'Σύνοψη')}</AskLink>
-            </div>
-          </div>
-        </div>
+            {prospect.match}%
+          </button>
+        )}
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button
+          type="button"
+          onClick={async () => {
+            if (isDemoMode) {
+              saveRequest({ id: prospect.id, fullName: prospect.name, role: prospect.role, industry: '', location: '', note: prospect.role, status: 'pending' });
+            } else {
+              try {
+                await sendConnectionRequest({ id: prospect.id, fullName: prospect.name, headline: prospect.role, avatarUrl: prospect.avatar }, 'Co-Founder');
+              } catch {
+                /* already requested or declined: the profile page explains the state */
+              }
+            }
+            navigate(`/messages?user=${prospect.id}`);
+          }}
+          className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"
+        >
+          <Both en="Connect" el="Σύνδεση" />
+        </button>
+        <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
       </div>
     </div>
   );
 
-  const blockThisWeek = (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
-        {leadMatch ? (
-          <div className="flex items-center gap-3">
-            <Avatar src={leadMatch.avatar} fallback={leadMatch.name} size="md" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-stone-900 truncate"><PersonHovercard person={leadMatch.id}>{leadMatch.name}</PersonHovercard></p>
-              <p className="text-xs text-stone-500 truncate">{roleText(leadMatch)}</p>
-            </div>
+  // "Your week" (round 9): the streak card now also shows what moved this week, so a return visit
+  // opens on visible progress. Same sizes as before; nothing estimated, all read from activity.
+  const blockWeek = (
+    <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between" data-testid="dashboard-week">
+      <SectionHeader
+        className="mb-2"
+        title={<Both en="Your week" el="Η εβδομάδα σου" />}
+        actions={[{ label: <Both en="Activity" el="Δραστηριότητα" />, to: '/notifications' }]}
+      />
+      <div>
+        <p className="text-sm font-semibold text-stone-900 tracking-tight">
+          {recap.total}
+          <span className="text-xs font-medium text-stone-400">{t(recap.total === 1 ? ' action' : ' actions', recap.total === 1 ? ' ενέργεια' : ' ενέργειες')}</span>
+          {recap.previous > 0 && (
+            <span className={cn('ml-2 text-xs font-medium', recap.change > 0 ? 'text-emerald-600' : 'text-stone-400')}>
+              {recap.change === 0
+                ? t('same as last week', 'όσες και την προηγούμενη')
+                : t(`${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} vs last week`, `${recap.change > 0 ? '+' : '−'}${Math.abs(recap.change)} από την προηγούμενη`)}
+            </span>
+          )}
+        </p>
+        <div
+          className="mt-2 flex items-center gap-1"
+          role="img"
+          aria-label={t(`Active on ${recap.activeDays} of the last 7 days`, `Ενεργός ${recap.activeDays} από τις τελευταίες 7 ημέρες`)}
+        >
+          {recap.days.map((active, index) => (
+            <span key={index} className={cn('h-1.5 flex-1 rounded-full', active ? 'bg-stone-900' : 'bg-stone-100')} />
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-stone-400">
+          {recap.areas.length > 0
+            ? recap.areas.slice(0, 3).map((entry, index) => (
+              <span key={entry.area}>
+                {index > 0 ? ' · ' : ''}
+                {t(RECAP_AREAS[entry.area].en, RECAP_AREAS[entry.area].el)} {entry.count}
+              </span>
+            ))
+            : <Both en="Tasks, connections and updates you make show here." el="Εργασίες, συνδέσεις και ενημερώσεις που κάνεις εμφανίζονται εδώ." />}
+        </p>
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+            <p className="text-xs text-stone-400">
+              {streakDays > 0
+                ? t(`${streakDays}-day streak · keep it going today`, `Σερί ${streakDays} ${streakDays === 1 ? 'ημέρας' : 'ημερών'} · συνέχισε σήμερα`)
+                : t('One step today starts a streak', 'Ένα βήμα σήμερα ξεκινά σερί')}
+            </p>
           </div>
-        ) : (
-          <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
-        )}
-      </button>
-      <button type="button" onClick={() => navigate('/calendar')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
-        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
-        {!nextSession ? (
-          <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-stone-900">{nextSession.title}</p>
-            <p className="text-xs text-stone-500 mt-1">{dashTime(nextSession.time)}</p>
-          </>
-        )}
-      </button>
-      <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
-        <p className="text-xs font-semibold text-stone-400 mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
-        <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
-        <p className="text-xs text-stone-400 mt-1"><Both en="Adds Workspace tasks." el="Προσθέτει εργασίες στον Χώρο εργασίας." /></p>
-      </button>
+          <div className="flex shrink-0 items-center gap-3">
+            <AskLink prompt="Prepare my week">{t('Prepare my week', 'Ετοίμασε την εβδομάδα μου')}</AskLink>
+            <AskLink prompt="What did I do this week?">{t('Recap', 'Σύνοψη')}</AskLink>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -842,22 +822,36 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-      {leadMatch && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, leadMatch.id)}>
-            <Both en={`Why ${leadMatch.name.split(' ')[0]}? See the score breakdown`} el={`Γιατί ${leadMatch.name.split(' ')[0]}; Δες την ανάλυση σκορ`} />
-          </button>
-          <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => askAssistant(`Why do I match with ${leadMatch.name}?`)}>
-            <Both en="Ask the assistant" el="Ρώτα τον βοηθό" />
-          </button>
-        </div>
-      )}
+      {/* The match playbook moved here from the old "This week" trio: it is a plan
+          about matches, so it lives under them (it still adds Workspace tasks). */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {leadMatch && (
+          <>
+            <button type="button" className="text-xs font-medium text-stone-900 hover:underline" onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, leadMatch.id)}>
+              <Both en={`Why ${leadMatch.name.split(' ')[0]}? See the score breakdown`} el={`Γιατί ${leadMatch.name.split(' ')[0]}; Δες την ανάλυση σκορ`} />
+            </button>
+            <button type="button" className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline" onClick={() => askAssistant(`Why do I match with ${leadMatch.name}?`)}>
+              <Both en="Ask the assistant" el="Ρώτα τον βοηθό" />
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          title={t('Adds Workspace tasks.', 'Προσθέτει εργασίες στον Χώρο εργασίας.')}
+          className="text-xs font-medium text-stone-500 hover:text-stone-900 hover:underline"
+          onClick={() => askAssistant('Give me a 7-day match plan')}
+        >
+          <Both en="7-day match plan" el="Πλάνο αντιστοιχίσεων 7 ημερών" />
+        </button>
+      </div>
     </div>
   );
 
-  // Glanceable numbers sit above the long feed, so they are seen without scrolling.
+  // Glanceable numbers right under Today — the same place every dashboard puts its
+  // figures. Profile views carries its own sparkline (the same series the chart
+  // card draws below), so the tile reads as a trend, not only a count.
   const blockNumbers = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="dashboard-numbers">
       {[
         {
           label: t('Profile Views', 'Προβολές προφίλ'),
@@ -865,6 +859,16 @@ export default function DashboardPage() {
           sub: profileViews == null && !isDemoMode ? <Both en="No views yet" el="Καμία προβολή ακόμη" /> : null,
           href: '/profile',
           hint: bothText('How many people opened your profile', 'Πόσοι άνοιξαν το προφίλ σας'),
+          spark: chartSeries && chartSeries.length > 1 ? (
+            <Sparkline
+              values={chartSeries.map((point) => Number(point.views) || 0)}
+              label={t(
+                `Profile views, ${chartSeries[0]?.name ?? ''} to ${chartSeries[chartSeries.length - 1]?.name ?? ''}: ${chartSeries.map((point) => point.views).join(', ')}`,
+                `Προβολές προφίλ, ${chartSeries[0]?.name ?? ''} έως ${chartSeries[chartSeries.length - 1]?.name ?? ''}: ${chartSeries.map((point) => point.views).join(', ')}`,
+              )}
+              className="text-stone-300"
+            />
+          ) : null,
         },
         {
           label: t('Match Score', 'Σκορ αντιστοίχισης'),
@@ -872,6 +876,7 @@ export default function DashboardPage() {
           sub: rankedCircles[0] ? rankedCircles[0].name.split(' ')[0] : null,
           href: '/matches',
           hint: bothText('Compatibility with your top match: skills, market, stage, commitment and working hours', 'Συμβατότητα με την πρώτη αντιστοίχιση: δεξιότητες, αγορά, στάδιο, δέσμευση και ώρες εργασίας'),
+          spark: null,
         },
         {
           label: t('Requests', 'Αιτήματα'),
@@ -879,6 +884,7 @@ export default function DashboardPage() {
           sub: null,
           href: '/network?tab=Requests',
           hint: bothText('Pending connection requests waiting for your response', 'Εκκρεμή αιτήματα σύνδεσης που περιμένουν απάντηση'),
+          spark: null,
         },
         {
           label: t('Messages', 'Μηνύματα'),
@@ -886,43 +892,54 @@ export default function DashboardPage() {
           sub: null,
           href: '/messages',
           hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
+          spark: null,
         },
       ].map((stat) => (
         <button type="button" key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
           <p className="text-xs font-semibold text-stone-400">{stat.label}</p>
           <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
           {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
+          {stat.spark && <div className="mt-2 h-7">{stat.spark}</div>}
         </button>
       ))}
     </div>
   );
 
-  // The agenda sits above the long feed: what is coming is worth more than what was posted (moved up).
+  // One agenda for the whole page (round 16): sessions, milestones, follow-ups and
+  // tasks from the founder's own lists plus dated platform events — the same list
+  // the assistant answers from, so the page and the chat never disagree about the week.
+  const agendaBadge = (badge: string) =>
+    badge === 'Session' ? t('Session', 'Συνάντηση')
+      : badge === 'Follow-up' ? t('Follow-up', 'Εκκρεμότητα')
+        : badge === 'Task' ? t('Task', 'Εργασία')
+          : labelOf(badge);
   const blockUpcoming = (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
-      {/* "See map" opened Events, which has no map: the two links now say where they go. */}
+    <div className="bg-white rounded-2xl border border-stone-100 p-4" data-testid="dashboard-agenda">
       <SectionHeader
         className="mb-4"
         title={<Both en="Upcoming" el="Επόμενα" />}
+        detail={agenda.extra > 0 ? t(`+${agenda.extra} more`, `+${agenda.extra} ακόμα`) : undefined}
         actions={[
           { label: <Both en="Events" el="Εκδηλώσεις" />, to: '/events' },
           { label: <Both en="Calendar" el="Ημερολόγιο" />, to: '/calendar' },
         ]}
       />
-      {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
-        <p className="text-xs text-stone-400"><Both en="Nothing scheduled. Add a session or event in Calendar." el="Τίποτα προγραμματισμένο. Πρόσθεσε συνάντηση ή εκδήλωση στο Ημερολόγιο." /></p>
+      {agenda.rows.length === 0 ? (
+        !isDemoMode && !eventsLoaded ? null : (
+          <p className="text-xs text-stone-400"><Both en="Nothing scheduled. Add a session or event in Calendar." el="Τίποτα προγραμματισμένο. Πρόσθεσε συνάντηση ή εκδήλωση στο Ημερολόγιο." /></p>
+        )
       ) : (
         <div className="space-y-4 relative">
           <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
-          {schedule.map((ev) => (
-            <button type="button" key={ev.id} className="block w-[calc(100%+1rem)] text-left pl-5 relative hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}>
+          {agenda.rows.map((row) => (
+            <button type="button" key={row.id} className="block w-[calc(100%+1rem)] text-left pl-5 relative hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(row.href)}>
               <span aria-hidden="true" className="absolute left-[-1px] top-2.5 w-2.5 h-2.5 rounded-full bg-stone-900 border-2 border-white" />
-              <span className="block text-sm font-medium text-stone-900 leading-tight">{t(ev.title, ev.titleEl ?? ev.title)}</span>
-              <span className="flex items-center gap-2 mt-1">
+              <span className="block text-sm font-medium text-stone-900 leading-tight">{t(row.title, row.titleEl ?? row.title)}</span>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
                 <Clock className="w-3 h-3 text-stone-400" />
-                <span className="text-xs text-stone-400">{dashTime(ev.time)}</span>
-                {ev.type && <span className="text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded-md">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
-                {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
+                <span className="text-xs text-stone-400">{row.when != null ? agendaDayLabel(row.when, row.allDay) : row.rawTime ?? ''}</span>
+                <span className="text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded-md">{agendaBadge(row.badge)}</span>
+                {row.attendees != null && row.attendees > 0 && <span className="text-xs text-stone-400">{t(`${row.attendees} attending`, `${row.attendees} συμμετέχουν`)}</span>}
               </span>
             </button>
           ))}
@@ -957,6 +974,10 @@ export default function DashboardPage() {
       ) : posts.map((item) => {
         const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
         const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
+        // Your own activity lines are a log, not a post: no like/reply affordances until
+        // someone actually engaged. The reply icon opens the person's conversation.
+        const ownEntry = item.authorId === 'assistant' || item.authorId === user?.uid || item.authorId === 'you';
+        const showActions = !(ownEntry && likeCount === 0 && item.comments === 0);
         return (
           <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
             <div className="flex items-start gap-3">
@@ -971,14 +992,16 @@ export default function DashboardPage() {
                 {/^\d{4}-/.test(item.time) ? <RelTime iso={item.time} className="text-xs text-stone-400" /> : <span className="text-xs text-stone-400">{item.time === '2h ago' ? t('2h ago', 'πριν από 2 ώρες') : item.time === '4h ago' ? t('4h ago', 'πριν από 4 ώρες') : item.time}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-4 mt-3 ml-12">
-              <button onClick={() => toggleLike(item)} className={cn('flex items-center gap-1 text-xs transition-colors', liked ? 'text-amber-500' : 'text-stone-400 hover:text-stone-600')}>
-                <Star className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} /> {likeCount}
-              </button>
-              <button onClick={() => navigate('/messages')} className="flex items-center gap-1 text-stone-400 hover:text-stone-600 text-xs">
-                <MessageSquare className="w-3.5 h-3.5" /> {item.comments}
-              </button>
-            </div>
+            {showActions && (
+              <div className="flex items-center gap-4 mt-3 ml-12">
+                <button onClick={() => toggleLike(item)} className={cn('flex items-center gap-1 text-xs transition-colors', liked ? 'text-amber-500' : 'text-stone-400 hover:text-stone-600')}>
+                  <Star className="w-3.5 h-3.5" fill={liked ? 'currentColor' : 'none'} /> {likeCount}
+                </button>
+                <button onClick={() => navigate(ownEntry ? '/messages' : `/messages?user=${item.authorId}`)} className="flex items-center gap-1 text-stone-400 hover:text-stone-600 text-xs">
+                  <MessageSquare className="w-3.5 h-3.5" /> {item.comments}
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -1037,14 +1060,14 @@ export default function DashboardPage() {
   );
 
   const blockCommunities = communities.length > 0 && (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
+    <div className="min-w-0 scroll-mb-28 bg-white rounded-2xl border border-stone-100 p-4" data-testid="dashboard-communities">
       <SectionHeader title={<Both en="Communities" el="Κοινότητες" />} actions={[{ label: <Both en="All" el="Όλες" />, to: '/communities' }]} />
       <div className="space-y-1">
         {communities.map((community) => (
           // Labelled numbers ("1.2k members · 12 new posts" used to read "1.2k · 12"), and the row opens the community list.
-          <button type="button" key={community.id} onClick={() => navigate('/communities')} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50 transition-colors sm:items-center">
-            <span className="min-w-0 text-sm font-medium text-stone-900">{community.name}</span>
-            <span className="shrink-0 text-right text-xs text-stone-400 tabular-nums">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
+          <button type="button" key={community.id} onClick={() => navigate(`/communities`)} className="flex w-full min-w-0 flex-col items-start gap-0.5 rounded-lg px-2 py-2 text-left hover:bg-stone-50 transition-colors sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+            <span className="min-w-0 text-sm font-medium text-stone-900 break-words">{community.name}</span>
+            <span className="max-w-full text-xs text-stone-500 tabular-nums sm:shrink-0 sm:text-right">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
           </button>
         ))}
       </div>
@@ -1059,11 +1082,14 @@ export default function DashboardPage() {
       <div className="space-y-8">
         {blockAsk}
         {blockToday}
-        {blockPeopleWeek}
+        {blockNumbers}
         {compact ? (
           // Phones and tablets (round 12): the essentials, then everything else one tap away. Thirteen stacked
           // sections read as noise on a narrow screen; nothing is removed, the rest sits under "More".
           <>
+            {blockPerson ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{blockPerson}{blockWeek}</div>
+            ) : blockWeek}
             {blockUpcoming}
             {blockMatches}
             <section data-testid="dashboard-more">
@@ -1076,34 +1102,41 @@ export default function DashboardPage() {
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-stone-900">{moreOpen ? t('Show less', 'Λιγότερα') : t('More on your dashboard', 'Περισσότερα στον πίνακα')}</span>
-                  <span className="block text-xs text-stone-500">{t('This week · numbers · what changed · profile views · profile · communities', 'Αυτή την εβδομάδα · αριθμοί · τι άλλαξε · προβολές · προφίλ · κοινότητες')}</span>
+                  <span className="block text-xs text-stone-500">{t('What changed · profile views · profile', 'Τι άλλαξε · προβολές · προφίλ')}</span>
                 </span>
                 <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-stone-500 transition-transform', moreOpen && 'rotate-180')} />
               </button>
               {moreOpen && (
                 <div id="dashboard-more-panel" className="mt-6 space-y-8">
-                  {blockThisWeek}
-                  {blockNumbers}
                   {blockFeed}
                   {blockViews}
                   {blockProfile}
-                  {blockCommunities}
                 </div>
               )}
             </section>
           </>
         ) : (
-          <>
-            {blockThisWeek}
-            {blockMatches}
-            {blockNumbers}
-            {blockUpcoming}
-            {blockFeed}
-            {blockViews}
-            {blockProfile}
-            {blockCommunities}
-          </>
+          // Wide screens (round 16): one long strip of full-width cards wasted the space
+          // and buried the rhythm — a content column for the timeline, a rail for
+          // the glance cards, the way GitHub and Linear structure a home.
+          <div className="grid min-w-0 grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start gap-6" data-testid="dashboard-columns">
+            <div className="min-w-0 space-y-8">
+              {blockUpcoming}
+              {blockMatches}
+              {blockFeed}
+            </div>
+            <div className="min-w-0 space-y-8">
+              {blockPerson}
+              {blockWeek}
+              {blockViews}
+              {blockProfile}
+            </div>
+          </div>
         )}
+        {/* Communities is the last card, full width, under both columns. In the
+            right-hand rail the assistant button covered its lower half, and a
+            taller left column made it look as if the page ended there. */}
+        {blockCommunities}
       </div>
     </PageShell>
   );

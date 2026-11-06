@@ -327,7 +327,7 @@ export default function Layout() {
                 <div
                   aria-hidden="true"
                   data-scroll-clearance=""
-                  className={`shrink-0 ${onMessagesPage ? 'h-[var(--bottom-nav-offset,0px)] lg:hidden' : 'h-[calc(var(--bottom-nav-offset,0px)+5.5rem)] lg:h-[4.5rem]'}`}
+                  className={`shrink-0 ${onMessagesPage ? 'h-[var(--bottom-nav-offset,0px)] lg:hidden' : 'h-[calc(var(--bottom-nav-offset,0px)+8rem)] lg:h-[7.5rem]'}`}
                 />
               )}
             </div>
