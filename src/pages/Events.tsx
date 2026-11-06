@@ -17,6 +17,7 @@ import {
  Globe,
  CalendarPlus
 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import PageShell from "../components/ui/PageShell";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { cn } from "../lib/utils";
@@ -40,7 +41,7 @@ import { askAssistant } from "../lib/assistantBus";
 import { DEMO_EVENTS } from "../data/demoCatalog";
 import CoverImage from "../components/ui/CoverImage";
 import { applyQuickFilter, cityOptions, groupByDay, sortEvents, type QuickFilter } from "../lib/eventsView";
-import { copyText } from "../lib/download";
+import { absoluteUrl, copyText, shareLink } from "../lib/download";
 
 const TAB_EL: Record<string, string> = {
  Upcoming: 'Επερχόμενες',
@@ -109,12 +110,16 @@ export default function Events(_props: EventsProps = {}) {
  const [showTypes, setShowTypes] = useState(false);
  const [quick, setQuick] = useState<QuickFilter>('all');
  const [highlighted, setHighlighted] = useState<string | null>(null);
+ // ?event= deep-links an event card: share links and assistant navigation
+ // land on it highlighted instead of the top of the list.
+ const [params] = useSearchParams();
  const registeredEvents = useStored(() => readIds(eventListKeys.registered), [eventListKeys.registered]);
  const bookmarkedEvents = useStored(() => readIds(eventListKeys.bookmarked), [eventListKeys.bookmarked]);
 
  usePageControls(() => [
   { id: 'show-my-events', en: 'Show my events', el: 'Οι εκδηλώσεις μου', run: () => setActiveTab('My Events') },
   { id: 'show-bookmarked', en: 'Show bookmarked', el: 'Αποθηκευμένες', run: () => setActiveTab('Bookmarked') },
+ { id: 'show-past', en: 'Show past events', el: 'Παλαιότερες εκδηλώσεις', run: () => setActiveTab('Past') },
   { id: 'all-events', en: 'All events', el: 'Όλες οι εκδηλώσεις', run: () => { setActiveTab('Upcoming'); setTypeFilter('All'); } },
   { id: 'open-filters', en: 'Open filters', el: 'Φίλτρα', run: () => setShowTypes(true) },
   // The quick chips, for the assistant ("show online events", "events this week").
@@ -176,6 +181,10 @@ export default function Events(_props: EventsProps = {}) {
    mk("1", "Startup Founders Networking Night", "Βραδιά δικτύωσης ιδρυτών startup", "Connect with fellow founders, share experiences, and find potential collaborators in a relaxed environment.", "Γνώρισε συνιδρυτές, μοιράσου εμπειρίες και βρες πιθανούς συνεργάτες σε χαλαρό περιβάλλον.", at(EV("1").inDays, EV("1").startHour), EV("1").endHour, "Tech Hub, London", "Tech Hub, Λονδίνο", 'Networking', 124, coverFor("event-1", ["Startup Founders Networking Night", 'Networking'], 800, 400), false, "CoFounderBay Team"),
    mk("2", "Mastering the Seed Round Pitch", "Πώς να πετύχεις το seed round pitch", "Learn the secrets of a successful seed round pitch from venture capitalists and successful founders.", "Μάθε τα μυστικά ενός επιτυχημένου seed round pitch από επενδυτές κεφαλαίου και έμπειρα ιδρυτικά μέλη.", at(EV("2").inDays, EV("2").startHour), EV("2").endHour, "Zoom / Online", "Zoom / Διαδικτυακά", 'Workshop', 450, coverFor("event-2", ["Mastering the Seed Round Pitch", 'Workshop'], 800, 400), true, "Sarah Chen"),
    mk("3", "FinTech Demo Day Q2", "FinTech Demo Day Q2", "Watch the most promising fintech startups from our ecosystem pitch their solutions to top-tier investors.", "Δες τα πιο πολλά υποσχόμενα fintech startups του οικοσυστήματος να κάνουν pitch σε κορυφαίους επενδυτές.", at(EV("3").inDays, EV("3").startHour), EV("3").endHour, "Innovation Center, NY", "Innovation Center, Νέα Υόρκη", 'Pitch Night', 85, coverFor("event-3", ["FinTech Demo Day Q2", 'Pitch Night'], 800, 400), false, "Finly Ventures"),
+   // One sample past event so the Past tab is demonstrable in the demo.
+   // It lives here — not in DEMO_EVENTS, which the assistant reads as
+   // "what is coming", where a past date would be wrong.
+   mk("p1", "Founder Breakfast: Pre-seed Stories", "Πρωινό ιδρυτών: ιστορίες pre-seed", "A morning roundtable where three founders shared how their first rounds actually closed.", "Πρωινή συζήτηση όπου τρεις ιδρυτές μοιράστηκαν πώς έκλεισαν πραγματικά τους πρώτους γύρους.", at(-4, 9), 11, "Tech Hub, London", "Tech Hub, Λονδίνο", 'Networking', 32, coverFor("event-p1", ["Founder Breakfast: Pre-seed Stories", 'Networking'], 800, 400), false, "CoFounderBay Team"),
   ];
  };
  const mockEvents = useMemo(() => buildMockEvents(), []);
@@ -200,41 +209,57 @@ export default function Events(_props: EventsProps = {}) {
    if (activeTab === 'My Events') filtered = filtered.filter((e) => registeredEvents.includes(e.id));
    if (activeTab === 'Bookmarked') filtered = filtered.filter((e) => bookmarkedEvents.includes(e.id));
    if (activeTab === 'Past') filtered = filtered.filter((e) => e.startsAt != null && e.startsAt < now);
-   if (activeTab === 'Upcoming' && !isDemoMode) filtered = filtered.filter((e) => e.startsAt == null || e.startsAt >= now);
+   // Both modes now: the demo list carries a sample past event, so a stale
+   // listing can no longer sit in Upcoming.
+   if (activeTab === 'Upcoming') filtered = filtered.filter((e) => e.startsAt == null || e.startsAt >= now);
    filtered = applyQuickFilter(filtered, quick, now);
    // Soonest first; past events newest first (the live list arrives unordered).
    return sortEvents(filtered, activeTab === 'Past' ? 'desc' : 'asc');
-  }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, isDemoMode, now, quick]);
+  }, [allEvents, typeFilter, activeTab, registeredEvents, bookmarkedEvents, now, quick]);
  const cities = useMemo(() => cityOptions(allEvents), [allEvents]);
  const dayGroups = useMemo(() => groupByDay(visibleEvents), [visibleEvents]);
  const dayHeading = (startsAt: number | null) => startsAt == null
   ? t('Date to be announced', 'Η ημερομηνία θα ανακοινωθεί')
   : formatDate(startsAt, { weekday: 'long', day: 'numeric', month: 'long' });
- const showEvent = (id: string) => {
-  setActiveTab('Upcoming');
+ const showEvent = (id: string, options?: { past?: boolean }) => {
+  setActiveTab(options?.past ? 'Past' : 'Upcoming');
   setQuick('all');
   setTypeFilter('All');
   setHighlighted(id);
   requestAnimationFrame(() => document.getElementById(`event-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   window.setTimeout(() => setHighlighted((current) => (current === id ? null : current)), 2400);
  };
- // Share sends what someone needs to decide: title, day, time and place.
+ // Honour ?event= once the list is known: a past event opens on the Past tab.
+ const requestedEvent = params.get('event');
+ useEffect(() => {
+  if (!requestedEvent) return;
+  const target = allEvents.find((event) => event.id === requestedEvent);
+  if (!target) return;
+  showEvent(requestedEvent, { past: target.startsAt != null && target.startsAt < Date.now() });
+ }, [allEvents, requestedEvent]);
+ // Share sends what someone needs to decide: the deep link plus title, day,
+ // time and place — parity: the sibling shares the event's own link.
  const shareEvent = async (event: Event) => {
-  const text = `${t(event.title, event.titleEl ?? event.title)} — ${t(event.date, event.dateEl)}, ${t(event.time, event.timeEl)} — ${t(event.location, event.locationEl ?? event.location)}`;
-  if (await copyText(text)) toast.success(t('Event details copied', 'Τα στοιχεία της εκδήλωσης αντιγράφηκαν'));
-  else toast.error(t('Copy did not work in this browser', 'Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή'));
+  const details = `${t(event.title, event.titleEl ?? event.title)} — ${t(event.date, event.dateEl)}, ${t(event.time, event.timeEl)} — ${t(event.location, event.locationEl ?? event.location)}`;
+  const result = await shareLink({ title: t(event.title, event.titleEl ?? event.title), text: details, url: absoluteUrl(`/events?event=${encodeURIComponent(event.id)}`) });
+  if (result === 'copied') toast.success(t('Event link copied', 'Ο σύνδεσμος της εκδήλωσης αντιγράφηκε'));
+  else if (result === 'failed') {
+   // Older browsers without clipboard access keep the plain-text copy.
+   if (await copyText(details)) toast.success(t('Event details copied', 'Τα στοιχεία της εκδήλωσης αντιγράφηκαν'));
+   else toast.error(t('Copy did not work in this browser', 'Η αντιγραφή δεν λειτούργησε σε αυτόν τον περιηγητή'));
+  }
  };
 
  // A counter on every tab, read from the same list the tab shows.
  const tabCounts = useMemo(() => {
   const byType = typeFilter === 'All' ? allEvents : allEvents.filter((e) => e.type === typeFilter);
   return {
-   Upcoming: byType.filter((e) => isDemoMode || e.startsAt == null || e.startsAt >= now).length,
+   Upcoming: byType.filter((e) => e.startsAt == null || e.startsAt >= now).length,
    'My Events': byType.filter((e) => registeredEvents.includes(e.id)).length,
    Past: byType.filter((e) => e.startsAt != null && e.startsAt < now).length,
    Bookmarked: byType.filter((e) => bookmarkedEvents.includes(e.id)).length,
   } as Record<string, number>;
- }, [allEvents, typeFilter, registeredEvents, bookmarkedEvents, isDemoMode, now]);
+ }, [allEvents, typeFilter, registeredEvents, bookmarkedEvents, now]);
 
  // The next event you have not signed up for, other than the one already at the top of the list — the card
  // used to repeat the list's first item word for word (round 11). Undated events count in the demo only.
@@ -391,7 +416,7 @@ export default function Events(_props: EventsProps = {}) {
              >
               <CalendarPlus className="w-3.5 h-3.5" />
              </button>
-             <button type="button" aria-label={t("Copy event details", "Αντιγραφή στοιχείων εκδήλωσης")} title={t("Copy event details", "Αντιγραφή στοιχείων εκδήλωσης")} onClick={() => { void shareEvent(event); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
+             <button type="button" aria-label={t("Share event", "Κοινοποίηση εκδήλωσης")} title={t("Copy the event link", "Αντιγραφή συνδέσμου εκδήλωσης")} onClick={() => { void shareEvent(event); }} className="p-1.5 text-stone-300 hover:text-stone-700 hover:bg-stone-50 rounded-lg transition-all">
               <Share2 className="w-3.5 h-3.5" />
              </button>
             </div>
