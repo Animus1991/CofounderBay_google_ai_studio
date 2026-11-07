@@ -1,6 +1,7 @@
 import {
  useState,
  useCallback,
+ useRef,
  useMemo, useEffect } from "react";
 import { useNavigate,
  useSearchParams } from 'react-router-dom';
@@ -47,7 +48,9 @@ import {
  Copy,
  Bookmark,
  BookOpen,
- Trash2
+ Trash2,
+ ArrowUp,
+ ArrowDown
 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -71,7 +74,7 @@ import { BUILDER_CONTENT, BUILDER_MODULES, builderStatus, readBuilderInputs } fr
 import { useAuth } from "../App";
 import { useUIStore } from "../stores/useUIStore";
 import { askAssistant } from "../lib/assistantBus";
-import { PITCH_SLIDES, draftPitch, effectivePitch, pitchMarkdown, slideStatus, writePitchSlide, type PitchSlideKey } from "../lib/pitch";
+import { PITCH_SLIDES, draftPitch, effectivePitch, movePitchSlide, pitchMarkdown, readPitchOrder, slideStatus, writePitchSlide, type PitchSlideKey } from "../lib/pitch";
 import { FOUNDER_TEMPLATES } from "../data/templates";
 import { copyText, downloadCsv, downloadWord, markdownToHtml, openPrintable, slugify } from "../lib/download";
 import { useLanguage } from "../lib/language";
@@ -169,6 +172,7 @@ export default function FounderTools({ user }: FounderToolsProps) {
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
  const toast = useToast();
+ const moveSlideRef = useRef<(direction: -1 | 1) => void>(() => undefined);
  // The tab lives in the URL (?tab=pitch); ?step=… still opens the builder at that step.
  const [searchParams, setSearchParams] = useSearchParams();
  const TOOL_TABS = ['dashboard', 'builder', 'pitch', 'applications', 'tools', 'templates'] as const;
@@ -199,6 +203,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
   { id: 'tab-dashboard', en: 'Show tools dashboard', el: 'Πίνακας εργαλείων', run: () => setActiveTab('dashboard') },
   { id: 'tab-builder', en: 'Open builder', el: 'Άνοιγμα δημιουργού', run: () => setActiveTab('builder') },
   { id: 'tab-pitch', en: 'Open pitch', el: 'Άνοιγμα pitch', run: () => setActiveTab('pitch') },
+  { id: 'slide-up', en: 'Move this slide up', el: 'Μετακίνηση διαφάνειας πάνω', run: () => moveSlideRef.current(-1) },
+  { id: 'slide-down', en: 'Move this slide down', el: 'Μετακίνηση διαφάνειας κάτω', run: () => moveSlideRef.current(1) },
   { id: 'tab-applications', en: 'Open applications', el: 'Άνοιγμα αιτήσεων', run: () => setActiveTab('applications') },
   { id: 'tab-tools', en: 'Open tool library', el: 'Βιβλιοθήκη εργαλείων', run: () => setActiveTab('tools') },
   { id: 'tab-templates', en: 'Open templates', el: 'Πρότυπα', run: () => setActiveTab('templates') },
@@ -333,12 +339,12 @@ export default function FounderTools({ user }: FounderToolsProps) {
   return step >= 1 && step <= BUILDER_MODULES.length ? step : 1;
  });
  const [pitchSlide, setPitchSlide] = useState(() => {
-  const index = PITCH_SLIDES.findIndex((slide) => slide.key === searchParams.get('slide'));
+  const index = readPitchOrder().indexOf(searchParams.get('slide') as PitchSlideKey);
   return index >= 0 ? index + 1 : 1;
  });
  const slideParam = searchParams.get('slide');
  useEffect(() => {
-  const index = PITCH_SLIDES.findIndex((slide) => slide.key === slideParam);
+  const index = readPitchOrder().indexOf(slideParam as PitchSlideKey);
   if (index >= 0) setPitchSlide(index + 1);
  }, [slideParam]);
 
@@ -364,7 +370,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
   team: t("Highlight unfair advantages — why is YOUR team the one to win this?", "Ανάδειξε τα unfair advantages — γιατί η δική σου ομάδα θα το κερδίσει;"),
   ask: t("Be specific: '$1.2M to hire 3 engineers and reach $500K ARR by Q4'.", "Πες το συγκεκριμένα: «$1.2M για 3 μηχανικούς και $500K ARR μέχρι το Q4»."),
  };
- const pitchSlides = PITCH_SLIDES.map((slide, index) => ({
+ const pitchOrder = useStored(readPitchOrder, [keys.pitchOrder]);
+ const pitchSlides = pitchOrder.map((key) => PITCH_SLIDES.find((slide) => slide.key === key)!).map((slide, index) => ({
   id: index + 1,
   key: slide.key,
   title: slide.en,
@@ -372,6 +379,13 @@ export default function FounderTools({ user }: FounderToolsProps) {
   status: slideStatus(pitchContent[slide.key]),
   tip: PITCH_TIPS[slide.key],
  }));
+ // The open slide moves and stays open, wherever it lands.
+ const moveSlide = (direction: -1 | 1) => {
+  const slide = pitchSlides[pitchSlide - 1];
+  if (!slide) return;
+  setPitchSlide(movePitchSlide(slide.key, direction).indexOf(slide.key) + 1);
+ };
+ moveSlideRef.current = moveSlide;
  const [editingSlide, setEditingSlide] = useState<PitchSlideKey | null>(null);
  const [slideDraft, setSlideDraft] = useState('');
  const startEditingSlide = (key: PitchSlideKey) => { setEditingSlide(key); setSlideDraft(pitchContent[key] ?? pitchDraft[key] ?? ''); };
@@ -1203,6 +1217,8 @@ export default function FounderTools({ user }: FounderToolsProps) {
           <div className="flex items-center gap-2">
            <Button variant="ghost" size="icon" title={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} aria-label={t("Ask the assistant to review this slide", "Ζήτα από τον βοηθό να ελέγξει τη διαφάνεια")} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; askAssistant(`Review my ${s?.title ?? 'pitch'} slide: ${(s && pitchContent[s.key]) || 'empty'}`, { agentId: 'a2' }); }}><Eye className="w-4 h-4" /></Button>
            <Button variant="ghost" size="icon" title={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-label={t("Edit this slide", "Επεξεργασία διαφάνειας")} aria-pressed={editingSlide !== null} className="rounded-lg text-stone-400 hover:text-stone-900" onClick={() => { const s = pitchSlides[pitchSlide - 1]; if (s) startEditingSlide(s.key); }}><Edit3 className="w-4 h-4" /></Button>
+           <Button variant="ghost" size="icon" title={t("Move this slide up", "Μετακίνηση πάνω")} aria-label={t("Move this slide up", "Μετακίνηση πάνω")} disabled={pitchSlide <= 1} onClick={() => moveSlide(-1)}><ArrowUp className="w-4 h-4" aria-hidden="true" /></Button>
+           <Button variant="ghost" size="icon" title={t("Move this slide down", "Μετακίνηση κάτω")} aria-label={t("Move this slide down", "Μετακίνηση κάτω")} disabled={pitchSlide >= pitchSlides.length} onClick={() => moveSlide(1)}><ArrowDown className="w-4 h-4" aria-hidden="true" /></Button>
            {(() => { const s = pitchSlides[pitchSlide - 1]; return s && (pitchContent[s.key] ?? '').trim() ? (
             <Button variant="ghost" size="icon" title={t("Clear this slide's text", "Καθαρισμός κειμένου διαφάνειας")} aria-label={t("Clear this slide's text", "Καθαρισμός κειμένου διαφάνειας")} className="rounded-lg text-stone-400 hover:text-red-600" onClick={() => clearSlide(s.key, slideTitle(s.title))}><Trash2 className="w-4 h-4" /></Button>
            ) : null; })()}

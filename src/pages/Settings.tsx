@@ -38,6 +38,7 @@ import { useAuth } from "../App";
 import { useToast } from "../context/ToastContext";
 import { changeAccountPassword, deleteAccount, persistAccount, signOutAccount } from "../lib/account";
 import { EXPORT_GROUPS, exportGroup, exportMyData } from "../lib/dataExport";
+import EmailVerificationRow from "../components/settings/EmailVerificationRow";
 import { profileCompleteness } from "../lib/profileCompleteness";
 import { mergeFitIntoViewer } from "../lib/fitCheck";
 
@@ -436,6 +437,7 @@ export default function Settings() {
               <Field label={t("Email", "Email")}>
                 <input className={inputClass} type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} />
               </Field>
+              <EmailVerificationRow />
               <Field label={t("Phone", "Τηλέφωνο")}>
                 <input className={inputClass} value={form.phone} onChange={(e) => setField("phone", e.target.value)} placeholder="+30 …" />
               </Field>

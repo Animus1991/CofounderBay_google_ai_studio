@@ -52,6 +52,7 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
+import PortfolioSection from '../components/profile/PortfolioSection';
 import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, writeProfileLocal, type OpenToKind } from '../lib/localLists';
 import RelTime from '../components/ui/RelTime';
 import { useStored } from '../lib/useStored';
@@ -1008,6 +1009,7 @@ export default function ProfilePage() {
 
     {/* Proof: skills and availability */}
     <div className="min-w-0 space-y-6">
+     <PortfolioSection items={profile.portfolio ?? []} editable={isOwnProfile} onChange={(portfolio) => { void handleSave({ portfolio }); }} />
 {/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
       <h3 className="text-sm font-semibold text-stone-900">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>

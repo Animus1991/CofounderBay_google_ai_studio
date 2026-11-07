@@ -235,6 +235,7 @@ export const keys = {
   startup: 'cfb.startup',
   builder: 'cfb.builderAnswers',
   pitch: 'cfb.pitchDeck',
+  pitchOrder: 'cfb.pitchOrder',
   diagnostic: 'cfb.diagnostic',
   canvas: 'cfb.leanCanvas',
   focus: 'cfb.focusStats',

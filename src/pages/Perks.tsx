@@ -22,6 +22,7 @@ import { SEGMENT_TRACK, segmentCount, segmentItem } from "../lib/segmented";
 import { keys, listKeys, readIds } from "../lib/localLists";
 import { perkDollarTotal } from "../lib/perks";
 import { useStored } from "../lib/useStored";
+import { normalizeStage } from "../lib/compatibility";
 import { savedPerks, toggleId, useEntity } from "../lib/entities";
 import { useT } from "../lib/language";
 import { labelOf } from "../lib/labels";
@@ -63,6 +64,11 @@ type PerkCard = {
  featured?: boolean;
 };
 
+// Which stage a perk suits, for the sample catalogue: infrastructure and tools from
+// the first day, sales and scale once there is something to sell.
+const EARLY_STAGES = ['Idea', 'Pre-seed'];
+const PERK_FOR_EARLY = new Set(['aws', 'gcp', 'notion', 'stripe']);
+
 // Demo-only catalogue — shown to the demo account, never to real members.
 const DEMO_PERKS: PerkCard[] = [
  { id: "aws", name: "Amazon Web Services", category: "cloud", value: "$100,000 Credits", description: "AWS Activate provides startups with the resources they need to get started on AWS.", logo: "AWS" },
@@ -91,11 +97,12 @@ function perkFromDoc(doc: CatalogDoc): PerkCard {
 
 export default function Perks() {
  const t = useT();
- const { isDemoMode } = useAuth();
+ const { isDemoMode, profile } = useAuth();
  const [activeCategory, setActiveCategory] = useState<'all' | 'cloud' | 'finance' | 'marketing' | 'productivity'>('all');
  const [perkQuery, setPerkQuery] = useState('');
  const [savedOnly, setSavedOnly] = useState(false);
  const [claimedOnly, setClaimedOnly] = useState(false);
+ const [stageFirst, setStageFirst] = useState(false);
  const saved = useEntity(savedPerks);
  const claimed = useStored(() => readIds(listKeys.perks), [keys.perks]);
  const ask = (prompt: string) => askAssistant(prompt);
@@ -115,6 +122,7 @@ export default function Perks() {
  usePageControls(() => [
   { id: 'all-perks', en: 'Show all perks', el: 'Όλες οι παροχές', run: () => { setActiveCategory('all'); setPerkQuery(''); setSavedOnly(false); setClaimedOnly(false); } },
   { id: 'claimed-perks', en: 'Show the perks I claimed', el: 'Οι παροχές που εξαργύρωσα', run: () => setClaimedOnly(true) },
+  { id: 'stage-first', en: 'Put the perks for my stage first', el: 'Πρώτα για το στάδιό μου', run: () => setStageFirst(true) },
   { id: 'saved-perks', en: 'Show saved perks', el: 'Αποθηκευμένες παροχές', run: () => setSavedOnly(true) },
  ], []);
 
@@ -140,6 +148,10 @@ export default function Perks() {
   if (claimedOnly && !claimed.includes(perkClaimId(perk.name))) return false;
   return !q || perk.name.toLowerCase().includes(q) || perk.category.toLowerCase().includes(q) || perk.description.toLowerCase().includes(q);
  });
+ const myStage = normalizeStage(profile?.stage);
+ const earlyStage = myStage ? EARLY_STAGES.includes(myStage) : false;
+ const fitsMyStage = (perk: PerkCard) => PERK_FOR_EARLY.has(perk.id) === earlyStage;
+ const visiblePerks = stageFirst && myStage ? [...filteredPerks].sort((a, b) => Number(fitsMyStage(b)) - Number(fitsMyStage(a))) : filteredPerks;
  const categoryCount = (id: string) => (id === 'all' ? perks.length : perks.filter((perk) => perk.category === id).length);
  const savedCount = perks.filter((perk) => saved.includes(perk.id)).length;
  const claimedCount = perks.filter((perk) => claimed.includes(perkClaimId(perk.name))).length;
@@ -189,6 +201,11 @@ export default function Perks() {
      <Button type="button" variant={savedOnly ? 'primary' : 'outline'} aria-pressed={savedOnly} className="h-9 px-4 shrink-0" onClick={() => setSavedOnly((on) => !on)}>
       <Star className="w-4 h-4 mr-2" fill={savedOnly ? 'currentColor' : 'none'} aria-hidden="true" /> {t(`Saved (${savedCount})`, `Αποθηκευμένες (${savedCount})`)}
      </Button>
+     {myStage && isDemoMode && (
+      <Button type="button" variant={stageFirst ? 'primary' : 'outline'} aria-pressed={stageFirst} className="h-9 px-4 shrink-0" onClick={() => setStageFirst((value) => !value)}>
+       {t('First for my stage', 'Πρώτα για το στάδιό μου')}
+      </Button>
+     )}
      <Button type="button" variant={claimedOnly ? 'primary' : 'outline'} aria-pressed={claimedOnly} className="h-9 px-4 shrink-0" onClick={() => setClaimedOnly((value) => !value)}>
       <Check className="w-4 h-4 mr-2" aria-hidden="true" /> {t(`Claimed (${claimedCount})`, `Εξαργυρωμένες (${claimedCount})`)}
      </Button>
@@ -221,7 +238,7 @@ export default function Perks() {
    )}
    {/* Perks Grid */}
    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    {filteredPerks.map((perk) => {
+    {visiblePerks.map((perk) => {
      const perkUrl = safeWebUrl(perk.url);
      return (
      <Card key={perk.id} className="group hover:border-stone-900 transition-all h-full" contentClassName="flex flex-col gap-3 h-full">

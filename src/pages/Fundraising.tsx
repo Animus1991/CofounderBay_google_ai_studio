@@ -60,11 +60,16 @@ import { SEGMENT_TRACK, segmentItem } from "../lib/segmented";
 import { labelOf } from "../lib/labels";
 import { useT, getLang } from "../lib/language";
 import { formatDate } from "../lib/dates";
-import { addRoomFile, addSession, followUps, keys, listKeys, PIPELINE_STAGES, readIds, readRoomFiles, readRound, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
+import { addRoomFile, addSession, followUps, keys, listKeys, PIPELINE_STAGES, readIds, readMilestones, readRoomFiles, readRound, readValue, removePipelineInvestor, setPipelineStage, toggleId, trackApplication, upsertPipelineInvestor, writeRound, type RoomFile, type Round, type RoundInvestor } from "../lib/localLists";
 import { investorStageLabel } from "../lib/investorStage";
 import EmptyHint, { AskLink, ClearFiltersButton } from "../components/ui/EmptyHint";
 import { usePeople } from "../lib/directory";
 import { useStored } from "../lib/useStored";
+import Modal from "../components/ui/Modal";
+import { draftInvestorUpdate } from "../lib/investorUpdate";
+import { downloadMarkdown } from "../lib/download";
+import { useToast } from "../context/ToastContext";
+import { useLanguage } from "../lib/language";
 import { useProtectedDraft } from "../lib/useProtectedDraft";
 import DraftNotice from "../components/ui/DraftNotice";
 import SaveStatus from "../components/ui/SaveStatus";
@@ -128,6 +133,17 @@ export default function Fundraising({ user }: FundraisingProps) {
  const { isDemoMode, profile } = useAuth();
  const navigate = useNavigate();
  const round = useStored(() => readRound(), [keys.round]);
+ const toast = useToast();
+ const { mode } = useLanguage();
+ const [updateDraft, setUpdateDraft] = useState<string | null>(null);
+ const openInvestorUpdate = () => setUpdateDraft(draftInvestorUpdate({
+  venture: String(readValue<Record<string, unknown>>(keys.startup, {}).name ?? ''),
+  round,
+  milestones: readMilestones(),
+  lang: mode === 'el' ? 'el' : 'en',
+ }));
+ const openInvestorUpdateRef = useRef(openInvestorUpdate);
+ openInvestorUpdateRef.current = openInvestorUpdate;
  const { people: directoryMembers } = usePeople(user.id);
  const [toastMsg, setToastMsg] = useState<string | null>(null);
  const showToast = useCallback((msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2500); }, []);
@@ -212,6 +228,7 @@ export default function Fundraising({ user }: FundraisingProps) {
   { id: 'show-programs', en: 'Show programs', el: 'Εμφάνιση προγραμμάτων', run: () => setActiveTab('programs') },
   { id: 'show-opportunities', en: 'Show opportunities', el: 'Εμφάνιση ευκαιριών', run: () => setActiveTab('opportunities') },
   { id: 'edit-round', en: 'Edit round', el: 'Επεξεργασία γύρου', run: openRoundEditor },
+  { id: 'investor-update', en: 'Draft an investor update', el: 'Πρόχειρο ενημέρωσης επενδυτών', run: () => openInvestorUpdateRef.current() },
   { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
  ], [round]);
  const [investorSearch, setInvestorSearch] = useState("");
@@ -466,6 +483,17 @@ export default function Fundraising({ user }: FundraisingProps) {
    description={t('Round, investors, due diligence and programs.', 'Γύρος, επενδυτές, δέουσα επιμέλεια και προγράμματα.')}
    maxWidth="full"
    actions={
+    <div className="flex flex-wrap items-center gap-2">
+    <button
+     type="button"
+     data-ui="button"
+     data-testid="investor-update-open"
+     onClick={openInvestorUpdate}
+     className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:bg-stone-50 min-h-9"
+    >
+     <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+     {t("Investor update", "Ενημέρωση επενδυτών")}
+    </button>
     <button
      type="button"
      data-ui="button"
@@ -476,6 +504,7 @@ export default function Fundraising({ user }: FundraisingProps) {
      <Briefcase className="w-3.5 h-3.5" aria-hidden="true" />
      {t("My Deal Room", "Το Deal Room μου")}
     </button>
+    </div>
    }
   >
    <div className="space-y-5">
@@ -1375,6 +1404,24 @@ export default function Fundraising({ user }: FundraisingProps) {
     )}
 
     {/* ── MODALS ─────────────────────────────────────────── */}
+
+    {/* The draft comes from stored data; nothing leaves the page until the founder takes it. */}
+    <Modal open={updateDraft !== null} onClose={() => setUpdateDraft(null)} title={t('Investor update', 'Ενημέρωση επενδυτών')} description={t('A draft from your round and milestones. Edit it, then copy or download it.', 'Πρόχειρο από τον γύρο και τα ορόσημά σου. Διόρθωσέ το, και μετά αντέγραψέ το ή κατέβασέ το.')} size="lg">
+     <div className="space-y-3">
+      <textarea
+       aria-label={t('Investor update text', 'Κείμενο ενημέρωσης επενδυτών')}
+       data-testid="investor-update-text"
+       rows={14}
+       value={updateDraft ?? ''}
+       onChange={(e) => setUpdateDraft(e.target.value)}
+       className="w-full rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-800 focus:border-stone-400 focus:outline-none"
+      />
+      <div className="flex flex-wrap justify-end gap-2">
+       <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown('investor-update.md', updateDraft ?? '')}>{t('Download', 'Λήψη')}</Button>
+       <Button type="button" size="sm" onClick={() => { void navigator.clipboard.writeText(updateDraft ?? '').then(() => toast.success(t('Copied', 'Αντιγράφηκε')), () => toast.error(t('It could not be copied', 'Δεν αντιγράφηκε'))); }}>{t('Copy', 'Αντιγραφή')}</Button>
+      </div>
+     </div>
+    </Modal>
 
     {/* Meeting Scheduler Modal */}
     {showMeetingScheduler && (

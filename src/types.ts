@@ -736,7 +736,16 @@ export interface Endorsement {
 
 export type Tenant = TenantConfig;
 
+export type PortfolioItem = {
+  id: string;
+  title: string;
+  role?: string;
+  url?: string;
+  imageUrl?: string;
+};
+
 export type UserProfile = User & {
+  portfolio?: PortfolioItem[];
   uid: string;
   headline: string;
   headlineEl?: string;

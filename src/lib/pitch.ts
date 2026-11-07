@@ -48,6 +48,25 @@ export function writePitchSlide(key: PitchSlideKey, text: string): PitchContent 
   return next;
 }
 
+/** The deck in the founder's order: every slide once, whatever an old list held. */
+export function readPitchOrder(): PitchSlideKey[] {
+  const known = PITCH_SLIDES.map((slide) => slide.key) as PitchSlideKey[];
+  const stored = readValue<unknown>(keys.pitchOrder, []);
+  const saved = (Array.isArray(stored) ? stored : []).filter((key, index, all): key is PitchSlideKey => known.includes(key as PitchSlideKey) && all.indexOf(key) === index);
+  return [...saved, ...known.filter((key) => !saved.includes(key))];
+}
+
+/** One step up or down; at either end nothing moves. */
+export function movePitchSlide(key: PitchSlideKey, direction: -1 | 1): PitchSlideKey[] {
+  const order = readPitchOrder();
+  const from = order.indexOf(key);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= order.length) return order;
+  [order[from], order[to]] = [order[to]!, order[from]!];
+  writeValue(keys.pitchOrder, order);
+  return order;
+}
+
 export function slideStatus(text: string | undefined): SlideStatus {
   const length = (text ?? '').trim().length;
   if (length === 0) return 'pending';
@@ -130,7 +149,7 @@ export function pitchProgress() {
 export function pitchMarkdown(content: PitchContent, lang: 'en' | 'el', title: string): string {
   const empty = lang === 'el' ? '_(κενό — συμπλήρωσέ το στα Εργαλεία ιδρυτή → Pitch)_' : '_(empty — fill it in Founder Tools → Pitch)_';
   const lines = [`# ${title}`, ''];
-  PITCH_SLIDES.forEach((slide, index) => {
+  readPitchOrder().map((key) => PITCH_SLIDES.find((item) => item.key === key)!).forEach((slide, index) => {
     lines.push(`## ${index + 1}. ${lang === 'el' ? slide.el : slide.en}`, '', (content[slide.key] ?? '').trim() || empty, '');
   });
   return lines.join('\n');
