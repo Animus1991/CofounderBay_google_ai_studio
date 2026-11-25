@@ -6,9 +6,7 @@ import {
   getDocs, 
   query, 
   where, 
-  orderBy, 
   limit, 
-  updateDoc,
   setDoc
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -54,9 +52,11 @@ export const determineUserState = async (userId: string): Promise<UserBehavioral
     if (completionScore < 70) return UserBehavioralState.PROFILE_INCOMPLETE;
 
     const xpEventsRef = collection(db, 'xpEvents');
-    const recentEventsQuery = query(xpEventsRef, where('userId', '==', userId), orderBy('createdAt', 'desc'), limit(10));
+    const recentEventsQuery = query(xpEventsRef, where('userId', '==', userId), limit(25));
     const recentEventsSnap = await getDocs(recentEventsQuery);
-    const recentEvents = recentEventsSnap.docs.map(doc => doc.data() as XPEvent);
+    const recentEvents = recentEventsSnap.docs
+      .map(doc => doc.data() as XPEvent)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (recentEvents.length === 0) return UserBehavioralState.STUCK_INACTIVE;
 
@@ -86,7 +86,7 @@ export const determineUserState = async (userId: string): Promise<UserBehavioral
 };
 
 export const getNextBestActions = async (userId: string): Promise<NextBestAction[]> => {
-  if (!userId || userId === 'demo-user' || !auth.currentUser) {
+  if (!userId || userId === 'demo-user' || !auth.currentUser || auth.currentUser.uid !== userId) {
     return [
       {
         id: 'resume-research',
@@ -174,7 +174,7 @@ export const getNextBestActions = async (userId: string): Promise<NextBestAction
 };
 
 export const logNudgeExposure = async (userId: string, actionId: string, surface: string) => {
-  if (!userId || userId === 'demo-user' || !auth.currentUser) return;
+  if (!userId || userId === 'demo-user' || !auth.currentUser || auth.currentUser.uid !== userId) return;
   try {
     const nudgeRef = doc(db, 'nudgeExposures', `${userId}_${actionId}`);
     await setDoc(nudgeRef, {
@@ -183,20 +183,20 @@ export const logNudgeExposure = async (userId: string, actionId: string, surface
       surface,
       exposedAt: new Date().toISOString(),
       converted: false
-    });
+    }, { merge: true });
   } catch (error) {
     console.warn('Error logging nudge exposure:', error);
   }
 };
 
 export const logNudgeConversion = async (userId: string, actionId: string) => {
-  if (!userId || userId === 'demo-user' || !auth.currentUser) return;
+  if (!userId || userId === 'demo-user' || !auth.currentUser || auth.currentUser.uid !== userId) return;
   try {
     const nudgeRef = doc(db, 'nudgeExposures', `${userId}_${actionId}`);
-    await updateDoc(nudgeRef, {
+    await setDoc(nudgeRef, {
       converted: true,
       convertedAt: new Date().toISOString()
-    });
+    }, { merge: true });
   } catch (error) {
     console.warn('Error logging nudge conversion:', error);
   }
