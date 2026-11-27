@@ -565,6 +565,8 @@ export type EndorsementRecord = {
   recipientId: string;
   recipientName: string;
   skillId: string;
+  relationship: 'Collaborator' | 'Co-Founder' | 'Mentor' | 'Investor' | 'Peer';
+  verified: boolean;
   comment: string;
   createdAt: number;
 };
@@ -574,6 +576,8 @@ function slug(value: string) {
 }
 
 function parseEndorsement(id: string, data: Record<string, unknown>): EndorsementRecord {
+  const rel = String(data.relationship || 'Collaborator');
+  const relationship = (['Collaborator', 'Co-Founder', 'Mentor', 'Investor', 'Peer'].includes(rel) ? rel : 'Collaborator') as EndorsementRecord['relationship'];
   return {
     id,
     endorserId: String(data.endorserId || data.authorId || ''),
@@ -582,6 +586,8 @@ function parseEndorsement(id: string, data: Record<string, unknown>): Endorsemen
     recipientId: String(data.recipientId || data.endorseeId || ''),
     recipientName: String(data.recipientName || ''),
     skillId: String(data.skillId || ''),
+    relationship,
+    verified: data.verified !== false,
     comment: String(data.comment || ''),
     createdAt: toMillis(data.createdAt) ?? 0,
   };
@@ -606,7 +612,12 @@ export async function endorsementsBy(endorserId: string): Promise<EndorsementRec
   }
 }
 
-export async function endorseSkill(recipient: { id: string; fullName: string }, skill: string, comment: string): Promise<EndorsementRecord> {
+export async function endorseSkill(
+  recipient: { id: string; fullName: string },
+  skill: string,
+  comment: string,
+  relationship: EndorsementRecord['relationship'] = 'Collaborator',
+): Promise<EndorsementRecord> {
   const actor = requireMe();
   if (recipient.id === actor.uid) throw new Error('self');
   const id = `${recipient.id}_${actor.uid}_${slug(skill)}`;
@@ -619,13 +630,15 @@ export async function endorseSkill(recipient: { id: string; fullName: string }, 
     recipientId: recipient.id,
     recipientName: recipient.fullName.slice(0, 100),
     skillId: skill.slice(0, 60),
+    relationship,
+    verified: true,
     comment: comment.trim().slice(0, 500),
     createdAt: serverTimestamp(),
   };
   await setDoc(doc(db, 'endorsements', id), record);
   await notify(recipient.id, {
     type: 'endorsement',
-    title: `${actor.name} confirmed your skill: ${skill}`,
+    title: `${actor.name} verified your skill: ${skill}`,
     titleEl: `Επιβεβαίωση δεξιότητας από ${actor.name}: ${skill}`,
     body: comment.trim().slice(0, 280),
     href: '/profile',

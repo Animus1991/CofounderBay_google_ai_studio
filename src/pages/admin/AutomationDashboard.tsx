@@ -338,7 +338,7 @@ const logMessage = (message: string) => {
 
         {/* Rules List */}
         {loading ? (
-         <div className="bg-white rounded-2xl border border-stone-100 p-3">
+         <div className="bg-white rounded-lg border border-stone-200/80 p-3">
           <SkeletonList count={4} />
          </div>
         ) : filteredRules.length === 0 ? (
@@ -409,7 +409,7 @@ const logMessage = (message: string) => {
               </div>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-stone-100">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
               <div className="space-y-2">
                <p className="text-micro">{t('Trigger', 'Εκδήλωση')}</p>
                <div className="flex items-center gap-2 text-xs font-medium text-stone-700">

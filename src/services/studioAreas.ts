@@ -5,8 +5,9 @@
  */
 import { PITCH_SLIDES, effectivePitch, readPitch, slideStatus, writePitchSlide, type PitchSlideKey } from '../lib/pitch';
 import { LEGAL_CHECKLIST, isLegalDone, legalProgress, readLegalChecklist, setLegalItem } from '../lib/legalChecklist';
-import { readFocusToday } from '../lib/focusStats';
-import { keys, logActivity, readSavedSearches, writeValue } from '../lib/localLists';
+import { addFocusSession, readFocusToday } from '../lib/focusStats';
+import { addLocalEndorsement, addSavedSearch, keys, logActivity, readDiscoveryFilters, readEndorsements, readIds, readSavedSearches, removeLocalEndorsement, removeSavedSearch, writeValue } from '../lib/localLists';
+import { directoryPeople, findPerson, type Person } from '../lib/peopleSource';
 import type { AssistantLink, AssistantProposal, AssistantResult } from './assistantOps';
 
 type Proposer = (plan: AssistantProposal, base: { tool: string; href?: string; links: AssistantLink[] }) => AssistantResult;
@@ -157,6 +158,45 @@ export function legalToggleResult(toggle: { id: string; done: boolean }, propose
   );
 }
 
+/** "/focus log 25", "Log a 25-minute focus session", "Κατάγραψε συνεδρία συγκέντρωσης 25 λεπτών". */
+export function parseFocusLog(query: string): number | null {
+  const folded = fold(query);
+  const slash = folded.match(/^\/focus\s+(?:log|add)(?:\s+(\d{1,3}))?\b/);
+  const en = folded.match(/\b(?:log|record|add)\s+(?:a\s+)?(?:(\d{1,3})[\s-]*(?:min(?:ute)?s?|m)\s+)?focus\s+(?:session|block|timer)(?:\s+(?:of|for)\s+(\d{1,3})\s*(?:min(?:ute)?s?|m))?/);
+  const el = folded.match(/(?:καταγραψ\S*|προσθεσ\S*)\s+(?:μια\s+)?συνεδρια\s+(?:συγκεντρωσ\S*|focus)(?:\s+(\d{1,3})\s*(?:λεπτ\S*|m))?/);
+  const hit = slash ?? en ?? el;
+  if (!hit) return null;
+  const raw = Number(hit[1] || hit[2] || 25);
+  return Math.max(5, Math.min(180, Number.isFinite(raw) ? raw : 25));
+}
+
+export function focusLogResult(minutes: number, propose: boolean, proposalResult: Proposer): AssistantResult {
+  const before = readFocusToday();
+  const link: AssistantLink = { href: '/workspace', en: 'Open workspace', el: 'Άνοιγμα χώρου εργασίας' };
+  const apply = (): AssistantResult => {
+    const next = addFocusSession(minutes);
+    const totalMinutes = Math.round(next.seconds / 60);
+    logActivity({ kind: 'task', title: `Logged ${minutes}m focus session`, titleEl: `Καταγράφηκε συνεδρία συγκέντρωσης ${minutes} λεπτών`, href: '/workspace', byAssistant: true });
+    return {
+      tool: 'focus-log',
+      en: `Logged a ${minutes}-minute focus session. Today: ${next.sessions} session${next.sessions === 1 ? '' : 's'} (${totalMinutes} minutes) — same counter Workspace shows.`,
+      el: `Καταγράφηκε συνεδρία συγκέντρωσης ${minutes} λεπτών. Σήμερα: ${next.sessions} συνεδρίες (${totalMinutes} λεπτά) — ο ίδιος μετρητής με τον Χώρο Εργασίας.`,
+      href: '/workspace',
+      links: [link],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Log a ${minutes}-minute focus session for today?`, el: `Καταγραφή συνεδρίας συγκέντρωσης ${minutes} λεπτών για σήμερα;` },
+      reversal: 'full',
+      apply,
+      undo: () => { writeValue(keys.focus, before); },
+    },
+    { tool: 'focus-log', href: '/workspace', links: [link] },
+  );
+}
+
 export function isFocusQuery(folded: string): boolean {
   return /^\/focus\b/.test(folded) || /\bfocus\s*(time|today|sessions?|stats|minutes)\b/.test(folded) || /\bhow (long|much) did i focus\b/.test(folded) || /(χρονο|ωρες|λεπτα).{0,15}(συγκεντρωσ|focus)|focus.{0,10}σημερα/.test(folded);
 }
@@ -178,6 +218,46 @@ export function focusResult(): AssistantResult {
   };
 }
 
+/** "/searches save Fintech CTO", "Save search Fintech CTO", "Αποθήκευσε αναζήτηση Fintech CTO". */
+export function parseSaveSearch(query: string): string | null {
+  const slash = query.match(/^\/searches\s+(?:save|add)\s+(.+)$/i);
+  const en = query.match(/^(?:save|bookmark)\s+(?:a\s+|my\s+|the\s+)?(?:discovery\s+)?search(?:\s+(?:for|as|called|:))?\s+(.+)$/i);
+  const el = query.match(/^(?:αποθηκευσε|αποθήκευσε)\s+(?:την\s+|μια\s+)?(?:αναζητηση|αναζήτηση)(?:\s+(?:για|ως|:))?\s+(.+)$/i);
+  const hit = slash ?? en ?? el;
+  if (!hit) return null;
+  const label = clean(hit[1] ?? '').slice(0, 80);
+  return label || null;
+}
+
+export function saveSearchResult(label: string, propose: boolean, proposalResult: Proposer): AssistantResult {
+  const link: AssistantLink = { href: '/discovery', en: 'Open discovery', el: 'Άνοιγμα εξερεύνησης' };
+  let createdId = '';
+  const apply = (): AssistantResult => {
+    const current = readDiscoveryFilters();
+    const item = addSavedSearch({ ...current, q: label }, label);
+    createdId = item.id;
+    const total = readSavedSearches().length;
+    logActivity({ kind: 'tool', title: `Saved search: ${label}`, titleEl: `Αποθηκεύτηκε αναζήτηση: ${label}`, href: '/discovery', byAssistant: true });
+    return {
+      tool: 'save-search',
+      en: `Saved search “${label}” (${total} total) — same list Discovery shows.`,
+      el: `Αποθηκεύτηκε η αναζήτηση «${label}» (${total} συνολικά) — η ίδια λίστα με την Εξερεύνηση.`,
+      href: '/discovery',
+      links: [link],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: { en: `Save Discovery search “${label}”?`, el: `Αποθήκευση αναζήτησης Εξερεύνησης «${label}»;` },
+      reversal: 'full',
+      apply,
+      undo: () => { if (createdId) removeSavedSearch(createdId); },
+    },
+    { tool: 'save-search', href: '/discovery', links: [link] },
+  );
+}
+
 export function isSavedSearchQuery(folded: string): boolean {
   return /^\/searches\b/.test(folded) || /\bsaved\s+searches?\b/.test(folded) || /αποθηκευμεν.{0,6}αναζητησ/.test(folded);
 }
@@ -197,3 +277,184 @@ export function savedSearchesResult(): AssistantResult {
     links: [link],
   };
 }
+
+export function isUnhidePeopleQuery(folded: string): boolean {
+  return /^\/unhide\b/.test(folded)
+    || /\b(unhide|restore|show)\s+(all\s+)?hidden\s+(members?|people|profiles?|founders?)\b/.test(folded)
+    || /\bunhide\s+(everyone|all\s+members|all\s+people)\b/.test(folded)
+    || /(επαναφορ|εμφανισ|ξεκρυψ).{0,20}κρυμμεν.{0,15}(μελ|προφιλ|ανθρωπ)/.test(folded);
+}
+
+export function unhidePeopleResult(propose: boolean, proposalResult: Proposer): AssistantResult {
+  const before = readIds(keys.hiddenPeople);
+  const link: AssistantLink = { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' };
+  const apply = (): AssistantResult => {
+    writeValue(keys.hiddenPeople, []);
+    logActivity({ kind: 'settings', title: 'Restored hidden members', titleEl: 'Επαναφορά κρυμμένων μελών', href: '/matches', byAssistant: true });
+    return {
+      tool: 'unhide-people',
+      en: before.length === 0
+        ? 'No members were hidden — Matches and Explore already show everyone.'
+        : `Restored ${before.length} hidden member${before.length === 1 ? '' : 's'}. They appear in Matches and Explore again.`,
+      el: before.length === 0
+        ? 'Κανένα μέλος δεν ήταν κρυμμένο — οι Αντιστοιχίσεις και η Εξερεύνηση δείχνουν ήδη όλους.'
+        : `Επανήλθαν ${before.length} κρυμμένα μέλη. Εμφανίζονται ξανά στις Αντιστοιχίσεις και την Εξερεύνηση.`,
+      href: '/matches',
+      links: [link],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: before.length > 0 ? `Restore ${before.length} hidden member${before.length === 1 ? '' : 's'} to Matches and Explore?` : 'Restore hidden members to Matches and Explore?',
+        el: before.length > 0 ? `Επαναφορά ${before.length} κρυμμένων μελών στις Αντιστοιχίσεις και την Εξερεύνηση;` : 'Επαναφορά κρυμμένων μελών στις Αντιστοιχίσεις και την Εξερεύνηση;',
+      },
+      reversal: 'full',
+      apply,
+      undo: () => { writeValue(keys.hiddenPeople, before); },
+    },
+    { tool: 'unhide-people', href: '/matches', links: [link] },
+  );
+}
+
+function matchPerson(text: string): Person | undefined {
+  const folded = fold(text);
+  const pool = directoryPeople();
+  return (
+    pool.find((p) => folded.includes(fold(p.fullName))) ??
+    pool.find((p) => {
+      const first = fold(p.fullName.split(' ')[0] ?? '');
+      return first.length >= 3 && new RegExp(`(?:^|[^a-zα-ω])${first}(?:$|[^a-zα-ω])`).test(folded);
+    })
+  );
+}
+
+/** "/endorse Sarah Chen: React", "Endorse Sarah Chen for React", "Verify Sarah Chen for React", "Κάνε σύσταση στη Sarah Chen για React". */
+export function parseEndorseSkill(query: string): { person: Person; skill: string; comment?: string } | null {
+  const slash = query.match(/^\/endorse(?:ment)?\s+([^:–-]+?)\s*[:–-]\s*([^|]+?)(?:\s*\|\s*(.+))?$/i);
+  if (slash) {
+    const person = matchPerson(slash[1] ?? '');
+    const skill = clean(slash[2] ?? '').slice(0, 60);
+    const comment = slash[3] ? clean(slash[3]).slice(0, 240) : undefined;
+    if (person && skill) return { person, skill, comment };
+  }
+  const en = query.match(/^(?:endorse|verify)\s+(.{2,45}?)\s+(?:for|in|on)\s+([A-Za-z0-9+#./&\s-]{2,45}?)(?:\s*[:–-]\s*(.+))?$/i);
+  if (en) {
+    const person = matchPerson(en[1] ?? '');
+    const skill = clean(en[2] ?? '').slice(0, 60);
+    const comment = en[3] ? clean(en[3]).slice(0, 240) : undefined;
+    if (person && skill) return { person, skill, comment };
+  }
+  const el = query.match(/^(?:κανε\s+συσταση|κάνε\s+σύσταση|επαληθευσε|επαλήθευσε|συστησε|σύστησε)\s+(?:τον|την|το|στ\S+)?\s*(.{2,45}?)\s+(?:για|σε)\s+(.{2,45}?)(?:\s*[:–-]\s*(.+))?$/i);
+  if (el) {
+    const person = matchPerson(el[1] ?? '');
+    const skill = clean(el[2] ?? '').slice(0, 60);
+    const comment = el[3] ? clean(el[3]).slice(0, 240) : undefined;
+    if (person && skill) return { person, skill, comment };
+  }
+  return null;
+}
+
+export function endorseSkillResult(
+  input: { person: Person; skill: string; comment?: string },
+  propose: boolean,
+  proposalResult: Proposer,
+): AssistantResult {
+  const href = `/profile/${input.person.id}`;
+  const link: AssistantLink = { href, en: `Open ${input.person.fullName}'s profile`, el: `Άνοιγμα προφίλ ${input.person.fullName}` };
+  let createdId = '';
+  const apply = (): AssistantResult => {
+    const entry = addLocalEndorsement({
+      endorserId: 'demo-user',
+      endorserName: 'Demo Founder',
+      endorserRole: 'Founder',
+      recipientId: input.person.id,
+      recipientName: input.person.fullName,
+      skillId: input.skill,
+      relationship: 'Collaborator',
+      comment: input.comment,
+    });
+    createdId = entry.id;
+    const totalForPerson = readEndorsements(input.person.id).length;
+    logActivity({
+      kind: 'profile',
+      title: `Verified ${input.person.fullName} for ${input.skill}`,
+      titleEl: `Επαληθεύτηκε η δεξιότητα ${input.skill} για ${input.person.fullName}`,
+      href,
+      byAssistant: true,
+    });
+    return {
+      tool: 'endorse-skill',
+      en: `Verified ${input.person.fullName} for ${input.skill} (${totalForPerson} verified skill badge${totalForPerson === 1 ? '' : 's'} on their profile).`,
+      el: `Επαληθεύτηκε η δεξιότητα ${input.skill} για ${input.person.fullName} (${totalForPerson} επαληθευμένες δεξιότητες στο προφίλ).`,
+      href,
+      links: [link],
+    };
+  };
+  if (!propose) return apply();
+  return proposalResult(
+    {
+      summary: {
+        en: `Verify ${input.person.fullName}'s skill “${input.skill}” as a collaborator?`,
+        el: `Επαλήθευση της δεξιότητας «${input.skill}» για ${input.person.fullName} ως συνεργάτης;`,
+      },
+      reversal: 'full',
+      apply,
+      undo: () => { if (createdId) removeLocalEndorsement(createdId); },
+    },
+    { tool: 'endorse-skill', href, links: [link] },
+  );
+}
+
+export function isEndorsementsReadQuery(folded: string): boolean {
+  return (
+    /^\/endorsements?\b/.test(folded) ||
+    /\b(my\s+|skill\s+|verified\s+|collaborator\s+)?endorsements?\b/.test(folded) ||
+    /\bverified\s+skills?\b/.test(folded) ||
+    /(συστασ\S*|επαληθευμ\S*\s+δεξιοτ\S*)/.test(folded)
+  );
+}
+
+export function endorsementsReadResult(query: string): AssistantResult {
+  const person = matchPerson(query);
+  const recipientId = person ? person.id : 'demo-user';
+  const items = readEndorsements(recipientId);
+  const href = person ? `/profile/${person.id}` : '/profile';
+  const link: AssistantLink = person
+    ? { href, en: `Open ${person.fullName}'s profile`, el: `Άνοιγμα προφίλ ${person.fullName}` }
+    : { href: '/profile', en: 'Open your profile', el: 'Άνοιγμα του προφίλ σου' };
+  if (items.length === 0) {
+    return {
+      tool: 'endorsements',
+      en: person
+        ? `${person.fullName} has no collaborator-verified skills yet. Say “Endorse ${person.fullName} for ${person.skills[0] || 'Product Strategy'}” to add the first verification.`
+        : 'No collaborator skill endorsements yet. Collaborators can verify your skills on your Profile page.',
+      el: person
+        ? `Δεν υπάρχουν ακόμη επαληθευμένες δεξιότητες για ${person.fullName}. Πες «Κάνε σύσταση στη ${person.fullName} για ${person.skills[0] || 'Product Strategy'}».`
+        : 'Δεν υπάρχουν ακόμη επαληθεύσεις δεξιοτήτων. Οι συνεργάτες σου μπορούν να επαληθεύσουν τις δεξιότητές σου στη σελίδα Προφίλ.',
+      href,
+      links: [link],
+    };
+  }
+  const linesEn = items.slice(0, 6).map((item) => {
+    const who = findPerson(item.endorserId)?.fullName || item.endorserName || 'Collaborator';
+    const rel = item.relationship ? ` (${item.relationship})` : '';
+    return `✓ ${item.skillId} — verified by ${who}${rel}${item.comment ? `: “${item.comment}”` : ''}`;
+  });
+  const linesEl = items.slice(0, 6).map((item) => {
+    const who = findPerson(item.endorserId)?.fullName || item.endorserName || 'Συνεργάτης';
+    const rel = item.relationship ? ` (${item.relationship})` : '';
+    return `✓ ${item.skillId} — επαληθεύτηκε από ${who}${rel}${item.comment ? `: «${item.comment}»` : ''}`;
+  });
+  const subjectEn = person ? `${person.fullName}'s verified skills` : 'Your verified skills & endorsements';
+  const subjectEl = person ? `Επαληθευμένες δεξιότητες (${person.fullName})` : 'Οι επαληθευμένες δεξιότητες & συστάσεις σου';
+  return {
+    tool: 'endorsements',
+    en: `${subjectEn} (${items.length}), shown as badges on Profile:\n${linesEn.join('\n')}`,
+    el: `${subjectEl} (${items.length}), εμφανίζονται ως σήματα στο Προφίλ:\n${linesEl.join('\n')}`,
+    href,
+    links: [link],
+  };
+}
+

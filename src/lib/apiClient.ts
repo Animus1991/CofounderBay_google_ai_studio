@@ -162,7 +162,7 @@ async function request<T>(method: string, path: string, options: RequestOptions 
         await sleep(2 ** attempt * 150);
         continue;
       }
-      log.error(`request error: ${method} ${path}`, { code: networkError.code });
+      log.warn(`request error: ${method} ${path}`, { code: networkError.code });
       throw networkError;
     }
   }

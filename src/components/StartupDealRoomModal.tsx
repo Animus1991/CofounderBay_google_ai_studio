@@ -348,7 +348,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
 
         <div className="p-4 sm:p-[1.455rem] space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
+            <div className="rounded-xl bg-stone-50/80 p-4 space-y-1.5">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <Target className="h-3.5 w-3.5 text-primary" />
                 <span>01. {lang === 'en' ? 'Problem Statement' : 'Πρόβλημα Αγοράς'}</span>
@@ -356,7 +356,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
               <p className="text-muted-foreground leading-relaxed">{deck.problem}</p>
             </div>
 
-            <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
+            <div className="rounded-xl bg-stone-50/80 p-4 space-y-1.5">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-primary" />
                 <span>02. {lang === 'en' ? 'Product & Solution' : 'Λύση & Προϊόν'}</span>
@@ -364,7 +364,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
               <p className="text-muted-foreground leading-relaxed">{deck.solution}</p>
             </div>
 
-            <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
+            <div className="rounded-xl bg-stone-50/80 p-4 space-y-1.5">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
                 <span>03. {lang === 'en' ? 'Verified Traction' : 'Επαληθευμένη Δυναμική'}</span>
@@ -372,7 +372,7 @@ export const StartupDealRoomModal: React.FC<StartupDealRoomModalProps> = ({
               <p className="text-muted-foreground leading-relaxed">{deck.tractionDetails}</p>
             </div>
 
-            <div className="rounded-xl border border-border bg-background/50 p-4 space-y-1.5">
+            <div className="rounded-xl bg-stone-50/80 p-4 space-y-1.5">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <DollarSign className="h-3.5 w-3.5 text-amber-400" />
                 <span>04. {lang === 'en' ? 'Market & Business Model' : 'Αγορά & Μοντέλο Εσόδων'}</span>

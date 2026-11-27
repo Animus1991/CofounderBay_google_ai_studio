@@ -108,7 +108,15 @@ const mode: AppMode = (() => {
 })();
 
 const isProduction = mode === 'production' || readBool(['PROD']);
-const clientKey = readString(['VITE_GEMINI_API_KEY']);
+const rawClientKey = readString(['VITE_GEMINI_API_KEY']).replace(/^["']+|["']+$/g, '').trim();
+const clientKey =
+  !rawClientKey ||
+  rawClientKey === 'MY_GEMINI_API_KEY' ||
+  rawClientKey === 'YOUR_GEMINI_API_KEY' ||
+  rawClientKey === 'YOUR_API_KEY' ||
+  rawClientKey === 'PLACEHOLDER'
+    ? ''
+    : rawClientKey;
 const ollamaUrl = readString(['VITE_OLLAMA_BASE_URL']);
 const supportEmail = readString(['VITE_SUPPORT_EMAIL'], 'support@cofounderbay.com');
 

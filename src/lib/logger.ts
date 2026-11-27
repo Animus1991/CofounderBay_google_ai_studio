@@ -38,27 +38,19 @@ function shouldLog(level: LogLevel): boolean {
 function emit(level: LogLevel, scope: string, message: string, context?: LogContext): void {
   if (!shouldLog(level)) return;
 
-  const prefix = `%c[${scope}]`;
-  const style =
-    level === 'error'
-      ? 'color:#dc2626;font-weight:600'
-      : level === 'warn'
-        ? 'color:#d97706;font-weight:600'
-        : 'color:#78716c';
-
-  const args: unknown[] = context ? [message, context] : [message];
+  const formatted = `[${scope}] ${message}`;
 
   // eslint-disable-next-line no-console
-  const fn = level === 'debug' ? console.debug : console[level];
-  if (appEnv.isProduction) {
-    fn(`[${scope}] ${message}`, context ?? '');
+  const fn = level === 'debug' ? console.debug : level === 'info' ? console.info : console.warn;
+  if (context !== undefined) {
+    fn(formatted, context);
   } else {
-    fn(prefix, style, ...args);
+    fn(formatted);
   }
 
   if ((level === 'warn' || level === 'error') && errorSink) {
     try {
-      errorSink(level, `[${scope}] ${message}`, context);
+      errorSink(level, formatted, context);
     } catch {
       /* never let the sink break logging */
     }

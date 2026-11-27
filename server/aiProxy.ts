@@ -56,13 +56,50 @@ export const FORWARDED_CONFIG_KEYS = new Set([
 
 type Caller = { key: string; limit: number; uid?: string };
 
+const PLACEHOLDER_KEYS = new Set([
+  'MY_GEMINI_API_KEY',
+  'YOUR_GEMINI_API_KEY',
+  'YOUR_API_KEY',
+  'GEMINI_API_KEY',
+  'PLACEHOLDER',
+  'TODO',
+  'CHANGEME',
+  'undefined',
+  'null',
+]);
+
+/** Strips quotes/whitespace and rejects placeholder key values. */
+export function cleanGeminiApiKey(raw: string | undefined): string | undefined {
+  if (!raw || typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim().replace(/^["']+|["']+$/g, '').trim();
+  if (!trimmed || PLACEHOLDER_KEYS.has(trimmed) || /^your[-_]/i.test(trimmed) || /^my[-_]/i.test(trimmed)) {
+    return undefined;
+  }
+  return trimmed;
+}
+
+function isInvalidApiKeyError(error: unknown): boolean {
+  const msg = error instanceof Error ? `${error.name} ${error.message}` : String(error);
+  return msg.includes('API_KEY_INVALID') || msg.includes('API key not valid');
+}
+
 export function readAiEnv(env: NodeJS.ProcessEnv) {
   const defaultModel = env.GEMINI_MODEL || 'gemini-flash-latest';
   const memberLimit = parseInt(env.AI_RATE_LIMIT_PER_MINUTE || '30', 10);
   const flag = (env.AI_REQUIRE_AUTH || '').trim().toLowerCase();
+  const builtInModels = [
+    defaultModel,
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-4-hydrogen',
+    'gemini-4-neon',
+    'gemini-4-argon',
+    'gemini-4-carbon',
+  ];
   return {
     defaultModel,
-    allowedModels: new Set([defaultModel, ...(env.AI_MODEL_ALLOWLIST || '').split(',')].map((m) => m.trim()).filter(Boolean)),
+    allowedModels: new Set([...builtInModels, ...(env.AI_MODEL_ALLOWLIST || '').split(',')].map((m) => m.trim()).filter(Boolean)),
     maxOutputTokens: parseInt(env.AI_MAX_OUTPUT_TOKENS || '2048', 10),
     memberLimitPerMinute: memberLimit,
     anonymousLimitPerMinute: parseInt(env.AI_ANON_RATE_LIMIT_PER_MINUTE || String(Math.max(1, Math.floor(memberLimit / 3))), 10),
@@ -72,8 +109,15 @@ export function readAiEnv(env: NodeJS.ProcessEnv) {
 
 export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
   const now = opts.now ?? Date.now;
-  const log = opts.log ?? ((message: string, detail?: unknown) => console.error(message, detail ?? ''));
+  const log = opts.log ?? ((message: string, detail?: unknown) => console.warn(message, detail ?? ''));
   const buckets = new Map<string, { count: number; resetAt: number }>();
+  let rejectedKey: string | null = null;
+
+  const activeApiKey = (): string | undefined => {
+    const key = cleanGeminiApiKey(opts.apiKey());
+    if (!key || (rejectedKey && key === rejectedKey)) return undefined;
+    return key;
+  };
 
   const identifyCaller = makeIdentify({ requireAuth: opts.requireAuth, verifyToken: opts.verifyToken, log, signInMessage: 'Sign in to use the AI assistant.' });
 
@@ -109,8 +153,8 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
 
   /** Validated model call, or null when the response has already been sent. */
   function buildCall(req: Request, res: Response): ModelCall | null {
-    if (!opts.apiKey()) {
-      res.status(503).json({ error: 'AI proxy not configured — set GEMINI_API_KEY on the server environment', code: 'not-configured' });
+    if (!activeApiKey()) {
+      res.status(503).json({ error: 'AI proxy not configured — set a valid GEMINI_API_KEY in Settings > Secrets', code: 'not-configured' });
       return null;
     }
     const { model: requestedModel, contents, config } = (req.body ?? {}) as Record<string, unknown>;
@@ -131,7 +175,7 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
   }
 
   app.get('/api/ai/status', (_req, res) => {
-    const configured = Boolean(opts.apiKey());
+    const configured = Boolean(activeApiKey());
     res.json({ configured, model: configured ? opts.defaultModel : null, requiresSignIn: opts.requireAuth });
   });
 
@@ -144,7 +188,13 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
       const result = await opts.generate(call);
       res.json({ text: result.text, functionCalls: result.functionCalls, model: call.model });
     } catch (error) {
-      log('AI proxy upstream error:', error);
+      if (isInvalidApiKeyError(error)) {
+        rejectedKey = cleanGeminiApiKey(opts.apiKey()) ?? null;
+        log('AI proxy: GEMINI_API_KEY was rejected by Google as invalid. Update GEMINI_API_KEY in Settings > Secrets.');
+        res.status(503).json({ error: 'Invalid Gemini API key — please check GEMINI_API_KEY in Settings > Secrets.', code: 'not-configured' });
+        return;
+      }
+      log('AI proxy upstream error:', error instanceof Error ? error.message : String(error));
       res.status(502).json({ error: 'Upstream AI provider error' });
     }
   });
@@ -176,7 +226,12 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
       }
       send({ done: true, functionCalls, model: call.model });
     } catch (error) {
-      log('AI proxy upstream stream error:', error);
+      if (isInvalidApiKeyError(error)) {
+        rejectedKey = cleanGeminiApiKey(opts.apiKey()) ?? null;
+        log('AI proxy: GEMINI_API_KEY was rejected by Google as invalid. Update GEMINI_API_KEY in Settings > Secrets.');
+      } else {
+        log('AI proxy upstream stream error:', error instanceof Error ? error.message : String(error));
+      }
       send({ error: 'Upstream AI provider error' });
     }
     res.end();
@@ -187,7 +242,14 @@ export function registerAiRoutes(app: Express, opts: AiProxyOptions) {
 export function geminiModel(apiKey: () => string | undefined) {
   const client = async () => {
     const { GoogleGenAI } = await import('@google/genai');
-    return new GoogleGenAI({ apiKey: apiKey() });
+    return new GoogleGenAI({
+      apiKey: cleanGeminiApiKey(apiKey()),
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
   };
   const calls = (raw: { name?: string; args?: Record<string, unknown> }[] | undefined): ModelFunctionCall[] =>
     (raw ?? []).filter((call) => call.name).map((call) => ({ name: String(call.name), args: call.args ?? {} }));

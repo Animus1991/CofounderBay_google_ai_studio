@@ -11,6 +11,7 @@ import type { UserProfile } from '../types';
 import { useAuth } from '../App';
 import { cn } from '../lib/utils';
 import { askAssistant } from '../lib/assistantBus';
+import { usePageControls } from '../lib/pageControls';
 
 export default function FitCheck() {
   useLanguage();
@@ -28,6 +29,12 @@ export default function FitCheck() {
   // Where a retake was started (e.g. /matches) — the result returns there.
   const rawFrom = params.get('from');
   const from = rawFrom && rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : null;
+
+  usePageControls(() => [
+    { id: 'fit-restart', en: 'Restart fit check', el: 'Επανεκκίνηση fit check', run: () => { setStep(0); setAnswers({}); } },
+    { id: 'fit-matches', en: 'Who is my best match?', el: 'Ποιος μου ταιριάζει;', run: () => askAssistant('Who is my best match?') },
+    { id: 'fit-open-matches', en: 'Open Matches', el: 'Άνοιγμα Αντιστοιχίσεων', run: () => navigate('/matches') },
+  ], [step]);
 
   const fallbackPath = from || (user || isDemoMode ? '/dashboard' : '/');
 

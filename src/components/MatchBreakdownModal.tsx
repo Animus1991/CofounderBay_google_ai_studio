@@ -182,7 +182,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
                 </p>
               )}
               {scored.map((dim) => (
-                <div key={dim.key} className="rounded-xl border border-border bg-background/50 px-3 py-[0.68rem] space-y-1.5">
+                <div key={dim.key} className="rounded-xl bg-stone-50/80 px-3 py-[0.68rem] space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="font-semibold text-foreground">
                       {tr(dim.label.en, dim.label.el)}
@@ -216,7 +216,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
               return (
                 <div
                   key={dim.key}
-                  className="rounded-xl border border-border bg-background/50 px-3 py-[0.68rem] space-y-1.5"
+                  className="rounded-xl bg-stone-50/80 px-3 py-[0.68rem] space-y-1.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="font-semibold text-foreground flex items-center gap-1.5 min-w-0">
@@ -241,7 +241,7 @@ export const MatchBreakdownModal: React.FC<MatchBreakdownModalProps> = ({
             })}
           </div>
 
-          <div className="rounded-xl border border-border bg-background/40 px-4 py-[0.92rem] space-y-2">
+          <div className="rounded-xl bg-stone-50/80 px-4 py-[0.92rem] space-y-2">
             <div className="text-xs font-bold text-foreground">
               {tr('Why you match', 'Γιατί ταιριάζετε')}
             </div>

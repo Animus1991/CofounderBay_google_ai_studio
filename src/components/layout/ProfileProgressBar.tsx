@@ -41,23 +41,25 @@ export default function ProfileProgressBar() {
       role="region"
       aria-label={t('Profile completeness', 'Πληρότητα προφίλ')}
       data-testid="profile-progress-bar"
-      className="shrink-0 border-b border-stone-200 bg-stone-50"
+      className="shrink-0 border-b border-stone-200/80 bg-stone-50/90"
     >
-      <div className="flex items-center gap-2.5 px-3.5 py-1.5 sm:px-6">
-        <div className="hidden h-1 w-16 shrink-0 overflow-hidden rounded-full bg-stone-200 sm:block" aria-hidden="true">
-          <div className="h-full rounded-full bg-stone-900" style={{ width: `${score}%` }} />
-        </div>
+      <div className="h-0.5 w-full bg-stone-200/70" aria-hidden="true">
+        <div className="h-full bg-stone-900 transition-all duration-300" style={{ width: `${score}%` }} />
+      </div>
+      <div className="flex items-center gap-2 px-3.5 py-1 sm:px-6">
         <p className="min-w-0 flex-1 truncate text-xs text-stone-600">
-          <span className="font-semibold text-stone-900">{t(`Profile ${score}%`, `Προφίλ ${score}%`)}</span>
-          {' · '}
-          {t(`add ${next.label.en.toLowerCase()}`, `πρόσθεσε ${next.label.el.toLowerCase()}`)}
-          {others > 0 ? t(` and ${others} more`, ` και ${others} ακόμη`) : ''}
-          <span className="hidden sm:inline">{t(' — matching reads these fields.', ' — η αντιστοίχιση διαβάζει αυτά τα πεδία.')}</span>
+          <span className="font-semibold text-stone-900 tabular-nums">{t(`Profile ${score}%`, `Προφίλ ${score}%`)}</span>
+          <span className="mx-1.5 text-stone-300" aria-hidden="true">·</span>
+          <span>
+            {t(`add ${next.label.en.toLowerCase()}`, `πρόσθεσε ${next.label.el.toLowerCase()}`)}
+            {others > 0 ? t(` and ${others} more`, ` και ${others} ακόμη`) : ''}
+          </span>
+          <span className="hidden sm:inline text-stone-400">{t(' — matching reads these fields.', ' — η αντιστοίχιση διαβάζει αυτά τα πεδία.')}</span>
         </p>
         <button
           type="button"
           onClick={() => navigate(next.href)}
-          className="inline-flex min-h-8 shrink-0 items-center rounded-lg bg-stone-900 px-3 text-xs font-medium text-white hover:bg-stone-800"
+          className="inline-flex min-h-7 shrink-0 items-center rounded-md bg-stone-900 px-2.5 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-stone-800"
         >
           {t('Finish', 'Συνέχεια')}
         </button>
@@ -66,7 +68,7 @@ export default function ProfileProgressBar() {
           aria-label={t('Hide until the profile changes', 'Απόκρυψη μέχρι να αλλάξει το προφίλ')}
           title={t('Hide until the profile changes', 'Απόκρυψη μέχρι να αλλάξει το προφίλ')}
           onClick={() => writeValue<Nudge>(keys.profileNudge, { closedAt: score })}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-900"
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-stone-900"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

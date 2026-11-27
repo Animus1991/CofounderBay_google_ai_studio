@@ -33,7 +33,7 @@ describe('ui consistency', () => {
   it('draws member tab strips with the shared segmented style', () => {
     const handRolled = memberPages.filter(({ name }) => !OWN_STYLE.has(name)).filter(({ text }) => text.includes('"scroll-tabs bg-stone-50 p-1 rounded-xl border border-stone-100"'));
     expect(handRolled.map(({ name }) => name)).toEqual([]);
-    const adminTracks = memberPages.filter(({ text }) => /"scroll-tabs p-1 bg-stone-100/.test(text));
+    const adminTracks = memberPages.filter(({ text }) => /"scroll-tabs p-1 bg-stone-100|"flex bg-stone-100 p-1 rounded-xl"/.test(text));
     expect(adminTracks.map(({ name }) => name)).toEqual([]);
     // No selected tab painted as a primary button, inside a segmented strip or as a row of section buttons
     // (Settings drew its four sections as four black/white buttons).

@@ -166,13 +166,13 @@ export default function AssistantPage() {
                     <h3 className="text-xs font-semibold text-stone-500">{bothText(group.label.en, group.label.el)}</h3>
                   )}
                   {open && (
-                  <ul className="divide-y divide-stone-100 rounded-xl border border-stone-100">
+                  <ul className="space-y-1.5">
                     {group.actions.map((action) => (
                       <li key={action.id}>
                         <button
                           type="button"
                           onClick={() => askAssistant(bothText(action.example.en, action.example.el))}
-                          className="group flex w-full flex-col gap-1.5 px-3 py-2.5 text-left hover:bg-stone-50"
+                          className="group flex w-full flex-col gap-1.5 rounded-xl bg-stone-50/80 px-3.5 py-2.5 text-left hover:bg-stone-100/80 transition-colors"
                           title={t('Send this example to the assistant', 'Αποστολή του παραδείγματος στον βοηθό')}
                         >
                           <span className="flex w-full items-start justify-between gap-2">

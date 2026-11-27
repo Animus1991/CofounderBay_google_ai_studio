@@ -385,19 +385,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
 
               <div className="mt-5 grid grid-cols-3 gap-3 text-xs">
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-xl bg-stone-50/80 p-3">
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Commitment' : 'Δέσμευση'}
                   </span>
                   <div className="font-bold text-foreground mt-1">{profile.commitment}</div>
                 </div>
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-xl bg-stone-50/80 p-3">
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Venture Stage' : 'Στάδιο'}
                   </span>
                   <div className="font-bold text-foreground mt-1">{profile.stage}</div>
                 </div>
-                <div className="rounded-xl border border-border bg-background/60 p-3">
+                <div className="rounded-xl bg-stone-50/80 p-3">
                   <span className="text-[11px] text-muted-foreground font-medium">
                     {lang === 'en' ? 'Equity Target' : 'Στόχος Equity'}
                   </span>
@@ -411,7 +411,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h4 className="text-xs font-bold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Founder Vision & Background' : 'Βιογραφικό & Όραμα Συνιδρυτή'}
                 </h4>
-                <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line bg-background/40 rounded-xl border border-border p-3.5">
+                <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line bg-stone-50/80 rounded-xl p-3.5">
                   {profile.bio}
                 </p>
               </div>
@@ -429,7 +429,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h4 className="text-xs font-bold text-muted-foreground mb-1.5">
                   {lang === 'en' ? 'Seeking in a Co-Founder' : 'Αναζητά σε Συνιδρυτή'}
                 </h4>
-                <div className="rounded-xl border border-border bg-background/50 p-3 space-y-1">
+                <div className="rounded-xl bg-stone-50/80 p-3 space-y-1">
                   {profile.lookingFor.map((lf, i) => (
                     <div key={i} className="text-xs text-foreground font-medium">
                       · {lf}

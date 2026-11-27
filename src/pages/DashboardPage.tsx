@@ -49,7 +49,6 @@ import RelTime from '../components/ui/RelTime';
 import FactLine from '../components/ui/FactLine';
 import { askAssistant } from '../lib/assistantBus';
 import { usePageControls } from '../lib/pageControls';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { profileCompleteness } from '../lib/profileCompleteness';
 import SectionHeader from '../components/ui/SectionHeader';
 import { RECAP_AREAS, weeklyRecap } from '../lib/weeklyRecap';
@@ -405,10 +404,7 @@ export default function DashboardPage() {
     navigate(href);
   };
 
-  // Phones and tablets get their own arrangement (round 12): the page ran to 13 sections on a phone, and from
-  // 1024 to 1279px the sidebar leaves the content ~720px, which squeezed the three-card rows. Below 1280px the
-  // essentials stay and the rest opens under "More"; wider screens show everything.
-  const compact = useMediaQuery('(max-width: 1279px)');
+  // Universal progressive disclosure: keep essentials above the fold and place secondary sections under "More" on all screens.
   const [moreOpen, setMoreOpen] = useState(false);
 
   // What the assistant can run on this page ("open my next step", "what is waiting on me"); the Dashboard
@@ -418,8 +414,8 @@ export default function DashboardPage() {
     ...(waiting ? [{ id: 'open-waiting', en: 'Open what is waiting on me', el: 'Άνοιγμα αυτού που με περιμένει', run: () => goStep(waiting.href) }] : []),
     { id: 'week-recap', en: 'Recap my week', el: 'Σύνοψη της εβδομάδας μου', run: () => askAssistant('What did I do this week?') },
     { id: 'plan-week', en: 'Plan my next 7 days', el: 'Πλάνο για τις επόμενες 7 ημέρες', run: () => askAssistant('Give me a 7-day match plan') },
-    ...(compact ? [{ id: 'show-more', en: 'Show everything on the dashboard', el: 'Εμφάνιση όλων στον πίνακα', run: () => setMoreOpen(true) }] : []),
-  ], [studioNext.href, waiting?.href, compact]);
+    { id: 'show-more', en: 'Show everything on the dashboard', el: 'Εμφάνιση όλων στον πίνακα', run: () => setMoreOpen(true) },
+  ], [studioNext.href, waiting?.href]);
 
 
   const greeting = greetingFor(new Date().getHours());
@@ -526,7 +522,8 @@ export default function DashboardPage() {
   // The page is built from named blocks so phones/tablets and desktops can order them differently (round 12).
   const blockAsk = (
     <div>
-      <div className="flex items-end gap-2 bg-white border border-stone-200 rounded-xl p-2">
+      <div className="flex items-center gap-2 bg-white border border-stone-200/80 rounded-lg px-2.5 py-1 focus-within:border-stone-400 transition-colors">
+        <MessageSquare className="w-3.5 h-3.5 shrink-0 text-stone-400" aria-hidden="true" />
         <textarea
           rows={1}
           value={searchQuery}
@@ -534,7 +531,7 @@ export default function DashboardPage() {
             setSearchQuery(e.target.value);
             setSlashIndex(0);
             e.target.style.height = 'auto';
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 76)}px`;
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 68)}px`;
           }}
           onKeyDown={(e) => {
             if (slashHits.length > 0) {
@@ -555,12 +552,21 @@ export default function DashboardPage() {
           data-testid="dashboard-ask"
           aria-controls={slashHits.length ? 'dash-slash-list' : undefined}
           aria-activedescendant={slashHits.length ? `dash-slash-${slashActive}` : undefined}
-          className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-900 placeholder-stone-400 focus:outline-none"
-          placeholder={bothText('Ask anything…', 'Ρώτα οτιδήποτε…')}
+          className="flex-1 resize-none bg-transparent px-1 py-0.5 text-xs sm:text-sm leading-snug text-stone-900 placeholder-stone-400 focus:outline-none"
+          placeholder={bothText('Ask anything or type / for commands…', 'Ρώτα οτιδήποτε ή πάτα / για εντολές…')}
         />
+        {searchQuery.trim().length > 0 && (
+          <button
+            type="button"
+            onClick={sendAsk}
+            className="inline-flex min-h-6 shrink-0 items-center rounded-md bg-stone-900 px-2 py-0.5 text-xs font-medium text-white hover:bg-stone-800 transition-colors"
+          >
+            {t('Ask', 'Ρώτα')}
+          </button>
+        )}
       </div>
       {slashHits.length > 0 && (
-        <div id="dash-slash-list" role="listbox" className="mt-1.5 max-h-44 overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-sm">
+        <div id="dash-slash-list" role="listbox" className="mt-1.5 max-h-44 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm">
           {slashHits.map((item, index) => (
             <button
               key={item.en}
@@ -579,15 +585,16 @@ export default function DashboardPage() {
         </div>
       )}
       {/* One scrolling row up to 1279px (it took eight rows on a phone, three beside the sidebar); wraps on wide screens. */}
-      <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] xl:mx-0 xl:flex-wrap xl:overflow-visible xl:px-0 xl:pb-0">
+      <div className="mt-2 -mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] xl:mx-0 xl:flex-wrap xl:overflow-visible xl:px-0 xl:pb-0">
         {nowChips.filter((chip) => chip.count > 0).map((chip) => (
           <button
             key={chip.en}
             type="button"
             onClick={() => askAssistant(t(chip.askEn, chip.askEl))}
-            className="min-h-8 shrink-0 whitespace-nowrap px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+            className="inline-flex min-h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-stone-200/80 bg-white px-2.5 py-1 text-xs font-medium text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
           >
-            {t(chip.en, chip.el)} · {chip.count}
+            <span>{t(chip.en, chip.el)}</span>
+            <span className="rounded bg-stone-100 px-1.5 py-0.2 text-[11px] font-semibold text-stone-900 tabular-nums">{chip.count}</span>
           </button>
         ))}
         {dashStarters.map((prompt) => (
@@ -595,7 +602,7 @@ export default function DashboardPage() {
             key={prompt.en}
             type="button"
             onClick={() => askAssistant(bothText(prompt.en, prompt.el))}
-            className="min-h-8 shrink-0 whitespace-nowrap px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+            className="inline-flex min-h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-stone-200/70 bg-stone-50/80 px-2.5 py-1 text-xs font-medium text-stone-600 transition-colors hover:border-stone-400 hover:bg-white hover:text-stone-900"
           >
             {bothText(prompt.en, prompt.el)}
           </button>
@@ -603,7 +610,7 @@ export default function DashboardPage() {
         <button
           type="button"
           onClick={() => navigate(searchQuery.trim() ? `/discovery?q=${encodeURIComponent(searchQuery.trim())}` : '/discovery')}
-          className="min-h-8 shrink-0 whitespace-nowrap px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+          className="inline-flex min-h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-stone-200/70 bg-stone-50/80 px-2.5 py-1 text-xs font-medium text-stone-600 transition-colors hover:border-stone-400 hover:bg-white hover:text-stone-900"
         >
           {bothText('Search people in Discovery', 'Αναζήτηση ατόμων στην Εξερεύνηση')}
         </button>
@@ -612,16 +619,15 @@ export default function DashboardPage() {
   );
 
   // Today (round 10): what needs you now, in one panel — the waiting item first (it runs on a clock),
-  // then the next step, then the step of the day. Three full-width cards used to stack here and pushed
-  // everything else below the fold; the rows keep every action (open, ask, do it with the assistant, done).
+  // then the next step, then the step of the day. Separated cleanly by whitespace with no inner horizontal dividers.
   const blockToday = (
     <section data-testid="dashboard-today">
       <SectionHeader
-        className="mb-2"
+        className="mb-2.5"
         title={<Both en="Today" el="Σήμερα" />}
         actions={[{ label: <Both en="Calendar" el="Ημερολόγιο" />, to: '/calendar' }]}
       />
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white divide-y divide-stone-100">
+      <div className="rounded-lg border border-stone-200/80 bg-white p-4 sm:p-5 space-y-4">
         {waiting ? (
           <NextMove
             embedded
@@ -659,7 +665,7 @@ export default function DashboardPage() {
   const blockPeopleWeek = (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {prospect && (
-        <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+        <div className="bg-stone-50/70 rounded-lg p-4 border border-stone-200/80">
           <SectionHeader
             title={prospect.id === leadMatch?.id
               ? <Both en="Best match" el="Καλύτερη αντιστοίχιση" />
@@ -680,13 +686,13 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, prospect.id)}
                 title={t('See how this score is built', 'Δες πώς προκύπτει αυτό το σκορ')}
-                className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-lg hover:border-stone-400 transition-colors"
+                className="text-xs font-semibold text-stone-900 bg-white border border-stone-200 px-2 py-1 rounded-md hover:border-stone-400 transition-colors tabular-nums"
               >
                 {prospect.match}%
               </button>
             )}
           </div>
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3.5">
             <button
               type="button"
               onClick={async () => {
@@ -701,17 +707,17 @@ export default function DashboardPage() {
                 }
                 navigate(`/messages?user=${prospect.id}`);
               }}
-              className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-xl text-xs font-medium hover:bg-stone-800 transition-colors"
+              className="flex-1 min-h-11 py-2 bg-stone-900 text-white rounded-md text-xs font-medium hover:bg-stone-800 transition-colors"
             >
               <Both en="Connect" el="Σύνδεση" />
             </button>
-            <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-xl text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
+            <button onClick={() => { rememberPerson({ id: prospect.id, fullName: prospect.name, headline: prospect.role, role: prospect.role }); navigate(`/profile/${prospect.id}`); }} className="flex-1 min-h-11 py-2 bg-white border border-stone-200 text-stone-900 rounded-md text-xs font-medium hover:bg-stone-50 transition-colors">{t('View Profile', 'Προφίλ')}</button>
           </div>
         </div>
       )}
       {/* "Your week" (round 9): the streak card now also shows what moved this week, so a return visit
           opens on visible progress. Same sizes as before; nothing estimated, all read from activity. */}
-      <div className="bg-white rounded-2xl p-4 border border-stone-100 flex flex-col justify-between" data-testid="dashboard-week">
+      <div className="bg-white rounded-lg p-4 border border-stone-200/80 flex flex-col justify-between" data-testid="dashboard-week">
         <SectionHeader
           className="mb-2"
           title={<Both en="Your week" el="Η εβδομάδα σου" />}
@@ -766,7 +772,7 @@ export default function DashboardPage() {
 
   const blockThisWeek = (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+      <button type="button" onClick={() => leadMatch && navigate(`/profile/${leadMatch.id}`)} className="text-left bg-white rounded-lg border border-stone-200/80 p-4 hover:border-stone-300 transition-colors">
         <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · person" el="Αυτή την εβδομάδα · άτομο" /></p>
         {leadMatch ? (
           <div className="flex items-center gap-3">
@@ -780,7 +786,7 @@ export default function DashboardPage() {
           <p className="text-sm text-stone-500"><Both en="Ask who you should meet this week." el="Ρώτα ποιον να γνωρίσεις αυτή την εβδομάδα." /></p>
         )}
       </button>
-      <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-2xl border border-stone-100 p-4 hover:border-stone-300 transition-all">
+      <button type="button" onClick={() => navigate(!isDemoMode && schedule.length === 0 ? '/calendar' : '/events')} className="text-left bg-white rounded-lg border border-stone-200/80 p-4 hover:border-stone-300 transition-colors">
         <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · session" el="Αυτή την εβδομάδα · συνάντηση" /></p>
         {!isDemoMode && schedule.length === 0 ? (
           <p className="text-sm text-stone-500"><Both en="No session yet — add one in Calendar" el="Καμία συνάντηση ακόμη — πρόσθεσε μία στο Ημερολόγιο" /></p>
@@ -791,7 +797,7 @@ export default function DashboardPage() {
           </>
         )}
       </button>
-      <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-100 border border-stone-200 rounded-2xl p-4 text-stone-900 hover:bg-stone-200/70 transition-all">
+      <button type="button" onClick={() => askAssistant('Give me a 7-day match plan')} className="text-left bg-stone-50 border border-stone-200/80 rounded-lg p-4 text-stone-900 hover:border-stone-300 hover:bg-stone-100/70 transition-colors">
         <p className="text-xs font-semibold text-stone-400 tracking-wider mb-2"><Both en="This week · playbook" el="Αυτή την εβδομάδα · σχέδιο δράσης" /></p>
         <p className="text-sm font-medium"><Both en="Ask for a 7-day match plan" el="Ζήτα πλάνο 7 ημερών" /></p>
         <p className="text-xs text-stone-400 mt-1"><Both en="Adds Workspace tasks." el="Προσθέτει εργασίες στον Χώρο εργασίας." /></p>
@@ -867,10 +873,10 @@ export default function DashboardPage() {
           hint: bothText('Unread conversations', 'Αδιάβαστες συνομιλίες'),
         },
       ].map((stat) => (
-        <button type="button" key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="text-left bg-white rounded-2xl border border-stone-100 p-4 cursor-pointer hover:border-stone-300 hover:shadow-sm transition-all">
-          <p className="text-xs font-semibold text-stone-400 tracking-wider">{stat.label}</p>
+        <button type="button" key={stat.label} title={stat.hint} onClick={() => navigate(stat.href)} className="text-left bg-white rounded-lg border border-stone-200/80 p-4 cursor-pointer hover:border-stone-300 transition-colors">
+          <p className="text-xs font-medium text-stone-500">{stat.label}</p>
           <p className="text-lg font-semibold text-stone-900 mt-1.5 tracking-tight tabular-nums">{stat.value}</p>
-          {stat.sub && <p className="text-xs mt-0.5 text-stone-400">{stat.sub}</p>}
+          {stat.sub && <p className="text-xs mt-1 text-stone-400">{stat.sub}</p>}
         </button>
       ))}
     </div>
@@ -878,10 +884,9 @@ export default function DashboardPage() {
 
   // The agenda sits above the long feed: what is coming is worth more than what was posted (moved up).
   const blockUpcoming = (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
-      {/* "See map" opened Events, which has no map: the two links now say where they go. */}
+    <div className="bg-white rounded-lg border border-stone-200/80 p-4 sm:p-5">
       <SectionHeader
-        className="mb-4"
+        className="mb-3.5"
         title={<Both en="Upcoming" el="Επόμενα" />}
         actions={[
           { label: <Both en="Events" el="Εκδηλώσεις" />, to: '/events' },
@@ -891,17 +896,41 @@ export default function DashboardPage() {
       {!isDemoMode && !eventsLoaded ? null : schedule.length === 0 ? (
         <p className="text-xs text-stone-400"><Both en="Nothing scheduled. Add a session or event in Calendar." el="Τίποτα προγραμματισμένο. Πρόσθεσε συνάντηση ή εκδήλωση στο Ημερολόγιο." /></p>
       ) : (
-        <div className="space-y-4 relative">
-          <div className="absolute left-1 top-2 bottom-2 w-px bg-stone-100" />
+        <div className="space-y-3">
           {schedule.map((ev) => (
-            <button type="button" key={ev.id} className="block w-[calc(100%+1rem)] text-left pl-5 relative hover:bg-stone-50/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}>
-              <span aria-hidden="true" className="absolute left-[-1px] top-2.5 w-2.5 h-2.5 rounded-full bg-stone-900 border-2 border-white" />
-              <span className="block text-sm font-medium text-stone-900 leading-tight">{t(ev.title, ev.titleEl ?? ev.title)}</span>
-              <span className="flex items-center gap-2 mt-1">
-                <Clock className="w-3 h-3 text-stone-400" />
-                <span className="text-xs text-stone-400">{dashTime(ev.time)}</span>
-                {ev.type && <span className="text-xs font-semibold tracking-wider bg-stone-50 border border-stone-100 text-stone-400 px-1.5 py-0.5 rounded">{labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}</span>}
-                {ev.attendees > 0 && <span className="text-xs text-stone-400">{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>}
+            <button
+              type="button"
+              key={ev.id}
+              className="flex w-full items-start gap-3 rounded-md px-2 py-1.5 -mx-2 text-left hover:bg-stone-50 transition-colors"
+              onClick={() => navigate(ev.type === 'MILESTONE' ? '/milestones' : '/events')}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                  ev.type === 'MILESTONE' ? 'bg-amber-500' : 'bg-stone-900',
+                )}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-stone-900 leading-snug">{t(ev.title, ev.titleEl ?? ev.title)}</span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-stone-500">
+                  <Clock className="w-3 h-3 shrink-0 text-stone-400" />
+                  <span>{dashTime(ev.time)}</span>
+                  {ev.type && (
+                    <>
+                      <span aria-hidden="true" className="text-stone-300">·</span>
+                      <span className="font-medium text-stone-600">
+                        {labelOf(ev.type === 'MEETUP' ? 'Meetup' : ev.type === 'NETWORK' ? 'Networking' : ev.type === 'MILESTONE' ? 'Milestone' : ev.type)}
+                      </span>
+                    </>
+                  )}
+                  {ev.attendees > 0 && (
+                    <>
+                      <span aria-hidden="true" className="text-stone-300">·</span>
+                      <span>{t(`${ev.attendees} attending`, `${ev.attendees} συμμετέχουν`)}</span>
+                    </>
+                  )}
+                </span>
               </span>
             </button>
           ))}
@@ -916,11 +945,11 @@ export default function DashboardPage() {
         <p className="text-xs font-semibold text-stone-400 tracking-wider">
           <Both en="What changed" el="Τι άλλαξε" />
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => navigate('/milestones')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-50 border border-stone-200 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => navigate('/milestones')} className="flex items-center gap-2 min-h-11 px-3.5 bg-stone-50 border border-stone-200 rounded-md text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors">
             <TrendingUp className="w-3 h-3" /> <Both en="Log Update" el="Ενημέρωση προόδου" />
           </button>
-          <button onClick={() => navigate('/communities')} className="flex items-center gap-2 min-h-11 px-4 bg-stone-900 rounded-xl text-sm font-medium text-white hover:bg-stone-800 transition-colors">
+          <button onClick={() => navigate('/communities')} className="flex items-center gap-2 min-h-11 px-3.5 bg-stone-900 rounded-md text-xs font-medium text-white hover:bg-stone-800 transition-colors">
             <Plus className="w-3 h-3" /> <Both en="Post" el="Δημοσίευση" />
           </button>
         </div>
@@ -937,7 +966,7 @@ export default function DashboardPage() {
         const liked = isDemoMode ? likedPosts.has(item.id) : item.likedBy.includes(user?.uid || '');
         const likeCount = item.likes + (isDemoMode && liked ? 1 : 0);
         return (
-          <div key={item.id} className="bg-white rounded-2xl p-4 border border-stone-100">
+          <div key={item.id} className="bg-white rounded-lg p-4 border border-stone-200/80">
             <div className="flex items-start gap-3">
               <button type="button" aria-label={item.authorId === 'assistant' ? t('Open matches', 'Άνοιγμα αντιστοιχίσεων') : t(`View profile: ${item.name}`, `Προβολή προφίλ: ${item.name}`)} className="shrink-0 block" onClick={() => { rememberPerson({ id: item.authorId, fullName: item.name }); navigate(item.authorId === 'assistant' ? '/matches' : `/profile/${item.authorId}`); }}>
                 <Avatar src={item.avatar} fallback={item.name} size="sm" />
@@ -965,7 +994,7 @@ export default function DashboardPage() {
   );
 
   const blockViews = chartSeries && chartSeries.length > 0 && (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
+    <div className="bg-white rounded-lg border border-stone-200/80 p-4">
       <SectionHeader
         title={<Both en="Profile views" el="Προβολές προφίλ" />}
         detail={`${chartSeries[0]?.name ?? ''}–${chartSeries[chartSeries.length - 1]?.name ?? ''} · ${chartSeries.reduce((sum, point) => sum + (Number(point.views) || 0), 0)}`}
@@ -984,19 +1013,19 @@ export default function DashboardPage() {
   );
 
   const blockProfile = (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
+    <div className="bg-white rounded-lg border border-stone-200/80 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-stone-400" />
           <p className="text-sm font-medium text-stone-900">{t('Complete your profile', 'Συμπλήρωσε το προφίλ')}</p>
         </div>
-        <span className="text-xs font-semibold text-stone-900">{score}%</span>
+        <span className="text-xs font-semibold text-stone-900 tabular-nums">{score}%</span>
       </div>
       <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
         <div className="h-full bg-stone-900 rounded-full transition-all" style={{ width: `${score}%` }} />
       </div>
       {missing.length > 0 && (
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-2.5">
           <p className="text-xs text-stone-400">
             {t('Missing:', 'Λείπουν:')} {missing.slice(0, 3).map((item, index) => (
               <span key={item.key}>
@@ -1016,12 +1045,12 @@ export default function DashboardPage() {
   );
 
   const blockCommunities = communities.length > 0 && (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
+    <div className="bg-white rounded-lg border border-stone-200/80 p-4">
       <SectionHeader title={<Both en="Communities" el="Κοινότητες" />} actions={[{ label: <Both en="All" el="Όλες" />, to: '/communities' }]} />
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {communities.map((community) => (
           // Labelled numbers ("1.2k members · 12 new posts" used to read "1.2k · 12"), and the row opens the community list.
-          <button type="button" key={community.id} onClick={() => navigate('/communities')} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-stone-50 transition-colors sm:items-center">
+          <button type="button" key={community.id} onClick={() => navigate('/communities')} className="flex w-full min-w-0 items-start justify-between gap-3 rounded-md px-2 py-1.5 -mx-2 text-left hover:bg-stone-50 transition-colors sm:items-center">
             <span className="min-w-0 text-sm font-medium text-stone-900">{community.name}</span>
             <span className="shrink-0 text-right text-xs text-stone-400 tabular-nums">{t(`${community.members} members · ${community.newPosts} new`, `${community.members} μέλη · ${community.newPosts} νέα`)}</span>
           </button>
@@ -1035,54 +1064,46 @@ export default function DashboardPage() {
       title={bothText(`${greeting.en}, ${firstName}`, `${greeting.el}, ${firstName}`)}
       description={bothText('Your next step, matches, and what changed.', 'Το επόμενο βήμα, οι αντιστοιχίσεις και τι άλλαξε.')}
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         {blockAsk}
         {blockToday}
+        {blockNumbers}
         {blockPeopleWeek}
-        {compact ? (
-          // Phones and tablets (round 12): the essentials, then everything else one tap away. Thirteen stacked
-          // sections read as noise on a narrow screen; nothing is removed, the rest sits under "More".
-          <>
-            {blockUpcoming}
-            {blockMatches}
-            <section data-testid="dashboard-more">
-              <button
-                type="button"
-                aria-expanded={moreOpen}
-                aria-controls="dashboard-more-panel"
-                onClick={() => setMoreOpen((open) => !open)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left transition-colors hover:border-stone-400"
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-stone-900">{moreOpen ? t('Show less', 'Λιγότερα') : t('More on your dashboard', 'Περισσότερα στον πίνακα')}</span>
-                  <span className="block text-xs text-stone-500">{t('This week · numbers · what changed · profile views · profile · communities', 'Αυτή την εβδομάδα · αριθμοί · τι άλλαξε · προβολές · προφίλ · κοινότητες')}</span>
-                </span>
-                <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-stone-500 transition-transform', moreOpen && 'rotate-180')} />
-              </button>
-              {moreOpen && (
-                <div id="dashboard-more-panel" className="mt-6 space-y-8">
-                  {blockThisWeek}
-                  {blockNumbers}
-                  {blockFeed}
-                  {blockViews}
-                  {blockProfile}
-                  {blockCommunities}
-                </div>
-              )}
-            </section>
-          </>
-        ) : (
-          <>
-            {blockThisWeek}
-            {blockMatches}
-            {blockNumbers}
-            {blockUpcoming}
-            {blockFeed}
-            {blockViews}
-            {blockProfile}
-            {blockCommunities}
-          </>
-        )}
+        {blockUpcoming}
+        {blockMatches}
+        <section data-testid="dashboard-more">
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            aria-controls="dashboard-more-panel"
+            onClick={() => setMoreOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200/80 bg-white px-4 py-3 text-left transition-colors hover:border-stone-400"
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-sm font-semibold text-stone-900">
+                <span>{moreOpen ? t('Show less', 'Λιγότερα') : t('More on your dashboard', 'Περισσότερα στον πίνακα')}</span>
+                {!moreOpen && (
+                  <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600 tabular-nums">
+                    +5
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 block text-xs text-stone-500">
+                {t('Weekly focus, activity feed, profile analytics & communities', 'Εβδομαδιαία εστίαση, ροή δραστηριότητας, αναλυτικά προφίλ & κοινότητες')}
+              </span>
+            </span>
+            <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-stone-500 transition-transform', moreOpen && 'rotate-180')} />
+          </button>
+          {moreOpen && (
+            <div id="dashboard-more-panel" className="mt-6 space-y-6">
+              {blockThisWeek}
+              {blockFeed}
+              {blockViews}
+              {blockProfile}
+              {blockCommunities}
+            </div>
+          )}
+        </section>
       </div>
     </PageShell>
   );

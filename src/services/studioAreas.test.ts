@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { runAssistant } from './assistantOps';
 import { readPitch } from '../lib/pitch';
 import { isLegalDone } from '../lib/legalChecklist';
-import { addFocusSession } from '../lib/focusStats';
+import { addFocusSession, readFocusToday } from '../lib/focusStats';
+import { keys, readAssistantFeedback, readEndorsements, readIds, readSavedSearches, toggleId, writeAssistantFeedback } from '../lib/localLists';
 
 const demo = { fullName: 'Demo User', headline: 'Founder', skills: ['React'] } as never;
 
@@ -43,6 +44,61 @@ describe('studio areas the operator now covers', () => {
     expect(runAssistant('Show my saved searches', demo).tool).toBe('saved-searches');
   });
 
+  it('logs a focus session, saves a Discovery search, and restores hidden members with exact undo', async () => {
+    const baseSessions = readFocusToday().sessions;
+    const logFocus = runAssistant('Log a 25-minute focus session', demo, { propose: true });
+    expect(logFocus.tool).toBe('focus-log');
+    expect(readFocusToday().sessions).toBe(baseSessions);
+    await logFocus.proposal!.apply();
+    expect(readFocusToday().sessions).toBe(baseSessions + 1);
+    await logFocus.proposal!.undo!();
+    expect(readFocusToday().sessions).toBe(baseSessions);
+
+    const saveSearch = runAssistant('Save search Fintech CTO', demo, { propose: true });
+    expect(saveSearch.tool).toBe('save-search');
+    expect(readSavedSearches()).toHaveLength(0);
+    await saveSearch.proposal!.apply();
+    expect(readSavedSearches()[0]?.label).toBe('Fintech CTO');
+    await saveSearch.proposal!.undo!();
+    expect(readSavedSearches()).toHaveLength(0);
+
+    toggleId(keys.hiddenPeople, 'fp-1');
+    expect(readIds(keys.hiddenPeople)).toEqual(['fp-1']);
+    const unhide = runAssistant('Restore hidden members', demo, { propose: true });
+    expect(unhide.tool).toBe('unhide-people');
+    await unhide.proposal!.apply();
+    expect(readIds(keys.hiddenPeople)).toEqual([]);
+    await unhide.proposal!.undo!();
+    expect(readIds(keys.hiddenPeople)).toEqual(['fp-1']);
+  });
+
+  it('reads collaborator skill endorsements and verifies a collaborator skill with Confirm and exact Undo', async () => {
+    expect(runAssistant('Show my skill endorsements', demo).tool).toBe('endorsements');
+    expect(runAssistant('Δείξε τις συστάσεις δεξιοτήτων μου', demo).tool).toBe('endorsements');
+
+    const baseSarah = readEndorsements('sarah-chen').length;
+    const endorse = runAssistant('Endorse Sarah Chen for TypeScript', demo, { propose: true });
+    expect(endorse.tool).toBe('endorse-skill');
+    expect(readEndorsements('sarah-chen')).toHaveLength(baseSarah);
+    await endorse.proposal!.apply();
+    expect(readEndorsements('sarah-chen')).toHaveLength(baseSarah + 1);
+    expect(readEndorsements('sarah-chen')[0]?.skillId).toBe('TypeScript');
+    expect(readEndorsements('sarah-chen')[0]?.verified).toBe(true);
+    await endorse.proposal!.undo!();
+    expect(readEndorsements('sarah-chen')).toHaveLength(baseSarah);
+  });
+
+  it('persists structured assistant feedback reasons and supports vote toggling', () => {
+    writeAssistantFeedback('turn-1', 'down', 'wrong_result');
+    expect(readAssistantFeedback().find((f) => f.turnId === 'turn-1')).toMatchObject({
+      turnId: 'turn-1',
+      value: 'down',
+      reason: 'wrong_result',
+    });
+    writeAssistantFeedback('turn-1', null);
+    expect(readAssistantFeedback().find((f) => f.turnId === 'turn-1')).toBeUndefined();
+  });
+
   it('audits every area with fixes as follow-ups', () => {
     const audit = runAssistant('Audit my studio', demo);
     expect(audit.tool).toBe('audit');
@@ -51,3 +107,4 @@ describe('studio areas the operator now covers', () => {
     expect(runAssistant('Τι λείπει ακόμα στην ιδρυτική ομάδα;', demo).tool).toBe('team-gap');
   });
 });
+

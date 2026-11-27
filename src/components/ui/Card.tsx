@@ -45,9 +45,7 @@ export default function Card({
    )}
   >
    {(title || subtitle) && (
-    // noPadding makes the content full-bleed, not the title: a titled noPadding card used to put its title
-    // against the left and top outline (Legal alerts). Only a card padded by its caller (p-*) skips the inset.
-    <div className={cn("border-b", inverse ? "border-white/15" : "border-stone-200/60", callerSetsPadding(className) ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-4")}>
+    <div className={cn(callerSetsPadding(className) ? "pb-3" : "px-4 py-3 sm:px-5 sm:py-3.5")}>
      {title && <h3 className={cn("text-sm font-medium tracking-tight leading-snug", inverse ? "text-white" : "text-stone-900")}>{title}</h3>}
      {subtitle && <p className={cn("text-xs font-medium tracking-wider mt-0.5 leading-normal", inverse ? "text-white/85" : "text-stone-400")}>{subtitle}</p>}
     </div>
@@ -55,6 +53,7 @@ export default function Card({
    <div data-ui="card-content" className={cn(
     "min-w-0 w-full flex-1",
     !paddedByCaller && "p-4 sm:p-5",
+    !paddedByCaller && (title || subtitle) && "pt-0 sm:pt-0",
     paddedByCaller && !noPadding && (title || subtitle) && "pt-3",
     paddedByCaller && !noPadding && footer && "pb-3",
     contentClassName
@@ -62,7 +61,7 @@ export default function Card({
     {children}
    </div>
    {footer && (
-    <div className={cn("bg-stone-50/50 border-t border-stone-200/60 rounded-b-xl", paddedByCaller ? "pt-4" : "px-4 py-3 sm:px-5 sm:py-4")}>
+    <div className={cn("bg-stone-50/60 rounded-b-lg", paddedByCaller ? "pt-4" : "px-4 py-3 sm:px-5 sm:py-3.5")}>
      {footer}
     </div>
    )}

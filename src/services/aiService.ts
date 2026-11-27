@@ -415,9 +415,15 @@ export class AIService {
     this.isOffline = false;
   }
 
-  private static recordFailure() {
+  private static recordFailure(error?: unknown) {
     this.isOffline = true;
     this.lastFailureTime = Date.now();
+    if (error instanceof AIProxyError && error.code === 'not-configured') {
+      this.statusCache = {
+        at: Date.now(),
+        value: { configured: false, model: null, source: 'none' },
+      };
+    }
   }
 
   /**
@@ -498,7 +504,7 @@ If a pitch deck or slide image is provided, review it for clarity, completeness 
         model: DEFAULT_AI_MODEL
       };
     } catch (error) {
-      this.recordFailure();
+      this.recordFailure(error);
       throw error;
     }
   }
@@ -545,7 +551,7 @@ Rules:
         : await generateContent(params, input.signal);
     } catch (error) {
       // A sign-in refusal is not an outage: keep the model available for the next turn.
-      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure(error);
       throw error;
     }
   }
@@ -570,7 +576,7 @@ Rules:
       }, signal);
       return JSON.parse(result.text || '{}');
     } catch (error) {
-      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure(error);
       throw error;
     }
   }
@@ -613,7 +619,7 @@ Rules:
       return JSON.parse(response.text.replace(/^```(?:json)?\s*|```\s*$/g, '').trim()) as T;
     } catch (error) {
       // A sign-in refusal is not an outage: keep the breaker closed so the next call can succeed.
-      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure();
+      if (!(error instanceof AIProxyError && error.needsSignIn)) this.recordFailure(error);
       throw error;
     }
   }
@@ -648,7 +654,7 @@ Rules:
 
       return JSON.parse(response.text);
     } catch (error) {
-      this.recordFailure();
+      this.recordFailure(error);
       // No invented insights: the dashboard simply shows nothing from AI when it is unavailable.
       aiLog.warn('failed to fetch dashboard insights', { error: String(error) });
       return [];

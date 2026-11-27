@@ -59,11 +59,20 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
     }
     setPicking(true);
     const rows = audit.gaps.map((row, index) => `${index}. ${row.en} (fix: "${row.fix?.en ?? ''}")`).join('\n');
-    AIService.json<{ index: number; why: string }>(
-      `Studio check (weakest first):\n${rows}\nPick the ONE area that most moves this founder forward today. Write "why" in ${lang === 'el' ? 'Greek' : 'English'}, max 22 words, using only these facts.`,
-      'You pick the daily next step for a founder studio. Return JSON {"index": number, "why": string}. Never invent numbers.',
-    )
-      .then((out) => remember(audit.gaps[Number(out.index)] ?? fallback, String(out.why || ''), 'ai'))
+    AIService.status()
+      .then((st) => {
+        if (!st.configured) {
+          remember(fallback, '', 'studio');
+          return null;
+        }
+        return AIService.json<{ index: number; why: string }>(
+          `Studio check (weakest first):\n${rows}\nPick the ONE area that most moves this founder forward today. Write "why" in ${lang === 'el' ? 'Greek' : 'English'}, max 22 words, using only these facts.`,
+          'You pick the daily next step for a founder studio. Return JSON {"index": number, "why": string}. Never invent numbers.',
+        );
+      })
+      .then((out) => {
+        if (out) remember(audit.gaps[Number(out.index)] ?? fallback, String(out.why || ''), 'ai');
+      })
       .catch(() => remember(fallback, '', 'studio'))
       .finally(() => setPicking(false));
   }, [stored, lang, audit]);
@@ -72,20 +81,21 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
   if (!row) return null;
   const done = stored?.done === true;
   const why = stored?.why || t(
-    `${row.en} — one of the weakest areas in your studio check (${audit.score}% overall).`,
-    `${row.el} — από τις πιο αδύναμες περιοχές στον έλεγχο του studio (${audit.score}% συνολικά).`,
+    `${row.en} · Studio ${audit.score}%`,
+    `${row.el} · Studio ${audit.score}%`,
   );
 
   return (
     <section
       data-testid="daily-nudge"
-      // Embedded: one row of the dashboard's "Today" panel, which draws the card and the dividers.
       className={embedded
-        ? 'flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between'
-        : 'flex flex-col gap-3 rounded-2xl border border-stone-200/80 bg-white p-4 sm:flex-row sm:items-center sm:justify-between'}
+        ? 'flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between'
+        : 'flex flex-col gap-3 rounded-lg border border-stone-200/80 bg-white p-4 sm:flex-row sm:items-center sm:justify-between'}
     >
-      <div className="flex min-w-0 gap-3">
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+          <Lightbulb className="h-4 w-4" aria-hidden="true" />
+        </div>
         <div className="min-w-0 space-y-0.5">
           <p className="text-xs font-medium text-stone-500">
             {t("Today's step", 'Το βήμα της ημέρας')} · {row.name[lang === 'el' ? 1 : 0]}
@@ -95,12 +105,12 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
               </span>
             )}
           </p>
-          <p className="text-sm text-stone-800" data-testid="daily-nudge-why">{picking && !stored ? t('Choosing today’s step…', 'Επιλέγω το σημερινό βήμα…') : why}</p>
+          <p className="text-sm font-medium text-stone-900 leading-snug" data-testid="daily-nudge-why">{picking && !stored ? t('Choosing today’s step…', 'Επιλέγω το σημερινό βήμα…') : why}</p>
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 pl-11 sm:pl-0">
         {done ? (
-          <span className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-emerald-700" data-testid="daily-nudge-done-label">
+          <span className="inline-flex min-h-7 items-center gap-1 text-xs font-medium text-emerald-700" data-testid="daily-nudge-done-label">
             <Check className="h-3.5 w-3.5" aria-hidden="true" />{t('Done for today', 'Έγινε για σήμερα')}
           </span>
         ) : (
@@ -109,10 +119,9 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
               type="button"
               data-testid="daily-nudge-do"
               onClick={() => row.fix && askAssistant(lang === 'el' ? row.fix.el : row.fix.en)}
-              // In the Today panel the first row owns the one filled button; this one is outlined there.
               className={embedded
-                ? 'inline-flex min-h-9 items-center rounded-lg border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-900 transition-colors hover:border-stone-500'
-                : 'inline-flex min-h-9 items-center rounded-lg bg-stone-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-stone-800'}
+                ? 'inline-flex min-h-7 items-center rounded-md bg-stone-100/90 px-2.5 py-1 text-xs font-medium text-stone-900 transition-colors hover:bg-stone-200/80'
+                : 'inline-flex min-h-7 items-center rounded-md bg-stone-900 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-stone-800'}
             >
               {t('Do it with the assistant', 'Κάν’ το με τον βοηθό')}
             </button>
@@ -120,7 +129,7 @@ export function DailyNudge({ embedded = false }: { embedded?: boolean } = {}) {
               type="button"
               data-testid="daily-nudge-dismiss"
               onClick={() => writeValue(keys.nudge, { ...(stored ?? { date: localDay(), area: row.name[0], why: '', lang, by: 'studio' as const }), done: true })}
-              className="inline-flex min-h-9 items-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-900"
+              className="inline-flex min-h-7 items-center rounded-md px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
             >
               {t('Done', 'Έγινε')}
             </button>

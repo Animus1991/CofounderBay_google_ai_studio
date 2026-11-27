@@ -6,7 +6,7 @@
  * once. The demo account uses the original unscoped keys; a signed-in
  * account gets `key@uid`, so demo data never shows up in a real account.
  */
-import type { Milestone, UserProfile } from '../types';
+import type { Endorsement, EndorsementRelationship, Milestone, UserProfile } from '../types';
 import { findCast } from '../data/cast';
 import { seedMilestones } from '../data/seeds';
 import { daysFromToday, atDaysFromToday } from '../data/demoClock';
@@ -276,6 +276,8 @@ export const keys = {
   assistantPrefs: 'cfb.assistantPrefs',
   /** The completeness at which the "finish your profile" bar was closed (components/layout/ProfileProgressBar). */
   profileNudge: 'cfb.profileNudge',
+  /** Collaborator skill endorsements and verifications (pages/ProfilePage & services/studioAreas). */
+  endorsements: 'cfb.endorsements',
 } as const;
 
 /** Removes every list of the current account, then lets pages re-seed. */
@@ -1150,16 +1152,23 @@ export function writeAssistant(turns: AssistantTurn[]): AssistantTurn[] {
   return next;
 }
 
-export type AssistantFeedback = { turnId: string; value: 'up' | 'down'; at: string };
+export type AssistantFeedbackReason = 'wrong_result' | 'not_done' | 'unclear';
+
+export type AssistantFeedback = { turnId: string; value: 'up' | 'down'; reason?: AssistantFeedbackReason; at: string };
 
 export function readAssistantFeedback(): AssistantFeedback[] {
   const stored = readJson<AssistantFeedback[] | null>(keys.assistantFeedback, null);
   return Array.isArray(stored) ? stored : [];
 }
 
-export function writeAssistantFeedback(turnId: string, value: 'up' | 'down'): AssistantFeedback[] {
-  const entry: AssistantFeedback = { turnId, value, at: new Date().toISOString() };
-  const next = [...readAssistantFeedback().filter((item) => item.turnId !== turnId), entry].slice(-100);
+export function writeAssistantFeedback(turnId: string, value: 'up' | 'down' | null, reason?: AssistantFeedbackReason): AssistantFeedback[] {
+  const rest = readAssistantFeedback().filter((item) => item.turnId !== turnId);
+  if (value === null) {
+    writeJson(keys.assistantFeedback, rest);
+    return rest;
+  }
+  const entry: AssistantFeedback = { turnId, value, ...(reason ? { reason } : {}), at: new Date().toISOString() };
+  const next = [...rest, entry].slice(-100);
   writeJson(keys.assistantFeedback, next);
   return next;
 }
@@ -1344,3 +1353,186 @@ export function clearProfileLocal(): Partial<UserProfile> {
   writeJson(keys.profileLocal, {});
   return {};
 }
+
+// ── Skill endorsements & collaborator verification ─────────────────────────
+
+const SEED_ENDORSEMENTS: Endorsement[] = [
+  {
+    id: 'end-seed-1',
+    endorserId: 'sarah-chen',
+    endorserName: 'Sarah Chen',
+    endorserRole: 'Product Lead',
+    recipientId: 'demo-user',
+    recipientName: 'Demo Founder',
+    skillId: 'IoT',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Built the sensor-to-cloud pipeline for the EcoFlow pilot in weeks.',
+    createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-2',
+    endorserId: 'alex-rivera',
+    endorserName: 'Alex Rivera',
+    endorserRole: 'Co-Founder',
+    recipientId: 'demo-user',
+    recipientName: 'Demo Founder',
+    skillId: 'Product Strategy',
+    relationship: 'Co-Founder',
+    verified: true,
+    comment: 'Brilliant product thinking. Always sees the bigger picture.',
+    createdAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-3',
+    endorserId: 'elena-rodriguez',
+    endorserName: 'Elena Rodriguez',
+    endorserRole: 'Product Designer',
+    recipientId: 'demo-user',
+    recipientName: 'Demo Founder',
+    skillId: 'React',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Clean, maintainable components every time.',
+    createdAt: new Date(Date.now() - 8 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-4',
+    endorserId: 'marcus-thorne',
+    endorserName: 'Marcus Thorne',
+    endorserRole: 'Growth Operator',
+    recipientId: 'demo-user',
+    recipientName: 'Demo Founder',
+    skillId: 'Hardware Prototyping',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Took the bio-filter from bench rig to a working pilot unit.',
+    createdAt: new Date(Date.now() - 12 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-5',
+    endorserId: 'jordan-taylor',
+    endorserName: 'Jordan Taylor',
+    endorserRole: 'Growth Marketer',
+    recipientId: 'demo-user',
+    recipientName: 'Demo Founder',
+    skillId: 'Node.js',
+    relationship: 'Peer',
+    verified: true,
+    comment: 'Strong backend architecture skills.',
+    createdAt: new Date(Date.now() - 15 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-6',
+    endorserId: 'marcus-thorne',
+    endorserName: 'Marcus Thorne',
+    endorserRole: 'Growth Operator',
+    recipientId: 'sarah-chen',
+    recipientName: 'Sarah Chen',
+    skillId: 'Product Strategy',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Sharpest B2B discovery and pricing instincts I have worked with.',
+    createdAt: new Date(Date.now() - 4 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-7',
+    endorserId: 'elena-rodriguez',
+    endorserName: 'Elena Rodriguez',
+    endorserRole: 'Product Designer',
+    recipientId: 'sarah-chen',
+    recipientName: 'Sarah Chen',
+    skillId: 'Fintech',
+    relationship: 'Co-Founder',
+    verified: true,
+    comment: 'Deep domain fluency across freelancer cash-flow and invoicing rails.',
+    createdAt: new Date(Date.now() - 9 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-8',
+    endorserId: 'sarah-chen',
+    endorserName: 'Sarah Chen',
+    endorserRole: 'Product Lead',
+    recipientId: 'elena-rodriguez',
+    recipientName: 'Elena Rodriguez',
+    skillId: 'Design Systems',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Delivered a zero-friction component system across web and mobile.',
+    createdAt: new Date(Date.now() - 6 * 86_400_000).toISOString(),
+  },
+  {
+    id: 'end-seed-9',
+    endorserId: 'sarah-chen',
+    endorserName: 'Sarah Chen',
+    endorserRole: 'Product Lead',
+    recipientId: 'marcus-thorne',
+    recipientName: 'Marcus Thorne',
+    skillId: 'B2B Sales',
+    relationship: 'Collaborator',
+    verified: true,
+    comment: 'Closed our first 15 design-partner accounts with repeatable outbound.',
+    createdAt: new Date(Date.now() - 7 * 86_400_000).toISOString(),
+  },
+];
+
+export function readAllEndorsements(): Endorsement[] {
+  const stored = readJson<Endorsement[] | null>(keys.endorsements, null);
+  if (!stored) return isDemo() ? SEED_ENDORSEMENTS : [];
+  return Array.isArray(stored) ? stored : [];
+}
+
+export function readEndorsements(recipientId?: string): Endorsement[] {
+  const all = readAllEndorsements();
+  if (!recipientId) return all;
+  const target = recipientId === 'demo-user' || !recipientId ? 'demo-user' : recipientId;
+  return all.filter((item) => (item.recipientId || item.endorseeId || 'demo-user') === target);
+}
+
+export function addLocalEndorsement(input: {
+  id?: string;
+  endorserId: string;
+  endorserName?: string;
+  endorserAvatar?: string;
+  endorserRole?: string;
+  recipientId: string;
+  recipientName?: string;
+  skillId: string;
+  relationship?: EndorsementRelationship;
+  comment?: string;
+  createdAt?: string;
+}): Endorsement {
+  const current = readAllEndorsements();
+  const normalizedSkill = input.skillId.trim();
+  const id = input.id || `end-${input.recipientId}-${input.endorserId}-${normalizedSkill.toLowerCase().replace(/[^a-z0-9α-ω]+/gi, '-')}`;
+  const entry: Endorsement = {
+    id,
+    endorserId: input.endorserId,
+    endorserName: input.endorserName || 'Founder',
+    endorserAvatar: input.endorserAvatar,
+    endorserRole: input.endorserRole,
+    recipientId: input.recipientId,
+    endorseeId: input.recipientId,
+    recipientName: input.recipientName,
+    skillId: normalizedSkill,
+    relationship: input.relationship || 'Collaborator',
+    verified: true,
+    comment: (input.comment || '').trim(),
+    createdAt: input.createdAt || new Date().toISOString(),
+  };
+  const rest = current.filter(
+    (item) =>
+      item.id !== id &&
+      !((item.recipientId || item.endorseeId) === input.recipientId && item.endorserId === input.endorserId && item.skillId.toLowerCase() === normalizedSkill.toLowerCase()),
+  );
+  const next = [entry, ...rest];
+  writeJson(keys.endorsements, next);
+  return entry;
+}
+
+export function removeLocalEndorsement(id: string): Endorsement[] {
+  const next = readAllEndorsements().filter((item) => item.id !== id);
+  writeJson(keys.endorsements, next);
+  return next;
+}
+

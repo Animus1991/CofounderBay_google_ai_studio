@@ -25,6 +25,8 @@ import { getAdminAnalytics, detectAbuse, updateSystemConfig, type AdminAnalytics
 import { useAuth } from '../App';
 import { useT } from '../lib/language';
 import { askAssistant } from '../lib/assistantBus';
+import { SEGMENT_TRACK, segmentItem } from '../lib/segmented';
+import { usePageControls } from '../lib/pageControls';
 
 export default function AdminDashboard() {
  const { user, isDemoMode } = useAuth();
@@ -36,6 +38,13 @@ export default function AdminDashboard() {
  const [activeTab, setActiveTab] = useState<'overview' | 'abuse' | 'config'>('overview');
  const [configDrafts, setConfigDrafts] = useState<Record<string, number>>({});
  const [configSaved, setConfigSaved] = useState(false);
+
+ usePageControls(() => [
+  { id: 'admin-overview', en: 'Overview', el: 'Επισκόπηση', run: () => setActiveTab('overview') },
+  { id: 'admin-abuse', en: 'Anti-Abuse Monitor', el: 'Παρακολούθηση κατάχρησης', run: () => setActiveTab('abuse') },
+  { id: 'admin-config', en: 'Scoring Config', el: 'Ρυθμίσεις βαθμολόγησης', run: () => setActiveTab('config') },
+  { id: 'admin-audit', en: 'Audit studio', el: 'Έλεγχος studio', run: () => askAssistant('Audit my studio') },
+ ], [activeTab]);
 
  useEffect(() => {
   // The demo account has no Firestore access — the sample numbers below are
@@ -103,8 +112,8 @@ export default function AdminDashboard() {
  return (
   <div className="w-full px-2 sm:px-6 lg:px-8 pt-4 sm:pt-8 pb-24 space-y-6">
    {/* Header */}
-   <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
-    <div className="space-y-2">
+   <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-1.5">
      <div className="flex items-center gap-2 text-stone-400 font-medium tracking-wide text-xs">
       <ShieldCheck className="w-4 h-4" />
       {t('Admin Control Center', 'Κέντρο διαχείρισης')}
@@ -115,14 +124,15 @@ export default function AdminDashboard() {
      </button>
     </div>
     <div className="flex items-center gap-3">
-     <div className="flex bg-stone-100 p-1 rounded-xl">
+     <div className={SEGMENT_TRACK}>
       {(['overview', 'abuse', 'config'] as const).map((tab) => (
        <button
         key={tab}
+        type="button"
         onClick={() => setActiveTab(tab)}
         className={cn(
-         "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize",
-         activeTab === tab ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+         segmentItem(activeTab === tab),
+         "px-4 py-2 text-sm capitalize"
         )}
        >
         {{ overview: t('Overview', 'Επισκόπηση'), abuse: t('Abuse', 'Κατάχρηση'), config: t('Config', 'Ρυθμίσεις') }[tab]}
@@ -133,17 +143,17 @@ export default function AdminDashboard() {
       type="button"
       title={t('Refresh analytics', 'Ανανέωση αναλυτικών')}
       onClick={() => { if (isDemoMode || !user) return; setLoading(true); Promise.all([getAdminAnalytics(), detectAbuse()]).then(([a, f]) => { setAnalytics(a); setAbuseFlags(f); setDismissedFlags(new Set()); setLoading(false); }); }}
-      className="p-3 bg-white text-stone-900 rounded-xl hover:bg-stone-50 transition-all border border-stone-100 shadow-sm"
+      className="p-2.5 bg-white text-stone-900 rounded-xl hover:bg-stone-50 transition-all border border-stone-200 shadow-sm"
      >
-      <Activity className="w-5 h-5" />
+      <Activity className="w-4 h-4" />
      </button>
     </div>
    </div>
 
    {activeTab === 'overview' && (
-    <div className="space-y-12">
+    <div className="space-y-6">
      {/* Stats Grid */}
-     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {[
        { label: t('Total Users', 'Σύνολο χρηστών'), value: (analytics?.totalUsers ?? 0).toLocaleString(), icon: Users, color: 'blue' },
        { label: t('Ecosystem XP', 'XP οικοσυστήματος'), value: (analytics?.totalXP ?? 0).toLocaleString(), icon: TrendingUp, color: 'green' },
@@ -174,11 +184,11 @@ export default function AdminDashboard() {
       ))}
      </div>
 
-     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Event Distribution */}
-      <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider mb-8">{t('Behavioral Event Distribution', 'Κατανομή συμβάντων συμπεριφοράς')}</h3>
-       <div className="h-[400px] w-full">
+      <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-stone-100 shadow-sm">
+       <h3 className="text-sm font-semibold text-stone-900 tracking-wider mb-6">{t('Behavioral Event Distribution', 'Κατανομή συμβάντων συμπεριφοράς')}</h3>
+       <div className="h-[360px] w-full">
         <ResponsiveContainer width="100%" height="100%">
          <BarChart data={distributionData} layout="vertical">
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f5f5f4" />
@@ -206,10 +216,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Momentum Insights */}
-      <div className="space-y-8">
-       <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm space-y-6">
+      <div className="space-y-6">
+       <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-sm space-y-4">
         <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Derived metrics', 'Παράγωγες μετρικές')}</h3>
-        <div className="space-y-4">
+        <div className="space-y-3">
          {[
           { title: t('Events per user', 'Συμβάντα ανά χρήστη'), value: analytics?.totalUsers ? (analytics.xpEventsCount / analytics.totalUsers).toFixed(1) : '—', desc: t('XP events recorded per registered user.', 'Καταγεγραμμένα συμβάντα XP ανά εγγεγραμμένο λογαριασμό.') },
           { title: t('Badges per user', 'Σήματα ανά χρήστη'), value: analytics?.totalUsers ? (analytics.totalBadgesAwarded / analytics.totalUsers).toFixed(2) : '—', desc: t('Average badges awarded per user.', 'Μέσος αριθμός σημάτων ανά χρήστη.') },
@@ -217,10 +227,10 @@ export default function AdminDashboard() {
           { title: t('Top event type', 'Συχνότερος τύπος συμβάντος'), value: distributionData[0]?.name ?? '—', desc: t('Most frequent behavioral event.', 'Το πιο συχνό συμβάν συμπεριφοράς.') },
           { title: t('Abuse flags', 'Επισημάνσεις κατάχρησης'), value: String(abuseFlags.length), desc: t('Users over the same-event threshold in the latest window.', 'Χρήστες πάνω από το όριο ίδιων συμβάντων στο τελευταίο παράθυρο.') },
          ].map((insight) => (
-          <div key={insight.title} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+          <div key={insight.title} className="p-3.5 bg-stone-50 rounded-xl border border-stone-100">
            <div className="flex justify-between items-start mb-1">
             <h4 className="font-medium text-stone-900 text-sm">{insight.title}</h4>
-            <span className="text-lg font-medium text-stone-900">{insight.value}</span>
+            <span className="text-base font-semibold text-stone-900">{insight.value}</span>
            </div>
            <p className="text-xs text-stone-500">{insight.desc}</p>
           </div>
@@ -228,23 +238,23 @@ export default function AdminDashboard() {
         </div>
        </div>
 
-       <div className="bg-stone-900 text-white p-8 rounded-[32px] shadow-sm space-y-6">
+       <div className="bg-stone-50 p-6 rounded-2xl border border-stone-200 space-y-4">
         <div className="flex items-center justify-between">
-         <h3 className="text-base font-semibold text-white">{t('System Health', 'Υγεία συστήματος')}</h3>
-         <Activity className="w-6 h-6 text-emerald-400" />
+         <h3 className="text-sm font-semibold text-stone-900">{t('System Health', 'Υγεία συστήματος')}</h3>
+         <Activity className="w-5 h-5 text-emerald-600" />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
          {[
           { label: t('Scoring Engine', 'Μηχανή βαθμολόγησης'), ok: analytics != null },
           { label: t('Behavioral AI', 'AI συμπεριφοράς'), ok: analytics != null },
           { label: t('Anti-Abuse', 'Προστασία κατάχρησης'), ok: abuseFlags != null },
          ].map((service) => (
           <div key={service.label} className="flex items-center justify-between">
-           <div className="flex items-center gap-3">
-            <div className={cn("w-1.5 h-1.5 rounded-full", service.ok ? "bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-400")} />
-            <span className="text-sm font-medium">{service.label}</span>
+           <div className="flex items-center gap-2.5">
+            <div className={cn("w-2 h-2 rounded-full", service.ok ? "bg-emerald-500" : "bg-red-500")} />
+            <span className="text-sm font-medium text-stone-700">{service.label}</span>
            </div>
-           <span className="text-xs font-mono text-stone-500">{service.ok ? 'ok' : t('down', 'εκτός')}</span>
+           <span className="text-xs font-mono text-stone-600">{service.ok ? 'ok' : t('down', 'εκτός')}</span>
           </div>
          ))}
         </div>
@@ -255,11 +265,11 @@ export default function AdminDashboard() {
    )}
 
    {activeTab === 'abuse' && (
-    <div className="bg-white rounded-[32px] border border-stone-100 shadow-sm overflow-hidden">
-     <div className="p-8 border-b border-stone-50 flex justify-between items-center">
+    <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+     <div className="p-6 border-b border-stone-100 flex justify-between items-center">
       <div>
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Anti-Abuse Monitor', 'Παρακολούθηση κατάχρησης')}</h3>
-       <p className="text-sm text-stone-400 font-medium">{t('Flags for suspicious XP farming or bot-like behavior.', 'Επισημάνσεις για ύποπτη συλλογή XP ή συμπεριφορά bot.')}</p>
+       <p className="text-sm text-stone-500 font-medium">{t('Flags for suspicious XP farming or bot-like behavior.', 'Επισημάνσεις για ύποπτη συλλογή XP ή συμπεριφορά bot.')}</p>
       </div>
       <div className="flex items-center gap-2">
        <span className="px-4 py-1.5 text-red-600 rounded-xl text-xs font-medium tracking-wide">
@@ -281,21 +291,21 @@ export default function AdminDashboard() {
        <tbody className="divide-y divide-stone-50">
         {abuseFlags.map((flag, idx) => (
          <tr key={idx} className="hover:bg-stone-50/30 transition-colors group">
-          <td className="px-8 py-5 font-mono text-xs text-stone-600">{flag.userId}</td>
-          <td className="px-8 py-5">
+          <td className="px-6 py-4 font-mono text-xs text-stone-600">{flag.userId}</td>
+          <td className="px-6 py-4">
            <span className="px-2 py-1 text-amber-700 rounded-lg text-xs font-medium tracking-wider">
             {flag.type}
            </span>
           </td>
-          <td className="px-8 py-5">
+          <td className="px-6 py-4">
            <div className="w-24 h-1.5 bg-stone-100 rounded-full overflow-hidden">
             <div className="h-full bg-red-500" style={{ width: `${flag.severity * 100}%` }} />
            </div>
           </td>
-          <td className="px-8 py-5 text-xs text-stone-400 font-medium">
+          <td className="px-6 py-4 text-xs text-stone-500 font-medium">
            {flag.metadata.count} {t('events of', 'συμβάντα τύπου')} {flag.metadata.eventType}
           </td>
-          <td className="px-8 py-5 text-right">
+          <td className="px-6 py-4 text-right">
            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
              type="button"
@@ -319,7 +329,7 @@ export default function AdminDashboard() {
         )).filter((_, idx) => !dismissedFlags.has(idx))}
         {abuseFlags.filter((_, idx) => !dismissedFlags.has(idx)).length === 0 && (
          <tr>
-          <td colSpan={5} className="px-8 py-12 text-center text-stone-400 italic font-medium">
+          <td colSpan={5} className="px-6 py-10 text-center text-stone-500 font-medium text-sm">
            {t('No suspicious activity detected in the current window.', 'Δεν εντοπίστηκε ύποπτη δραστηριότητα στο τρέχον παράθυρο.')}
           </td>
          </tr>
@@ -331,10 +341,10 @@ export default function AdminDashboard() {
    )}
 
    {activeTab === 'config' && (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-     <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm space-y-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+     <div className="bg-white p-6 rounded-2xl border border-stone-100 shadow-sm space-y-6">
       <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Scoring Weights', 'Βάρη βαθμολόγησης')}</h3>
-      <div className="space-y-8">
+      <div className="space-y-6">
        {[
         { label: t('Artifact Completion XP', 'XP ολοκλήρωσης τεκμηρίου'), value: 100, key: 'xp_artifact_complete' },
         { label: t('Mentor Feedback Multiplier', 'Πολλαπλασιαστής σχολίων καθοδήγησης'), value: 1.5, key: 'multiplier_mentor' },
@@ -343,7 +353,7 @@ export default function AdminDashboard() {
        ].map((config) => {
         const draft = configDrafts[config.key] ?? config.value;
         return (
-        <div key={config.key} className="space-y-4">
+        <div key={config.key} className="space-y-3">
          <div className="flex justify-between items-center">
           <label htmlFor={`cfg-${config.key}`} className="text-sm font-medium text-stone-700">{config.label}</label>
           <span className="text-sm font-mono font-medium text-stone-900 bg-stone-50 px-2 py-1 rounded-lg">{draft}</span>
@@ -363,7 +373,7 @@ export default function AdminDashboard() {
        })}
        <button
         type="button"
-        className="w-full py-4 bg-stone-900 text-white rounded-2xl font-medium hover:bg-stone-800 transition-all shadow-sm"
+        className="w-full py-3 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-all shadow-sm"
         onClick={async () => {
          const entries = Object.entries(configDrafts);
          if (entries.length === 0) return;
@@ -376,20 +386,20 @@ export default function AdminDashboard() {
       </div>
      </div>
 
-     <div className="bg-stone-50 p-8 rounded-[32px] border border-stone-100 border-dashed flex flex-col items-center justify-center text-center space-y-4">
-      <div className="p-4 bg-white rounded-2xl shadow-sm">
-       <Settings className="w-8 h-8 text-stone-400" />
+     <div className="bg-stone-50 p-6 rounded-2xl border border-stone-200 border-dashed flex flex-col items-center justify-center text-center space-y-4">
+      <div className="p-3.5 bg-white rounded-xl border border-stone-100 shadow-sm">
+       <Settings className="w-6 h-6 text-stone-500" />
       </div>
       <div>
        <h4 className="text-base font-semibold text-stone-900">{t('Advanced Tuning', 'Προχωρημένη ρύθμιση')}</h4>
-       <p className="text-sm text-stone-500 max-w-xs mx-auto">
+       <p className="text-sm text-stone-500 max-w-xs mx-auto mt-1">
         {t('Modify the underlying behavioral models and scoring heuristics. Changes take effect immediately.', 'Τροποποίηση των μοντέλων συμπεριφοράς και των ευρετικών βαθμολόγησης. Οι αλλαγές ισχύουν άμεσα.')}
        </p>
       </div>
       <button
        type="button"
        onClick={() => askAssistant('Explain the scoring weights on this page')}
-       className="px-6 py-2.5 bg-white text-stone-900 border border-stone-200 rounded-xl text-sm font-medium hover:bg-stone-100 transition-all"
+       className="px-5 py-2.5 bg-white text-stone-900 border border-stone-200 rounded-xl text-sm font-medium hover:bg-stone-100 transition-all"
       >
        {t('Ask the assistant', 'Ρώτα τον βοηθό')}
       </button>

@@ -108,18 +108,28 @@ import { ddReadResult, ddSetResult, ddShareResult, isDDReadQuery, parseDDSet, pa
 import { ddProgress } from '../lib/dueDiligence';
 import { investorEmailResult, parseInvestorEmail } from './investorOps';
 import {
+  endorseSkillResult,
+  endorsementsReadResult,
+  focusLogResult,
   focusResult,
+  isEndorsementsReadQuery,
   isFocusQuery,
   isLegalChecklistQuery,
   isPitchQuery,
   isSavedSearchQuery,
+  isUnhidePeopleQuery,
   legalChecklistResult,
   legalToggleResult,
+  parseEndorseSkill,
+  parseFocusLog,
   parseLegalToggle,
   parsePitchSet,
+  parseSaveSearch,
   pitchReadResult,
   pitchSetResult,
   savedSearchesResult,
+  saveSearchResult,
+  unhidePeopleResult,
 } from './studioAreas';
 import { daysFromToday, shortDay } from '../data/demoClock';
 
@@ -264,7 +274,12 @@ const TOOL_SOURCES: Record<string, AssistantSource[]> = {
   'legal-checklist': [SOURCE.legalChecklist],
   'legal-check': [SOURCE.legalChecklist],
   focus: [SOURCE.focus],
+  'focus-log': [SOURCE.focus],
   'saved-searches': [SOURCE.searches],
+  'save-search': [SOURCE.searches],
+  'unhide-people': [SOURCE.people, SOURCE.openTo],
+  endorsements: [SOURCE.profile, SOURCE.people],
+  'endorse-skill': [SOURCE.profile, SOURCE.people],
   'investor-add': [SOURCE.round],
   'investor-move': [SOURCE.round],
   'investor-next': [SOURCE.round],
@@ -314,6 +329,8 @@ export const SLASH_COMMANDS: { cmd: string; en: string; el: string }[] = [
   { cmd: '/legal', en: 'Legal Hub compliance checklist', el: 'Λίστα συμμόρφωσης στα Νομικά' },
   { cmd: '/focus', en: 'Focus time logged today', el: 'Χρόνος συγκέντρωσης σήμερα' },
   { cmd: '/searches', en: 'Saved Discovery searches', el: 'Αποθηκευμένες αναζητήσεις' },
+  { cmd: '/endorsements', en: 'Verified skills & collaborator endorsements', el: 'Επαληθευμένες δεξιότητες & συστάσεις συνεργατών' },
+  { cmd: '/endorse', en: 'Verify a collaborator skill (/endorse Sarah Chen: React)', el: 'Επαλήθευση δεξιότητας συνεργάτη (/endorse Sarah Chen: React)' },
   { cmd: '/help', en: 'What this assistant can change', el: 'Τι μπορεί να αλλάξει αυτός ο βοηθός' },
 ];
 
@@ -488,8 +505,8 @@ function matchDetailResult(profile: AssistantProfile | null, person: Person): As
   const frictionEl = friction && (friction.score as number) < 80 ? `Τριβή: ${friction.reason?.el}.` : 'Δεν υπάρχει έντονη τριβή στις διαστάσεις με σκορ.';
   return {
     tool: 'match-detail',
-    en: `${person.fullName} is ${score} on the same scorer Matches uses. Why: ${reasonEn}. ${frictionEn} First conversation: how they have shipped ${talk}. Same card as Profile.`,
-    el: `${person.fullName} είναι ${score} στον ίδιο υπολογισμό με τις Αντιστοιχίσεις. Γιατί: ${reasonEl}. ${frictionEl} Πρώτη συζήτηση: πώς έχουν παραδώσει ${talk}. Η ίδια κάρτα με το Προφίλ.`,
+    en: `${person.fullName} · ${score} match\n• Why: ${reasonEn}.\n• ${frictionEn}\n• First conversation: how they have shipped ${talk}.`,
+    el: `${person.fullName} · ${score} συμβατότητα\n• Γιατί: ${reasonEl}.\n• ${frictionEl}\n• Πρώτη συζήτηση: εμπειρία σε ${talk}.`,
     href: `/profile/${person.id}`,
     links: [linkFor(person), { href: '/matches', en: 'Open matches', el: 'Άνοιγμα αντιστοιχίσεων' }],
   };
@@ -3680,8 +3697,16 @@ function resolveAssistant(text: string, profile: AssistantProfile | null, propos
   const legalToggle = parseLegalToggle(query);
   if (legalToggle) return legalToggleResult(legalToggle, propose, proposalResult);
   if (isLegalChecklistQuery(folded)) return legalChecklistResult();
+  const focusLog = parseFocusLog(query);
+  if (focusLog) return focusLogResult(focusLog, propose, proposalResult);
   if (isFocusQuery(folded)) return focusResult();
+  const saveSearch = parseSaveSearch(query);
+  if (saveSearch) return saveSearchResult(saveSearch, propose, proposalResult);
   if (isSavedSearchQuery(folded)) return savedSearchesResult();
+  if (isUnhidePeopleQuery(folded)) return unhidePeopleResult(propose, proposalResult);
+  const endorseSkill = parseEndorseSkill(query);
+  if (endorseSkill) return endorseSkillResult(endorseSkill, propose, proposalResult);
+  if (isEndorsementsReadQuery(folded)) return endorsementsReadResult(query);
 
   const roundSet = parseRoundSet(query);
   if (roundSet) return roundSetResult(roundSet, propose);

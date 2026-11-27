@@ -22,7 +22,6 @@ import {
  Zap,
  ArrowLeft,
  Share2,
- ThumbsUp,
  Award,
  TrendingUp,
  Calendar as CalendarIcon,
@@ -35,7 +34,8 @@ import {
  Handshake,
  CheckCircle2,
  Trophy,
- BarChart2
+ BarChart2,
+ ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -48,11 +48,10 @@ import Button from '../components/ui/Button';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { cn } from '../lib/utils';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLanguage, useT } from '../lib/language';
 import { labelOf } from '../lib/labels';
 import { formatDate } from '../lib/dates';
-import { keys, listKeys, logActivity, readActivity, readIds, readOpenTo, readSessions, saveRequest, toggleId, writeProfileLocal, type OpenToKind } from '../lib/localLists';
+import { addLocalEndorsement, keys, listKeys, logActivity, readActivity, readEndorsements, readIds, readOpenTo, readSessions, removeLocalEndorsement, saveRequest, toggleId, writeProfileLocal, type OpenToKind } from '../lib/localLists';
 import RelTime from '../components/ui/RelTime';
 import { useStored } from '../lib/useStored';
 import { applyOpenTo } from '../lib/openTo';
@@ -83,9 +82,10 @@ import {
  sendConnectionRequest,
  useConnections,
  withdrawConnection,
+ withdrawEndorsement,
  type ProfileView,
 } from '../lib/social';
-import { UserProfile, Endorsement, ReadinessScore } from '../types';
+import { UserProfile, Endorsement, EndorsementRelationship, ReadinessScore } from '../types';
 import { askAssistant } from '../lib/assistantBus';
 import { AiProfileReview } from '../components/AiProfileReview';
 import DescribeYourself from '../components/onboarding/DescribeYourself';
@@ -173,12 +173,19 @@ const ALSO_VIEWED = [
 ];
 // ── Mock endorsements fallback (used when Firestore returns empty) ───────────
 const MOCK_ENDORSEMENTS: Endorsement[] = [
- { id: 'me1', endorserId: 'sarah-chen', skillId: 'IoT', comment: 'Built the sensor-to-cloud pipeline for the EcoFlow pilot in weeks.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
- { id: 'me2', endorserId: 'alex-rivera', skillId: 'Product Strategy', comment: 'Brilliant product thinking. Always sees the bigger picture.', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
- { id: 'me3', endorserId: 'elena-rodriguez', skillId: 'React', comment: 'Clean, maintainable components every time.', createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
- { id: 'me4', endorserId: 'marcus-thorne', skillId: 'Hardware Prototyping', comment: 'Took the bio-filter from bench rig to a working pilot unit.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
- { id: 'me5', endorserId: 'jordan-taylor', skillId: 'Node.js', comment: 'Strong backend architecture skills.', createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
+ { id: 'me1', endorserId: 'sarah-chen', endorserName: 'Sarah Chen', skillId: 'IoT', relationship: 'Collaborator', verified: true, comment: 'Built the sensor-to-cloud pipeline for the EcoFlow pilot in weeks.', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+ { id: 'me2', endorserId: 'alex-rivera', endorserName: 'Alex Rivera', skillId: 'Product Strategy', relationship: 'Co-Founder', verified: true, comment: 'Brilliant product thinking. Always sees the bigger picture.', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
+ { id: 'me3', endorserId: 'elena-rodriguez', endorserName: 'Elena Rodriguez', skillId: 'React', relationship: 'Collaborator', verified: true, comment: 'Clean, maintainable components every time.', createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
+ { id: 'me4', endorserId: 'marcus-thorne', endorserName: 'Marcus Thorne', skillId: 'Hardware Prototyping', relationship: 'Collaborator', verified: true, comment: 'Took the bio-filter from bench rig to a working pilot unit.', createdAt: new Date(Date.now() - 12 * 86400000).toISOString() },
+ { id: 'me5', endorserId: 'jordan-taylor', endorserName: 'Jordan Taylor', skillId: 'Node.js', relationship: 'Peer', verified: true, comment: 'Strong backend architecture skills.', createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
 ];
+const RELATIONSHIP_LABELS: Record<EndorsementRelationship, { en: string; el: string }> = {
+ Collaborator: { en: 'Collaborator', el: 'Συνεργάτης' },
+ 'Co-Founder': { en: 'Co-Founder', el: 'Συνιδρυτής' },
+ Mentor: { en: 'Mentor', el: 'Μέντορας' },
+ Investor: { en: 'Investor', el: 'Επενδυτής' },
+ Peer: { en: 'Peer', el: 'Ομότιμος' },
+};
 // ── Mock readiness fallback ──────────────────────────────────────────────────
 const MOCK_READINESS: ReadinessScore = {
  id: 'mock-readiness',
@@ -249,9 +256,9 @@ export default function ProfilePage() {
  const [connecting, setConnecting] = useState(false);
  const [profile, setProfile] = useState<UserProfile | null>(null);
  const [endorsements, setEndorsements] = useState<Endorsement[]>([]);
- // Phones and tablets show three endorsements, then "Show all" (round 12): five full quotes made the page seven screens long.
- const compact = useMediaQuery('(max-width: 1023px)');
+ // Show three endorsements initially, then "Show all", and group secondary analytics/history under "More on this profile".
  const [allEndorsements, setAllEndorsements] = useState(false);
+ const [moreOpen, setMoreOpen] = useState(false);
  const [readiness, setReadiness] = useState<ReadinessScore | null>(null);
  const [isEditing, setIsEditing] = useState(false);
  const [isEndorsing, setIsEndorsing] = useState(false);
@@ -259,6 +266,7 @@ export default function ProfilePage() {
  // What the form held before "Fill from a description", so Undo can put it back.
  const [beforeFill, setBeforeFill] = useState<Partial<UserProfile> | null>(null);
  const [selectedSkillForEndorsement, setSelectedSkillForEndorsement] = useState('');
+ const [endorsementRelationship, setEndorsementRelationship] = useState<EndorsementRelationship>('Collaborator');
  const [endorsementComment, setEndorsementComment] = useState('');
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState('');
@@ -349,15 +357,53 @@ export default function ProfilePage() {
         { id: 'open-deal-room', en: 'Open Deal Room', el: 'Άνοιγμα Deal Room', run: () => useUIStore.getState().setDealRoomModalOpen(true, 'sv-my-venture') },
       ]
     : [
+        {
+         id: 'verify-skill',
+         en: 'Verify a skill',
+         el: 'Επαλήθευση δεξιότητας',
+         run: () => {
+          const firstSkill = (profile?.skills || [])[0];
+          const skillName = typeof firstSkill === 'string' ? firstSkill : (firstSkill as { name?: string } | undefined)?.name || 'Product Strategy';
+          setSelectedSkillForEndorsement(skillName);
+         },
+        },
         { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => useUIStore.getState().setMatchBreakdownModalOpen(true, id || profile?.uid || 'fp-1') },
         { id: 'message-member', en: 'Send a message', el: 'Αποστολή μηνύματος', run: () => { if (id) navigate(`/messages?user=${id}`); } },
         { id: 'connect-member', en: 'Connect', el: 'Σύνδεση', run: () => { void handleConnect(); } },
       ]),
   { id: 'share-profile', en: 'Share profile', el: 'Κοινοποίηση προφίλ', run: () => { void shareProfile(); } },
- ], [isOwnProfile, id, profile?.uid]);
+  { id: 'show-more-profile', en: 'Show all profile sections', el: 'Εμφάνιση όλων των ενοτήτων προφίλ', run: () => setMoreOpen(true) },
+ ], [isOwnProfile, id, profile?.uid, profile?.skills]);
 
- // ── Derived display data (always show sections, fallback to mock) ──
- const displayEndorsements = endorsements.length > 0 ? endorsements : (isDemoMode ? MOCK_ENDORSEMENTS : []);
+ // ── Derived display data (shared reactive local endorsements + Firestore + mock fallback) ──
+ const targetRecipientId = isOwnProfile ? (demoOwn ? 'demo-user' : (profileId || 'demo-user')) : (profileId || 'demo-user');
+ const storedEndorsements = useStored(() => readEndorsements(targetRecipientId), [keys.endorsements, targetRecipientId]);
+ const displayEndorsements = React.useMemo<Endorsement[]>(() => {
+  const merged = new Map<string, Endorsement>();
+  for (const item of endorsements) merged.set(item.id, item);
+  for (const item of storedEndorsements) {
+   if (!merged.has(item.id)) merged.set(item.id, item);
+  }
+  const list = Array.from(merged.values()).sort((a, b) => Date.parse(b.createdAt || '') - Date.parse(a.createdAt || ''));
+  if (list.length > 0) return list;
+  return isDemoMode && isOwnProfile ? MOCK_ENDORSEMENTS : [];
+ }, [endorsements, storedEndorsements, isDemoMode, isOwnProfile]);
+
+ const verifiedSkillBadges = React.useMemo(() => {
+  const bySkill = new Map<string, { skill: string; count: number; verifiers: string[]; relationships: EndorsementRelationship[] }>();
+  for (const e of displayEndorsements) {
+   if (!e.skillId) continue;
+   const existing = bySkill.get(e.skillId) ?? { skill: e.skillId, count: 0, verifiers: [], relationships: [] };
+   existing.count += 1;
+   const verifierName = findPerson(e.endorserId)?.fullName || e.endorserName || t('Collaborator', 'Συνεργάτης');
+   if (!existing.verifiers.includes(verifierName)) existing.verifiers.push(verifierName);
+   const rel = e.relationship || 'Collaborator';
+   if (!existing.relationships.includes(rel)) existing.relationships.push(rel);
+   bySkill.set(e.skillId, existing);
+  }
+  return Array.from(bySkill.values());
+ }, [displayEndorsements, t]);
+
  const displayReadiness = readiness || (isDemoMode ? MOCK_READINESS : null);
  const insightScore = Math.round(([
   profile?.fullName, profile?.headline, profile?.bio, profile?.location, profile?.role,
@@ -532,26 +578,51 @@ export default function ProfilePage() {
   if (!currentUser || !profileId || !selectedSkillForEndorsement) return;
   setIsEndorsing(true);
   try {
+   const skillToVerify = selectedSkillForEndorsement;
+   const commentToSave = endorsementComment;
+   const relToSave = endorsementRelationship;
    if (real) {
-    const record = await endorseSkill({ id: profileId, fullName: profile?.fullName || 'Member' }, selectedSkillForEndorsement, endorsementComment);
-    setEndorsements((prev) => [{ id: record.id, endorserId: record.endorserId, recipientId: record.recipientId, skillId: record.skillId, comment: record.comment, createdAt: new Date(record.createdAt).toISOString() } as Endorsement, ...prev.filter((item) => item.id !== record.id)]);
+    const record = await endorseSkill({ id: profileId, fullName: profile?.fullName || 'Member' }, skillToVerify, commentToSave, relToSave);
+    const created: Endorsement = {
+     id: record.id,
+     endorserId: record.endorserId,
+     endorserName: record.endorserName || currentUser.displayName || 'Founder',
+     endorserAvatar: record.endorserAvatar || currentUser.photoURL || undefined,
+     recipientId: record.recipientId,
+     recipientName: profile?.fullName || 'Member',
+     skillId: record.skillId,
+     relationship: record.relationship,
+     verified: true,
+     comment: record.comment,
+     createdAt: new Date(record.createdAt).toISOString(),
+    };
+    setEndorsements((prev) => [created, ...prev.filter((item) => item.id !== record.id)]);
+    addLocalEndorsement(created);
    } else {
-    // Demo keeps the endorsement local — no Firestore write to a
-    // backend the sample account cannot reach.
-    const newEndorsement: Endorsement = {
-     id: `local-${Date.now()}`,
-     authorId: currentUser.uid,
+    const created = addLocalEndorsement({
      endorserId: currentUser.uid,
-     recipientId: profileId,
-     skillId: selectedSkillForEndorsement,
-     comment: endorsementComment,
-     createdAt: new Date().toISOString()
-    } as Endorsement;
-    setEndorsements(prev => [newEndorsement, ...prev]);
+     endorserName: ownProfile?.fullName || currentUser.displayName || 'Demo Founder',
+     endorserRole: ownProfile?.role || 'Founder',
+     recipientId: targetRecipientId,
+     recipientName: profile?.fullName || 'Member',
+     skillId: skillToVerify,
+     relationship: relToSave,
+     comment: commentToSave,
+    });
+    setEndorsements((prev) => [created, ...prev.filter((item) => item.id !== created.id)]);
    }
+   logActivity({
+    kind: 'profile',
+    title: `Verified ${profile?.fullName || 'collaborator'} for ${skillToVerify}`,
+    titleEl: `Επαλήθευση δεξιότητας ${skillToVerify} για ${profile?.fullName || 'συνεργάτη'}`,
+    href: `/profile/${profileId}`,
+   });
    setSelectedSkillForEndorsement('');
    setEndorsementComment('');
-   toast.success(t('Endorsement sent', 'Η σύσταση στάλθηκε'), t(`${profile?.fullName || 'They'} will be notified.`, `Θα σταλεί ειδοποίηση σε ${profile?.fullName || 'το μέλος'}.`));
+   toast.success(
+    t('Skill verified', 'Η δεξιότητα επαληθεύτηκε'),
+    t(`Verified ${skillToVerify} as ${RELATIONSHIP_LABELS[relToSave].en}.`, `Επαληθεύτηκε η δεξιότητα ${skillToVerify} ως ${RELATIONSHIP_LABELS[relToSave].el}.`),
+   );
   } catch (err: unknown) {
    if (err instanceof Error && err.message === 'self') {
     toast.info(t('You cannot endorse yourself', 'Δεν μπορείς να συστήσεις τον εαυτό σου'));
@@ -562,6 +633,40 @@ export default function ProfilePage() {
   } finally {
    setIsEndorsing(false);
   }
+ };
+
+ const handleWithdrawEndorsement = async (skillName: string) => {
+  if (!currentUser) return;
+  const existing = displayEndorsements.find((e) => e.skillId === skillName && e.endorserId === currentUser.uid);
+  if (!existing) return;
+  removeLocalEndorsement(existing.id);
+  setEndorsements((prev) => prev.filter((item) => item.id !== existing.id));
+  if (real) {
+   await withdrawEndorsement(existing.id).catch(() => undefined);
+  }
+  toast.showToast({
+   type: 'info',
+   title: t(`Removed verification for ${skillName}`, `Αφαιρέθηκε η επαλήθευση για ${skillName}`),
+   action: {
+    label: t('Undo', 'Αναίρεση'),
+    onClick: () => {
+     const restored = addLocalEndorsement({
+      id: existing.id,
+      endorserId: existing.endorserId,
+      endorserName: existing.endorserName,
+      endorserAvatar: existing.endorserAvatar,
+      endorserRole: existing.endorserRole,
+      recipientId: existing.recipientId || targetRecipientId,
+      recipientName: existing.recipientName || profile?.fullName,
+      skillId: existing.skillId,
+      relationship: existing.relationship || 'Collaborator',
+      comment: existing.comment,
+      createdAt: existing.createdAt,
+     });
+     setEndorsements((prev) => [restored, ...prev.filter((item) => item.id !== restored.id)]);
+    },
+   },
+  });
  };
 
  /** The same reader as onboarding: fills only the empty fields of the edit form; nothing is saved until Save. */
@@ -847,6 +952,38 @@ export default function ProfilePage() {
          </div>
         )}
        </div>
+
+       {/* Small Collaborator-Verified Skill Badges in Profile Header */}
+       {verifiedSkillBadges.length > 0 && (
+        <div
+         data-testid="profile-verified-skill-badges"
+         className="flex flex-wrap items-center gap-1.5 pt-1"
+         aria-label={t('Collaborator-verified skills', 'Δεξιότητες επαληθευμένες από συνεργάτες')}
+        >
+         <span className="inline-flex items-center gap-1 text-xs font-medium text-stone-400 mr-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          {t('Verified skills:', 'Επαληθευμένες δεξιότητες:')}
+         </span>
+         {verifiedSkillBadges.slice(0, 6).map((badge) => (
+          <button
+           key={badge.skill}
+           type="button"
+           onClick={() => {
+            if (!isOwnProfile) setSelectedSkillForEndorsement(badge.skill);
+           }}
+           title={t(
+            `Verified by ${badge.verifiers.join(', ')} (${badge.relationships.join(', ')})`,
+            `Επαληθεύτηκε από ${badge.verifiers.join(', ')} (${badge.relationships.map((r) => RELATIONSHIP_LABELS[r]?.el || r).join(', ')})`,
+           )}
+           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-medium hover:border-emerald-400 transition-colors"
+          >
+           <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+           <span>{labelOf(badge.skill)}</span>
+           <span className="text-[11px] font-semibold text-emerald-700 tabular-nums">×{badge.count}</span>
+          </button>
+         ))}
+        </div>
+       )}
       </div>
      </div>
     </div>
@@ -962,70 +1099,59 @@ export default function ProfilePage() {
        ))}
       </div>
      </div>
-
-     {/* Activity Feed */}
-     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-        <Activity className="w-4 h-4 text-stone-400" />
-        {t('Recent Activity', 'Πρόσφατη δραστηριότητα')}
-       </h3>
-       <span className="text-xs text-stone-400 font-medium">{t('Last 7 days', 'Τελευταίες 7 ημέρες')}</span>
-      </div>
-      <div className="space-y-1">
-       {activityItems.length === 0 && (
-        <p className="text-sm text-stone-500 p-3">
-         {isOwnProfile ? t('Nothing in the last 7 days.', 'Τίποτα τις τελευταίες 7 ημέρες.') : t('No public activity in the last 7 days.', 'Καμία δημόσια δραστηριότητα τις τελευταίες 7 ημέρες.')}
-        </p>
-       )}
-       {activityItems.map((item, idx) => (
-        <motion.div
-         key={item.id}
-         initial={{ opacity: 0, x: -10 }}
-         animate={{ opacity: 1, x: 0 }}
-         transition={{ delay: Math.min(idx, 8) * 0.05 }}
-         className="flex items-start gap-3 p-3 rounded-xl hover:bg-stone-50/80 transition-colors group"
-        >
-         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", item.bg, item.color, item.bg.replace('bg-', 'border-').replace('50', '100'))}>
-          <item.icon className="w-4 h-4" />
-         </div>
-         <div className="flex-1 min-w-0">
-          {item.href ? (
-           <button type="button" onClick={() => navigate(item.href!)} className="text-left text-sm text-stone-700 leading-snug hover:underline">{t(item.text, item.textEl)}</button>
-          ) : (
-           <p className="text-sm text-stone-700 leading-snug">{t(item.text, item.textEl)}</p>
-          )}
-          <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1">
-           <Clock className="w-3 h-3" />
-           {item.at ? <RelTime iso={item.at} /> : t(item.time, item.timeEl)}
-          </p>
-         </div>
-        </motion.div>
-       ))}
-      </div>
-     </div>
     </div>
 
     {/* Proof: skills and availability */}
     <div className="min-w-0 space-y-6">
 {/* Skills Section */}
      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+       <div>
+        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Skills & Endorsements', 'Δεξιότητες και συστάσεις')}</h3>
+        <p className="text-xs text-stone-500 mt-0.5">
+         {isOwnProfile
+          ? t('Collaborators can verify your specific skills to display verified badges on your profile.', 'Οι συνεργάτες σου μπορούν να επαληθεύσουν τις δεξιότητές σου ώστε να εμφανίζονται σήματα επαλήθευσης στο προφίλ σου.')
+          : t('Tap + on any skill to verify it as a collaborator, or tap ✓ to withdraw your verification.', 'Πάτησε + σε οποιαδήποτε δεξιότητα για να την επαληθεύσεις ως συνεργάτης, ή ✓ για ανάκληση.')}
+        </p>
+       </div>
+       {verifiedSkillBadges.length > 0 && (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+         {t(`${verifiedSkillBadges.length} verified`, `${verifiedSkillBadges.length} επαληθευμένες`)}
+        </span>
+       )}
+      </div>
 
       <div className="flex flex-wrap gap-2">
        {Array.isArray(profile.skills) && profile.skills.length === 0 && (
         <p className="text-sm text-stone-500">{t('No skills yet.', 'Δεν υπάρχουν ακόμη δεξιότητες.')}</p>
        )}
-       {(profile.skills || ['Product Strategy', 'Machine Learning', 'React', 'Node.js', 'Venture Capital', 'Growth Hacking']).map(skill => {
+       {((profile.skills && profile.skills.length > 0) ? profile.skills : ['Product Strategy', 'IoT', 'React', 'Node.js', 'Hardware Prototyping', 'Growth Hacking']).map(skill => {
         const skillName = typeof skill === 'string' ? skill : (skill as { name?: string }).name ?? '';
         const skillProficiency = typeof skill === 'object' && skill !== null ? Number((skill as { proficiency?: number }).proficiency ?? 0) : 0;
-        const skillEndorsements = displayEndorsements.filter(e => e.skillId === skillName);
+        const skillEndorsements = displayEndorsements.filter(e => e.skillId.toLowerCase() === skillName.toLowerCase());
         const hasEndorsed = skillEndorsements.some(e => e.endorserId === currentUser?.uid);
+        const verifierNames = skillEndorsements.map(e => findPerson(e.endorserId)?.fullName || e.endorserName || t('Collaborator', 'Συνεργάτης'));
 
         return (
-         <div key={skillName} className="group/skill relative flex items-center bg-stone-50 border border-stone-100 rounded-xl overflow-hidden hover:border-stone-300 transition-all">
-          <div className="px-4 py-2 flex flex-col justify-center">
-           <span className="text-stone-900 text-sm font-medium">{skillName}</span>
+         <div key={skillName} className={cn(
+          "group/skill relative flex items-center bg-stone-50 border rounded-xl overflow-hidden transition-all",
+          skillEndorsements.length > 0 ? "border-emerald-200/80 hover:border-emerald-400" : "border-stone-100 hover:border-stone-300"
+         )}>
+          <div className="px-3.5 py-2 flex flex-col justify-center">
+           <div className="flex items-center gap-1.5">
+            <span className="text-stone-900 text-sm font-medium">{skillName}</span>
+            {skillEndorsements.length > 0 && (
+             <span
+              data-testid={`skill-verified-badge-${skillName}`}
+              title={t(`Verified by: ${verifierNames.join(', ')}`, `Επαληθεύτηκε από: ${verifierNames.join(', ')}`)}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold"
+             >
+              <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+              {skillEndorsements.length}
+             </span>
+            )}
+           </div>
            {skillProficiency > 0 && (
             <div className="flex items-center gap-0.5 mt-0.5" title={t(`Proficiency: ${skillProficiency}/5`, `Επίπεδο: ${skillProficiency}/5`)}>
              {Array.from({ length: 5 }).map((_, i) => (
@@ -1035,22 +1161,16 @@ export default function ProfilePage() {
            )}
           </div>
 
-          {skillEndorsements.length > 0 && (
-           <div className="px-2 py-1 bg-stone-100 text-stone-600 text-xs font-medium border-l border-stone-200 flex items-center gap-1">
-            <Award className="w-3 h-3" />
-            {skillEndorsements.length}
-           </div>
-          )}
-
           {!isOwnProfile && (
            <button 
-            onClick={() => !hasEndorsed && setSelectedSkillForEndorsement(skillName)}
-            disabled={hasEndorsed}
+            type="button"
+            onClick={() => (hasEndorsed ? void handleWithdrawEndorsement(skillName) : setSelectedSkillForEndorsement(skillName))}
             className={cn(
-             "px-3 py-2 border-l border-stone-100 transition-all flex items-center justify-center",
-             hasEndorsed ? "bg-emerald-50 text-emerald-600 cursor-default" : "bg-white text-stone-400 hover:bg-stone-900 hover:text-white"
+             "px-3 py-2 border-l border-stone-100 transition-all flex items-center justify-center min-h-10",
+             hasEndorsed ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-white text-stone-500 hover:bg-stone-900 hover:text-white"
             )}
-            title={hasEndorsed ? t("Endorsed", "Έκανες σύσταση") : t("Endorse skill", "Σύσταση δεξιότητας")}
+            aria-label={hasEndorsed ? t(`Withdraw verification for ${skillName}`, `Ανάκληση επαλήθευσης για ${skillName}`) : t(`Verify skill ${skillName}`, `Επαλήθευση δεξιότητας ${skillName}`)}
+            title={hasEndorsed ? t("Verified by you · Tap to undo", "Επαληθεύτηκε από εσένα · Πάτησε για αναίρεση") : t("Verify skill as collaborator", "Επαλήθευση δεξιότητας ως συνεργάτης")}
            >
             {hasEndorsed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
            </button>
@@ -1061,27 +1181,53 @@ export default function ProfilePage() {
       </div>
 
 
-      {/* Endorsement Form (Modal-like) */}
+      {/* Collaborator Skill Verification Form */}
       <AnimatePresence>
        {selectedSkillForEndorsement && (
         <motion.div 
          initial={{ opacity: 0, scale: 0.95 }}
          animate={{ opacity: 1, scale: 1 }}
          exit={{ opacity: 0, scale: 0.95 }}
-         className="p-6 bg-stone-50 rounded-2xl border border-stone-200 space-y-4"
+         className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-4"
         >
          <div className="flex items-center justify-between">
-          <h4 className="font-medium text-stone-900">{t('Endorse for', 'Σύσταση για')} {selectedSkillForEndorsement}</h4>
+          <div className="flex items-center gap-2">
+           <ShieldCheck className="w-4 h-4 text-emerald-600" />
+           <h4 className="font-semibold text-sm text-stone-900">{t('Verify skill:', 'Επαλήθευση δεξιότητας:')} {selectedSkillForEndorsement}</h4>
+          </div>
           <button type="button" aria-label={t('Cancel endorsement', 'Ακύρωση σύστασης')} onClick={() => setSelectedSkillForEndorsement('')} className="text-stone-400 hover:text-stone-900">
            <X className="w-5 h-5" />
           </button>
          </div>
+
+         <div className="space-y-1.5">
+          <span className="block text-xs font-medium text-stone-600">{t('How did you collaborate?', 'Πώς συνεργαστήκατε;')}</span>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Collaborator relationship', 'Σχέση συνεργασίας')}>
+           {(Object.keys(RELATIONSHIP_LABELS) as EndorsementRelationship[]).map((rel) => (
+            <button
+             key={rel}
+             type="button"
+             onClick={() => setEndorsementRelationship(rel)}
+             aria-pressed={endorsementRelationship === rel}
+             className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors",
+              endorsementRelationship === rel
+               ? "bg-stone-900 text-white border-stone-900"
+               : "bg-white text-stone-700 border-stone-200 hover:border-stone-400"
+             )}
+            >
+             {t(RELATIONSHIP_LABELS[rel].en, RELATIONSHIP_LABELS[rel].el)}
+            </button>
+           ))}
+          </div>
+         </div>
+
          <textarea 
           aria-label={t('Endorsement comment (optional)', 'Σχόλιο σύστασης (προαιρετικό)')}
-          placeholder={t('Add a brief comment (optional)...', 'Πρόσθεσε ένα σύντομο σχόλιο (προαιρετικά)…')}
+          placeholder={t('Add a brief verification note on how they used this skill (optional)...', 'Πρόσθεσε μια σύντομη σημείωση για το πώς εφάρμοσε αυτή τη δεξιότητα (προαιρετικά)…')}
           value={endorsementComment}
           onChange={(e) => setEndorsementComment(e.target.value)}
-          className="w-full p-4 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+          className="w-full p-3.5 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-stone-900 outline-none transition-all"
           rows={3}
          />
          <Button 
@@ -1089,43 +1235,56 @@ export default function ProfilePage() {
           disabled={isEndorsing}
           className="w-full h-10 rounded-xl bg-stone-900 text-white font-medium text-sm"
          >
-          {isEndorsing ? t('Endorsing...', 'Αποστολή…') : t('Confirm Endorsement', 'Επιβεβαίωση σύστασης')}
+          {isEndorsing ? t('Verifying...', 'Επαλήθευση…') : t('Verify & Endorse Skill', 'Επαλήθευση & Σύσταση Δεξιότητας')}
          </Button>
         </motion.div>
        )}
       </AnimatePresence>
 
-      {/* Recent Endorsements Feed — Enhanced */}
-       <div className="pt-6 border-t border-stone-50 space-y-4">
+       {/* Recent Endorsements Feed — Enhanced with Collaborator Relationship Badges */}
+       <div className="pt-6 border-t border-stone-100 space-y-3">
         <div className="flex items-center justify-between">
-         <h4 className="text-sm font-medium text-stone-400 tracking-wide flex items-center gap-2">
-          <Award className="w-4 h-4 text-amber-400" />
-          {t('Recent Endorsements', 'Πρόσφατες συστάσεις')}
+         <h4 className="text-sm font-medium text-stone-600 tracking-wide flex items-center gap-2">
+          <Award className="w-4 h-4 text-amber-500" />
+          {t('Collaborator Verifications', 'Επαληθεύσεις Συνεργατών')}
          </h4>
-         <span className="text-xs text-stone-400 font-medium bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-100">
+         <span className="text-xs text-stone-600 font-medium bg-stone-50/80 px-2.5 py-0.5 rounded-lg tabular-nums">
           {displayEndorsements.length} {t('total', 'συνολικά')}
          </span>
         </div>
-        <div className="space-y-3">
-         {displayEndorsements.slice(0, compact && !allEndorsements ? 3 : 5).map((endorsement, idx) => (
+        {displayEndorsements.length === 0 && (
+         <p className="text-xs text-stone-500 py-2">
+          {t('No collaborator verifications yet.', 'Δεν υπάρχουν ακόμη επαληθεύσεις από συνεργάτες.')}
+         </p>
+        )}
+        <div className="space-y-2.5">
+         {displayEndorsements.slice(0, !allEndorsements ? 3 : 5).map((endorsement, idx) => (
           <motion.div
            key={endorsement.id}
            initial={{ opacity: 0, y: 8 }}
            animate={{ opacity: 1, y: 0 }}
            transition={{ delay: idx * 0.06 }}
-           className="flex gap-3 p-3.5 bg-stone-50/50 rounded-xl border border-stone-100 hover:bg-white hover:border-stone-200 hover:shadow-sm transition-all group"
+           className="flex gap-3 p-3.5 bg-stone-50/80 rounded-xl hover:bg-stone-100/70 transition-all group"
           >
            {(() => {
             const endorser = findPerson(endorsement.endorserId);
-            const record = endorsement as Endorsement & { endorserName?: string; endorserAvatar?: string };
-            return <Avatar src={(endorser ? avatarOf(endorser) : '') || record.endorserAvatar || undefined} fallback={endorser?.fullName || record.endorserName || '?'} size="md" className="[&>*]:rounded-xl" />;
+            return <Avatar src={(endorser ? avatarOf(endorser) : '') || endorsement.endorserAvatar || undefined} fallback={endorser?.fullName || endorsement.endorserName || '?'} size="md" className="[&>*]:rounded-xl" />;
            })()}
            <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center gap-1.5 justify-between">
              <p className="text-sm text-stone-900">
-              <span className="font-medium">{findPerson(endorsement.endorserId)?.fullName || (endorsement as Endorsement & { endorserName?: string }).endorserName || t('A member', 'Ένα μέλος')}</span> {t('endorsed for', 'έκανε σύσταση για')}{' '}
-              <span className="font-semibold text-stone-900 bg-amber-50 px-1.5 py-0.5 rounded-md text-xs border border-amber-100">{endorsement.skillId}</span>
+              <span className="font-medium">{findPerson(endorsement.endorserId)?.fullName || endorsement.endorserName || t('A member', 'Ένα μέλος')}</span>{' '}
+              <span className="text-stone-500">{t('verified', 'επαλήθευσε')}</span>{' '}
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md text-xs">
+               <ShieldCheck className="w-3 h-3 text-emerald-600" />
+               {endorsement.skillId}
+              </span>
              </p>
+             {endorsement.relationship && (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600">
+               {t(RELATIONSHIP_LABELS[endorsement.relationship]?.en || endorsement.relationship, RELATIONSHIP_LABELS[endorsement.relationship]?.el || endorsement.relationship)}
+              </span>
+             )}
             </div>
             {endorsement.comment && (
              <p className="text-xs text-stone-500 italic leading-relaxed">"{endorsement.comment}"</p>
@@ -1135,67 +1294,20 @@ export default function ProfilePage() {
              {endorsement.createdAt ? formatDate(endorsement.createdAt) : t('Recently', 'Πρόσφατα')}
             </p>
            </div>
-           <div className="shrink-0 flex items-start">
-            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center border border-amber-100">
-             <ThumbsUp className="w-3.5 h-3.5 text-amber-500" />
-            </div>
-           </div>
           </motion.div>
          ))}
         </div>
-        {compact && displayEndorsements.length > 3 && (
+        {displayEndorsements.length > 3 && (
          <button
           type="button"
           aria-expanded={allEndorsements}
           onClick={() => setAllEndorsements((open) => !open)}
-          className="w-full min-h-10 rounded-xl border border-stone-200 bg-white text-xs font-medium text-stone-700 hover:border-stone-400"
+          className="w-full min-h-10 rounded-xl bg-stone-50/80 hover:bg-stone-100 text-xs font-medium text-stone-700 transition-colors"
          >
           {allEndorsements ? t('Show fewer', 'Λιγότερες') : t(`Show all (${Math.min(5, displayEndorsements.length)})`, `Όλες (${Math.min(5, displayEndorsements.length)})`)}
          </button>
         )}
        </div>
-     </div>
-{/* Achievements / Badges */}
-     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
-       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-        <Trophy className="w-4 h-4 text-amber-500" />
-        {t('Achievements', 'Επιτεύγματα')}
-       </h3>
-       <span className="text-xs text-stone-400 font-medium">
-        {achievements.filter(a => a.earned).length}/{achievements.length} {t('earned', 'κερδισμένα')}
-       </span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-       {achievements.map(badge => (
-        <motion.div
-         key={badge.id}
-         whileHover={{ scale: badge.earned ? 1.05 : 1 }}
-         title={badge.earned ? undefined : badge.progress}
-         className={cn(
-          "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all",
-          badge.earned
-           ? `${badge.bg} ${badge.border} shadow-sm`
-           : "bg-stone-50/50 border-dashed border-stone-200"
-         )}
-        >
-         {/* Locked badges stay readable: only the icon is dimmed, the text keeps AA contrast. */}
-         <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100 opacity-60 grayscale")}>
-          <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
-         </div>
-         <div>
-          <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-600")}>{t(badge.name, badge.nameEl)}</p>
-          <p className="text-xs text-stone-500 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
-          {!badge.earned && <p className="text-[11px] font-medium text-stone-500 mt-1">{t('Locked', 'Κλειδωμένο')}</p>}
-         </div>
-         {badge.earned && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
-           <Check className="w-2.5 h-2.5 text-white" />
-          </div>
-         )}
-        </motion.div>
-       ))}
-      </div>
      </div>
 {/* Open To / Availability */}
      {isOwnProfile && (
@@ -1270,11 +1382,11 @@ export default function ProfilePage() {
      </div>
     </div>
 
-    {/* Signals: AI, readiness, network */}
+    {/* Signals: AI & network (core above the fold) */}
     <div className="min-w-0 space-y-6 lg:col-span-2 xl:col-span-1">
      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
-{/* Own profile: the studio check (computed, not a model — the AI review is the card below). Another profile: the match analysis. */}
-      <div className="bg-stone-50 border border-stone-200 p-5 rounded-xl space-y-4">
+      {/* Own profile: the studio check (computed, not a model — the AI review is the card below). Another profile: the match analysis. */}
+      <div className="bg-white border border-stone-100 p-5 rounded-2xl shadow-sm space-y-4">
        <div>
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{isOwnProfile && ownAudit ? t('Studio check', 'Έλεγχος studio') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('AI Match Analysis', 'Ανάλυση αντιστοίχισης με AI')}</h3>
@@ -1282,22 +1394,22 @@ export default function ProfilePage() {
         <div className="space-y-3">
          <div className="flex items-center justify-between text-xs">
           <span className="text-stone-600">{isOwnProfile && ownAudit ? t('Overall', 'Συνολικά') : isOwnProfile ? t('Profile strength', 'Δύναμη προφίλ') : t('Overall compatibility', 'Συνολική συμβατότητα')}</span>
-          <span className="text-stone-900 font-semibold" data-testid="profile-insight-score">{isOwnProfile && ownAudit ? ownAudit.score : insightScore}%</span>
+          <span className="text-stone-900 font-semibold tabular-nums" data-testid="profile-insight-score">{isOwnProfile && ownAudit ? ownAudit.score : insightScore}%</span>
          </div>
-         <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
+         <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
           <motion.div
            initial={{ width: 0 }}
            animate={{ width: `${isOwnProfile && ownAudit ? ownAudit.score : insightScore}%` }}
            transition={{ duration: 1.5 }}
-           className="h-full bg-stone-700 rounded-full"
+           className="h-full bg-stone-800 rounded-full"
           />
          </div>
          {isOwnProfile && ownAudit ? (
          <>
          <div className="grid grid-cols-3 gap-2 pt-2" data-testid="profile-insight-areas">
           {ownAudit.areas.map(d => (
-           <div key={d.label} className="text-center p-2 bg-white rounded-lg border border-stone-200">
-            <p className="text-stone-900 font-semibold text-sm">{d.pct}%</p>
+           <div key={d.label} className="text-center p-2.5 bg-stone-50/80 rounded-xl">
+            <p className="text-stone-900 font-semibold text-sm tabular-nums">{d.pct}%</p>
             <p className="text-xs text-stone-600">{t(d.label, d.labelEl)}</p>
            </div>
           ))}
@@ -1314,8 +1426,8 @@ export default function ProfilePage() {
            { label: 'Values', labelEl: 'Αξίες', pct: 78 },
            { label: 'Goals', labelEl: 'Στόχοι', pct: 81 },
           ].map(d => (
-           <div key={d.label} className="text-center p-2 bg-white rounded-lg border border-stone-200">
-            <p className="text-stone-900 font-semibold text-sm">{d.pct}%</p>
+           <div key={d.label} className="text-center p-2.5 bg-stone-50/80 rounded-xl">
+            <p className="text-stone-900 font-semibold text-sm tabular-nums">{d.pct}%</p>
             <p className="text-xs text-stone-600">{t(d.label, d.labelEl)}</p>
            </div>
           ))}
@@ -1336,109 +1448,7 @@ export default function ProfilePage() {
        </div>
       </div>
       {isOwnProfile && <AiProfileReview />}
-{/* Readiness Score Section */}
-      {displayReadiness && <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
-       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
-        <TrendingUp className="w-5 h-5 text-stone-400" />
-       </div>
-
-       <div className="flex items-center gap-6">
-        <div className="relative w-24 h-24 shrink-0">
-         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-           <Pie
-            data={[
-             { name: 'Score', value: displayReadiness.score },
-             { name: 'Remaining', value: 100 - displayReadiness.score }
-            ]}
-            cx="50%"
-            cy="50%"
-            innerRadius={30}
-            outerRadius={40}
-            paddingAngle={5}
-            dataKey="value"
-            startAngle={90}
-            endAngle={-270}
-           >
-            <Cell fill="#1c1917" />
-            <Cell fill="#f5f5f4" />
-           </Pie>
-          </PieChart>
-         </ResponsiveContainer>
-         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-xs font-medium text-stone-900">{displayReadiness.score}</span>
-         </div>
-        </div>
-        <div className="flex-1 space-y-1">
-         <p className="text-sm font-medium text-stone-900">{t('Ecosystem Standing', 'Θέση στο οικοσύστημα')}</p>
-         <p className="text-xs text-stone-500 leading-relaxed">
-          {t('Based on your artifacts, team momentum, and mentor feedback loops.', 'Με βάση το υλικό σου, τη δυναμική της ομάδας και την ανατροφοδότηση από μέντορες.')}
-         </p>
-        </div>
-       </div>
-
-       <div className="grid grid-cols-2 gap-3">
-        {[
-         { label: 'Artifacts', labelEl: 'Υλικό', value: displayReadiness.dimensionScores.artifactCompleteness, color: 'blue' },
-         { label: 'Team', labelEl: 'Ομάδα', value: displayReadiness.dimensionScores.teamCompleteness, color: 'green' },
-         { label: 'Market', labelEl: 'Αγορά', value: displayReadiness.dimensionScores.marketUnderstanding, color: 'amber' },
-         { label: 'Product', labelEl: 'Προϊόν', value: displayReadiness.dimensionScores.solutionClarity, color: 'purple' },
-        ].map((dim) => (
-         <div key={dim.label} className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-          <div className="text-xs font-medium text-stone-400 tracking-wide mb-1">{t(dim.label, dim.labelEl)}</div>
-          <div className="text-sm font-medium text-stone-900">{dim.value}/100</div>
-         </div>
-        ))}
-       </div>
-      </div>}
-{/* Profile Stats — Enhanced */}
-     <div className="bg-stone-50 p-5 rounded-2xl border border-stone-100 space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-       <TrendingUp className="w-4 h-4 text-stone-400" />
-       {t('Profile Analytics', 'Στατιστικά προφίλ')}
-      </h3>
-      <div className="grid grid-cols-2 gap-3">
-       {(() => {
-        const weekAgo = Date.now() - 7 * 86_400_000;
-        const viewsWeek = views.filter((view) => view.at >= weekAgo).length;
-        const strongMatches = similarPeople.filter((item) => item.score >= 60).length;
-        const connectedCount = connections.accepted.length;
-        const connectedWeek = connections.accepted.filter((record) => (record.respondedAt || record.updatedAt) >= weekAgo).length;
-        const endorsedWeek = displayEndorsements.filter((item) => item.createdAt && Date.parse(item.createdAt) >= weekAgo).length;
-        const rows = [
-          { label: 'Views', labelEl: 'Προβολές', value: String(isDemoMode ? demoWeeklyViews() : views.length), sub: isDemoMode ? t('Last 7 days', 'Τελευταίες 7 ημέρες') : isOwnProfile ? (viewsWeek ? `+${viewsWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Last 30 days', 'Τελευταίες 30 ημέρες')) : t('Visible to the owner', 'Ορατό μόνο στον κάτοχο') },
-          { label: 'Strong matches', labelEl: 'Δυνατές αντιστοιχίσεις', value: String(strongMatches), sub: t('Members scoring 60%+', 'Μέλη με σκορ 60%+') },
-          { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: endorsedWeek ? `+${endorsedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('All time', 'Συνολικά') },
-          { label: 'Connections', labelEl: 'Συνδέσεις', value: isOwnProfile ? String(connectedCount) : String(((profile as unknown as { connectionIds?: string[] }).connectionIds ?? []).length), sub: isOwnProfile && connectedWeek ? `+${connectedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Accepted requests', 'Αποδεκτά αιτήματα') },
-         ];
-        return rows.map((stat) => (
-         <div key={stat.label} className="bg-white p-3.5 rounded-xl border border-stone-100 text-center space-y-1">
-          <div className="text-lg font-semibold text-stone-900 tabular-nums">{stat.value}</div>
-          <div className="text-xs text-stone-500 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
-          <div className="text-xs font-semibold text-stone-400">{stat.sub}</div>
-         </div>
-        ));
-       })()}
-      </div>
-      {isDemoMode && (
-      <div className="pt-2 border-t border-stone-200/60">
-       <div className="flex items-center justify-between text-xs text-stone-400">
-        <span>{t('Profile rank', 'Κατάταξη προφίλ')}</span>
-        <span className="font-semibold text-stone-900">{t('Top 15%', 'Στο κορυφαίο 15%')}</span>
-       </div>
-       <div className="w-full h-1.5 bg-stone-200 rounded-full mt-2 overflow-hidden">
-        <motion.div
-         initial={{ width: 0 }}
-         animate={{ width: '85%' }}
-         transition={{ duration: 1.5, ease: 'easeOut' }}
-         className="h-full bg-stone-900 rounded-full"
-        />
-       </div>
-      </div>
-      )}
-     </div>
-{/* Connections / Mutual Connections */}
+      {/* Connections / Mutual Connections */}
       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
         <Handshake className="w-4 h-4 text-stone-400" />
@@ -1460,7 +1470,7 @@ export default function ProfilePage() {
            <p className="text-xs text-stone-400 truncate">{conn.headline}</p>
           </div>
           {conn.mutual != null && (
-           <span className="text-xs text-stone-400 font-medium bg-stone-50 px-2 py-1 rounded-lg border border-stone-100 shrink-0">
+           <span className="text-xs text-stone-500 font-medium bg-stone-50/80 px-2 py-1 rounded-lg shrink-0 tabular-nums">
             {conn.mutual} {t('mutual', 'κοινές')}
            </span>
           )}
@@ -1473,38 +1483,262 @@ export default function ProfilePage() {
         )}
        </div>
       </div>
-{/* People Also Viewed */}
-     <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
-      <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
-       <Eye className="w-4 h-4 text-stone-400" />
-       {isOwnProfile ? t('Members who fit you', 'Μέλη που σου ταιριάζουν') : t('Similar members', 'Παρόμοια μέλη')}
-      </h3>
-      <div className="space-y-2">
-       {!isDemoMode && similarPeople.length === 0 && <p className="text-sm text-stone-500">{t('Suggestions appear as more members join.', 'Οι προτάσεις εμφανίζονται όσο εγγράφονται περισσότερα μέλη.')}</p>}
-       {(isDemoMode
-        ? ALSO_VIEWED.map((person) => ({ id: person.id, name: person.name, headline: person.headline, avatar: avatarFor(person.id, 80), score: person.matchScore }))
-        : similarPeople.map(({ person, score }) => ({ id: person.id, name: person.fullName, headline: person.headline || labelOf(person.role), avatar: avatarOf(person), score }))
-       ).map((person) => (
-        <button type="button" key={person.id} onClick={() => navigate(`/profile/${person.id}`)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors group">
-         <Avatar src={person.avatar || undefined} fallback={person.name} size="md" className="[&>*]:rounded-xl" />
-         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.name}</p>
-          <p className="text-xs text-stone-400 truncate">{person.headline}</p>
-         </div>
-         <div className="flex items-center gap-1 shrink-0" title={t('Compatibility', 'Συμβατότητα')}>
-          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-          <span className="text-xs font-semibold text-stone-700 tabular-nums">{person.score}%</span>
-         </div>
-        </button>
-       ))}
-      </div>
-      <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
-       {t('View more suggestions', 'Περισσότερες προτάσεις')}
-      </button>
-     </div>
      </div>
     </div>
    </div>
+
+   {/* Universal Progressive Disclosure: Secondary analytical & historical sections across all screens */}
+   <section data-testid="profile-more">
+    <button
+     type="button"
+     aria-expanded={moreOpen}
+     aria-controls="profile-more-panel"
+     onClick={() => setMoreOpen((open) => !open)}
+     className="flex w-full items-center justify-between gap-3 rounded-2xl border border-stone-200/90 bg-white px-4 py-3 text-left transition-colors hover:border-stone-400"
+    >
+     <span className="min-w-0">
+      <span className="flex items-center gap-2 text-sm font-semibold text-stone-900">
+       <span>{moreOpen ? t('Show less', 'Λιγότερα') : t('More on this profile', 'Περισσότερα στο προφίλ')}</span>
+       {!moreOpen && (
+        <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600 tabular-nums">
+         +{displayReadiness ? 5 : 4}
+        </span>
+       )}
+      </span>
+      <span className="mt-0.5 block text-xs text-stone-500">
+       {t(
+        'Recent activity, achievements, startup readiness, profile analytics & similar members',
+        'Πρόσφατη δραστηριότητα, επιτεύγματα, ετοιμότητα startup, στατιστικά προφίλ & παρόμοια μέλη',
+       )}
+      </span>
+     </span>
+     <ChevronDown aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-stone-500 transition-transform', moreOpen && 'rotate-180')} />
+    </button>
+
+    {moreOpen && (
+     <div id="profile-more-panel" className="mt-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
+      {/* Recent Activity */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+       <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+         <Activity className="w-4 h-4 text-stone-400" />
+         {t('Recent Activity', 'Πρόσφατη δραστηριότητα')}
+        </h3>
+        <span className="text-xs text-stone-400 font-medium">{t('Last 7 days', 'Τελευταίες 7 ημέρες')}</span>
+       </div>
+       <div className="space-y-1">
+        {activityItems.length === 0 && (
+         <p className="text-sm text-stone-500 p-3">
+          {isOwnProfile ? t('Nothing in the last 7 days.', 'Τίποτα τις τελευταίες 7 ημέρες.') : t('No public activity in the last 7 days.', 'Καμία δημόσια δραστηριότητα τις τελευταίες 7 ημέρες.')}
+         </p>
+        )}
+        {activityItems.map((item, idx) => (
+         <motion.div
+          key={item.id}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: Math.min(idx, 8) * 0.05 }}
+          className="flex items-start gap-3 p-3 rounded-xl hover:bg-stone-50/80 transition-colors group"
+         >
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", item.bg, item.color)}>
+           <item.icon className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+           {item.href ? (
+            <button type="button" onClick={() => navigate(item.href!)} className="text-left text-sm text-stone-700 leading-snug hover:underline">{t(item.text, item.textEl)}</button>
+           ) : (
+            <p className="text-sm text-stone-700 leading-snug">{t(item.text, item.textEl)}</p>
+           )}
+           <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {item.at ? <RelTime iso={item.at} /> : t(item.time, item.timeEl)}
+           </p>
+          </div>
+         </motion.div>
+        ))}
+       </div>
+      </div>
+
+      {/* Achievements / Badges */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+       <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+         <Trophy className="w-4 h-4 text-amber-500" />
+         {t('Achievements', 'Επιτεύγματα')}
+        </h3>
+        <span className="text-xs text-stone-400 font-medium tabular-nums">
+         {achievements.filter(a => a.earned).length}/{achievements.length} {t('earned', 'κερδισμένα')}
+        </span>
+       </div>
+       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {achievements.map(badge => (
+         <motion.div
+          key={badge.id}
+          whileHover={{ scale: badge.earned ? 1.03 : 1 }}
+          title={badge.earned ? undefined : badge.progress}
+          className={cn(
+           "relative flex flex-col items-center gap-2 p-3 rounded-xl text-center transition-all",
+           badge.earned
+            ? `${badge.bg}`
+            : "bg-stone-50/80"
+          )}
+         >
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", badge.earned ? badge.bg : "bg-stone-100 opacity-60 grayscale")}>
+           <badge.icon className={cn("w-4 h-4", badge.earned ? badge.color : "text-stone-400")} />
+          </div>
+          <div>
+           <p className={cn("text-xs font-semibold leading-tight", badge.earned ? "text-stone-900" : "text-stone-600")}>{t(badge.name, badge.nameEl)}</p>
+           <p className="text-xs text-stone-500 mt-0.5 leading-tight">{badge.earned || !badge.progress ? t(badge.desc, badge.descEl) : badge.progress}</p>
+           {!badge.earned && <p className="text-[11px] font-medium text-stone-500 mt-1">{t('Locked', 'Κλειδωμένο')}</p>}
+          </div>
+          {badge.earned && (
+           <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+            <Check className="w-2.5 h-2.5 text-white" />
+           </div>
+          )}
+         </motion.div>
+        ))}
+       </div>
+      </div>
+
+      {/* Startup Readiness */}
+      {displayReadiness && (
+       <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-6">
+        <div className="flex items-center justify-between">
+         <h3 className="text-sm font-semibold text-stone-900 tracking-wider">{t('Startup Readiness', 'Ετοιμότητα startup')}</h3>
+         <TrendingUp className="w-5 h-5 text-stone-400" />
+        </div>
+
+        <div className="flex items-center gap-6">
+         <div className="relative w-24 h-24 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+           <PieChart>
+            <Pie
+             data={[
+              { name: 'Score', value: displayReadiness.score },
+              { name: 'Remaining', value: 100 - displayReadiness.score }
+             ]}
+             cx="50%"
+             cy="50%"
+             innerRadius={30}
+             outerRadius={40}
+             paddingAngle={5}
+             dataKey="value"
+             startAngle={90}
+             endAngle={-270}
+            >
+             <Cell fill="#1c1917" />
+             <Cell fill="#f5f5f4" />
+            </Pie>
+           </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+           <span className="text-xs font-medium text-stone-900 tabular-nums">{displayReadiness.score}</span>
+          </div>
+         </div>
+         <div className="flex-1 space-y-1">
+          <p className="text-sm font-medium text-stone-900">{t('Ecosystem Standing', 'Θέση στο οικοσύστημα')}</p>
+          <p className="text-xs text-stone-500 leading-relaxed">
+           {t('Based on your artifacts, team momentum, and mentor feedback loops.', 'Με βάση το υλικό σου, τη δυναμική της ομάδας και την ανατροφοδότηση από μέντορες.')}
+          </p>
+         </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+         {[
+          { label: 'Artifacts', labelEl: 'Υλικό', value: displayReadiness.dimensionScores.artifactCompleteness },
+          { label: 'Team', labelEl: 'Ομάδα', value: displayReadiness.dimensionScores.teamCompleteness },
+          { label: 'Market', labelEl: 'Αγορά', value: displayReadiness.dimensionScores.marketUnderstanding },
+          { label: 'Product', labelEl: 'Προϊόν', value: displayReadiness.dimensionScores.solutionClarity },
+         ].map((dim) => (
+          <div key={dim.label} className="p-3 bg-stone-50/80 rounded-xl">
+           <div className="text-xs font-medium text-stone-500 tracking-wide mb-0.5">{t(dim.label, dim.labelEl)}</div>
+           <div className="text-sm font-semibold text-stone-900 tabular-nums">{dim.value}/100</div>
+          </div>
+         ))}
+        </div>
+       </div>
+      )}
+
+      {/* Profile Analytics */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-stone-400" />
+        {t('Profile Analytics', 'Στατιστικά προφίλ')}
+       </h3>
+       <div className="grid grid-cols-2 gap-2.5">
+        {(() => {
+         const weekAgo = Date.now() - 7 * 86_400_000;
+         const viewsWeek = views.filter((view) => view.at >= weekAgo).length;
+         const strongMatches = similarPeople.filter((item) => item.score >= 60).length;
+         const connectedCount = connections.accepted.length;
+         const connectedWeek = connections.accepted.filter((record) => (record.respondedAt || record.updatedAt) >= weekAgo).length;
+         const endorsedWeek = displayEndorsements.filter((item) => item.createdAt && Date.parse(item.createdAt) >= weekAgo).length;
+         const rows = [
+           { label: 'Views', labelEl: 'Προβολές', value: String(isDemoMode ? demoWeeklyViews() : views.length), sub: isDemoMode ? t('Last 7 days', 'Τελευταίες 7 ημέρες') : isOwnProfile ? (viewsWeek ? `+${viewsWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Last 30 days', 'Τελευταίες 30 ημέρες')) : t('Visible to the owner', 'Ορατό μόνο στον κάτοχο') },
+           { label: 'Strong matches', labelEl: 'Δυνατές αντιστοιχίσεις', value: String(strongMatches), sub: t('Members scoring 60%+', 'Μέλη με σκορ 60%+') },
+           { label: 'Endorsements', labelEl: 'Συστάσεις', value: String(displayEndorsements.length), sub: endorsedWeek ? `+${endorsedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('All time', 'Συνολικά') },
+           { label: 'Connections', labelEl: 'Συνδέσεις', value: isOwnProfile ? String(connectedCount) : String(((profile as unknown as { connectionIds?: string[] }).connectionIds ?? []).length), sub: isOwnProfile && connectedWeek ? `+${connectedWeek} ${t('this week', 'αυτή την εβδομάδα')}` : t('Accepted requests', 'Αποδεκτά αιτήματα') },
+          ];
+         return rows.map((stat) => (
+          <div key={stat.label} className="bg-stone-50/80 p-3.5 rounded-xl text-center space-y-1">
+           <div className="text-lg font-semibold text-stone-900 tabular-nums">{stat.value}</div>
+           <div className="text-xs text-stone-600 font-medium tracking-wider">{t(stat.label, stat.labelEl)}</div>
+           <div className="text-xs font-medium text-stone-400">{stat.sub}</div>
+          </div>
+         ));
+        })()}
+       </div>
+       {isDemoMode && (
+       <div className="pt-2 border-t border-stone-100">
+        <div className="flex items-center justify-between text-xs text-stone-400">
+         <span>{t('Profile rank', 'Κατάταξη προφίλ')}</span>
+         <span className="font-semibold text-stone-900">{t('Top 15%', 'Στο κορυφαίο 15%')}</span>
+        </div>
+        <div className="w-full h-1.5 bg-stone-100 rounded-full mt-2 overflow-hidden">
+         <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: '85%' }}
+          transition={{ duration: 1.5, ease: 'easeOut' }}
+          className="h-full bg-stone-900 rounded-full"
+         />
+        </div>
+       </div>
+       )}
+      </div>
+
+      {/* People Also Viewed / Similar Members */}
+      <div className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm space-y-4">
+       <h3 className="text-sm font-semibold text-stone-900 tracking-wider flex items-center gap-2">
+        <Eye className="w-4 h-4 text-stone-400" />
+        {isOwnProfile ? t('Members who fit you', 'Μέλη που σου ταιριάζουν') : t('Similar members', 'Παρόμοια μέλη')}
+       </h3>
+       <div className="space-y-2">
+        {!isDemoMode && similarPeople.length === 0 && <p className="text-sm text-stone-500">{t('Suggestions appear as more members join.', 'Οι προτάσεις εμφανίζονται όσο εγγράφονται περισσότερα μέλη.')}</p>}
+        {(isDemoMode
+         ? ALSO_VIEWED.map((person) => ({ id: person.id, name: person.name, headline: person.headline, avatar: avatarFor(person.id, 80), score: person.matchScore }))
+         : similarPeople.map(({ person, score }) => ({ id: person.id, name: person.fullName, headline: person.headline || labelOf(person.role), avatar: avatarOf(person), score }))
+        ).map((person) => (
+         <button type="button" key={person.id} onClick={() => navigate(`/profile/${person.id}`)} className="w-full text-left flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition-colors group">
+          <Avatar src={person.avatar || undefined} fallback={person.name} size="md" className="[&>*]:rounded-xl" />
+          <div className="flex-1 min-w-0">
+           <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 truncate">{person.name}</p>
+           <p className="text-xs text-stone-400 truncate">{person.headline}</p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0" title={t('Compatibility', 'Συμβατότητα')}>
+           <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+           <span className="text-xs font-semibold text-stone-700 tabular-nums">{person.score}%</span>
+          </div>
+         </button>
+        ))}
+       </div>
+       <button type="button" onClick={() => navigate('/matches')} className="w-full text-center text-xs font-medium text-stone-400 hover:text-stone-900 py-2 rounded-xl hover:bg-stone-50 transition-all">
+        {t('View more suggestions', 'Περισσότερες προτάσεις')}
+       </button>
+      </div>
+     </div>
+    )}
+   </section>
   </div>
  );
 }

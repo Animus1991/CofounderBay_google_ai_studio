@@ -31,7 +31,7 @@ export function AiActionLedger() {
       </p>
       <div className="flex flex-wrap gap-1.5" data-testid="ai-ledger-counts">
         {(Object.keys(STATUS_META) as LedgerStatus[]).map((status) => (
-          <span key={status} className="inline-flex items-center gap-1 rounded-full border border-stone-200 px-2 py-0.5 text-xs text-stone-600">
+          <span key={status} className="inline-flex items-center gap-1 rounded-lg bg-stone-50/80 px-2.5 py-0.5 text-xs text-stone-600">
             {t(STATUS_META[status].en, STATUS_META[status].el)} <span className="font-semibold text-stone-900">{counts[status] ?? 0}</span>
           </span>
         ))}
@@ -40,16 +40,16 @@ export function AiActionLedger() {
         <p className="text-xs text-stone-500" data-testid="ai-ledger-empty">{t('Nothing yet. Ask for a change — e.g. “Mark EIN done” — and confirm it.', 'Τίποτα ακόμα. Ζήτα μια αλλαγή — π.χ. «Σημείωσε το EIN ως ολοκληρωμένο» — και επιβεβαίωσέ τη.')}</p>
       )}
       {page.items.length > 0 && (
-        <ul className="divide-y divide-stone-100 rounded-xl border border-stone-100" data-testid="ai-ledger-list">
+        <ul className="space-y-1.5" data-testid="ai-ledger-list">
           {page.items.map((item) => {
             const meta = STATUS_META[item.status];
             const Icon = meta.icon;
             return (
-              <li key={item.id} className="flex gap-2 px-3 py-2" data-testid={`ai-ledger-item-${item.status}`}>
+              <li key={item.id} className="flex gap-2 rounded-xl bg-stone-50/80 px-3 py-2.5" data-testid={`ai-ledger-item-${item.status}`}>
                 <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${meta.tone}`} aria-hidden="true" />
                 <div className="min-w-0 space-y-0.5">
                   <p className="text-xs text-stone-800 break-words">{item.summary}</p>
-                  <p className="text-[11px] text-stone-400">
+                  <p className="text-xs text-stone-400">
                     {t(meta.en, meta.el)} · {item.source === 'model' ? t('AI model', 'Μοντέλο AI') : t('Studio action', 'Ενέργεια studio')} · {when(item.at)}
                   </p>
                 </div>

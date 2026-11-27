@@ -8,7 +8,7 @@ import CoverImage from './ui/CoverImage';
 import { Both } from '../lib/both';
 import { bothText, labelOf } from '../lib/labels';
 import { useLanguage, useT } from '../lib/language';
-import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeedback, updateAssistantTurn, writeAssistant, writeAssistantFeedback, type AssistantTurn } from '../lib/localLists';
+import { appendAssistant, clearAssistant, keys, readAssistant, readAssistantFeedback, updateAssistantTurn, writeAssistant, writeAssistantFeedback, type AssistantFeedbackReason, type AssistantTurn } from '../lib/localLists';
 import { useStored } from '../lib/useStored';
 import { AIService, MOCK_AGENTS } from '../services/aiService';
 import { ASSISTANT_PAGES, assistantContextBlock, pageContext, runAssistant, SLASH_COMMANDS, type AssistantFollowUp, type AssistantLink, type AssistantProposal, type AssistantResult } from '../services/assistantOps';
@@ -124,15 +124,15 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   const pageControls = useSyncExternalStore(onPageControlsChange, readPageControls);
   const pageStarters = useMemo(() => startersFor(location.pathname, profile?.role ?? profile?.roles?.[0]), [location.pathname, profile]);
   const feedback = useStored(readAssistantFeedback, [keys.assistantFeedback]);
-  const feedbackMap = useMemo(() => new Map(feedback.map((item) => [item.turnId, item.value])), [feedback]);
+  const feedbackMap = useMemo(() => new Map(feedback.map((item) => [item.turnId, item])), [feedback]);
   const visible = isPage || (isOpen && !isMinimized);
 
-  const rate = (turnId: string, value: 'up' | 'down') => {
-    writeAssistantFeedback(turnId, value);
-    if (user && !isDemoMode) {
+  const rate = (turnId: string, value: 'up' | 'down' | null, reason?: AssistantFeedbackReason) => {
+    writeAssistantFeedback(turnId, value, reason);
+    if (value && user && !isDemoMode) {
       void import('../firebase').then(async ({ db }) => {
         const { collection, addDoc } = await import('firebase/firestore');
-        await addDoc(collection(db, 'aiUsage'), { userId: user.uid, kind: 'feedback', value, at: new Date().toISOString() });
+        await addDoc(collection(db, 'aiUsage'), { userId: user.uid, kind: 'feedback', value, ...(reason ? { reason } : {}), at: new Date().toISOString() });
       }).catch(() => undefined);
     }
   };
@@ -581,7 +581,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
       </div>
 
       {!agent && (
-        <div className="flex border-b border-stone-100 shrink-0" role="tablist" aria-label={t('Assistant mode', 'Λειτουργία βοηθού')}>
+        <div className="mx-3 mt-2.5 p-1 rounded-xl bg-stone-100/80 flex gap-1 shrink-0" role="tablist" aria-label={t('Assistant mode', 'Λειτουργία βοηθού')}>
           {(['studio', 'agents'] as const).map((item) => (
             <button
               key={item}
@@ -590,8 +590,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
               aria-selected={tab === item}
               onClick={() => setTab(item)}
               className={cn(
-                'flex-1 py-3 text-xs font-medium transition-colors',
-                tab === item ? 'text-stone-900 border-b-2 border-stone-900' : 'text-stone-400 hover:text-stone-600',
+                'flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                tab === item ? 'bg-white text-stone-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)]' : 'text-stone-500 hover:text-stone-800',
               )}
             >
               {item === 'studio' ? <Both en="Assistant" el="Βοηθός" /> : <Both en="Specialists" el="Ειδικοί" />}
@@ -663,9 +663,8 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                       <div className="flex flex-wrap items-center gap-2">
                         {originBadge(msg)}
                         {(msg.tool || msg.href) && msg.origin !== 'model-answer' && msg.origin !== 'unmatched' && !['answer', 'unmatched', 'clarify'].includes(msg.tool ?? '') && (
-                          <span className="studio-label">
+                          <span className="inline-flex items-center rounded-md bg-stone-100/80 px-2 py-0.5 text-xs font-medium text-stone-600">
                             {msg.href ? bothText(pageContext(msg.href).en, pageContext(msg.href).el) : bothText(page.en, page.el)}
-                            {msg.tool && !msg.interpretedAs ? ` · ${msg.tool}` : ''}
                           </span>
                         )}
                         {msg.tool === 'investor-email' && /^Subject:/i.test(msg.text) && (
@@ -676,28 +675,67 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                         <button type="button" onClick={() => copyText(msg.id, msg.text)} className="text-xs font-medium text-stone-500 hover:text-stone-900 inline-flex items-center gap-1" aria-label={t('Copy', 'Αντιγραφή')}>
                           {copiedId === msg.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
-                        {feedbackMap.has(msg.id) ? (
-                          <span className="text-xs text-stone-400">{t('Thanks', 'Ευχαριστούμε')}</span>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => rate(msg.id, 'up')}
-                              className="text-stone-400 hover:text-stone-900 inline-flex items-center"
-                              aria-label={t('Helpful answer', 'Χρήσιμη απάντηση')}
-                            >
-                              <ThumbsUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => rate(msg.id, 'down')}
-                              className="text-stone-400 hover:text-stone-900 inline-flex items-center"
-                              aria-label={t('Unhelpful answer', 'Μη χρήσιμη απάντηση')}
-                            >
-                              <ThumbsDown className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
+                        {(() => {
+                          const currentFeedback = feedbackMap.get(msg.id);
+                          const isUp = currentFeedback?.value === 'up';
+                          const isDown = currentFeedback?.value === 'down';
+                          const DOWN_REASONS: { id: AssistantFeedbackReason; en: string; el: string }[] = [
+                            { id: 'wrong_result', en: 'Wrong result', el: 'Λάθος αποτέλεσμα' },
+                            { id: 'not_done', en: 'Action not done', el: 'Δεν έγινε η ενέργεια' },
+                            { id: 'unclear', en: 'Unclear answer', el: 'Ασαφής απάντηση' },
+                          ];
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => rate(msg.id, isUp ? null : 'up')}
+                                aria-pressed={isUp}
+                                className={cn(
+                                  'inline-flex items-center p-1 rounded transition-colors',
+                                  isUp ? 'text-emerald-600 bg-emerald-50' : 'text-stone-400 hover:text-stone-900',
+                                )}
+                                aria-label={t('Helpful answer', 'Χρήσιμη απάντηση')}
+                              >
+                                <ThumbsUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => rate(msg.id, isDown ? null : 'down')}
+                                aria-pressed={isDown}
+                                className={cn(
+                                  'inline-flex items-center p-1 rounded transition-colors',
+                                  isDown ? 'text-amber-600 bg-amber-50' : 'text-stone-400 hover:text-stone-900',
+                                )}
+                                aria-label={t('Unhelpful answer', 'Μη χρήσιμη απάντηση')}
+                              >
+                                <ThumbsDown className="w-3 h-3" />
+                              </button>
+                              {isDown && (
+                                <div className="w-full flex flex-wrap items-center gap-1 pt-0.5" role="group" aria-label={t('Why was this unhelpful?', 'Γιατί δεν βοήθησε;')}>
+                                  {DOWN_REASONS.map((r) => {
+                                    const active = currentFeedback?.reason === r.id;
+                                    return (
+                                      <button
+                                        key={r.id}
+                                        type="button"
+                                        aria-pressed={active}
+                                        onClick={() => rate(msg.id, 'down', active ? undefined : r.id)}
+                                        className={cn(
+                                          'text-[11px] px-2 py-0.5 rounded-md border transition-colors',
+                                          active
+                                            ? 'bg-stone-900 text-white border-stone-900'
+                                            : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400',
+                                        )}
+                                      >
+                                        {t(r.en, r.el)}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                     {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
@@ -731,7 +769,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                             key={link.href}
                             type="button"
                             onClick={() => follow(link)}
-                            className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:border-stone-900 hover:text-stone-900"
+                            className="px-2.5 py-1 bg-stone-100/80 hover:bg-stone-200/70 rounded-lg text-xs font-medium text-stone-700 hover:text-stone-900 transition-colors"
                           >
                             {bothText(link.en, link.el)}
                           </button>
@@ -838,21 +876,21 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                 <p className="studio-label">{t('Stopped', 'Διακόπηκε')}</p>
               )}
             </div>
-            <div className="p-3 bg-white border-t border-stone-100 shrink-0">
+            <div className="p-3 bg-white shrink-0">
               {!agent && (
                 <div className="mb-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setPageOpen((open) => !open)}
-                      className="px-2 py-0.5 bg-stone-50 border border-stone-100 rounded-lg text-xs font-medium text-stone-500 hover:text-stone-900 hover:border-stone-300"
+                      className="px-2.5 py-0.5 bg-stone-100/80 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-200/70 transition-colors"
                       aria-expanded={pageOpen}
                       aria-label={t('Page this chat is on', 'Σελίδα αυτής της συνομιλίας')}
                     >
                       {bothText(page.en, page.el)}
                     </button>
                     {pinnedContext && (
-                      <button type="button" onClick={() => setPinnedContext(null)} className="px-2 py-0.5 bg-stone-900 text-white rounded-lg text-xs font-medium inline-flex items-center gap-1" aria-label={t(`Remove pinned context ${pinnedContext}`, `Αφαίρεση καρφιτσωμένου ${pinnedContext}`)}>
+                      <button type="button" onClick={() => setPinnedContext(null)} className="px-2.5 py-0.5 bg-stone-900 text-white rounded-lg text-xs font-medium inline-flex items-center gap-1" aria-label={t(`Remove pinned context ${pinnedContext}`, `Αφαίρεση καρφιτσωμένου ${pinnedContext}`)}>
                         {pinnedContext}
                         <X className="w-3 h-3" />
                       </button>
@@ -863,7 +901,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                         <button
                           type="button"
                           onClick={() => useUIStore.getState().setMatchBreakdownModalOpen(true, pinnedPerson.id)}
-                          className="px-2 py-0.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400"
+                          className="px-2.5 py-0.5 bg-stone-100/80 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-200/70 transition-colors"
                           title={t(`See how your score with ${pinnedPerson.fullName} is built`, `Δες πώς προκύπτει το σκορ σου με ${pinnedPerson.fullName}`)}
                         >
                           {t('Score breakdown', 'Ανάλυση σκορ')}
@@ -923,7 +961,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 bg-stone-50 rounded-xl border border-stone-200 p-1 pr-2">
+              <div className="flex items-center gap-1.5 bg-stone-50 rounded-xl border border-stone-200 px-2 py-1">
                 <input
                   ref={inputRef}
                   type="text"
@@ -946,13 +984,13 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                       void run(inputText);
                     }
                   }}
-                  className="flex-1 min-h-11 bg-transparent border-none text-base sm:text-sm focus:ring-0 px-2"
+                  className="flex-1 min-h-7 bg-transparent border-none text-xs sm:text-sm focus:ring-0 px-1"
                 />
                 {isTyping ? (
                   <button
                     type="button"
                     onClick={stop}
-                    className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center"
+                    className="w-7 h-7 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center"
                     aria-label={bothText('Stop', 'Διακοπή')}
                   >
                     <Square className="w-3 h-3 fill-current" />
@@ -963,22 +1001,22 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                     data-testid="assistant-send"
                     onClick={() => { void run(inputText); }}
                     disabled={!inputText.trim()}
-                    className="w-11 h-11 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
+                    className="w-7 h-7 shrink-0 bg-stone-900 text-white rounded-lg flex items-center justify-center disabled:opacity-50"
                     aria-label={t('Send', 'Αποστολή')}
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-3 h-3" />
                   </button>
                 )}
               </div>
               {pageControls.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-stone-400 mr-0.5">{bothText('On this page:', 'Σε αυτή τη σελίδα:')}</span>
+                <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <span className="shrink-0 text-xs text-stone-400 mr-0.5">{bothText('On this page:', 'Σε αυτή τη σελίδα:')}</span>
                   {pageControls.map((control) => (
                     <button
                       key={control.id}
                       type="button"
                       onClick={() => control.run()}
-                      className="min-h-8 px-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 hover:text-stone-900 hover:border-stone-400 inline-flex items-center"
+                      className="shrink-0 whitespace-nowrap rounded-lg bg-stone-100/80 px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 inline-flex items-center transition-colors"
                     >
                       {bothText(control.en, control.el)}
                     </button>
@@ -992,7 +1030,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
                       key={prompt.en}
                       type="button"
                       onClick={() => { void run(mode === 'el' ? prompt.el : prompt.en); }}
-                      className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400"
+                      className="min-h-11 px-3 bg-stone-50/80 hover:bg-stone-100 rounded-lg text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
                     >
                       {bothText(prompt.en, prompt.el)}
                     </button>
@@ -1002,15 +1040,17 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
               {agent && visibleTurns.length === 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {(mode === 'el' && agent.suggestedPromptsEl ? agent.suggestedPromptsEl : agent.suggestedPrompts ?? []).slice(0, 3).map((prompt) => (
-                    <button key={prompt} type="button" onClick={() => { void run(prompt); }} className="min-h-11 px-3 bg-white border border-stone-200 rounded-lg text-sm font-medium text-stone-500 hover:text-stone-900 hover:border-stone-400">
+                    <button key={prompt} type="button" onClick={() => { void run(prompt); }} className="min-h-11 px-3 bg-stone-50/80 hover:bg-stone-100 rounded-lg text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors">
                       {prompt}
                     </button>
                   ))}
                 </div>
               )}
-              <p className="mt-1.5 text-xs text-stone-400">
-                <Both en="Enter send · / shortcuts · @ person · Stop while answering · ⌘K" el="Enter αποστολή · / συντομεύσεις · @ άτομο · Διακοπή όσο απαντά · ⌘K" />
-              </p>
+              {(isPage || visibleTurns.length === 0) && (
+                <p className="mt-1.5 text-xs text-stone-400">
+                  <Both en="Enter send · / shortcuts · @ person · Stop while answering · ⌘K" el="Enter αποστολή · / συντομεύσεις · @ άτομο · Διακοπή όσο απαντά · ⌘K" />
+                </p>
+              )}
             </div>
           </>
         )}
@@ -1030,7 +1070,7 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
   }
 
   return (
-    <div className="fixed bottom-[calc(var(--bottom-nav-offset,0px)+0.75rem)] right-3 left-3 sm:left-auto sm:bottom-[calc(var(--bottom-nav-offset,0px)+1.5rem)] sm:right-6 z-[55] flex flex-col items-stretch sm:items-end gap-3 pointer-events-none">
+    <div className="fixed bottom-[calc(var(--bottom-nav-offset,0px)+0.625rem)] right-3 left-3 sm:left-auto sm:bottom-[calc(var(--bottom-nav-offset,0px)+1.25rem)] sm:right-5 z-[55] flex flex-col items-stretch sm:items-end gap-2.5 pointer-events-none">
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
@@ -1039,41 +1079,41 @@ export default function ChatWidget({ variant = 'floating' }: { variant?: 'floati
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             role="dialog"
             aria-label={t('Studio assistant', 'Βοηθός studio')}
-            className="pointer-events-auto w-full sm:w-[380px] h-[min(560px,72dvh)] bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col overflow-hidden"
+            className="pointer-events-auto w-full sm:w-[380px] h-[min(560px,72dvh)] bg-white rounded-2xl shadow-lg border border-stone-200 flex flex-col overflow-hidden"
           >
             {panel}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-3 pointer-events-auto self-end">
+      <div className="flex items-center gap-2.5 pointer-events-auto self-end">
         {isMinimized && isOpen && (
           <motion.button
             type="button"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             onClick={() => setIsMinimized(false)}
-            className="h-12 px-4 bg-white border border-stone-200 rounded-2xl shadow-sm flex items-center hover:bg-stone-50"
+            className="h-10 px-3.5 bg-white border border-stone-200 rounded-full shadow-sm flex items-center hover:bg-stone-50"
           >
             <span className="text-xs font-medium text-stone-900"><Both en="Assistant" el="Βοηθός" /></span>
           </motion.button>
         )}
         <motion.button
           type="button"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           onClick={() => {
             if (isOpen && isMinimized) setIsMinimized(false);
             else setIsOpen(!isOpen);
           }}
           className={cn(
-            'w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center',
-            isOpen && !isMinimized ? 'bg-stone-100 text-stone-900' : 'bg-stone-900 text-white',
+            'h-10 w-10 sm:h-12 sm:w-12 rounded-full sm:rounded-2xl shadow-md border border-white/15 flex items-center justify-center transition-colors',
+            isOpen && !isMinimized ? 'bg-stone-100 text-stone-900 border-stone-200' : 'bg-stone-900/90 backdrop-blur-sm text-white hover:bg-stone-900',
           )}
           aria-label={bothText('Open studio assistant', 'Άνοιγμα βοηθού')}
           aria-expanded={isOpen && !isMinimized}
         >
-          {isOpen && !isMinimized ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+          {isOpen && !isMinimized ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />}
         </motion.button>
       </div>
     </div>

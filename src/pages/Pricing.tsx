@@ -7,11 +7,18 @@ import Card from "../components/ui/Card";
 import { MOCK_PLANS, hasPlanFeature } from "../services/billingService";
 import { useT } from "../lib/language";
 import { askAssistant } from "../lib/assistantBus";
+import { usePageControls } from "../lib/pageControls";
 
 export default function Pricing() {
  const t = useT();
  const navigate = useNavigate();
  const [billingCycle, setBillingCycle] = useState<'Monthly' | 'Annual'>('Annual');
+
+ usePageControls(() => [
+  { id: 'pricing-cycle', en: billingCycle === 'Annual' ? 'Switch to Monthly' : 'Switch to Annual (Save 20%)', el: billingCycle === 'Annual' ? 'Μηνιαία χρέωση' : 'Ετήσια χρέωση (-20%)', run: () => setBillingCycle((prev) => (prev === 'Annual' ? 'Monthly' : 'Annual')) },
+  { id: 'pricing-fit', en: 'Which plan fits my stage?', el: 'Ποιο πακέτο μου ταιριάζει;', run: () => askAssistant('Which pricing plan fits my stage?') },
+  { id: 'pricing-perks', en: 'Open Perks', el: 'Άνοιγμα Παροχών', run: () => navigate('/perks') },
+ ], [billingCycle]);
 
  const plans = MOCK_PLANS;
 

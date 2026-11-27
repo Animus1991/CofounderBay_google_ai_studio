@@ -256,7 +256,7 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </button>
         ) : (
-          <span className="theme-chrome-chip inline-flex min-w-0 max-w-[40%] items-center truncate rounded-md px-2 py-0.5 text-[11px] font-medium">
+          <span className="theme-chrome-chip inline-flex min-w-0 max-w-[42%] items-center truncate px-1 py-0.5 text-xs sm:text-sm font-semibold tracking-tight">
             {t(currentPage.en, currentPage.el)}
           </span>
         )}
@@ -281,9 +281,9 @@ export default function Layout() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="theme-chrome-frame studio-topbar hidden shrink-0 items-center justify-between gap-3 border-b px-6 lg:flex">
             <div className="flex items-center gap-2 text-xs min-w-0 text-white">
-              <span className="font-semibold shrink-0">CoFounderBay Studio</span>
-              <span>·</span>
-              <span className="theme-chrome-chip inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium shrink-0">
+              <span className="font-semibold shrink-0 opacity-85">CoFounderBay Studio</span>
+              <span className="opacity-50">·</span>
+              <span className="theme-chrome-chip inline-flex items-center px-1 py-0.5 text-xs font-semibold shrink-0">
                 {t(currentPage.en, currentPage.el)}
               </span>
             </div>

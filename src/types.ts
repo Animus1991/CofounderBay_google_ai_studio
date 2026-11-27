@@ -60,6 +60,8 @@ export interface Profile {
   portfolioUrl?: string;
   profileVisibility: 'Public' | 'Private' | 'Connections Only';
   profilePhoto?: string;
+  endorsements?: Endorsement[];
+  verifiedSkills?: string[];
 }
 
 export interface Skill {
@@ -724,12 +726,20 @@ export interface Event {
   registrationUrl?: string;
 }
 
+export type EndorsementRelationship = 'Collaborator' | 'Co-Founder' | 'Mentor' | 'Investor' | 'Peer';
+
 export interface Endorsement {
   id: string;
   endorserId: string;
+  endorserName?: string;
+  endorserAvatar?: string;
+  endorserRole?: string;
   endorseeId?: string;
   recipientId?: string;
+  recipientName?: string;
   skillId: string;
+  relationship?: EndorsementRelationship;
+  verified?: boolean;
   comment?: string;
   createdAt: string;
 }
@@ -765,6 +775,8 @@ export type UserProfile = User & {
   twitterUrl?: string;
   portfolioUrl?: string;
   profile?: Profile;
+  endorsements?: Endorsement[];
+  verifiedSkills?: string[];
 };
 
 // ============================================================================
@@ -834,6 +846,8 @@ export interface FounderProfile {
     description: string;
     url?: string;
   };
+  endorsements?: Endorsement[];
+  verifiedSkills?: string[];
 }
 
 export interface StartupPitchDeck {

@@ -224,26 +224,26 @@ export default function Insights({ user }: InsightsProps) {
     {/* KPI Stats Row */}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
      {kpis.map((stat, i) => (
-      <div key={stat.label} role="button" tabIndex={0} onClick={() => navigate(stat.href)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(stat.href); }} className="bg-white border border-stone-100 rounded-2xl p-4 hover:border-stone-200 hover:shadow-sm transition-all group cursor-pointer">
+      <div key={stat.label} role="button" tabIndex={0} onClick={() => navigate(stat.href)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(stat.href); }} className="bg-white border border-stone-200/80 rounded-lg p-4 hover:border-stone-300 transition-colors group cursor-pointer">
        <div className="flex items-start justify-between mb-3">
-        <div className="w-8 h-8 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-md bg-stone-50 flex items-center justify-center shrink-0">
          <stat.icon className="w-4 h-4 text-stone-500" />
         </div>
         {stat.change ? (
          // A fall is shown as a fall: red and pointing down, not green and up.
          /^[-−]/.test(stat.change) ? (
-          <div className="flex items-center gap-1 text-xs font-semibold text-red-600 px-2 py-0.5 rounded-md">
+          <div className="flex items-center gap-1 text-xs font-semibold text-red-600 tabular-nums">
            <ArrowDownRight className="w-2.5 h-2.5" aria-hidden="true" />{stat.change}
           </div>
          ) : (
-          <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 px-2 py-0.5 rounded-md">
+          <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 tabular-nums">
            <ArrowUpRight className="w-2.5 h-2.5" aria-hidden="true" />{stat.change}
           </div>
          )
         ) : null}
        </div>
-       <p className="text-base font-bold text-stone-900">{stat.value}</p>
-       <p className="text-xs text-stone-400 tracking-wider mt-0.5">{stat.label}</p>
+       <p className="text-base font-bold text-stone-900 tabular-nums">{stat.value}</p>
+       <p className="text-xs text-stone-500 mt-0.5">{stat.label}</p>
        {'hint' in stat && stat.hint ? <p className="text-[11px] text-stone-400 mt-0.5 leading-snug">{stat.hint}</p> : null}
        <div className="mt-2.5 h-1 bg-stone-100 rounded-full overflow-hidden">
         <motion.div
@@ -386,11 +386,11 @@ export default function Insights({ user }: InsightsProps) {
        <div className="grid grid-cols-2 gap-2">
         {badges.map((badge, i) => (
          <div key={i} role="button" tabIndex={0} onClick={() => askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') askAssistant(`Tell me about readiness score and the ${badge.promptName} achievement`); }} className={cn(
-          "p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all group cursor-pointer",
-          badge.unlocked ? "bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm" : "bg-stone-50 border-dashed border-stone-200 hover:border-stone-300"
+          "p-3 rounded-lg border flex flex-col items-center gap-2 transition-colors group cursor-pointer",
+          badge.unlocked ? "bg-white border-stone-200/80 hover:border-stone-300" : "bg-stone-50 border-dashed border-stone-200 hover:border-stone-300"
          )}>
           <div className={cn(
-           "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
+           "w-9 h-9 rounded-md flex items-center justify-center transition-all",
            badge.unlocked ? "bg-stone-900 text-white" : "bg-stone-200 text-stone-400 opacity-60 grayscale"
           )}>
            <badge.icon className="w-4 h-4" />
@@ -402,7 +402,7 @@ export default function Insights({ user }: InsightsProps) {
       </Card>
 
       {/* Strategic Insight — honest, no fabricated stats */}
-      <div className="studio-nudge bg-amber-50 border border-amber-100 rounded-2xl space-y-3">
+      <div className="studio-nudge bg-amber-50/70 border border-amber-200/70 rounded-lg space-y-3">
        <p className="text-xs font-semibold text-stone-500 tracking-wider">{t('Strategic insight', 'Στρατηγική εικόνα')}</p>
        <p className="text-sm text-stone-700 leading-relaxed">
         {t('Readiness = share of profile fields matching reads.', 'Ετοιμότητα = ποσοστό πεδίων προφίλ που διαβάζει η αντιστοίχιση.')}

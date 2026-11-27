@@ -27,11 +27,10 @@ export interface ErrorTrackingProvider {
 const consoleProvider: ErrorTrackingProvider = {
   captureException: (error, context) => {
     const message = error instanceof Error ? error.message : String(error);
-    log.error(`captured exception: ${message}`, { ...context, stack: error instanceof Error ? error.stack : undefined });
+    log.warn(`captured exception: ${message}`, { ...context, stack: error instanceof Error ? error.stack : undefined });
   },
   captureMessage: (message, level, context) => {
-    if (level === 'error') log.error(message, context);
-    else if (level === 'warn') log.warn(message, context);
+    if (level === 'error' || level === 'warn') log.warn(message, context);
     else log.info(message, context);
   },
   setUser: (user) => log.debug('user context set', { user }),
@@ -52,31 +51,30 @@ export function initErrorTracking(customProvider?: ErrorTrackingProvider): void 
   if (customProvider && appEnv.enableErrorTracking) {
     provider = customProvider;
     log.info('error tracking initialized', { provider: 'custom' });
+
+    // Route logger warn/error through the active external provider.
+    let inSink = false;
+    setLoggerSink((level, message, context) => {
+      if (level !== 'error' || inSink) return;
+      inSink = true;
+      try {
+        provider.captureMessage(message, 'error', context);
+      } finally {
+        inSink = false;
+      }
+    });
+
+    // Global safety nets for external error reporting provider.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', (event) => {
+        provider.captureException(event.error ?? event.message, { source: 'window.onerror' });
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        provider.captureException(event.reason, { source: 'unhandledrejection' });
+      });
+    }
   } else {
     log.debug('error tracking running in console mode');
-  }
-
-  // Route logger warn/error through the active provider. The console provider
-  // itself logs errors — without a guard the sink would recurse into itself.
-  let inSink = false;
-  setLoggerSink((level, message, context) => {
-    if (level !== 'error' || inSink) return;
-    inSink = true;
-    try {
-      provider.captureMessage(message, 'error', context);
-    } finally {
-      inSink = false;
-    }
-  });
-
-  // Global safety nets.
-  if (typeof window !== 'undefined') {
-    window.addEventListener('error', (event) => {
-      provider.captureException(event.error ?? event.message, { source: 'window.onerror' });
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      provider.captureException(event.reason, { source: 'unhandledrejection' });
-    });
   }
 }
 

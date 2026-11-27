@@ -8,7 +8,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { corsMiddleware, originPolicy } from "./server/cors";
 import { cachedCerts, googleCertFetcher, verifyFirebaseIdToken } from "./server/firebaseAuth";
-import { geminiModel, readAiEnv, registerAiRoutes } from "./server/aiProxy";
+import { cleanGeminiApiKey, geminiModel, readAiEnv, registerAiRoutes } from "./server/aiProxy";
 import { makeIdentify } from "./server/identity";
 import { registerOutreachRoutes } from "./server/outreach";
 import { openOutreachStore } from "./server/outreachStore";
@@ -577,7 +577,7 @@ async function startServer() {
     }
   })();
   const certs = cachedCerts(googleCertFetcher());
-  const geminiApiKey = () => process.env.GEMINI_API_KEY;
+  const geminiApiKey = () => cleanGeminiApiKey(process.env.GEMINI_API_KEY);
   const gemini = geminiModel(geminiApiKey);
   const aiEnv = readAiEnv(process.env);
   const verifyToken = (token: string) => verifyFirebaseIdToken(token, { projectId: firebaseProjectId, certs });

@@ -50,7 +50,7 @@ export default function MatchDiscovery() {
  const setNeedWallModalOpen = useUIStore((s) => s.setNeedWallModalOpen);
  const fitResult = useStored(readFitCheck, [keys.fitCheck]);
  const navigate = useNavigate();
- const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+ const { toast, success: toastSuccess, error: toastError, info: toastInfo } = useToast();
  const real = !isDemoMode && Boolean(currentUser?.uid);
  const { people, loading, error } = usePeople(currentUser?.uid);
  const connections = useConnections();
@@ -91,8 +91,9 @@ export default function MatchDiscovery() {
   { id: 'open-6axis', en: '6-Axis Score Breakdown', el: 'Ανάλυση 6 Αξόνων', run: () => setMatchBreakdownModalOpen(true, filteredProfiles[0]?.person.id || 'fp-1') },
   { id: 'open-need-wall', en: 'Open roles (Needs Wall)', el: 'Ανοιχτοί ρόλοι (Πίνακας Αναγκών)', run: () => setNeedWallModalOpen(true) },
   { id: 'clear-filters', en: 'Clear filters', el: 'Καθάρισε τα φίλτρα', run: () => { setSearchQuery(''); setFilters({ stage: '', role: '', commitment: '', location: '' }); persistFilters({ q: '', stage: '', role: '', commitment: '', location: '', skill: '', industry: '' }); setVisibleCount(PAGE); } },
+  ...(hiddenIds.length > 0 ? [{ id: 'unhide-members', en: `Restore hidden (${hiddenIds.length})`, el: `Επαναφορά κρυμμένων (${hiddenIds.length})`, run: () => askAssistant('Restore hidden members') }] : []),
   { id: 'open-explore', en: 'Open Explore', el: 'Άνοιγμα Εξερεύνησης', run: () => navigate('/discovery') },
- ], [searchQuery, filters]);
+ ], [searchQuery, filters, hiddenIds.length]);
 
  const handleConnect = async (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
@@ -138,7 +139,12 @@ export default function MatchDiscovery() {
  const handleHide = (e: React.MouseEvent, person: Person) => {
   e.stopPropagation();
   toggleId(keys.hiddenPeople, person.id);
-  toastInfo(t(`${person.fullName.split(' ')[0]} hidden`, `Απόκρυψη: ${person.fullName.split(' ')[0]}`), t('Hidden members stay out of Matches and Explore. Undo from Settings › Privacy.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης. Αναίρεση από Ρυθμίσεις › Απόρρητο.'));
+  toast({
+   type: 'info',
+   title: t(`${person.fullName.split(' ')[0]} hidden`, `Απόκρυψη: ${person.fullName.split(' ')[0]}`),
+   message: t('Hidden members stay out of Matches and Explore.', 'Τα κρυμμένα μέλη μένουν εκτός Αντιστοιχίσεων και Εξερεύνησης.'),
+   action: { label: t('Undo', 'Αναίρεση'), run: () => toggleId(keys.hiddenPeople, person.id) },
+  });
  };
 
  const handleMessage = (e: React.MouseEvent, targetUid: string) => {

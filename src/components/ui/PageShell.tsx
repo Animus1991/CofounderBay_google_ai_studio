@@ -82,7 +82,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, sub, icon: Icon, trend, trendValue }: StatCardProps) {
  return (
-  <div className="bg-white rounded-2xl border border-stone-100 px-5 py-[1.2125rem]">
+  <div className="bg-white rounded-lg border border-stone-200/80 px-4 py-4">
    <div className="flex items-start justify-between">
     <p className="text-xs font-medium text-stone-400 tracking-wider">{label}</p>
     {Icon && <Icon className="w-4 h-4 text-stone-300" />}
